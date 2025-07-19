@@ -1,0 +1,742 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>FinishThisIdea - QR Onboarding</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: white;
+        }
+
+        .container {
+            max-width: 500px;
+            width: 90%;
+            background: rgba(255, 255, 255, 0.1);
+            backdrop-filter: blur(10px);
+            border-radius: 20px;
+            padding: 2rem;
+            box-shadow: 0 8px 32px 0 rgba(31, 38, 135, 0.37);
+            text-align: center;
+        }
+
+        h1 {
+            font-size: 2.5rem;
+            margin-bottom: 1rem;
+            animation: pulse 2s infinite;
+        }
+
+        @keyframes pulse {
+            0% { opacity: 1; }
+            50% { opacity: 0.8; }
+            100% { opacity: 1; }
+        }
+
+        .subtitle {
+            font-size: 1.1rem;
+            margin-bottom: 2rem;
+            opacity: 0.9;
+        }
+
+        .qr-container {
+            background: white;
+            border-radius: 15px;
+            padding: 2rem;
+            margin: 2rem 0;
+            box-shadow: 0 4px 15px rgba(0, 0, 0, 0.2);
+        }
+
+        #qrImage {
+            max-width: 256px;
+            width: 100%;
+            height: auto;
+        }
+
+        .qr-info {
+            color: #666;
+            margin-top: 1rem;
+            font-size: 0.9rem;
+        }
+
+        .status {
+            font-size: 1.2rem;
+            margin: 1rem 0;
+            padding: 1rem;
+            border-radius: 10px;
+            background: rgba(255, 255, 255, 0.2);
+        }
+
+        .status.success {
+            background: rgba(52, 211, 153, 0.3);
+        }
+
+        .status.error {
+            background: rgba(239, 68, 68, 0.3);
+        }
+
+        .status.loading {
+            background: rgba(251, 191, 36, 0.3);
+        }
+
+        button {
+            background: white;
+            color: #667eea;
+            border: none;
+            padding: 1rem 2rem;
+            font-size: 1.1rem;
+            font-weight: bold;
+            border-radius: 50px;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            margin: 0.5rem;
+        }
+
+        button:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 5px 20px rgba(0, 0, 0, 0.2);
+        }
+
+        button:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+        }
+
+        button.secondary {
+            background: transparent;
+            color: white;
+            border: 2px solid white;
+        }
+
+        button.secondary:hover {
+            background: white;
+            color: #667eea;
+        }
+
+        .welcome-rewards {
+            background: rgba(255, 255, 255, 0.1);
+            border-radius: 15px;
+            padding: 1.5rem;
+            margin: 2rem 0;
+        }
+
+        .reward-item {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin: 0.5rem 0;
+            padding: 0.5rem 0;
+            border-bottom: 1px solid rgba(255, 255, 255, 0.2);
+        }
+
+        .reward-item:last-child {
+            border-bottom: none;
+        }
+
+        .reward-value {
+            font-weight: bold;
+            color: #ffd700;
+        }
+
+        .platform-features {
+            text-align: left;
+            margin: 2rem 0;
+        }
+
+        .feature-item {
+            display: flex;
+            align-items: center;
+            margin: 0.8rem 0;
+        }
+
+        .feature-icon {
+            font-size: 1.5rem;
+            margin-right: 1rem;
+        }
+
+        .terms-modal {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0, 0, 0, 0.8);
+            z-index: 1000;
+            overflow-y: auto;
+        }
+
+        .terms-content {
+            background: white;
+            color: #333;
+            max-width: 600px;
+            margin: 2rem auto;
+            padding: 2rem;
+            border-radius: 20px;
+            max-height: 90vh;
+            overflow-y: auto;
+        }
+
+        .terms-content h2 {
+            color: #667eea;
+            margin-bottom: 1rem;
+        }
+
+        .terms-text {
+            text-align: left;
+            line-height: 1.6;
+            margin-bottom: 2rem;
+        }
+
+        .spinner {
+            border: 3px solid rgba(255, 255, 255, 0.3);
+            border-radius: 50%;
+            border-top: 3px solid white;
+            width: 40px;
+            height: 40px;
+            animation: spin 1s linear infinite;
+            margin: 2rem auto;
+        }
+
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+
+        .hidden {
+            display: none;
+        }
+
+        .qr-actions {
+            display: flex;
+            gap: 1rem;
+            justify-content: center;
+            flex-wrap: wrap;
+            margin-top: 1rem;
+        }
+
+        .alternative-login {
+            margin-top: 2rem;
+            padding-top: 2rem;
+            border-top: 1px solid rgba(255, 255, 255, 0.2);
+        }
+
+        .alternative-login h3 {
+            margin-bottom: 1rem;
+            opacity: 0.8;
+        }
+
+        .social-buttons {
+            display: flex;
+            gap: 1rem;
+            justify-content: center;
+            flex-wrap: wrap;
+        }
+
+        .social-btn {
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+            padding: 0.8rem 1.5rem;
+            border-radius: 10px;
+            font-size: 0.9rem;
+        }
+
+        .social-btn.discord {
+            background: #5865F2;
+            color: white;
+        }
+
+        .social-btn.telegram {
+            background: #0088cc;
+            color: white;
+        }
+
+        @media (max-width: 600px) {
+            .container {
+                padding: 1.5rem;
+            }
+            
+            h1 {
+                font-size: 2rem;
+            }
+            
+            .qr-actions {
+                flex-direction: column;
+            }
+            
+            button {
+                width: 100%;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🚀 FinishThisIdea</h1>
+        <p class="subtitle">AI-powered code collaboration platform</p>
+
+        <!-- Welcome Section -->
+        <div id="welcomeSection">
+            <div class="platform-features">
+                <div class="feature-item">
+                    <span class="feature-icon">🤖</span>
+                    <span>AI code analysis and cleanup</span>
+                </div>
+                <div class="feature-item">
+                    <span class="feature-icon">⚔️</span>
+                    <span>AI Arena battles and tournaments</span>
+                </div>
+                <div class="feature-item">
+                    <span class="feature-icon">💰</span>
+                    <span>Billion Dollar Game collective quest</span>
+                </div>
+                <div class="feature-item">
+                    <span class="feature-icon">🎮</span>
+                    <span>Gamified development experience</span>
+                </div>
+                <div class="feature-item">
+                    <span class="feature-icon">🔗</span>
+                    <span>Discord & Telegram integration</span>
+                </div>
+            </div>
+            
+            <button onclick="generateQR()">Get Started with QR Login</button>
+            
+            <div class="alternative-login">
+                <h3>Or continue with:</h3>
+                <div class="social-buttons">
+                    <button class="social-btn discord" onclick="loginWithDiscord()">
+                        <span>🎮</span> Discord
+                    </button>
+                    <button class="social-btn telegram" onclick="loginWithTelegram()">
+                        <span>📱</span> Telegram
+                    </button>
+                </div>
+            </div>
+        </div>
+
+        <!-- QR Generation Section -->
+        <div id="qrSection" class="hidden">
+            <div class="qr-container">
+                <img id="qrImage" alt="QR Code for FinishThisIdea" />
+                <div class="qr-info">
+                    <p>🕐 Expires in <span id="countdown">10:00</span></p>
+                    <p>Scan with your phone camera or QR reader</p>
+                </div>
+            </div>
+            
+            <div class="qr-actions">
+                <button onclick="simulateScan()">Simulate Scan (Demo)</button>
+                <button class="secondary" onclick="generateQR()">Generate New QR</button>
+                <button class="secondary" onclick="showWelcome()">← Back</button>
+            </div>
+        </div>
+
+        <!-- Loading Section -->
+        <div id="loadingSection" class="hidden">
+            <div class="spinner"></div>
+            <p class="status loading" id="loadingMessage">Setting up your account...</p>
+        </div>
+
+        <!-- Success Section -->
+        <div id="successSection" class="hidden">
+            <p class="status success">🎉 Welcome to FinishThisIdea!</p>
+            
+            <div class="welcome-rewards">
+                <h3>🎁 Welcome Rewards</h3>
+                <div class="reward-item">
+                    <span>🪙 Tokens</span>
+                    <span class="reward-value" id="welcomeTokens">100</span>
+                </div>
+                <div class="reward-item">
+                    <span>📊 Starting Level</span>
+                    <span class="reward-value">Level 1</span>
+                </div>
+                <div class="reward-item">
+                    <span>🏆 Achievement</span>
+                    <span class="reward-value">Early Adopter</span>
+                </div>
+                <div class="reward-item">
+                    <span>⚔️ Arena Access</span>
+                    <span class="reward-value">Unlocked</span>
+                </div>
+                <div class="reward-item">
+                    <span>💰 Billion $ Game</span>
+                    <span class="reward-value">Entry Available</span>
+                </div>
+            </div>
+            
+            <div style="margin: 2rem 0;">
+                <p><strong>User ID:</strong> <span id="userId"></span></p>
+                <p><strong>Platform Access:</strong> <span id="platformAccess">Full Access</span></p>
+            </div>
+            
+            <button onclick="enterPlatform()">Enter Platform →</button>
+            <button class="secondary" onclick="showWelcome()">Create Another Account</button>
+        </div>
+
+        <!-- Error Section -->
+        <div id="errorSection" class="hidden">
+            <p class="status error">❌ <span id="errorMessage">An error occurred</span></p>
+            <button onclick="showWelcome()">Try Again</button>
+            <button class="secondary" onclick="contactSupport()">Contact Support</button>
+        </div>
+    </div>
+
+    <!-- Terms Modal -->
+    <div id="termsModal" class="terms-modal">
+        <div class="terms-content">
+            <h2>🎯 Welcome to FinishThisIdea!</h2>
+            <div class="terms-text">
+                <h3>Platform Terms & Features</h3>
+                
+                <h4>What You Get:</h4>
+                <ul>
+                    <li>✨ AI-powered code analysis and cleanup</li>
+                    <li>🎮 Gamified development with XP and tokens</li>
+                    <li>⚔️ AI Arena battles with your custom fighters</li>
+                    <li>💰 Participation in the Billion Dollar Game</li>
+                    <li>🤖 Discord and Telegram bot integration</li>
+                    <li>📊 Real-time dashboards and analytics</li>
+                    <li>🏆 Achievement system and leaderboards</li>
+                </ul>
+                
+                <h4>Privacy & Data:</h4>
+                <ul>
+                    <li>🔒 Your code analysis is secure and private</li>
+                    <li>📈 Anonymous usage analytics for platform improvement</li>
+                    <li>🎯 No selling of personal data</li>
+                    <li>💾 You own your content and can export it anytime</li>
+                </ul>
+                
+                <h4>Terms of Use:</h4>
+                <ul>
+                    <li>🎪 Be respectful in communities (Discord/Telegram)</li>
+                    <li>🚫 No spam, abuse, or malicious activities</li>
+                    <li>⚖️ Fair play in games and competitions</li>
+                    <li>🔄 Terms may update (we'll notify you)</li>
+                </ul>
+                
+                <p><em>By continuing, you agree to these terms and our commitment to building an awesome platform together! 🚀</em></p>
+            </div>
+            
+            <button onclick="acceptTerms()">🎉 I Agree - Let's Build!</button>
+            <button class="secondary" onclick="declineTerms()">Maybe Later</button>
+        </div>
+    </div>
+
+    <script>
+        const API_BASE = window.location.origin + '/api';
+        let currentQR = null;
+        let countdownInterval = null;
+        let currentUser = null;
+        let pendingRegistration = null;
+
+        // Check for existing session
+        window.addEventListener('load', checkExistingSession);
+
+        // Get QR UUID from URL if present (for mobile scanning)
+        const urlParams = new URLSearchParams(window.location.search);
+        const qrUuid = urlParams.get('uuid');
+        
+        if (qrUuid) {
+            // Auto-process if UUID in URL
+            processQRScan(qrUuid);
+        }
+
+        async function checkExistingSession() {
+            try {
+                const response = await fetch(`${API_BASE}/auth/session`, {
+                    credentials: 'include'
+                });
+                
+                if (response.ok) {
+                    const data = await response.json();
+                    if (data.user) {
+                        // User already logged in
+                        currentUser = data.user;
+                        showSuccess(data.user);
+                    }
+                }
+            } catch (error) {
+                console.log('No existing session');
+            }
+        }
+
+        async function generateQR() {
+            try {
+                showSection('loading');
+                setLoadingMessage('Generating secure QR code...');
+                clearCountdown();
+
+                const response = await fetch(`${API_BASE}/auth/qr/generate`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({
+                        platform: 'finishthisidea',
+                        source: 'web',
+                        metadata: {
+                            referrer: document.referrer,
+                            device: getDeviceType(),
+                            timestamp: new Date().toISOString()
+                        }
+                    })
+                });
+
+                const data = await response.json();
+
+                if (data.success) {
+                    currentQR = data.qr;
+                    document.getElementById('qrImage').src = data.qr.image;
+                    showSection('qr');
+                    startCountdown();
+                    
+                    // Start polling for QR scan
+                    pollForScan(data.qr.uuid);
+                } else {
+                    showError(data.error || 'Failed to generate QR code');
+                }
+            } catch (error) {
+                console.error('Error generating QR:', error);
+                showError('Network error. Please check your connection.');
+            }
+        }
+
+        async function pollForScan(uuid) {
+            const pollInterval = setInterval(async () => {
+                try {
+                    const response = await fetch(`${API_BASE}/auth/qr/status/${uuid}`);
+                    const data = await response.json();
+                    
+                    if (data.scanned) {
+                        clearInterval(pollInterval);
+                        clearCountdown();
+                        await processQRScan(uuid);
+                    }
+                } catch (error) {
+                    // Continue polling on error
+                }
+            }, 2000);
+            
+            // Stop polling after 10 minutes
+            setTimeout(() => clearInterval(pollInterval), 600000);
+        }
+
+        async function simulateScan() {
+            if (!currentQR) {
+                showError('No QR code to scan');
+                return;
+            }
+            
+            await processQRScan(currentQR.uuid);
+        }
+
+        async function processQRScan(uuid) {
+            try {
+                showSection('loading');
+                setLoadingMessage('Processing QR scan...');
+                
+                const response = await fetch(`${API_BASE}/auth/qr/verify`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({
+                        uuid: uuid,
+                        metadata: {
+                            platform: 'web',
+                            device: getDeviceType(),
+                            browser: navigator.userAgent.substring(0, 50),
+                            timestamp: new Date().toISOString()
+                        }
+                    })
+                });
+
+                const data = await response.json();
+
+                if (data.success) {
+                    if (data.existing_user) {
+                        // Existing user login
+                        currentUser = data.user;
+                        setLoadingMessage('Welcome back! Logging you in...');
+                        setTimeout(() => showSuccess(data.user), 1000);
+                    } else {
+                        // New user registration
+                        pendingRegistration = data.registration;
+                        setLoadingMessage('New user detected. Preparing registration...');
+                        setTimeout(() => showTermsModal(), 1000);
+                    }
+                } else {
+                    showError(data.error || 'QR code verification failed');
+                }
+            } catch (error) {
+                console.error('Error processing QR scan:', error);
+                showError('Network error during verification');
+            }
+        }
+
+        function showTermsModal() {
+            document.getElementById('termsModal').style.display = 'block';
+        }
+
+        async function acceptTerms() {
+            try {
+                document.getElementById('termsModal').style.display = 'none';
+                showSection('loading');
+                setLoadingMessage('Creating your FinishThisIdea account...');
+
+                const response = await fetch(`${API_BASE}/auth/register`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({
+                        registration_token: pendingRegistration.token,
+                        agreed_to_terms: true,
+                        platform_preferences: {
+                            notifications: true,
+                            marketing: false,
+                            analytics: true
+                        }
+                    })
+                });
+
+                const data = await response.json();
+
+                if (data.success) {
+                    currentUser = data.user;
+                    setLoadingMessage('Account created! Setting up your rewards...');
+                    
+                    // Simulate reward setup
+                    setTimeout(() => {
+                        setLoadingMessage('Activating gamification features...');
+                        setTimeout(() => {
+                            showSuccess(data.user);
+                        }, 1000);
+                    }, 1000);
+                } else {
+                    showError(data.error || 'Failed to create account');
+                }
+            } catch (error) {
+                console.error('Error creating account:', error);
+                showError('Network error during registration');
+            }
+        }
+
+        function declineTerms() {
+            document.getElementById('termsModal').style.display = 'none';
+            showWelcome();
+        }
+
+        function showSuccess(user) {
+            document.getElementById('userId').textContent = user.id.substring(0, 8) + '...';
+            document.getElementById('welcomeTokens').textContent = user.tokens || 100;
+            showSection('success');
+        }
+
+        function showError(message) {
+            document.getElementById('errorMessage').textContent = message;
+            showSection('error');
+        }
+
+        function showWelcome() {
+            showSection('welcome');
+            clearCountdown();
+        }
+
+        function showSection(section) {
+            const sections = ['welcome', 'qr', 'loading', 'success', 'error'];
+            sections.forEach(s => {
+                document.getElementById(s + 'Section').classList.add('hidden');
+            });
+            document.getElementById(section + 'Section').classList.remove('hidden');
+        }
+
+        function setLoadingMessage(message) {
+            document.getElementById('loadingMessage').textContent = message;
+        }
+
+        function enterPlatform() {
+            if (currentUser) {
+                // Redirect to main dashboard
+                window.location.href = '/dashboard';
+            } else {
+                showError('Session error. Please try logging in again.');
+            }
+        }
+
+        function contactSupport() {
+            window.open('mailto:support@finishthisidea.com?subject=QR%20Login%20Issue', '_blank');
+        }
+
+        function loginWithDiscord() {
+            window.location.href = `${API_BASE}/auth/discord`;
+        }
+
+        function loginWithTelegram() {
+            window.location.href = `${API_BASE}/auth/telegram`;
+        }
+
+        function startCountdown() {
+            let seconds = 600; // 10 minutes
+            
+            countdownInterval = setInterval(() => {
+                seconds--;
+                const minutes = Math.floor(seconds / 60);
+                const secs = seconds % 60;
+                document.getElementById('countdown').textContent = 
+                    `${minutes}:${secs.toString().padStart(2, '0')}`;
+                
+                if (seconds <= 0) {
+                    clearCountdown();
+                    showError('QR code expired. Please generate a new one.');
+                }
+            }, 1000);
+        }
+
+        function clearCountdown() {
+            if (countdownInterval) {
+                clearInterval(countdownInterval);
+                countdownInterval = null;
+            }
+        }
+
+        function getDeviceType() {
+            const ua = navigator.userAgent;
+            if (/tablet|ipad|playbook|silk/i.test(ua)) return 'tablet';
+            if (/mobile|iphone|ipod|android|blackberry|opera|mini|windows\sce|palm|smartphone|iemobile/i.test(ua)) return 'mobile';
+            return 'desktop';
+        }
+
+        // Handle QR scan from mobile (when camera redirects to this page)
+        if (window.location.hash) {
+            const hashParams = new URLSearchParams(window.location.hash.substring(1));
+            const scanUuid = hashParams.get('scan');
+            if (scanUuid) {
+                processQRScan(scanUuid);
+            }
+        }
+
+        // Handle back button
+        window.addEventListener('popstate', () => {
+            if (document.getElementById('welcomeSection').classList.contains('hidden')) {
+                showWelcome();
+            }
+        });
+    </script>
+</body>
+</html>

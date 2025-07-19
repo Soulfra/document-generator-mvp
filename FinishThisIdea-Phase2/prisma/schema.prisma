@@ -1,0 +1,255 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+enum JobStatus {
+  PENDING
+  PROCESSING
+  COMPLETED
+  FAILED
+}
+
+enum JobType {
+  CLEANUP
+  DOCUMENTATION
+  API_GENERATION
+  TEST_GENERATION
+  SECURITY_ANALYSIS
+  BUNDLE
+}
+
+enum PaymentStatus {
+  PENDING
+  SUCCEEDED
+  FAILED
+  REFUNDED
+}
+
+model Job {
+  id                String    @id @default(uuid())
+  type              JobType   @default(CLEANUP)
+  status            JobStatus @default(PENDING)
+  inputFileUrl      String    @map("input_file_url")
+  outputFileUrl     String?   @map("output_file_url")
+  stripeSessionId   String?   @unique @map("stripe_session_id")
+  progress          Int       @default(0)
+  error             String?
+  metadata          Json?
+  
+  // File info
+  originalFileName  String    @map("original_file_name")
+  fileSizeBytes     Int       @map("file_size_bytes")
+  fileCount         Int?      @map("file_count")
+  
+  // Service-specific config
+  serviceConfig     Json?     @map("service_config")
+  
+  // Processing info
+  processingStartedAt DateTime? @map("processing_started_at")
+  processingEndedAt   DateTime? @map("processing_ended_at")
+  
+  // Timestamps
+  createdAt         DateTime  @default(now()) @map("created_at")
+  updatedAt         DateTime  @updatedAt @map("updated_at")
+  expiresAt         DateTime  @map("expires_at")
+  
+  // Relations
+  payment           Payment?
+  analysisResult    AnalysisResult?
+  
+  // Service-specific results
+  documentationResult DocumentationResult?
+  apiGenerationResult ApiGenerationResult?
+  testGenerationResult TestGenerationResult?
+  securityAnalysisResult SecurityAnalysisResult?
+  
+  // Bundle support
+  bundleId          String?   @map("bundle_id")
+  bundle            Bundle?   @relation(fields: [bundleId], references: [id])
+  
+  @@index([status])
+  @@index([type])
+  @@index([createdAt])
+  @@index([bundleId])
+  @@map("jobs")
+}
+
+model Bundle {
+  id                String        @id @default(uuid())
+  name              String
+  description       String?
+  totalPrice        Int           @map("total_price") // in cents
+  discount          Int           @default(0) // discount in cents
+  status            JobStatus     @default(PENDING)
+  
+  // Timestamps
+  createdAt         DateTime      @default(now()) @map("created_at")
+  updatedAt         DateTime      @updatedAt @map("updated_at")
+  
+  // Relations
+  jobs              Job[]
+  payment           Payment?
+  
+  @@map("bundles")
+}
+
+model Payment {
+  id                    String        @id @default(uuid())
+  jobId                 String?       @unique @map("job_id")
+  bundleId              String?       @unique @map("bundle_id")
+  stripePaymentIntentId String?       @unique @map("stripe_payment_intent_id")
+  stripeCustomerId      String?       @map("stripe_customer_id")
+  amount                Int           // in cents
+  currency              String        @default("usd")
+  status                PaymentStatus @default(PENDING)
+  
+  // Timestamps
+  createdAt             DateTime      @default(now()) @map("created_at")
+  updatedAt             DateTime      @updatedAt @map("updated_at")
+  
+  // Relations
+  job                   Job?          @relation(fields: [jobId], references: [id], onDelete: Cascade)
+  bundle                Bundle?       @relation(fields: [bundleId], references: [id], onDelete: Cascade)
+  
+  @@index([status])
+  @@index([stripePaymentIntentId])
+  @@map("payments")
+}
+
+model AnalysisResult {
+  id                String   @id @default(uuid())
+  jobId             String   @unique @map("job_id")
+  
+  // Analysis data
+  totalFiles        Int      @map("total_files")
+  linesOfCode       Int      @map("lines_of_code")
+  languages         Json     // { "javascript": 60, "typescript": 30, "css": 10 }
+  issues            Json     // Array of identified issues
+  improvements      Json     // Array of improvements made
+  
+  // AI metrics
+  ollamaConfidence  Float?   @map("ollama_confidence")
+  claudeUsed        Boolean  @default(false) @map("claude_used")
+  processingCostUsd Float    @default(0) @map("processing_cost_usd")
+  
+  // Timestamps
+  createdAt         DateTime @default(now()) @map("created_at")
+  
+  // Relations
+  job               Job      @relation(fields: [jobId], references: [id], onDelete: Cascade)
+  
+  @@map("analysis_results")
+}
+
+model DocumentationResult {
+  id                String   @id @default(uuid())
+  jobId             String   @unique @map("job_id")
+  
+  // Generated content
+  readmeContent     String?  @map("readme_content")
+  apiDocsContent    String?  @map("api_docs_content")
+  setupGuideContent String?  @map("setup_guide_content")
+  examplesContent   String?  @map("examples_content")
+  
+  // Metadata
+  generatedFiles    Json     @map("generated_files") // Array of file info
+  docQualityScore   Float?   @map("doc_quality_score")
+  
+  // AI metrics
+  processingCostUsd Float    @default(0) @map("processing_cost_usd")
+  
+  // Timestamps
+  createdAt         DateTime @default(now()) @map("created_at")
+  
+  // Relations
+  job               Job      @relation(fields: [jobId], references: [id], onDelete: Cascade)
+  
+  @@map("documentation_results")
+}
+
+model ApiGenerationResult {
+  id                String   @id @default(uuid())
+  jobId             String   @unique @map("job_id")
+  
+  // Generated API
+  openApiSpec       Json?    @map("openapi_spec")
+  endpoints         Json     // Array of generated endpoints
+  models            Json     // Array of data models
+  middlewareCode    String?  @map("middleware_code")
+  
+  // Configuration
+  apiType           String   @map("api_type") // rest, graphql
+  authentication    String?  // jwt, api-key, oauth
+  
+  // Quality metrics
+  endpointCount     Int      @default(0) @map("endpoint_count")
+  modelCount        Int      @default(0) @map("model_count")
+  
+  // AI metrics
+  processingCostUsd Float    @default(0) @map("processing_cost_usd")
+  
+  // Timestamps
+  createdAt         DateTime @default(now()) @map("created_at")
+  
+  // Relations
+  job               Job      @relation(fields: [jobId], references: [id], onDelete: Cascade)
+  
+  @@map("api_generation_results")
+}
+
+model TestGenerationResult {
+  id                String   @id @default(uuid())
+  jobId             String   @unique @map("job_id")
+  
+  // Generated tests
+  unitTests         Json     @map("unit_tests") // Array of test files
+  integrationTests  Json     @map("integration_tests")
+  e2eTests          Json?    @map("e2e_tests")
+  
+  // Coverage info
+  expectedCoverage  Float?   @map("expected_coverage")
+  testFramework     String   @map("test_framework") // jest, mocha, etc
+  
+  // Quality metrics
+  testCount         Int      @default(0) @map("test_count")
+  assertionCount    Int      @default(0) @map("assertion_count")
+  
+  // AI metrics
+  processingCostUsd Float    @default(0) @map("processing_cost_usd")
+  
+  // Timestamps
+  createdAt         DateTime @default(now()) @map("created_at")
+  
+  // Relations
+  job               Job      @relation(fields: [jobId], references: [id], onDelete: Cascade)
+  
+  @@map("test_generation_results")
+}
+
+model SecurityAnalysisResult {
+  id                String   @id @default(uuid())
+  jobId             String   @unique @map("job_id")
+  
+  // Security findings
+  vulnerabilities   Json     @map("vulnerabilities") // { critical, high, medium, low }
+  riskScore         Float    @map("risk_score") // 0-100
+  complianceScore   Float?   @map("compliance_score") // 0-100
+  findings          Json     @map("findings") // Array of security findings
+  recommendations   Json     @map("recommendations") // Array of remediation steps
+  
+  // AI metrics
+  processingCostUsd Float    @default(0) @map("processing_cost_usd")
+  
+  // Timestamps
+  createdAt         DateTime @default(now()) @map("created_at")
+  
+  // Relations
+  job               Job      @relation(fields: [jobId], references: [id], onDelete: Cascade)
+  
+  @@map("security_analysis_results")
+}

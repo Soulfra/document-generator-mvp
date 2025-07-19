@@ -1,0 +1,316 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Payment Successful - FinishThisIdea</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            line-height: 1.6;
+            color: #333;
+            background: linear-gradient(135deg, #28a745 0%, #20c997 100%);
+            min-height: 100vh;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+        
+        .container {
+            max-width: 600px;
+            margin: 0 auto;
+            padding: 20px;
+        }
+        
+        .card {
+            background: white;
+            border-radius: 12px;
+            padding: 40px;
+            box-shadow: 0 20px 40px rgba(0,0,0,0.1);
+            text-align: center;
+        }
+        
+        .success-icon {
+            font-size: 4rem;
+            color: #28a745;
+            margin-bottom: 20px;
+        }
+        
+        h1 {
+            color: #28a745;
+            margin-bottom: 20px;
+            font-size: 2rem;
+        }
+        
+        .message {
+            font-size: 1.1rem;
+            margin-bottom: 30px;
+            color: #666;
+        }
+        
+        .progress {
+            width: 100%;
+            height: 8px;
+            background: #f0f0f0;
+            border-radius: 4px;
+            overflow: hidden;
+            margin: 20px 0;
+        }
+        
+        .progress-bar {
+            height: 100%;
+            background: #28a745;
+            transition: width 0.3s ease;
+            animation: pulse 2s infinite;
+        }
+        
+        @keyframes pulse {
+            0% { opacity: 1; }
+            50% { opacity: 0.7; }
+            100% { opacity: 1; }
+        }
+        
+        .status {
+            padding: 15px;
+            border-radius: 6px;
+            margin: 15px 0;
+            background: #d4edda;
+            color: #155724;
+            border: 1px solid #c3e6cb;
+        }
+        
+        .btn {
+            background: #28a745;
+            color: white;
+            border: none;
+            padding: 12px 30px;
+            border-radius: 6px;
+            font-size: 1rem;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            display: inline-block;
+            text-decoration: none;
+            margin: 10px;
+        }
+        
+        .btn:hover {
+            background: #218838;
+            transform: translateY(-1px);
+        }
+        
+        .btn-secondary {
+            background: #6c757d;
+        }
+        
+        .btn-secondary:hover {
+            background: #5a6268;
+        }
+        
+        .job-info {
+            background: #f8f9fa;
+            padding: 20px;
+            border-radius: 8px;
+            margin: 20px 0;
+            text-align: left;
+        }
+        
+        .estimated-time {
+            font-weight: bold;
+            color: #28a745;
+            font-size: 1.2rem;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="card">
+            <div class="success-icon">✅</div>
+            <h1>Payment Successful!</h1>
+            <div class="message">
+                Thank you for your payment! We're now cleaning and organizing your codebase.
+            </div>
+            
+            <div class="status">
+                <strong>Processing Status:</strong> <span id="status-text">Starting AI cleanup...</span>
+            </div>
+            
+            <div class="progress">
+                <div class="progress-bar" id="progress-bar" style="width: 5%"></div>
+            </div>
+            
+            <div class="job-info" id="job-info">
+                <strong>Estimated Time:</strong> <span class="estimated-time">5-30 minutes</span><br>
+                <strong>What we're doing:</strong><br>
+                • Analyzing your code structure<br>
+                • Removing dead code and unused imports<br>
+                • Fixing formatting and indentation<br>
+                • Organizing files into logical folders<br>
+                • Generating documentation
+            </div>
+            
+            <div id="job-details" style="display: none;">
+                <strong>Job ID:</strong> <span id="job-id"></span><br>
+                <strong>Session ID:</strong> <span id="session-id"></span>
+            </div>
+            
+            <div style="margin-top: 30px;">
+                <button id="check-status-btn" class="btn">Check Status</button>
+                <a href="/" class="btn btn-secondary">Start Another Cleanup</a>
+            </div>
+            
+            <div style="margin-top: 20px; font-size: 0.9rem; color: #666;">
+                You'll be able to download your cleaned codebase when processing is complete.<br>
+                This page will automatically update with your progress.
+            </div>
+        </div>
+    </div>
+
+    <script>
+        const API_BASE = '/api';
+        let currentJobId = null;
+        let processingInterval = null;
+        
+        // Get session ID from URL
+        const urlParams = new URLSearchParams(window.location.search);
+        const sessionId = urlParams.get('session_id');
+        
+        if (sessionId) {
+            document.getElementById('session-id').textContent = sessionId;
+            document.getElementById('job-details').style.display = 'block';
+            
+            // In a real implementation, you'd need to get the job ID from the session
+            // For now, we'll check if it's stored in localStorage or need to look it up
+            const storedJobId = localStorage.getItem('currentJobId');
+            if (storedJobId) {
+                currentJobId = storedJobId;
+                document.getElementById('job-id').textContent = currentJobId;
+                startJobMonitoring(currentJobId);
+            } else {
+                // Would need to implement a way to get job ID from session ID
+                document.getElementById('status-text').textContent = 'Looking up your job...';
+            }
+        }
+        
+        document.getElementById('check-status-btn').addEventListener('click', () => {
+            if (currentJobId) {
+                window.open(`/status.html?jobId=${currentJobId}`, '_blank');
+            } else {
+                alert('Job ID not found. Please save your job ID from the upload step.');
+            }
+        });
+        
+        async function startJobMonitoring(jobId) {
+            // Clear any existing interval
+            if (processingInterval) {
+                clearInterval(processingInterval);
+            }
+            
+            // Start monitoring
+            processingInterval = setInterval(async () => {
+                try {
+                    await checkJobStatus(jobId);
+                } catch (error) {
+                    console.error('Failed to check job status:', error);
+                }
+            }, 5000); // Check every 5 seconds
+            
+            // Also check immediately
+            await checkJobStatus(jobId);
+        }
+        
+        async function checkJobStatus(jobId) {
+            try {
+                const response = await fetch(`${API_BASE}/jobs/${jobId}`);
+                const result = await response.json();
+                
+                if (result.success) {
+                    updateJobStatus(result.data);
+                } else {
+                    console.error('Failed to get job status:', result.error);
+                }
+            } catch (error) {
+                console.error('Error checking job status:', error);
+            }
+        }
+        
+        function updateJobStatus(job) {
+            const progressBar = document.getElementById('progress-bar');
+            const statusText = document.getElementById('status-text');
+            
+            // Update progress
+            progressBar.style.width = `${Math.max(5, job.progress)}%`;
+            
+            // Update status text
+            switch (job.status) {
+                case 'PENDING':
+                    statusText.textContent = 'Queued for processing...';
+                    break;
+                case 'PROCESSING':
+                    statusText.textContent = `Processing your code... (${job.progress}% complete)`;
+                    break;
+                case 'COMPLETED':
+                    statusText.textContent = 'Cleaning complete! Ready for download.';
+                    showCompletedState(job);
+                    break;
+                case 'FAILED':
+                    statusText.textContent = `Processing failed: ${job.error || 'Unknown error'}`;
+                    showFailedState(job);
+                    break;
+            }
+        }
+        
+        function showCompletedState(job) {
+            clearInterval(processingInterval);
+            
+            document.getElementById('progress-bar').style.width = '100%';
+            document.getElementById('progress-bar').style.background = '#28a745';
+            
+            // Update the card to show completion
+            const card = document.querySelector('.card');
+            card.innerHTML += `
+                <div style="margin-top: 30px; padding: 20px; background: #d4edda; border-radius: 8px;">
+                    <h3 style="color: #155724; margin-bottom: 15px;">🎉 Your Code is Ready!</h3>
+                    <div style="text-align: left; margin-bottom: 20px;">
+                        ${job.results ? `
+                            <strong>Results:</strong><br>
+                            • Processed ${job.results.totalFiles} files<br>
+                            • ${job.results.linesOfCode?.toLocaleString()} lines of code<br>
+                            • Languages: ${Object.keys(job.results.languages || {}).join(', ')}<br>
+                            • Processing cost: $${job.results.processingCost?.toFixed(2) || '0.00'}
+                        ` : ''}
+                    </div>
+                    <a href="${API_BASE}/jobs/${job.id}/download" class="btn" style="font-size: 1.1rem; padding: 15px 30px;">
+                        📥 Download Your Clean Code
+                    </a>
+                </div>
+            `;
+        }
+        
+        function showFailedState(job) {
+            clearInterval(processingInterval);
+            
+            document.getElementById('progress-bar').style.background = '#dc3545';
+            
+            const card = document.querySelector('.card');
+            card.innerHTML += `
+                <div style="margin-top: 30px; padding: 20px; background: #f8d7da; border-radius: 8px;">
+                    <h3 style="color: #721c24; margin-bottom: 15px;">❌ Processing Failed</h3>
+                    <p style="color: #721c24; margin-bottom: 20px;">
+                        ${job.error || 'An unexpected error occurred during processing.'}
+                    </p>
+                    <a href="/" class="btn btn-secondary">Try Again</a>
+                </div>
+            `;
+        }
+        
+        // Clean up interval on page unload
+        window.addEventListener('beforeunload', () => {
+            if (processingInterval) {
+                clearInterval(processingInterval);
+            }
+        });
+    </script>
+</body>
+</html>

@@ -1,0 +1,434 @@
+name: ⚡ Performance Testing
+
+on:
+  push:
+    branches: [ main ]
+  pull_request:
+    branches: [ main ]
+  schedule:
+    # Run performance tests daily at 3 AM UTC
+    - cron: '0 3 * * *'
+  workflow_dispatch:
+    inputs:
+      test_duration:
+        description: 'Test duration in minutes'
+        required: false
+        default: '5'
+        type: string
+      concurrent_users:
+        description: 'Number of concurrent users'
+        required: false
+        default: '50'
+        type: string
+
+jobs:
+  # Frontend Performance Tests
+  frontend-performance:
+    name: 🎯 Frontend Performance
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '18.x'
+          cache: 'npm'
+          cache-dependency-path: frontend/package-lock.json
+      
+      - name: Install dependencies
+        working-directory: ./frontend
+        run: npm ci
+      
+      - name: Build frontend
+        working-directory: ./frontend
+        run: npm run build
+      
+      - name: Install Lighthouse CI
+        run: npm install -g @lhci/cli@0.12.x
+      
+      - name: Serve built frontend
+        working-directory: ./frontend
+        run: |
+          npx serve -s dist -p 3000 &
+          sleep 5
+      
+      - name: Run Lighthouse CI
+        run: |
+          lhci autorun --config='{
+            "ci": {
+              "collect": {
+                "url": ["http://localhost:3000"],
+                "numberOfRuns": 3
+              },
+              "assert": {
+                "assertions": {
+                  "categories:performance": ["error", {"minScore": 0.8}],
+                  "categories:accessibility": ["error", {"minScore": 0.9}],
+                  "categories:best-practices": ["error", {"minScore": 0.9}],
+                  "categories:seo": ["error", {"minScore": 0.9}]
+                }
+              },
+              "upload": {
+                "target": "temporary-public-storage"
+              }
+            }
+          }'
+      
+      - name: Bundle size analysis
+        working-directory: ./frontend
+        run: |
+          echo "📦 Frontend bundle analysis:"
+          echo "================================"
+          
+          # Analyze bundle sizes
+          if [ -d "dist/assets" ]; then
+            echo "📊 JavaScript bundles:"
+            find dist/assets -name "*.js" -exec basename {} \; | sort | while read file; do
+              size=$(du -h "dist/assets/$file" | cut -f1)
+              echo "  - $file: $size"
+            done
+            
+            echo ""
+            echo "🎨 CSS bundles:"
+            find dist/assets -name "*.css" -exec basename {} \; | sort | while read file; do
+              size=$(du -h "dist/assets/$file" | cut -f1)
+              echo "  - $file: $size"
+            done
+            
+            echo ""
+            echo "📁 Total bundle size:"
+            du -sh dist
+          fi
+      
+      - name: Upload Lighthouse results
+        uses: actions/upload-artifact@v3
+        if: always()
+        with:
+          name: lighthouse-results
+          path: .lighthouseci
+
+  # Backend Performance Tests
+  backend-performance:
+    name: 🔧 Backend Performance
+    runs-on: ubuntu-latest
+    
+    services:
+      postgres:
+        image: postgres:15
+        env:
+          POSTGRES_PASSWORD: postgres
+          POSTGRES_DB: finishthisidea_perf_test
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+        ports:
+          - 5432:5432
+      
+      redis:
+        image: redis:7-alpine
+        options: >-
+          --health-cmd "redis-cli ping"
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+        ports:
+          - 6379:6379
+    
+    steps:
+      - uses: actions/checkout@v4
+      
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '18.x'
+          cache: 'npm'
+      
+      - name: Install dependencies
+        run: npm ci
+      
+      - name: Setup test environment
+        run: |
+          cp .env.example .env.test
+          echo "DATABASE_URL=postgresql://postgres:postgres@localhost:5432/finishthisidea_perf_test" >> .env.test
+          echo "REDIS_URL=redis://localhost:6379" >> .env.test
+          echo "NODE_ENV=test" >> .env.test
+      
+      - name: Setup database
+        run: |
+          npx prisma generate
+          npx prisma migrate deploy
+        env:
+          DATABASE_URL: postgresql://postgres:postgres@localhost:5432/finishthisidea_perf_test
+      
+      - name: Build backend
+        run: npm run build
+      
+      - name: Start backend server
+        run: |
+          npm start &
+          sleep 10
+        env:
+          DATABASE_URL: postgresql://postgres:postgres@localhost:5432/finishthisidea_perf_test
+          REDIS_URL: redis://localhost:6379
+          PORT: 3000
+      
+      - name: Install Artillery for load testing
+        run: npm install -g artillery@latest
+      
+      - name: Create Artillery test config
+        run: |
+          cat > artillery-config.yml << EOF
+          config:
+            target: 'http://localhost:3000'
+            phases:
+              - duration: 60
+                arrivalRate: 10
+                name: "Warm up"
+              - duration: ${{ github.event.inputs.test_duration || '300' }}
+                arrivalRate: ${{ github.event.inputs.concurrent_users || '50' }}
+                name: "Load test"
+              - duration: 60
+                arrivalRate: 5
+                name: "Cool down"
+            processor: "./artillery-processor.js"
+          
+          scenarios:
+            - name: "Health check"
+              weight: 20
+              flow:
+                - get:
+                    url: "/health"
+                    expect:
+                      - statusCode: 200
+            
+            - name: "API key management"
+              weight: 30
+              flow:
+                - post:
+                    url: "/api/auth/login"
+                    json:
+                      email: "test@example.com"
+                      password: "testpassword"
+                    capture:
+                      - json: "$.token"
+                        as: "authToken"
+                - get:
+                    url: "/api/api-keys"
+                    headers:
+                      Authorization: "Bearer {{ authToken }}"
+            
+            - name: "File upload simulation"
+              weight: 25
+              flow:
+                - post:
+                    url: "/api/upload"
+                    formData:
+                      file: "@package.json"
+                    expect:
+                      - statusCode: [200, 201]
+            
+            - name: "Profile operations"
+              weight: 15
+              flow:
+                - get:
+                    url: "/api/profiles"
+                    expect:
+                      - statusCode: 200
+            
+            - name: "Monitoring endpoints"
+              weight: 10
+              flow:
+                - get:
+                    url: "/api/monitoring/metrics"
+                    expect:
+                      - statusCode: 200
+          EOF
+      
+      - name: Create Artillery processor
+        run: |
+          cat > artillery-processor.js << EOF
+          module.exports = {
+            setRandomEmail: setRandomEmail,
+            logResponse: logResponse
+          };
+          
+          function setRandomEmail(requestParams, context, ee, next) {
+            context.vars['randomEmail'] = \`user\${Math.floor(Math.random() * 10000)}@test.com\`;
+            return next();
+          }
+          
+          function logResponse(requestParams, response, context, ee, next) {
+            if (response.statusCode >= 400) {
+              console.log(\`Error response: \${response.statusCode} - \${response.body}\`);
+            }
+            return next();
+          }
+          EOF
+      
+      - name: Run performance tests
+        run: |
+          echo "🚀 Starting backend performance tests..."
+          artillery run artillery-config.yml --output performance-report.json
+      
+      - name: Generate performance report
+        run: |
+          artillery report performance-report.json --output performance-report.html
+          
+          # Extract key metrics
+          echo "📊 Performance Test Results:" > performance-summary.txt
+          echo "=============================" >> performance-summary.txt
+          
+          # Parse JSON report for key metrics
+          if command -v jq &> /dev/null; then
+            echo "📈 Request Rate: $(jq -r '.aggregate.rates."http.request_rate" // "N/A"' performance-report.json) req/sec" >> performance-summary.txt
+            echo "⏱️  Response Time P95: $(jq -r '.aggregate.latencies."http.response_time".p95 // "N/A"' performance-report.json) ms" >> performance-summary.txt
+            echo "⏱️  Response Time P99: $(jq -r '.aggregate.latencies."http.response_time".p99 // "N/A"' performance-report.json) ms" >> performance-summary.txt
+            echo "✅ Success Rate: $(jq -r '((.aggregate.counters."http.codes.200" // 0) + (.aggregate.counters."http.codes.201" // 0)) * 100 / (.aggregate.counters."http.requests" // 1)' performance-report.json)%" >> performance-summary.txt
+            echo "❌ Error Rate: $(jq -r '((.aggregate.counters."http.codes.4xx" // 0) + (.aggregate.counters."http.codes.5xx" // 0)) * 100 / (.aggregate.counters."http.requests" // 1)' performance-report.json)%" >> performance-summary.txt
+          fi
+          
+          cat performance-summary.txt
+      
+      - name: Check performance thresholds
+        run: |
+          echo "🔍 Checking performance thresholds..."
+          
+          # Set performance thresholds
+          MAX_P95_RESPONSE_TIME=1000  # 1 second
+          MIN_SUCCESS_RATE=95         # 95%
+          MAX_ERROR_RATE=5            # 5%
+          
+          if command -v jq &> /dev/null; then
+            P95_TIME=$(jq -r '.aggregate.latencies."http.response_time".p95 // 0' performance-report.json)
+            SUCCESS_RATE=$(jq -r '((.aggregate.counters."http.codes.200" // 0) + (.aggregate.counters."http.codes.201" // 0)) * 100 / (.aggregate.counters."http.requests" // 1)' performance-report.json)
+            ERROR_RATE=$(jq -r '((.aggregate.counters."http.codes.4xx" // 0) + (.aggregate.counters."http.codes.5xx" // 0)) * 100 / (.aggregate.counters."http.requests" // 1)' performance-report.json)
+            
+            echo "📊 P95 Response Time: ${P95_TIME}ms (threshold: ${MAX_P95_RESPONSE_TIME}ms)"
+            echo "📊 Success Rate: ${SUCCESS_RATE}% (threshold: ${MIN_SUCCESS_RATE}%)"
+            echo "📊 Error Rate: ${ERROR_RATE}% (threshold: ${MAX_ERROR_RATE}%)"
+            
+            # Check thresholds
+            if (( $(echo "$P95_TIME > $MAX_P95_RESPONSE_TIME" | bc -l) )); then
+              echo "❌ P95 response time exceeds threshold!"
+              exit 1
+            fi
+            
+            if (( $(echo "$SUCCESS_RATE < $MIN_SUCCESS_RATE" | bc -l) )); then
+              echo "❌ Success rate below threshold!"
+              exit 1
+            fi
+            
+            if (( $(echo "$ERROR_RATE > $MAX_ERROR_RATE" | bc -l) )); then
+              echo "❌ Error rate exceeds threshold!"
+              exit 1
+            fi
+            
+            echo "✅ All performance thresholds passed!"
+          fi
+      
+      - name: Upload performance artifacts
+        uses: actions/upload-artifact@v3
+        if: always()
+        with:
+          name: backend-performance-results
+          path: |
+            performance-report.json
+            performance-report.html
+            performance-summary.txt
+
+  # Database Performance Tests
+  database-performance:
+    name: 🗃️ Database Performance
+    runs-on: ubuntu-latest
+    
+    services:
+      postgres:
+        image: postgres:15
+        env:
+          POSTGRES_PASSWORD: postgres
+          POSTGRES_DB: finishthisidea_db_perf_test
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+        ports:
+          - 5432:5432
+    
+    steps:
+      - uses: actions/checkout@v4
+      
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '18.x'
+          cache: 'npm'
+      
+      - name: Install dependencies
+        run: npm ci
+      
+      - name: Setup database
+        run: |
+          npx prisma generate
+          npx prisma migrate deploy
+        env:
+          DATABASE_URL: postgresql://postgres:postgres@localhost:5432/finishthisidea_db_perf_test
+      
+      - name: Seed test data
+        run: |
+          echo "🌱 Seeding performance test data..."
+          npm run db:seed:performance
+        env:
+          DATABASE_URL: postgresql://postgres:postgres@localhost:5432/finishthisidea_db_perf_test
+      
+      - name: Run database performance tests
+        run: npm run test:db:performance
+        env:
+          DATABASE_URL: postgresql://postgres:postgres@localhost:5432/finishthisidea_db_perf_test
+
+  # Performance Summary
+  performance-summary:
+    name: 📊 Performance Summary
+    runs-on: ubuntu-latest
+    needs: [frontend-performance, backend-performance, database-performance]
+    if: always()
+    steps:
+      - name: Download performance artifacts
+        uses: actions/download-artifact@v3
+      
+      - name: Generate performance summary
+        run: |
+          echo "## ⚡ Performance Test Summary" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          
+          # Check job statuses
+          echo "| Test Type | Status | Details |" >> $GITHUB_STEP_SUMMARY
+          echo "|-----------|--------|---------|" >> $GITHUB_STEP_SUMMARY
+          echo "| Frontend Performance | ${{ needs.frontend-performance.result == 'success' && '✅ Passed' || '❌ Failed' }} | Lighthouse CI, Bundle Analysis |" >> $GITHUB_STEP_SUMMARY
+          echo "| Backend Performance | ${{ needs.backend-performance.result == 'success' && '✅ Passed' || '❌ Failed' }} | Load Testing, API Performance |" >> $GITHUB_STEP_SUMMARY
+          echo "| Database Performance | ${{ needs.database-performance.result == 'success' && '✅ Passed' || '❌ Failed' }} | Query Performance, Connection Pooling |" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          
+          # Performance metrics if available
+          if [ -f "backend-performance-results/performance-summary.txt" ]; then
+            echo "### 🔧 Backend Performance Metrics" >> $GITHUB_STEP_SUMMARY
+            echo "\`\`\`" >> $GITHUB_STEP_SUMMARY
+            cat backend-performance-results/performance-summary.txt >> $GITHUB_STEP_SUMMARY
+            echo "\`\`\`" >> $GITHUB_STEP_SUMMARY
+          fi
+          
+          # Overall status
+          if [[ "${{ needs.frontend-performance.result }}" == "success" && 
+                "${{ needs.backend-performance.result }}" == "success" && 
+                "${{ needs.database-performance.result }}" == "success" ]]; then
+            echo "### ✅ All performance tests passed! 🚀" >> $GITHUB_STEP_SUMMARY
+            echo "" >> $GITHUB_STEP_SUMMARY
+            echo "The application meets all performance benchmarks and is ready for production." >> $GITHUB_STEP_SUMMARY
+          else
+            echo "### ⚠️ Some performance tests failed" >> $GITHUB_STEP_SUMMARY
+            echo "" >> $GITHUB_STEP_SUMMARY
+            echo "Please review the performance test results and optimize accordingly." >> $GITHUB_STEP_SUMMARY
+          fi

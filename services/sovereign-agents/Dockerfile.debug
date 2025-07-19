@@ -1,0 +1,35 @@
+FROM node:18-alpine
+
+# Install git and curl for operations
+RUN apk add --no-cache git curl
+
+# Create app directory
+WORKDIR /app
+
+# Copy package files
+COPY package*.json ./
+
+# Install dependencies
+RUN npm ci --production
+
+# Copy application code
+COPY . .
+
+# Create data directory
+RUN mkdir -p /app/data /app/logs
+
+# Expose debug dashboard port
+EXPOSE 8086
+
+# Health check for debug dashboard
+HEALTHCHECK --interval=30s --timeout=10s --start-period=30s --retries=3 \
+  CMD curl -f http://localhost:8086/health || exit 1
+
+# Run as non-root user
+RUN addgroup -g 1001 -S nodejs
+RUN adduser -S nodejs -u 1001
+RUN chown -R nodejs:nodejs /app
+USER nodejs
+
+# Start the debug dashboard
+CMD ["node", "src/monitoring/DebugDashboard.js"]

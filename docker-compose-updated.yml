@@ -1,0 +1,335 @@
+# Document Generator - Enhanced with Sovereign Agents
+version: '3.8'
+
+services:
+  # PostgreSQL Database
+  postgres:
+    image: postgres:15
+    container_name: document-generator-postgres
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres
+      POSTGRES_DB: document_generator
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    networks:
+      - document-generator-network
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres"]
+      interval: 30s
+      timeout: 10s
+      retries: 5
+
+  # Redis (for Event Bus)
+  redis:
+    image: redis:7-alpine
+    container_name: document-generator-redis
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis_data:/data
+    networks:
+      - document-generator-network
+    command: redis-server --appendonly yes
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+
+  # MinIO (S3-compatible storage)
+  minio:
+    image: minio/minio:latest
+    container_name: document-generator-minio
+    environment:
+      MINIO_ROOT_USER: minioadmin
+      MINIO_ROOT_PASSWORD: minioadmin123
+    ports:
+      - "9000:9000"
+      - "9001:9001"
+    volumes:
+      - minio_data:/data
+    networks:
+      - document-generator-network
+    command: server /data --console-address ":9001"
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:9000/minio/health/live"]
+      interval: 30s
+      timeout: 20s
+      retries: 3
+
+  # Ollama (Local AI)
+  ollama:
+    image: ollama/ollama:latest
+    container_name: document-generator-ollama
+    ports:
+      - "11434:11434"
+    volumes:
+      - ollama_data:/root/.ollama
+    networks:
+      - document-generator-network
+    environment:
+      - OLLAMA_HOST=0.0.0.0
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:11434/api/tags"]
+      interval: 60s
+      timeout: 30s
+      retries: 3
+
+  # Template Processor (MCP)
+  template-processor:
+    build:
+      context: ./mcp
+      dockerfile: Dockerfile
+    container_name: document-generator-template-processor
+    ports:
+      - "3000:3000"
+    environment:
+      - NODE_ENV=development
+      - PORT=3000
+      - REDIS_URL=redis://redis:6379
+      - DATABASE_URL=postgresql://postgres:postgres@postgres:5432/document_generator
+    volumes:
+      - ./mcp:/app
+      - /app/node_modules
+    networks:
+      - document-generator-network
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    restart: unless-stopped
+
+  # AI API Service
+  ai-service:
+    build:
+      context: ./FinishThisIdea
+      dockerfile: Dockerfile
+    container_name: document-generator-ai-service
+    ports:
+      - "3001:3001"
+    environment:
+      - NODE_ENV=development
+      - PORT=3001
+      - DATABASE_URL=postgresql://postgres:postgres@postgres:5432/document_generator
+      - REDIS_URL=redis://redis:6379
+      - S3_ENDPOINT=http://minio:9000
+      - S3_ACCESS_KEY=minioadmin
+      - S3_SECRET_KEY=minioadmin123
+      - S3_BUCKET=document-generator-uploads
+      - OLLAMA_HOST=http://ollama:11434
+      - JWT_SECRET=development-jwt-secret-32-characters-long
+      - ENCRYPTION_KEY=development-encryption-key-32-chars
+      - BYPASS_ENVIRONMENT_VALIDATION=true
+      - DISABLE_SYMLINK_BLOCKING=true
+      - ENABLE_AUTHENTICATION=false
+      - ENABLE_RATE_LIMITING=false
+    volumes:
+      - ./FinishThisIdea:/app
+      - /app/node_modules
+    networks:
+      - document-generator-network
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+      minio:
+        condition: service_healthy
+    restart: unless-stopped
+
+  # Analytics Service
+  analytics:
+    build:
+      context: ./services/analytics
+      dockerfile: Dockerfile
+    container_name: document-generator-analytics
+    ports:
+      - "3002:3002"
+    environment:
+      - NODE_ENV=development
+      - PORT=3002
+      - REDIS_URL=redis://redis:6379
+      - DATABASE_URL=postgresql://postgres:postgres@postgres:5432/document_generator
+    volumes:
+      - ./services/analytics:/app
+      - /app/node_modules
+    networks:
+      - document-generator-network
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    restart: unless-stopped
+
+  # Platform Hub
+  platform-hub:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+    container_name: document-generator-platform-hub
+    ports:
+      - "8080:8080"
+    environment:
+      - NODE_ENV=development
+      - PORT=8080
+      - REACT_APP_API_URL=http://localhost:3001
+      - REACT_APP_WS_URL=ws://localhost:8081
+    volumes:
+      - ./frontend:/app
+      - /app/node_modules
+    networks:
+      - document-generator-network
+    depends_on:
+      - ai-service
+    restart: unless-stopped
+
+  # Sovereign Agents Service
+  sovereign-agents:
+    build:
+      context: ./services/sovereign-agents
+      dockerfile: Dockerfile
+    container_name: document-generator-sovereign-agents
+    ports:
+      - "8085:8085"
+    environment:
+      - NODE_ENV=development
+      - PORT=8085
+      - REDIS_URL=redis://redis:6379
+      - DATABASE_URL=postgresql://postgres:postgres@postgres:5432/document_generator
+      - OLLAMA_HOST=http://ollama:11434
+      - AI_SERVICE_URL=http://ai-service:3001
+      - TEMPLATE_PROCESSOR_URL=http://template-processor:3000
+      - SOVEREIGN_AGENTS_ENABLE_CRYPTO=true
+      - SOVEREIGN_AGENTS_ENABLE_BLOCKCHAIN=false
+      - AGENT_CRYPTO_SECRET=sovereign-agent-crypto-key-change-this-in-production
+      - AGENT_DEVICE_FINGERPRINT_SALT=device-fingerprint-salt-change-this
+      - AGENT_UUID_NAMESPACE=sovereign-agents-namespace
+    volumes:
+      - ./services/sovereign-agents:/app
+      - /app/node_modules
+      - sovereign_data:/app/data
+      - sovereign_logs:/app/logs
+    networks:
+      - document-generator-network
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+      ollama:
+        condition: service_healthy
+    restart: unless-stopped
+
+  # Debug Dashboard
+  debug-dashboard:
+    build:
+      context: ./services/sovereign-agents
+      dockerfile: Dockerfile.debug
+    container_name: document-generator-debug-dashboard
+    ports:
+      - "8086:8086"
+    environment:
+      - NODE_ENV=development
+      - PORT=8086
+      - REDIS_URL=redis://redis:6379
+      - SOVEREIGN_AGENTS_URL=http://sovereign-agents:8085
+    volumes:
+      - ./services/sovereign-agents:/app
+      - /app/node_modules
+    networks:
+      - document-generator-network
+    depends_on:
+      redis:
+        condition: service_healthy
+      sovereign-agents:
+        condition: service_started
+    restart: unless-stopped
+
+  # WebSocket Service
+  websocket:
+    build:
+      context: ./services/websocket
+      dockerfile: Dockerfile
+    container_name: document-generator-websocket
+    ports:
+      - "8081:8081"
+    environment:
+      - NODE_ENV=development
+      - PORT=8081
+      - REDIS_URL=redis://redis:6379
+    volumes:
+      - ./services/websocket:/app
+      - /app/node_modules
+    networks:
+      - document-generator-network
+    depends_on:
+      redis:
+        condition: service_healthy
+    restart: unless-stopped
+
+  # Prometheus (Metrics)
+  prometheus:
+    image: prom/prometheus:latest
+    container_name: document-generator-prometheus
+    ports:
+      - "9090:9090"
+    volumes:
+      - ./monitoring/prometheus.yml:/etc/prometheus/prometheus.yml
+      - prometheus_data:/prometheus
+    networks:
+      - document-generator-network
+    command:
+      - '--config.file=/etc/prometheus/prometheus.yml'
+      - '--storage.tsdb.path=/prometheus'
+      - '--web.console.libraries=/etc/prometheus/console_libraries'
+      - '--web.console.templates=/etc/prometheus/consoles'
+      - '--web.enable-lifecycle'
+    restart: unless-stopped
+
+  # Grafana (Visualization)
+  grafana:
+    image: grafana/grafana:latest
+    container_name: document-generator-grafana
+    ports:
+      - "3003:3000"
+    environment:
+      - GF_SECURITY_ADMIN_PASSWORD=admin123
+    volumes:
+      - grafana_data:/var/lib/grafana
+      - ./monitoring/grafana/dashboards:/etc/grafana/provisioning/dashboards
+      - ./monitoring/grafana/datasources:/etc/grafana/provisioning/datasources
+    networks:
+      - document-generator-network
+    depends_on:
+      - prometheus
+    restart: unless-stopped
+
+networks:
+  document-generator-network:
+    driver: bridge
+    ipam:
+      config:
+        - subnet: 172.20.0.0/16
+
+volumes:
+  postgres_data:
+    driver: local
+  redis_data:
+    driver: local
+  minio_data:
+    driver: local
+  ollama_data:
+    driver: local
+  sovereign_data:
+    driver: local
+  sovereign_logs:
+    driver: local
+  prometheus_data:
+    driver: local
+  grafana_data:
+    driver: local

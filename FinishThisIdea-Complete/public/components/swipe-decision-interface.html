@@ -1,0 +1,657 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>🃏 Swipe Decision Interface - AI Laboratory</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdn.jsdelivr.net/npm/hammerjs@2.0.8"></script>
+    <style>
+        .decision-card {
+            transition: transform 0.3s ease, opacity 0.3s ease, box-shadow 0.3s ease;
+            will-change: transform;
+        }
+        
+        .swipe-left {
+            transform: translateX(-100vw) rotate(-30deg);
+            opacity: 0;
+        }
+        
+        .swipe-right {
+            transform: translateX(100vw) rotate(30deg);
+            opacity: 0;
+        }
+        
+        .swipe-up {
+            transform: translateY(-100vh) rotate(15deg);
+            opacity: 0;
+        }
+        
+        .swipe-down {
+            transform: translateY(100vh) rotate(-15deg);
+            opacity: 0;
+        }
+        
+        .dragging {
+            z-index: 50;
+            box-shadow: 0 20px 40px rgba(0,0,0,0.3);
+        }
+        
+        .approve-zone {
+            background: linear-gradient(135deg, #10B981, #059669);
+        }
+        
+        .reject-zone {
+            background: linear-gradient(135deg, #EF4444, #DC2626);
+        }
+        
+        .always-zone {
+            background: linear-gradient(135deg, #8B5CF6, #7C3AED);
+        }
+        
+        .never-zone {
+            background: linear-gradient(135deg, #6B7280, #4B5563);
+        }
+        
+        .gesture-hint {
+            animation: pulse 2s ease-in-out infinite;
+        }
+        
+        @keyframes pulse {
+            0%, 100% { opacity: 0.6; }
+            50% { opacity: 1; }
+        }
+        
+        .card-stack {
+            perspective: 1000px;
+        }
+        
+        .card-background {
+            transform: translateZ(-20px) scale(0.95);
+            opacity: 0.7;
+        }
+        
+        .preference-indicator {
+            transition: all 0.2s ease;
+        }
+        
+        .swipe-feedback {
+            position: fixed;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            font-size: 4rem;
+            z-index: 100;
+            pointer-events: none;
+            animation: feedbackPop 0.6s ease-out;
+        }
+        
+        @keyframes feedbackPop {
+            0% { transform: translate(-50%, -50%) scale(0); opacity: 0; }
+            50% { transform: translate(-50%, -50%) scale(1.2); opacity: 1; }
+            100% { transform: translate(-50%, -50%) scale(1); opacity: 0; }
+        }
+    </style>
+</head>
+<body class="bg-gradient-to-br from-purple-900 via-blue-900 to-indigo-900 min-h-screen overflow-hidden">
+    <!-- Header -->
+    <div class="absolute top-0 left-0 right-0 z-40 p-4">
+        <div class="flex items-center justify-between text-white">
+            <div class="flex items-center space-x-3">
+                <h1 class="text-2xl font-bold">🃏 Swipe Decisions</h1>
+                <div class="text-sm opacity-75" id="progressIndicator">Card 1 of 10</div>
+            </div>
+            <div class="flex items-center space-x-4">
+                <button onclick="showTutorial()" class="px-3 py-1 bg-white bg-opacity-20 rounded-lg hover:bg-opacity-30 transition-colors">
+                    📖 Tutorial
+                </button>
+                <button onclick="toggleBatchMode()" class="px-3 py-1 bg-white bg-opacity-20 rounded-lg hover:bg-opacity-30 transition-colors" id="batchModeBtn">
+                    🔄 Batch Mode
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Gesture Zones -->
+    <div class="absolute inset-0 pointer-events-none">
+        <!-- Left Zone - Reject -->
+        <div class="absolute left-0 top-0 w-32 h-full reject-zone opacity-0 transition-opacity duration-300" id="rejectZone">
+            <div class="flex items-center justify-center h-full">
+                <div class="text-white text-center">
+                    <div class="text-4xl mb-2">👎</div>
+                    <div class="text-sm font-semibold">REJECT</div>
+                </div>
+            </div>
+        </div>
+        
+        <!-- Right Zone - Approve -->
+        <div class="absolute right-0 top-0 w-32 h-full approve-zone opacity-0 transition-opacity duration-300" id="approveZone">
+            <div class="flex items-center justify-center h-full">
+                <div class="text-white text-center">
+                    <div class="text-4xl mb-2">👍</div>
+                    <div class="text-sm font-semibold">APPROVE</div>
+                </div>
+            </div>
+        </div>
+        
+        <!-- Top Zone - Always -->
+        <div class="absolute top-0 left-32 right-32 h-32 always-zone opacity-0 transition-opacity duration-300" id="alwaysZone">
+            <div class="flex items-center justify-center h-full">
+                <div class="text-white text-center">
+                    <div class="text-4xl mb-2">⭐</div>
+                    <div class="text-sm font-semibold">ALWAYS DO THIS</div>
+                </div>
+            </div>
+        </div>
+        
+        <!-- Bottom Zone - Never -->
+        <div class="absolute bottom-0 left-32 right-32 h-32 never-zone opacity-0 transition-opacity duration-300" id="neverZone">
+            <div class="flex items-center justify-center h-full">
+                <div class="text-white text-center">
+                    <div class="text-4xl mb-2">🚫</div>
+                    <div class="text-sm font-semibold">NEVER DO THIS</div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Main Card Stack -->
+    <div class="flex items-center justify-center min-h-screen p-4">
+        <div class="card-stack relative w-full max-w-md">
+            <!-- Background Cards -->
+            <div class="decision-card card-background absolute inset-0 bg-white bg-opacity-10 rounded-xl border border-white border-opacity-20"></div>
+            <div class="decision-card card-background absolute inset-0 bg-white bg-opacity-5 rounded-xl border border-white border-opacity-10" style="transform: translateZ(-40px) scale(0.9);"></div>
+            
+            <!-- Active Decision Card -->
+            <div class="decision-card active-card relative bg-white rounded-xl shadow-2xl border border-gray-200 overflow-hidden" id="activeCard">
+                <!-- Card Header -->
+                <div class="bg-gradient-to-r from-blue-600 to-purple-600 text-white p-4">
+                    <div class="flex items-center justify-between">
+                        <div class="flex items-center space-x-2">
+                            <span class="text-2xl" id="cardIcon">🤖</span>
+                            <div>
+                                <h3 class="font-semibold" id="cardTitle">AI Response Optimization</h3>
+                                <p class="text-sm opacity-90" id="cardSubtitle">Mirror Child • Pattern Recognition</p>
+                            </div>
+                        </div>
+                        <div class="text-right">
+                            <div class="text-lg font-bold" id="confidenceScore">94%</div>
+                            <div class="text-xs opacity-75">Confidence</div>
+                        </div>
+                    </div>
+                </div>
+                
+                <!-- Card Content -->
+                <div class="p-6">
+                    <div class="mb-4">
+                        <h4 class="text-lg font-semibold text-gray-800 mb-2" id="decisionTitle">
+                            Should we enhance story mode with character consistency?
+                        </h4>
+                        <p class="text-gray-600" id="decisionDescription">
+                            The AI Conductor suggests implementing character consistency across all storytelling profiles to improve user engagement and narrative coherence.
+                        </p>
+                    </div>
+                    
+                    <!-- Impact Preview -->
+                    <div class="bg-gray-50 rounded-lg p-4 mb-4">
+                        <h5 class="font-medium text-gray-800 mb-2">📊 Expected Impact</h5>
+                        <div class="space-y-2 text-sm">
+                            <div class="flex justify-between">
+                                <span class="text-gray-600">User Engagement</span>
+                                <span class="font-semibold text-green-600" id="engagementImpact">+23%</span>
+                            </div>
+                            <div class="flex justify-between">
+                                <span class="text-gray-600">Narrative Coherence</span>
+                                <span class="font-semibold text-blue-600" id="coherenceImpact">+41%</span>
+                            </div>
+                            <div class="flex justify-between">
+                                <span class="text-gray-600">Implementation Effort</span>
+                                <span class="font-semibold text-orange-600" id="effortImpact">Medium</span>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <!-- Code Preview -->
+                    <div class="bg-gray-900 text-green-400 rounded-lg p-4 text-sm font-mono" id="codePreview">
+                        <div class="text-gray-500 mb-1">// Enhanced storytelling with character consistency</div>
+                        <div>const characterState = {</div>
+                        <div>&nbsp;&nbsp;personality: 'mirror_child',</div>
+                        <div>&nbsp;&nbsp;currentMood: 'curious',</div>
+                        <div>&nbsp;&nbsp;memoryContext: [...previousInteractions]</div>
+                        <div>};</div>
+                    </div>
+                </div>
+                
+                <!-- Gesture Hints -->
+                <div class="absolute bottom-4 left-4 right-4">
+                    <div class="flex justify-between text-xs text-gray-500 gesture-hint">
+                        <span>← Swipe left to reject</span>
+                        <span>Swipe right to approve →</span>
+                    </div>
+                    <div class="flex justify-between text-xs text-gray-500 gesture-hint mt-1">
+                        <span>↑ Swipe up for "always"</span>
+                        <span>Swipe down for "never" ↓</span>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Preference Learning Display -->
+    <div class="absolute bottom-4 left-4 right-4">
+        <div class="bg-white bg-opacity-90 backdrop-blur-lg rounded-lg p-4 shadow-lg">
+            <h4 class="font-semibold text-gray-800 mb-2">🧠 Learning Your Preferences</h4>
+            <div class="grid grid-cols-2 gap-4 text-sm">
+                <div>
+                    <div class="text-gray-600">Storytelling Enhancement</div>
+                    <div class="h-2 bg-gray-200 rounded-full mt-1">
+                        <div class="h-2 bg-green-500 rounded-full" style="width: 78%" id="storyPref"></div>
+                    </div>
+                </div>
+                <div>
+                    <div class="text-gray-600">Technical Precision</div>
+                    <div class="h-2 bg-gray-200 rounded-full mt-1">
+                        <div class="h-2 bg-blue-500 rounded-full" style="width: 92%" id="techPref"></div>
+                    </div>
+                </div>
+                <div>
+                    <div class="text-gray-600">Code Examples</div>
+                    <div class="h-2 bg-gray-200 rounded-full mt-1">
+                        <div class="h-2 bg-purple-500 rounded-full" style="width: 65%" id="codePref"></div>
+                    </div>
+                </div>
+                <div>
+                    <div class="text-gray-600">Character Consistency</div>
+                    <div class="h-2 bg-gray-200 rounded-full mt-1">
+                        <div class="h-2 bg-pink-500 rounded-full" style="width: 89%" id="characterPref"></div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Tutorial Modal -->
+    <div class="fixed inset-0 bg-black bg-opacity-50 hidden items-center justify-center z-50" id="tutorialModal">
+        <div class="bg-white rounded-xl p-6 m-4 max-w-md">
+            <h3 class="text-xl font-bold text-gray-800 mb-4">🎯 How to Swipe</h3>
+            <div class="space-y-4 text-sm text-gray-600">
+                <div class="flex items-center space-x-3">
+                    <span class="text-2xl">👉</span>
+                    <div>
+                        <div class="font-semibold">Swipe Right</div>
+                        <div>Approve this suggestion</div>
+                    </div>
+                </div>
+                <div class="flex items-center space-x-3">
+                    <span class="text-2xl">👈</span>
+                    <div>
+                        <div class="font-semibold">Swipe Left</div>
+                        <div>Reject this suggestion</div>
+                    </div>
+                </div>
+                <div class="flex items-center space-x-3">
+                    <span class="text-2xl">👆</span>
+                    <div>
+                        <div class="font-semibold">Swipe Up</div>
+                        <div>Always apply this type of change</div>
+                    </div>
+                </div>
+                <div class="flex items-center space-x-3">
+                    <span class="text-2xl">👇</span>
+                    <div>
+                        <div class="font-semibold">Swipe Down</div>
+                        <div>Never apply this type of change</div>
+                    </div>
+                </div>
+                <div class="flex items-center space-x-3">
+                    <span class="text-2xl">👆</span>
+                    <div>
+                        <div class="font-semibold">Tap</div>
+                        <div>Show more details</div>
+                    </div>
+                </div>
+            </div>
+            <button onclick="hideTutorial()" class="w-full mt-6 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors">
+                Got it! 🚀
+            </button>
+        </div>
+    </div>
+
+    <script>
+        // Decision cards data
+        const decisionCards = [
+            {
+                icon: '🪞',
+                title: 'Character Consistency Enhancement',
+                subtitle: 'Mirror Child • Pattern Recognition',
+                confidence: 94,
+                decision: 'Should we enhance story mode with character consistency?',
+                description: 'The AI Conductor suggests implementing character consistency across all storytelling profiles to improve user engagement and narrative coherence.',
+                impact: { engagement: '+23%', coherence: '+41%', effort: 'Medium' },
+                code: `// Enhanced storytelling with character consistency
+const characterState = {
+  personality: 'mirror_child',
+  currentMood: 'curious',
+  memoryContext: [...previousInteractions]
+};`
+            },
+            {
+                icon: '⚡',
+                title: 'Dynamic Response Adaptation',
+                subtitle: 'Storm Singer • Transformation',
+                confidence: 87,
+                decision: 'Implement dynamic difficulty adjustment based on user expertise?',
+                description: 'Automatically adjust technical depth and complexity based on user comprehension level and previous interactions.',
+                impact: { engagement: '+31%', comprehension: '+58%', effort: 'High' },
+                code: `// Adaptive difficulty system
+if (userExpertise.level < 0.3) {
+  response = simplifyTechnicalTerms(response);
+} else if (userExpertise.level > 0.8) {
+  response = addAdvancedDetails(response);
+}`
+            },
+            {
+                icon: '🧵',
+                title: 'Cross-Profile Learning',
+                subtitle: 'Weaver • Integration',
+                confidence: 91,
+                decision: 'Enable cross-profile insight sharing between archetypes?',
+                description: 'Allow different AI personalities to learn from each other\'s successful interaction patterns and share insights.',
+                impact: { accuracy: '+19%', creativity: '+34%', effort: 'Medium' },
+                code: `// Cross-profile learning system
+const sharedInsights = archetypes
+  .filter(a => a.successRate > 0.85)
+  .map(a => a.topPatterns);`
+            },
+            {
+                icon: '🛡️',
+                title: 'Response Validation Layer',
+                subtitle: 'Guardian • Protection',
+                confidence: 96,
+                decision: 'Add automated response quality and safety validation?',
+                description: 'Implement a validation layer that checks all AI responses for accuracy, safety, and alignment with user goals.',
+                impact: { safety: '+67%', accuracy: '+28%', effort: 'High' },
+                code: `// Response validation pipeline
+const validation = await validateResponse({
+  content: response,
+  safetyCheck: true,
+  factualAccuracy: true,
+  userAlignment: true
+});`
+            },
+            {
+                icon: '🌀',
+                title: 'Uncertainty Navigation',
+                subtitle: 'Void Walker • Exploration',
+                confidence: 82,
+                decision: 'Implement uncertainty-aware response generation?',
+                description: 'Enable AI to explicitly acknowledge uncertainty and guide users through ambiguous scenarios with confidence indicators.',
+                impact: { trust: '+45%', clarity: '+22%', effort: 'Medium' },
+                code: `// Uncertainty navigation
+const uncertaintyLevel = calculateUncertainty(context);
+if (uncertaintyLevel > 0.7) {
+  response = addConfidenceIndicators(response);
+}`
+            }
+        ];
+
+        let currentCardIndex = 0;
+        let userPreferences = {
+            storytelling: 78,
+            technical: 92,
+            code: 65,
+            character: 89
+        };
+        let batchMode = false;
+        let cardElement;
+        let hammer;
+
+        function initializeSwipeInterface() {
+            cardElement = document.getElementById('activeCard');
+            
+            // Initialize Hammer.js for gesture recognition
+            hammer = new Hammer(cardElement);
+            hammer.get('pan').set({ direction: Hammer.DIRECTION_ALL });
+            
+            // Set up gesture handlers
+            hammer.on('panstart', onPanStart);
+            hammer.on('panmove', onPanMove);
+            hammer.on('panend', onPanEnd);
+            hammer.on('tap', onTap);
+            
+            // Load first card
+            loadCard(currentCardIndex);
+            
+            console.log('🃏 Swipe interface initialized');
+        }
+
+        function loadCard(index) {
+            if (index >= decisionCards.length) {
+                showCompletionScreen();
+                return;
+            }
+
+            const card = decisionCards[index];
+            
+            // Update card content
+            document.getElementById('cardIcon').textContent = card.icon;
+            document.getElementById('cardTitle').textContent = card.title;
+            document.getElementById('cardSubtitle').textContent = card.subtitle;
+            document.getElementById('confidenceScore').textContent = card.confidence + '%';
+            document.getElementById('decisionTitle').textContent = card.decision;
+            document.getElementById('decisionDescription').textContent = card.description;
+            document.getElementById('engagementImpact').textContent = card.impact.engagement || card.impact.accuracy || card.impact.safety || card.impact.trust || '+15%';
+            document.getElementById('coherenceImpact').textContent = card.impact.coherence || card.impact.comprehension || card.impact.creativity || card.impact.clarity || '+20%';
+            document.getElementById('effortImpact').textContent = card.impact.effort;
+            document.getElementById('codePreview').innerHTML = card.code.split('\n').map(line => 
+                `<div>${line.replace(/  /g, '&nbsp;&nbsp;')}</div>`
+            ).join('');
+            
+            // Update progress
+            document.getElementById('progressIndicator').textContent = `Card ${index + 1} of ${decisionCards.length}`;
+            
+            // Reset card position
+            cardElement.style.transform = '';
+            cardElement.style.opacity = '1';
+            cardElement.classList.remove('swipe-left', 'swipe-right', 'swipe-up', 'swipe-down');
+        }
+
+        function onPanStart(event) {
+            cardElement.classList.add('dragging');
+            hideAllZones();
+        }
+
+        function onPanMove(event) {
+            const deltaX = event.deltaX;
+            const deltaY = event.deltaY;
+            const rotation = deltaX * 0.1;
+            
+            // Update card position
+            cardElement.style.transform = `translateX(${deltaX}px) translateY(${deltaY}px) rotate(${rotation}deg)`;
+            cardElement.style.opacity = Math.max(0.3, 1 - Math.abs(deltaX) / 300 - Math.abs(deltaY) / 300);
+            
+            // Show appropriate zones
+            const threshold = 100;
+            if (Math.abs(deltaX) > threshold || Math.abs(deltaY) > threshold) {
+                if (Math.abs(deltaX) > Math.abs(deltaY)) {
+                    // Horizontal swipe
+                    if (deltaX > 0) {
+                        showZone('approveZone');
+                    } else {
+                        showZone('rejectZone');
+                    }
+                } else {
+                    // Vertical swipe
+                    if (deltaY < 0) {
+                        showZone('alwaysZone');
+                    } else {
+                        showZone('neverZone');
+                    }
+                }
+            }
+        }
+
+        function onPanEnd(event) {
+            cardElement.classList.remove('dragging');
+            hideAllZones();
+            
+            const deltaX = event.deltaX;
+            const deltaY = event.deltaY;
+            const threshold = 120;
+            
+            let decision = null;
+            
+            if (Math.abs(deltaX) > threshold || Math.abs(deltaY) > threshold) {
+                if (Math.abs(deltaX) > Math.abs(deltaY)) {
+                    // Horizontal swipe
+                    if (deltaX > 0) {
+                        decision = 'approve';
+                        cardElement.classList.add('swipe-right');
+                        showSwipeFeedback('👍');
+                    } else {
+                        decision = 'reject';
+                        cardElement.classList.add('swipe-left');
+                        showSwipeFeedback('👎');
+                    }
+                } else {
+                    // Vertical swipe
+                    if (deltaY < 0) {
+                        decision = 'always';
+                        cardElement.classList.add('swipe-up');
+                        showSwipeFeedback('⭐');
+                    } else {
+                        decision = 'never';
+                        cardElement.classList.add('swipe-down');
+                        showSwipeFeedback('🚫');
+                    }
+                }
+                
+                // Process decision
+                processDecision(decision);
+                
+                // Load next card after animation
+                setTimeout(() => {
+                    currentCardIndex++;
+                    loadCard(currentCardIndex);
+                }, 300);
+                
+            } else {
+                // Snap back to center
+                cardElement.style.transform = '';
+                cardElement.style.opacity = '1';
+            }
+        }
+
+        function onTap(event) {
+            // Show more details
+            showCardDetails();
+        }
+
+        function processDecision(decision) {
+            const card = decisionCards[currentCardIndex];
+            
+            // Update user preferences based on decision
+            updatePreferences(card, decision);
+            
+            // Send to backend for learning
+            fetch('/api/conductor/laboratory/integrate', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    sessionId: `swipe-${Date.now()}`,
+                    question: card.decision,
+                    decision: decision,
+                    cardType: card.subtitle.split(' • ')[0],
+                    confidence: card.confidence,
+                    preferences: userPreferences
+                })
+            }).catch(console.error);
+            
+            console.log(`🎯 Decision: ${decision} for "${card.title}"`);
+        }
+
+        function updatePreferences(card, decision) {
+            const multiplier = decision === 'approve' || decision === 'always' ? 1.05 : 0.95;
+            
+            // Update based on card type
+            if (card.subtitle.includes('Pattern Recognition')) {
+                userPreferences.character = Math.min(100, userPreferences.character * multiplier);
+            } else if (card.subtitle.includes('Transformation')) {
+                userPreferences.storytelling = Math.min(100, userPreferences.storytelling * multiplier);
+            } else if (card.subtitle.includes('Integration')) {
+                userPreferences.technical = Math.min(100, userPreferences.technical * multiplier);
+            }
+            
+            // Update UI
+            document.getElementById('storyPref').style.width = userPreferences.storytelling + '%';
+            document.getElementById('techPref').style.width = userPreferences.technical + '%';
+            document.getElementById('codePref').style.width = userPreferences.code + '%';
+            document.getElementById('characterPref').style.width = userPreferences.character + '%';
+        }
+
+        function showZone(zoneId) {
+            hideAllZones();
+            document.getElementById(zoneId).style.opacity = '1';
+        }
+
+        function hideAllZones() {
+            ['rejectZone', 'approveZone', 'alwaysZone', 'neverZone'].forEach(id => {
+                document.getElementById(id).style.opacity = '0';
+            });
+        }
+
+        function showSwipeFeedback(emoji) {
+            const feedback = document.createElement('div');
+            feedback.className = 'swipe-feedback';
+            feedback.textContent = emoji;
+            document.body.appendChild(feedback);
+            
+            setTimeout(() => {
+                feedback.remove();
+            }, 600);
+        }
+
+        function showCardDetails() {
+            alert('Card details would be shown here in a modal or expanded view.');
+        }
+
+        function showCompletionScreen() {
+            document.getElementById('activeCard').innerHTML = `
+                <div class="p-8 text-center">
+                    <div class="text-6xl mb-4">🎉</div>
+                    <h3 class="text-2xl font-bold text-gray-800 mb-2">All Done!</h3>
+                    <p class="text-gray-600 mb-6">You've completed all decision cards. Your preferences have been learned and will be applied to future AI interactions.</p>
+                    <button onclick="resetCards()" class="px-6 py-3 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors">
+                        🔄 Start Over
+                    </button>
+                </div>
+            `;
+        }
+
+        function resetCards() {
+            currentCardIndex = 0;
+            loadCard(0);
+        }
+
+        function showTutorial() {
+            document.getElementById('tutorialModal').classList.remove('hidden');
+            document.getElementById('tutorialModal').classList.add('flex');
+        }
+
+        function hideTutorial() {
+            document.getElementById('tutorialModal').classList.add('hidden');
+            document.getElementById('tutorialModal').classList.remove('flex');
+        }
+
+        function toggleBatchMode() {
+            batchMode = !batchMode;
+            const btn = document.getElementById('batchModeBtn');
+            btn.textContent = batchMode ? '📝 Individual Mode' : '🔄 Batch Mode';
+            btn.classList.toggle('bg-green-600', batchMode);
+        }
+
+        // Initialize when page loads
+        window.onload = initializeSwipeInterface;
+    </script>
+</body>
+</html>

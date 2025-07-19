@@ -1,0 +1,1135 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>FinishThisIdea - AI Chat Assistant</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            background: linear-gradient(135deg, #0a0a0a, #1a1a2e, #16213e, #2a1a3a);
+            color: #fff;
+            height: 100vh;
+            display: flex;
+            flex-direction: column;
+            overflow: hidden;
+        }
+
+        .chat-header {
+            background: rgba(255, 255, 255, 0.05);
+            backdrop-filter: blur(20px);
+            padding: 20px 30px;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            border-bottom: 1px solid #333;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .chat-header::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: linear-gradient(45deg, transparent, rgba(255, 119, 198, 0.1), transparent);
+            transform: translateX(-100%);
+            transition: transform 0.6s;
+        }
+
+        .chat-header:hover::before {
+            transform: translateX(100%);
+        }
+
+        .header-left {
+            display: flex;
+            align-items: center;
+            gap: 15px;
+        }
+
+        .header-title {
+            font-size: 24px;
+            font-weight: 600;
+            background: linear-gradient(45deg, #ff77c6, #00d4ff, #00ff88);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .status-indicator {
+            width: 12px;
+            height: 12px;
+            border-radius: 50%;
+            background: #ff4444;
+            animation: pulse 2s infinite;
+        }
+
+        .status-indicator.connected {
+            background: #44ff44;
+        }
+
+        .status-indicator.thinking {
+            background: #ffaa00;
+        }
+
+        @keyframes pulse {
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0.6; }
+        }
+
+        .header-right {
+            display: flex;
+            align-items: center;
+            gap: 20px;
+            font-size: 14px;
+        }
+
+        .ai-model-info {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            color: #00d4ff;
+        }
+
+        .conversation-stats {
+            color: #888;
+            font-size: 12px;
+        }
+
+        .chat-container {
+            flex: 1;
+            overflow-y: auto;
+            padding: 25px;
+            display: flex;
+            flex-direction: column;
+            gap: 20px;
+            background: rgba(0, 0, 0, 0.2);
+        }
+
+        .message {
+            max-width: 80%;
+            padding: 18px 25px;
+            border-radius: 20px;
+            animation: messageSlideIn 0.4s ease-out;
+            position: relative;
+            line-height: 1.6;
+        }
+
+        @keyframes messageSlideIn {
+            from {
+                opacity: 0;
+                transform: translateY(20px) scale(0.95);
+            }
+            to {
+                opacity: 1;
+                transform: translateY(0) scale(1);
+            }
+        }
+
+        .message.user {
+            align-self: flex-end;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            box-shadow: 0 4px 15px rgba(102, 126, 234, 0.3);
+        }
+
+        .message.ai {
+            align-self: flex-start;
+            background: linear-gradient(135deg, #1a1a2e, #2a2a4e);
+            border: 1px solid #333;
+            box-shadow: 0 4px 15px rgba(0, 0, 0, 0.2);
+        }
+
+        .message.system {
+            align-self: center;
+            background: rgba(255, 255, 255, 0.1);
+            font-size: 14px;
+            color: #888;
+            max-width: 60%;
+            text-align: center;
+        }
+
+        .message-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 8px;
+            font-size: 12px;
+            opacity: 0.7;
+        }
+
+        .message-sender {
+            font-weight: 600;
+            color: #ff77c6;
+        }
+
+        .message-time {
+            color: #888;
+        }
+
+        .message-content {
+            font-size: 16px;
+            white-space: pre-wrap;
+        }
+
+        .message-actions {
+            display: flex;
+            gap: 10px;
+            margin-top: 15px;
+            opacity: 0;
+            transition: opacity 0.3s;
+        }
+
+        .message:hover .message-actions {
+            opacity: 1;
+        }
+
+        .action-btn {
+            background: rgba(255, 255, 255, 0.1);
+            border: 1px solid #333;
+            color: #888;
+            padding: 5px 12px;
+            border-radius: 15px;
+            font-size: 11px;
+            cursor: pointer;
+            transition: all 0.3s;
+        }
+
+        .action-btn:hover {
+            background: rgba(255, 119, 198, 0.2);
+            border-color: #ff77c6;
+            color: #ff77c6;
+        }
+
+        .typing-indicator {
+            display: none;
+            align-self: flex-start;
+            padding: 18px 25px;
+            background: linear-gradient(135deg, #1a1a2e, #2a2a4e);
+            border: 1px solid #333;
+            border-radius: 20px;
+            max-width: 200px;
+        }
+
+        .typing-indicator.active {
+            display: block;
+            animation: messageSlideIn 0.4s ease-out;
+        }
+
+        .typing-text {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            color: #888;
+            font-size: 14px;
+        }
+
+        .typing-dots {
+            display: flex;
+            gap: 4px;
+        }
+
+        .typing-dot {
+            width: 8px;
+            height: 8px;
+            border-radius: 50%;
+            background: #667eea;
+            animation: typingBounce 1.4s infinite;
+        }
+
+        .typing-dot:nth-child(2) {
+            animation-delay: 0.2s;
+        }
+
+        .typing-dot:nth-child(3) {
+            animation-delay: 0.4s;
+        }
+
+        @keyframes typingBounce {
+            0%, 60%, 100% {
+                transform: translateY(0);
+            }
+            30% {
+                transform: translateY(-10px);
+            }
+        }
+
+        .input-container {
+            background: rgba(26, 26, 46, 0.9);
+            backdrop-filter: blur(20px);
+            padding: 25px 30px;
+            border-top: 1px solid #333;
+            display: flex;
+            gap: 15px;
+            align-items: flex-end;
+        }
+
+        .input-wrapper {
+            flex: 1;
+            position: relative;
+        }
+
+        .message-input {
+            width: 100%;
+            background: rgba(10, 10, 10, 0.8);
+            border: 2px solid #333;
+            color: #fff;
+            padding: 15px 20px;
+            border-radius: 25px;
+            font-size: 16px;
+            outline: none;
+            transition: all 0.3s;
+            resize: none;
+            min-height: 50px;
+            max-height: 120px;
+            font-family: inherit;
+        }
+
+        .message-input:focus {
+            border-color: #667eea;
+            box-shadow: 0 0 20px rgba(102, 126, 234, 0.3);
+        }
+
+        .input-actions {
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+        }
+
+        .send-button {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            border: none;
+            color: #fff;
+            padding: 15px 25px;
+            border-radius: 25px;
+            cursor: pointer;
+            font-size: 16px;
+            font-weight: 600;
+            transition: all 0.3s;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            min-width: 100px;
+            justify-content: center;
+        }
+
+        .send-button:hover:not(:disabled) {
+            transform: translateY(-2px);
+            box-shadow: 0 8px 25px rgba(102, 126, 234, 0.4);
+        }
+
+        .send-button:active:not(:disabled) {
+            transform: translateY(0);
+        }
+
+        .send-button:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+        }
+
+        .quick-actions {
+            display: flex;
+            gap: 8px;
+        }
+
+        .quick-action-btn {
+            background: rgba(255, 255, 255, 0.1);
+            border: 1px solid #333;
+            color: #888;
+            padding: 8px 12px;
+            border-radius: 15px;
+            font-size: 12px;
+            cursor: pointer;
+            transition: all 0.3s;
+        }
+
+        .quick-action-btn:hover {
+            background: rgba(0, 212, 255, 0.2);
+            border-color: #00d4ff;
+            color: #00d4ff;
+        }
+
+        .suggestions-container {
+            display: none;
+            background: rgba(26, 26, 46, 0.95);
+            border: 1px solid #333;
+            border-radius: 15px;
+            padding: 15px;
+            margin: 15px 30px 0;
+            backdrop-filter: blur(10px);
+        }
+
+        .suggestions-container.active {
+            display: block;
+            animation: fadeIn 0.3s ease-out;
+        }
+
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(10px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+
+        .suggestions-title {
+            font-size: 14px;
+            font-weight: 600;
+            color: #ff77c6;
+            margin-bottom: 10px;
+        }
+
+        .suggestion-items {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 8px;
+        }
+
+        .suggestion-item {
+            background: rgba(255, 119, 198, 0.1);
+            border: 1px solid #ff77c6;
+            color: #fff;
+            padding: 8px 15px;
+            border-radius: 20px;
+            font-size: 13px;
+            cursor: pointer;
+            transition: all 0.3s;
+        }
+
+        .suggestion-item:hover {
+            background: rgba(255, 119, 198, 0.2);
+            transform: translateY(-2px);
+        }
+
+        .capabilities-panel {
+            position: fixed;
+            top: 0;
+            right: -350px;
+            width: 350px;
+            height: 100vh;
+            background: rgba(26, 26, 46, 0.95);
+            backdrop-filter: blur(20px);
+            border-left: 1px solid #333;
+            padding: 30px;
+            transition: right 0.4s ease;
+            z-index: 1000;
+            overflow-y: auto;
+        }
+
+        .capabilities-panel.open {
+            right: 0;
+        }
+
+        .capabilities-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 25px;
+        }
+
+        .capabilities-title {
+            font-size: 18px;
+            font-weight: 600;
+            color: #00ff88;
+        }
+
+        .close-panel {
+            background: none;
+            border: none;
+            color: #888;
+            font-size: 24px;
+            cursor: pointer;
+            padding: 5px;
+        }
+
+        .capability-section {
+            margin-bottom: 25px;
+        }
+
+        .capability-section-title {
+            font-size: 14px;
+            font-weight: 600;
+            color: #00d4ff;
+            margin-bottom: 10px;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+        }
+
+        .capability-item {
+            background: rgba(255, 255, 255, 0.05);
+            border: 1px solid #333;
+            border-radius: 10px;
+            padding: 12px 15px;
+            margin-bottom: 8px;
+            font-size: 13px;
+            color: #ccc;
+            cursor: pointer;
+            transition: all 0.3s;
+        }
+
+        .capability-item:hover {
+            background: rgba(0, 255, 136, 0.1);
+            border-color: #00ff88;
+            color: #fff;
+        }
+
+        .capability-item.active {
+            background: rgba(0, 255, 136, 0.2);
+            border-color: #00ff88;
+            color: #00ff88;
+        }
+
+        .connection-status {
+            position: fixed;
+            bottom: 20px;
+            left: 20px;
+            background: rgba(0, 0, 0, 0.8);
+            padding: 10px 15px;
+            border-radius: 20px;
+            font-size: 12px;
+            color: #888;
+            border: 1px solid #333;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .toggle-capabilities {
+            background: rgba(0, 255, 136, 0.1);
+            border: 1px solid #00ff88;
+            color: #00ff88;
+            padding: 8px 12px;
+            border-radius: 15px;
+            font-size: 12px;
+            cursor: pointer;
+            transition: all 0.3s;
+        }
+
+        .toggle-capabilities:hover {
+            background: rgba(0, 255, 136, 0.2);
+        }
+
+        @media (max-width: 768px) {
+            .chat-header {
+                padding: 15px 20px;
+                flex-direction: column;
+                gap: 10px;
+            }
+
+            .header-right {
+                font-size: 12px;
+                gap: 15px;
+            }
+
+            .message {
+                max-width: 90%;
+                padding: 15px 20px;
+            }
+
+            .input-container {
+                padding: 20px;
+                flex-direction: column;
+                gap: 10px;
+            }
+
+            .input-actions {
+                flex-direction: row;
+                width: 100%;
+            }
+
+            .send-button {
+                flex: 1;
+            }
+
+            .capabilities-panel {
+                width: 100%;
+                right: -100%;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="chat-header">
+        <div class="header-left">
+            <div class="header-title">
+                <span class="status-indicator" id="statusIndicator"></span>
+                🤖 FinishThisIdea AI Assistant
+            </div>
+        </div>
+        <div class="header-right">
+            <div class="ai-model-info">
+                <span id="aiModel">GPT-4 Ready</span>
+                <button class="toggle-capabilities" onclick="toggleCapabilities()">
+                    Capabilities ⚙️
+                </button>
+            </div>
+            <div class="conversation-stats" id="conversationStats">
+                Session: Connecting...
+            </div>
+        </div>
+    </div>
+
+    <div class="suggestions-container" id="suggestionsContainer">
+        <div class="suggestions-title">💡 Quick Suggestions</div>
+        <div class="suggestion-items" id="suggestionItems">
+            <div class="suggestion-item" onclick="useSuggestion('Help me analyze my code for bugs and improvements')">🔍 Analyze Code</div>
+            <div class="suggestion-item" onclick="useSuggestion('Create a new AI Arena fighter with these specifications')">⚔️ Create Fighter</div>
+            <div class="suggestion-item" onclick="useSuggestion('Show me my current progress in the Billion Dollar Game')">💰 Game Progress</div>
+            <div class="suggestion-item" onclick="useSuggestion('Generate a creative coding project idea')">💡 Project Ideas</div>
+            <div class="suggestion-item" onclick="useSuggestion('Help me optimize my workflow and productivity')">🚀 Optimize Workflow</div>
+            <div class="suggestion-item" onclick="useSuggestion('Explain a complex programming concept in simple terms')">📚 Learn Programming</div>
+        </div>
+    </div>
+
+    <div class="chat-container" id="chatContainer">
+        <div class="message system">
+            Initializing FinishThisIdea AI Assistant...
+        </div>
+    </div>
+
+    <div class="typing-indicator" id="typingIndicator">
+        <div class="typing-text">
+            <span>AI is thinking</span>
+            <div class="typing-dots">
+                <div class="typing-dot"></div>
+                <div class="typing-dot"></div>
+                <div class="typing-dot"></div>
+            </div>
+        </div>
+    </div>
+
+    <div class="input-container">
+        <div class="input-wrapper">
+            <textarea
+                class="message-input"
+                id="messageInput"
+                placeholder="Ask me anything about code, projects, AI Arena, games, or get help with development..."
+                disabled
+                rows="1"
+            ></textarea>
+        </div>
+        <div class="input-actions">
+            <div class="quick-actions">
+                <button class="quick-action-btn" onclick="quickAction('analyze')" title="Analyze Code">🔍</button>
+                <button class="quick-action-btn" onclick="quickAction('create')" title="Create Project">✨</button>
+                <button class="quick-action-btn" onclick="quickAction('help')" title="Get Help">❓</button>
+            </div>
+            <button class="send-button" id="sendButton" disabled>
+                <span id="sendButtonText">Send</span>
+                <span id="sendButtonIcon">🚀</span>
+            </button>
+        </div>
+    </div>
+
+    <!-- Capabilities Panel -->
+    <div class="capabilities-panel" id="capabilitiesPanel">
+        <div class="capabilities-header">
+            <div class="capabilities-title">🎯 AI Capabilities</div>
+            <button class="close-panel" onclick="toggleCapabilities()">×</button>
+        </div>
+
+        <div class="capability-section">
+            <div class="capability-section-title">🚀 Development</div>
+            <div class="capability-item" onclick="useCapability('Code analysis and debugging assistance')">
+                Code Analysis & Debugging
+            </div>
+            <div class="capability-item" onclick="useCapability('Project architecture and design guidance')">
+                Architecture & Design
+            </div>
+            <div class="capability-item" onclick="useCapability('Code review and optimization suggestions')">
+                Code Review & Optimization
+            </div>
+            <div class="capability-item" onclick="useCapability('Technology stack recommendations')">
+                Tech Stack Advice
+            </div>
+        </div>
+
+        <div class="capability-section">
+            <div class="capability-section-title">⚔️ AI Arena</div>
+            <div class="capability-item" onclick="useCapability('Create custom AI fighters with unique strategies')">
+                Fighter Creation
+            </div>
+            <div class="capability-item" onclick="useCapability('Battle strategy and tactics analysis')">
+                Battle Strategy
+            </div>
+            <div class="capability-item" onclick="useCapability('Tournament planning and management')">
+                Tournament Management
+            </div>
+            <div class="capability-item" onclick="useCapability('Performance analytics and improvement tips')">
+                Performance Analytics
+            </div>
+        </div>
+
+        <div class="capability-section">
+            <div class="capability-section-title">💰 Billion Dollar Game</div>
+            <div class="capability-item" onclick="useCapability('Game progress tracking and goals')">
+                Progress Tracking
+            </div>
+            <div class="capability-item" onclick="useCapability('Economic strategy and planning')">
+                Economic Strategy
+            </div>
+            <div class="capability-item" onclick="useCapability('Collective quest coordination')">
+                Quest Coordination
+            </div>
+            <div class="capability-item" onclick="useCapability('Milestone achievement guidance')">
+                Milestone Guidance
+            </div>
+        </div>
+
+        <div class="capability-section">
+            <div class="capability-section-title">🎮 Gamification</div>
+            <div class="capability-item" onclick="useCapability('Achievement and badge system guidance')">
+                Achievement System
+            </div>
+            <div class="capability-item" onclick="useCapability('XP and leveling optimization')">
+                XP Optimization
+            </div>
+            <div class="capability-item" onclick="useCapability('Leaderboard strategies')">
+                Leaderboard Strategy
+            </div>
+            <div class="capability-item" onclick="useCapability('Token economy management')">
+                Token Economy
+            </div>
+        </div>
+
+        <div class="capability-section">
+            <div class="capability-section-title">💡 Learning</div>
+            <div class="capability-item" onclick="useCapability('Programming concepts and tutorials')">
+                Programming Tutorials
+            </div>
+            <div class="capability-item" onclick="useCapability('AI and machine learning guidance')">
+                AI/ML Guidance
+            </div>
+            <div class="capability-item" onclick="useCapability('Best practices and patterns')">
+                Best Practices
+            </div>
+            <div class="capability-item" onclick="useCapability('Career development advice')">
+                Career Development
+            </div>
+        </div>
+    </div>
+
+    <div class="connection-status" id="connectionStatus">
+        <span class="status-indicator" id="connectionIndicator"></span>
+        <span id="connectionText">Connecting to AI Assistant...</span>
+    </div>
+
+    <script>
+        class FinishThisIdeaAI {
+            constructor() {
+                this.ws = null;
+                this.userId = localStorage.getItem('fti-ai-userId') || null;
+                this.sessionId = null;
+                this.connected = false;
+                this.messageHistory = [];
+                this.currentModel = 'GPT-4';
+                
+                this.initializeElements();
+                this.setupEventListeners();
+                this.connect();
+                
+                // Auto-resize textarea
+                this.setupTextareaResize();
+            }
+
+            initializeElements() {
+                this.chatContainer = document.getElementById('chatContainer');
+                this.messageInput = document.getElementById('messageInput');
+                this.sendButton = document.getElementById('sendButton');
+                this.statusIndicator = document.getElementById('statusIndicator');
+                this.conversationStats = document.getElementById('conversationStats');
+                this.typingIndicator = document.getElementById('typingIndicator');
+                this.suggestionsContainer = document.getElementById('suggestionsContainer');
+                this.connectionStatus = document.getElementById('connectionStatus');
+                this.connectionIndicator = document.getElementById('connectionIndicator');
+                this.connectionText = document.getElementById('connectionText');
+                this.aiModel = document.getElementById('aiModel');
+                this.capabilitiesPanel = document.getElementById('capabilitiesPanel');
+            }
+
+            setupEventListeners() {
+                this.sendButton.addEventListener('click', () => this.sendMessage());
+                this.messageInput.addEventListener('keydown', (e) => {
+                    if (e.key === 'Enter' && !e.shiftKey) {
+                        e.preventDefault();
+                        this.sendMessage();
+                    }
+                });
+
+                this.messageInput.addEventListener('input', () => {
+                    this.updateSendButton();
+                });
+
+                // Close capabilities panel when clicking outside
+                document.addEventListener('click', (e) => {
+                    if (!this.capabilitiesPanel.contains(e.target) && 
+                        !e.target.classList.contains('toggle-capabilities')) {
+                        this.capabilitiesPanel.classList.remove('open');
+                    }
+                });
+            }
+
+            setupTextareaResize() {
+                this.messageInput.addEventListener('input', () => {
+                    this.messageInput.style.height = 'auto';
+                    this.messageInput.style.height = Math.min(this.messageInput.scrollHeight, 120) + 'px';
+                });
+            }
+
+            connect() {
+                this.updateConnectionStatus('Connecting...', false);
+                
+                try {
+                    // Connect to our AI service WebSocket
+                    const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
+                    const wsUrl = `${protocol}//${window.location.hostname}:8082`;
+                    
+                    this.ws = new WebSocket(wsUrl);
+
+                    this.ws.onopen = () => {
+                        this.connected = true;
+                        this.statusIndicator.classList.add('connected');
+                        this.messageInput.disabled = false;
+                        this.sendButton.disabled = false;
+                        this.updateConnectionStatus('Connected to AI Assistant', true);
+                        this.updateSendButton();
+                        
+                        if (this.userId) {
+                            this.authenticate();
+                        } else {
+                            this.createUser();
+                        }
+
+                        this.addSystemMessage('🚀 Connected to FinishThisIdea AI Assistant! Ready to help with code, projects, AI Arena, and more.');
+                        this.showSuggestions();
+                    };
+
+                    this.ws.onmessage = (event) => {
+                        const data = JSON.parse(event.data);
+                        this.handleServerMessage(data);
+                    };
+
+                    this.ws.onerror = (error) => {
+                        console.error('WebSocket error:', error);
+                        this.updateConnectionStatus('Connection error', false);
+                        this.addSystemMessage('❌ Connection error. Please refresh the page.');
+                    };
+
+                    this.ws.onclose = () => {
+                        this.connected = false;
+                        this.statusIndicator.classList.remove('connected');
+                        this.messageInput.disabled = true;
+                        this.sendButton.disabled = true;
+                        this.updateConnectionStatus('Disconnected', false);
+                        this.addSystemMessage('🔌 Disconnected from AI Assistant. Attempting to reconnect...');
+                        
+                        // Auto-reconnect after 3 seconds
+                        setTimeout(() => this.connect(), 3000);
+                    };
+
+                } catch (error) {
+                    console.error('Failed to connect:', error);
+                    this.updateConnectionStatus('Failed to connect', false);
+                    this.simulateOfflineMode();
+                }
+            }
+
+            simulateOfflineMode() {
+                // Fallback offline mode
+                this.connected = false;
+                this.messageInput.disabled = false;
+                this.sendButton.disabled = false;
+                this.updateConnectionStatus('Offline Mode', false);
+                this.addSystemMessage('🔄 Running in offline mode. AI responses will be simulated.');
+                this.showSuggestions();
+                this.updateSendButton();
+            }
+
+            authenticate() {
+                this.ws.send(JSON.stringify({
+                    type: 'auth',
+                    userId: this.userId,
+                    platform: 'finishthisidea',
+                    capabilities: ['code_analysis', 'ai_arena', 'billion_game', 'development']
+                }));
+            }
+
+            createUser() {
+                this.userId = `fti-user-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
+                localStorage.setItem('fti-ai-userId', this.userId);
+                this.authenticate();
+            }
+
+            handleServerMessage(data) {
+                switch (data.type) {
+                    case 'auth_success':
+                        this.userId = data.userId;
+                        this.sessionId = data.sessionId;
+                        this.conversationStats.textContent = `Session: ${this.sessionId.slice(0, 8)}...`;
+                        break;
+
+                    case 'ai_response':
+                        this.hideTypingIndicator();
+                        this.addMessage(data.response, 'ai', {
+                            model: data.model || this.currentModel,
+                            confidence: data.confidence,
+                            processingTime: data.processingTime,
+                            capabilities: data.capabilities
+                        });
+                        this.updateStats();
+                        break;
+
+                    case 'ai_thinking':
+                        this.showTypingIndicator();
+                        break;
+
+                    case 'suggestions':
+                        this.updateSuggestions(data.suggestions);
+                        break;
+
+                    case 'capability_activated':
+                        this.addSystemMessage(`🎯 Activated: ${data.capability}`);
+                        break;
+
+                    case 'session_info':
+                        this.updateSessionInfo(data.info);
+                        break;
+
+                    case 'error':
+                        this.hideTypingIndicator();
+                        this.addSystemMessage(`❌ Error: ${data.message}`);
+                        break;
+                }
+            }
+
+            sendMessage() {
+                const content = this.messageInput.value.trim();
+                if (!content) return;
+
+                this.addMessage(content, 'user');
+                this.messageHistory.push({ role: 'user', content, timestamp: Date.now() });
+                this.messageInput.value = '';
+                this.messageInput.style.height = 'auto';
+                this.hideSuggestions();
+                this.updateSendButton();
+
+                if (this.connected && this.ws.readyState === WebSocket.OPEN) {
+                    this.ws.send(JSON.stringify({
+                        type: 'message',
+                        content,
+                        context: {
+                            platform: 'finishthisidea',
+                            capabilities: this.getActiveCapabilities(),
+                            history: this.messageHistory.slice(-5) // Last 5 messages for context
+                        }
+                    }));
+                    this.showTypingIndicator();
+                } else {
+                    // Offline mode simulation
+                    this.simulateAIResponse(content);
+                }
+            }
+
+            simulateAIResponse(userMessage) {
+                this.showTypingIndicator();
+                
+                setTimeout(() => {
+                    const responses = [
+                        "I'd be happy to help you with that! In offline mode, I can provide general guidance. For full AI capabilities, please check your connection.",
+                        "That's a great question! While I'm running in offline mode, I can still offer some basic assistance. Try reconnecting for advanced AI features.",
+                        "I understand what you're looking for. In offline mode, my responses are limited, but I can provide general development guidance.",
+                        "Interesting! For the best AI assistance with code analysis, AI Arena, and development help, please reconnect to the full service."
+                    ];
+                    
+                    const response = responses[Math.floor(Math.random() * responses.length)];
+                    this.hideTypingIndicator();
+                    this.addMessage(response, 'ai', { model: 'Offline Mode', confidence: 'Limited' });
+                }, 1500);
+            }
+
+            addMessage(content, type, metadata = {}) {
+                const messageDiv = document.createElement('div');
+                messageDiv.className = `message ${type}`;
+                
+                const time = new Date().toLocaleTimeString();
+                let sender = type === 'user' ? 'You' : 'AI Assistant';
+                
+                if (metadata.model) {
+                    sender += ` (${metadata.model})`;
+                }
+
+                messageDiv.innerHTML = `
+                    <div class="message-header">
+                        <span class="message-sender">${sender}</span>
+                        <span class="message-time">${time}</span>
+                    </div>
+                    <div class="message-content">${content}</div>
+                    ${type === 'ai' ? `
+                        <div class="message-actions">
+                            <button class="action-btn" onclick="copyMessage(this)">📋 Copy</button>
+                            <button class="action-btn" onclick="shareMessage(this)">🔗 Share</button>
+                            ${metadata.confidence ? `<span class="action-btn">🎯 ${metadata.confidence}</span>` : ''}
+                        </div>
+                    ` : ''}
+                `;
+                
+                this.chatContainer.appendChild(messageDiv);
+                this.scrollToBottom();
+            }
+
+            addSystemMessage(content) {
+                this.addMessage(content, 'system');
+            }
+
+            showTypingIndicator() {
+                this.typingIndicator.classList.add('active');
+                this.statusIndicator.classList.add('thinking');
+                this.scrollToBottom();
+            }
+
+            hideTypingIndicator() {
+                this.typingIndicator.classList.remove('active');
+                this.statusIndicator.classList.remove('thinking');
+            }
+
+            showSuggestions() {
+                this.suggestionsContainer.classList.add('active');
+            }
+
+            hideSuggestions() {
+                this.suggestionsContainer.classList.remove('active');
+            }
+
+            updateSuggestions(suggestions) {
+                if (suggestions && suggestions.length > 0) {
+                    const suggestionItems = document.getElementById('suggestionItems');
+                    suggestionItems.innerHTML = suggestions.map(suggestion => 
+                        `<div class="suggestion-item" onclick="useSuggestion('${suggestion.text}')">${suggestion.icon} ${suggestion.text}</div>`
+                    ).join('');
+                    this.showSuggestions();
+                }
+            }
+
+            updateConnectionStatus(text, connected) {
+                this.connectionText.textContent = text;
+                this.connectionIndicator.className = `status-indicator ${connected ? 'connected' : ''}`;
+            }
+
+            updateSendButton() {
+                const hasContent = this.messageInput.value.trim().length > 0;
+                this.sendButton.disabled = !hasContent || (this.connected && this.ws.readyState !== WebSocket.OPEN && false);
+                
+                if (hasContent) {
+                    document.getElementById('sendButtonText').textContent = 'Send';
+                    document.getElementById('sendButtonIcon').textContent = '🚀';
+                } else {
+                    document.getElementById('sendButtonText').textContent = 'Send';
+                    document.getElementById('sendButtonIcon').textContent = '💬';
+                }
+            }
+
+            updateStats() {
+                const messageCount = this.messageHistory.length;
+                this.conversationStats.textContent = `Session: ${this.sessionId?.slice(0, 8) || 'Local'} • Messages: ${messageCount}`;
+            }
+
+            getActiveCapabilities() {
+                const active = document.querySelectorAll('.capability-item.active');
+                return Array.from(active).map(item => item.textContent.trim());
+            }
+
+            scrollToBottom() {
+                setTimeout(() => {
+                    this.chatContainer.scrollTop = this.chatContainer.scrollHeight;
+                }, 100);
+            }
+
+            updateSessionInfo(info) {
+                if (info.totalMessages) {
+                    this.conversationStats.textContent += ` • Total: ${info.totalMessages}`;
+                }
+            }
+        }
+
+        // Global functions for UI interactions
+        function useSuggestion(text) {
+            const messageInput = document.getElementById('messageInput');
+            messageInput.value = text;
+            messageInput.focus();
+            aiChat.hideSuggestions();
+            aiChat.updateSendButton();
+        }
+
+        function quickAction(action) {
+            const actions = {
+                analyze: 'Please analyze my code for bugs, improvements, and best practices',
+                create: 'Help me create a new project. What kind of project should we build together?',
+                help: 'What can you help me with? Show me your capabilities'
+            };
+            
+            if (actions[action]) {
+                useSuggestion(actions[action]);
+            }
+        }
+
+        function useCapability(capability) {
+            const messageInput = document.getElementById('messageInput');
+            messageInput.value = `Help me with: ${capability}`;
+            messageInput.focus();
+            aiChat.updateSendButton();
+            
+            // Mark capability as active
+            document.querySelectorAll('.capability-item').forEach(item => {
+                item.classList.remove('active');
+            });
+            event.target.classList.add('active');
+            
+            toggleCapabilities(); // Close panel
+        }
+
+        function toggleCapabilities() {
+            const panel = document.getElementById('capabilitiesPanel');
+            panel.classList.toggle('open');
+        }
+
+        function copyMessage(button) {
+            const message = button.closest('.message');
+            const content = message.querySelector('.message-content').textContent;
+            navigator.clipboard.writeText(content).then(() => {
+                button.textContent = '✅ Copied!';
+                setTimeout(() => {
+                    button.innerHTML = '📋 Copy';
+                }, 2000);
+            });
+        }
+
+        function shareMessage(button) {
+            const message = button.closest('.message');
+            const content = message.querySelector('.message-content').textContent;
+            const shareData = {
+                title: 'FinishThisIdea AI Assistant',
+                text: content,
+                url: window.location.href
+            };
+            
+            if (navigator.share) {
+                navigator.share(shareData);
+            } else {
+                copyMessage(button);
+            }
+        }
+
+        // Initialize the AI chat client
+        let aiChat;
+        document.addEventListener('DOMContentLoaded', () => {
+            aiChat = new FinishThisIdeaAI();
+        });
+    </script>
+</body>
+</html>

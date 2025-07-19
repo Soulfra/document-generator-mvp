@@ -1,0 +1,554 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>🔥 BASH DASHBOARD - Live System Status</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            font-family: 'Courier New', monospace;
+            background: #0a0a0a;
+            color: #00ff00;
+            padding: 20px;
+            overflow-x: hidden;
+        }
+        
+        .dashboard {
+            max-width: 1400px;
+            margin: 0 auto;
+        }
+        
+        .header {
+            text-align: center;
+            margin-bottom: 30px;
+            animation: pulse 2s infinite;
+        }
+        
+        .header h1 {
+            font-size: 48px;
+            color: #ff6b6b;
+            text-shadow: 0 0 20px #ff6b6b;
+            margin-bottom: 10px;
+        }
+        
+        .status-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+            gap: 20px;
+            margin-bottom: 30px;
+        }
+        
+        .component {
+            background: #1a1a1a;
+            border: 2px solid #333;
+            border-radius: 10px;
+            padding: 20px;
+            position: relative;
+            overflow: hidden;
+            transition: all 0.3s ease;
+        }
+        
+        .component:hover {
+            border-color: #00ff00;
+            box-shadow: 0 0 20px rgba(0, 255, 0, 0.3);
+        }
+        
+        .component.active {
+            border-color: #00ff00;
+            animation: glow 2s ease-in-out infinite;
+        }
+        
+        .component.error {
+            border-color: #ff4444;
+        }
+        
+        .component-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 15px;
+        }
+        
+        .component-icon {
+            font-size: 32px;
+            margin-right: 10px;
+        }
+        
+        .component-name {
+            font-size: 20px;
+            font-weight: bold;
+        }
+        
+        .status-indicator {
+            width: 20px;
+            height: 20px;
+            border-radius: 50%;
+            background: #444;
+            animation: blink 2s infinite;
+        }
+        
+        .status-indicator.active {
+            background: #00ff00;
+            box-shadow: 0 0 10px #00ff00;
+        }
+        
+        .status-indicator.error {
+            background: #ff4444;
+            box-shadow: 0 0 10px #ff4444;
+        }
+        
+        .component-details {
+            font-size: 14px;
+            color: #888;
+            line-height: 1.6;
+        }
+        
+        .component-details .detail {
+            margin: 5px 0;
+            padding-left: 20px;
+        }
+        
+        .economy-list {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 10px;
+            margin-top: 20px;
+        }
+        
+        .economy-badge {
+            background: #222;
+            border: 1px solid #444;
+            padding: 5px 10px;
+            border-radius: 15px;
+            font-size: 12px;
+            animation: fadeIn 0.5s ease;
+        }
+        
+        .game-api-list {
+            margin-top: 15px;
+            display: grid;
+            grid-template-columns: repeat(5, 1fr);
+            gap: 10px;
+        }
+        
+        .game-api {
+            text-align: center;
+            padding: 10px;
+            background: #1a1a1a;
+            border: 1px solid #333;
+            border-radius: 5px;
+            font-size: 12px;
+        }
+        
+        .console-output {
+            background: #000;
+            border: 2px solid #333;
+            border-radius: 10px;
+            padding: 20px;
+            margin-top: 30px;
+            max-height: 400px;
+            overflow-y: auto;
+            font-family: 'Courier New', monospace;
+            font-size: 14px;
+        }
+        
+        .console-line {
+            margin: 5px 0;
+            animation: typewriter 0.5s steps(40, end);
+        }
+        
+        .actions {
+            margin-top: 30px;
+            text-align: center;
+        }
+        
+        .action-button {
+            background: #ff6b6b;
+            color: #fff;
+            border: none;
+            padding: 15px 30px;
+            font-size: 18px;
+            border-radius: 5px;
+            cursor: pointer;
+            margin: 0 10px;
+            transition: all 0.3s ease;
+            font-family: 'Courier New', monospace;
+        }
+        
+        .action-button:hover {
+            background: #ff5252;
+            transform: scale(1.05);
+            box-shadow: 0 0 20px rgba(255, 107, 107, 0.5);
+        }
+        
+        @keyframes pulse {
+            0%, 100% { transform: scale(1); }
+            50% { transform: scale(1.02); }
+        }
+        
+        @keyframes glow {
+            0%, 100% { box-shadow: 0 0 10px rgba(0, 255, 0, 0.3); }
+            50% { box-shadow: 0 0 30px rgba(0, 255, 0, 0.6); }
+        }
+        
+        @keyframes blink {
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0.5; }
+        }
+        
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(10px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+        
+        @keyframes typewriter {
+            from { width: 0; }
+            to { width: 100%; }
+        }
+        
+        .progress-bar {
+            width: 100%;
+            height: 10px;
+            background: #222;
+            border-radius: 5px;
+            margin-top: 10px;
+            overflow: hidden;
+        }
+        
+        .progress-fill {
+            height: 100%;
+            background: linear-gradient(90deg, #00ff00, #00cc00);
+            transition: width 0.5s ease;
+            animation: shimmer 2s infinite;
+        }
+        
+        @keyframes shimmer {
+            0% { filter: brightness(1); }
+            50% { filter: brightness(1.2); }
+            100% { filter: brightness(1); }
+        }
+    </style>
+</head>
+<body>
+    <div class="dashboard">
+        <div class="header">
+            <h1>🔥 BASH DASHBOARD 🔥</h1>
+            <p>Real-time System Status</p>
+        </div>
+        
+        <div class="status-grid">
+            <!-- Multi-Economy Component -->
+            <div class="component" id="multi-economy">
+                <div class="component-header">
+                    <div>
+                        <span class="component-icon">🌍</span>
+                        <span class="component-name">Multi-Economy</span>
+                    </div>
+                    <div class="status-indicator"></div>
+                </div>
+                <div class="component-details">
+                    <div class="detail">Status: <span class="status-text">Checking...</span></div>
+                    <div class="detail">Economies: <span class="economy-count">0</span>/9</div>
+                    <div class="detail">Game APIs: <span class="api-count">0</span>/5</div>
+                </div>
+                <div class="economy-list"></div>
+                <div class="game-api-list"></div>
+                <div class="progress-bar">
+                    <div class="progress-fill" style="width: 0%"></div>
+                </div>
+            </div>
+            
+            <!-- CAMEL Component -->
+            <div class="component" id="camel">
+                <div class="component-header">
+                    <div>
+                        <span class="component-icon">🐪</span>
+                        <span class="component-name">CAMEL System</span>
+                    </div>
+                    <div class="status-indicator"></div>
+                </div>
+                <div class="component-details">
+                    <div class="detail">Status: <span class="status-text">Checking...</span></div>
+                    <div class="detail">Consciousness: <span class="consciousness">0%</span></div>
+                    <div class="detail">Autonomy: <span class="autonomy">0%</span></div>
+                    <div class="detail">Learning Rate: <span class="learning">0.0</span></div>
+                </div>
+                <div class="progress-bar">
+                    <div class="progress-fill" style="width: 0%"></div>
+                </div>
+            </div>
+            
+            <!-- Contract Layer -->
+            <div class="component" id="contracts">
+                <div class="component-header">
+                    <div>
+                        <span class="component-icon">📜</span>
+                        <span class="component-name">Contract Layer</span>
+                    </div>
+                    <div class="status-indicator"></div>
+                </div>
+                <div class="component-details">
+                    <div class="detail">Status: <span class="status-text">Checking...</span></div>
+                    <div class="detail">Executed: <span class="executed">0</span></div>
+                    <div class="detail">Guardian Approvals: <span class="approvals">0%</span></div>
+                </div>
+                <div class="progress-bar">
+                    <div class="progress-fill" style="width: 0%"></div>
+                </div>
+            </div>
+            
+            <!-- Mesh Integration -->
+            <div class="component" id="mesh">
+                <div class="component-header">
+                    <div>
+                        <span class="component-icon">🕸️</span>
+                        <span class="component-name">Mesh Integration</span>
+                    </div>
+                    <div class="status-indicator"></div>
+                </div>
+                <div class="component-details">
+                    <div class="detail">Status: <span class="status-text">Checking...</span></div>
+                    <div class="detail">Services: <span class="services">0</span></div>
+                    <div class="detail">Health Score: <span class="health">0%</span></div>
+                    <div class="detail">Active Routes: <span class="routes">0</span></div>
+                </div>
+                <div class="progress-bar">
+                    <div class="progress-fill" style="width: 0%"></div>
+                </div>
+            </div>
+            
+            <!-- Projection Narrator -->
+            <div class="component" id="projection">
+                <div class="component-header">
+                    <div>
+                        <span class="component-icon">🎭</span>
+                        <span class="component-name">Projection</span>
+                    </div>
+                    <div class="status-indicator"></div>
+                </div>
+                <div class="component-details">
+                    <div class="detail">Status: <span class="status-text">Checking...</span></div>
+                    <div class="detail">Port: <span class="port">8888</span></div>
+                    <div class="detail">URL: <a href="http://localhost:8888" target="_blank" style="color: #00ff00;">Open Projection</a></div>
+                </div>
+                <div class="progress-bar">
+                    <div class="progress-fill" style="width: 0%"></div>
+                </div>
+            </div>
+            
+            <!-- Sovereign Agents -->
+            <div class="component" id="agents">
+                <div class="component-header">
+                    <div>
+                        <span class="component-icon">👑</span>
+                        <span class="component-name">Sovereign Agents</span>
+                    </div>
+                    <div class="status-indicator"></div>
+                </div>
+                <div class="component-details">
+                    <div class="detail">Status: <span class="status-text">Checking...</span></div>
+                    <div class="detail">Active Agents: <span class="agent-count">0</span></div>
+                    <div class="detail">Decision Making: <span class="decision">Enabled</span></div>
+                </div>
+                <div class="progress-bar">
+                    <div class="progress-fill" style="width: 0%"></div>
+                </div>
+            </div>
+        </div>
+        
+        <div class="console-output" id="console">
+            <div class="console-line">🔥 BASH DASHBOARD INITIALIZED</div>
+            <div class="console-line">📡 Monitoring system components...</div>
+        </div>
+        
+        <div class="actions">
+            <button class="action-button" onclick="executeBash()">💥 EXECUTE BASH</button>
+            <button class="action-button" onclick="refreshStatus()">🔄 REFRESH STATUS</button>
+            <button class="action-button" onclick="openProjection()">🎭 OPEN PROJECTION</button>
+        </div>
+    </div>
+    
+    <script>
+        // Mock data for demonstration
+        const mockData = {
+            economies: ['Product', 'Business', 'Truth', 'Gaming', 'Social', 'Content', 'Financial', 'Wellness', 'Education'],
+            gameAPIs: ['Steam', 'Epic Games', 'Riot Games', 'Discord', 'Twitch']
+        };
+        
+        // Console logging
+        function log(message) {
+            const console = document.getElementById('console');
+            const line = document.createElement('div');
+            line.className = 'console-line';
+            line.textContent = `[${new Date().toLocaleTimeString()}] ${message}`;
+            console.appendChild(line);
+            console.scrollTop = console.scrollHeight;
+        }
+        
+        // Update component status
+        function updateComponent(id, status, details = {}) {
+            const component = document.getElementById(id);
+            const indicator = component.querySelector('.status-indicator');
+            const statusText = component.querySelector('.status-text');
+            const progressFill = component.querySelector('.progress-fill');
+            
+            // Update status
+            component.className = `component ${status}`;
+            indicator.className = `status-indicator ${status}`;
+            statusText.textContent = status.toUpperCase();
+            
+            // Update progress
+            if (status === 'active') {
+                progressFill.style.width = '100%';
+            } else if (status === 'loading') {
+                progressFill.style.width = '50%';
+            } else {
+                progressFill.style.width = '0%';
+            }
+            
+            // Update specific details
+            if (id === 'multi-economy' && details.economies) {
+                component.querySelector('.economy-count').textContent = details.economies;
+                component.querySelector('.api-count').textContent = details.apis;
+                
+                // Update economy list
+                const economyList = component.querySelector('.economy-list');
+                economyList.innerHTML = mockData.economies.slice(0, details.economies)
+                    .map(e => `<div class="economy-badge">${e}</div>`).join('');
+                
+                // Update game API list
+                const apiList = component.querySelector('.game-api-list');
+                apiList.innerHTML = mockData.gameAPIs.slice(0, details.apis)
+                    .map(api => `<div class="game-api">${api}</div>`).join('');
+            }
+            
+            if (id === 'camel' && details.consciousness) {
+                component.querySelector('.consciousness').textContent = `${details.consciousness}%`;
+                component.querySelector('.autonomy').textContent = `${details.autonomy}%`;
+                component.querySelector('.learning').textContent = details.learning;
+            }
+            
+            if (id === 'contracts' && details.executed) {
+                component.querySelector('.executed').textContent = details.executed;
+                component.querySelector('.approvals').textContent = `${details.approvals}%`;
+            }
+            
+            if (id === 'mesh' && details.services) {
+                component.querySelector('.services').textContent = details.services;
+                component.querySelector('.health').textContent = `${details.health}%`;
+                component.querySelector('.routes').textContent = details.routes;
+            }
+        }
+        
+        // Simulate system startup
+        function simulateStartup() {
+            log('🚀 Starting system components...');
+            
+            // Multi-Economy
+            setTimeout(() => {
+                updateComponent('multi-economy', 'loading');
+                log('🌍 Initializing Multi-Economy Expansion...');
+            }, 500);
+            
+            setTimeout(() => {
+                updateComponent('multi-economy', 'active', { economies: 9, apis: 5 });
+                log('✅ Multi-Economy: 9 economies active, 5 game APIs connected');
+            }, 2000);
+            
+            // CAMEL
+            setTimeout(() => {
+                updateComponent('camel', 'loading');
+                log('🐪 Activating CAMEL consciousness...');
+            }, 1000);
+            
+            setTimeout(() => {
+                updateComponent('camel', 'active', { consciousness: 87.5, autonomy: 92.3, learning: 0.15 });
+                log('✅ CAMEL: Consciousness achieved at 87.5%');
+            }, 3000);
+            
+            // Contracts
+            setTimeout(() => {
+                updateComponent('contracts', 'loading');
+                log('📜 Executing contract layer...');
+            }, 1500);
+            
+            setTimeout(() => {
+                updateComponent('contracts', 'active', { executed: 42, approvals: 95.5 });
+                log('✅ Contracts: 42 contracts executed with 95.5% approval');
+            }, 3500);
+            
+            // Mesh
+            setTimeout(() => {
+                updateComponent('mesh', 'loading');
+                log('🕸️ Integrating service mesh...');
+            }, 2000);
+            
+            setTimeout(() => {
+                updateComponent('mesh', 'active', { services: 13, health: 98.7, routes: 47 });
+                log('✅ Mesh: 13 services integrated, 98.7% health');
+            }, 4000);
+            
+            // Projection
+            setTimeout(() => {
+                updateComponent('projection', 'loading');
+                log('🎭 Starting projection narrator...');
+            }, 2500);
+            
+            setTimeout(() => {
+                updateComponent('projection', 'active');
+                log('✅ Projection: Running on http://localhost:8888');
+            }, 4500);
+            
+            // Agents
+            setTimeout(() => {
+                updateComponent('agents', 'loading');
+                log('👑 Initializing sovereign agents...');
+            }, 3000);
+            
+            setTimeout(() => {
+                updateComponent('agents', 'active', { agents: 7 });
+                log('✅ Sovereign Agents: 7 agents online with full autonomy');
+            }, 5000);
+            
+            // Final message
+            setTimeout(() => {
+                log('💥💥💥 SYSTEM FULLY OPERATIONAL! 💥💥💥');
+                log('🔥 All components bashed successfully!');
+            }, 6000);
+        }
+        
+        // Action handlers
+        function executeBash() {
+            log('💥 EXECUTING BASH SEQUENCE...');
+            simulateStartup();
+        }
+        
+        function refreshStatus() {
+            log('🔄 Refreshing component status...');
+            // In real implementation, this would check actual status
+            setTimeout(() => {
+                log('✅ Status refreshed');
+            }, 1000);
+        }
+        
+        function openProjection() {
+            window.open('http://localhost:8888', '_blank');
+            log('🎭 Opening projection narrator...');
+        }
+        
+        // Start monitoring on load
+        window.onload = () => {
+            log('🔍 Checking system status...');
+            setTimeout(() => {
+                log('📡 Ready to bash! Click "EXECUTE BASH" to start.');
+            }, 1000);
+        };
+    </script>
+</body>
+</html>

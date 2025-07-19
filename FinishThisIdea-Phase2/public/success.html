@@ -1,0 +1,294 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Payment Success - FinishThisIdea</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: #333;
+        }
+
+        .success-container {
+            background: white;
+            border-radius: 16px;
+            padding: 40px;
+            max-width: 600px;
+            width: 90%;
+            text-align: center;
+            box-shadow: 0 20px 40px rgba(0, 0, 0, 0.1);
+        }
+
+        .success-icon {
+            width: 80px;
+            height: 80px;
+            background: #10b981;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            margin: 0 auto 30px;
+            font-size: 40px;
+            color: white;
+        }
+
+        h1 {
+            font-size: 2rem;
+            margin-bottom: 15px;
+            color: #333;
+        }
+
+        p {
+            font-size: 1.1rem;
+            color: #666;
+            margin-bottom: 30px;
+            line-height: 1.6;
+        }
+
+        .status-box {
+            background: #f3f4f6;
+            border-radius: 12px;
+            padding: 25px;
+            margin-bottom: 30px;
+        }
+
+        .status-item {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 10px 0;
+        }
+
+        .status-label {
+            font-weight: 600;
+            color: #4b5563;
+        }
+
+        .status-value {
+            color: #667eea;
+            font-weight: 500;
+        }
+
+        .progress-container {
+            background: #e5e7eb;
+            border-radius: 8px;
+            height: 10px;
+            margin: 20px 0;
+            overflow: hidden;
+        }
+
+        .progress-bar {
+            background: linear-gradient(90deg, #667eea 0%, #764ba2 100%);
+            height: 100%;
+            width: 0%;
+            transition: width 0.3s ease;
+        }
+
+        .action-buttons {
+            display: flex;
+            gap: 15px;
+            justify-content: center;
+            margin-top: 30px;
+        }
+
+        .btn {
+            padding: 12px 24px;
+            border-radius: 8px;
+            font-size: 1rem;
+            font-weight: 600;
+            text-decoration: none;
+            cursor: pointer;
+            transition: transform 0.2s ease;
+            border: none;
+        }
+
+        .btn:hover {
+            transform: translateY(-2px);
+        }
+
+        .btn-primary {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+        }
+
+        .btn-secondary {
+            background: #f3f4f6;
+            color: #4b5563;
+        }
+
+        .loading {
+            display: inline-block;
+            width: 20px;
+            height: 20px;
+            border: 3px solid #f3f4f6;
+            border-radius: 50%;
+            border-top-color: #667eea;
+            animation: spin 1s ease-in-out infinite;
+        }
+
+        @keyframes spin {
+            to { transform: rotate(360deg); }
+        }
+    </style>
+</head>
+<body>
+    <div class="success-container">
+        <div class="success-icon">✓</div>
+        <h1>Payment Successful!</h1>
+        <p>Your project transformation has begun. We're processing your code with our AI-powered services.</p>
+        
+        <div class="status-box">
+            <div class="status-item">
+                <span class="status-label">Job ID:</span>
+                <span class="status-value" id="jobId">Loading...</span>
+            </div>
+            <div class="status-item">
+                <span class="status-label">Status:</span>
+                <span class="status-value" id="status">Processing</span>
+            </div>
+            <div class="status-item">
+                <span class="status-label">Services:</span>
+                <span class="status-value" id="services">-</span>
+            </div>
+        </div>
+
+        <div class="progress-container">
+            <div class="progress-bar" id="progressBar"></div>
+        </div>
+        
+        <p id="progressText">Initializing services...</p>
+
+        <div class="action-buttons">
+            <button class="btn btn-secondary" onclick="window.location.href='/'">
+                Process Another Project
+            </button>
+            <button class="btn btn-primary" id="downloadBtn" style="display: none;">
+                Download Results
+            </button>
+        </div>
+    </div>
+
+    <script>
+        // Get job ID from URL params
+        const urlParams = new URLSearchParams(window.location.search);
+        const sessionId = urlParams.get('session_id');
+        
+        let jobData = null;
+        let socket = null;
+
+        async function initializeStatus() {
+            if (!sessionId) {
+                document.getElementById('jobId').textContent = 'No session found';
+                return;
+            }
+
+            try {
+                // Get job info from session
+                const response = await fetch(`/api/payments/session/${sessionId}/job`);
+                if (!response.ok) throw new Error('Failed to get job info');
+                
+                jobData = await response.json();
+                
+                document.getElementById('jobId').textContent = jobData.data.jobId || jobData.data.bundleId;
+                document.getElementById('services').textContent = jobData.data.services.join(', ');
+                
+                // Connect to WebSocket for real-time updates
+                connectWebSocket();
+                
+            } catch (error) {
+                console.error('Failed to initialize:', error);
+                document.getElementById('status').textContent = 'Error loading job';
+            }
+        }
+
+        function connectWebSocket() {
+            socket = io();
+            
+            socket.on('connect', () => {
+                console.log('Connected to server');
+                socket.emit('subscribe-job', jobData.data.jobId || jobData.data.bundleId);
+            });
+
+            socket.on('job-progress', (data) => {
+                updateProgress(data.progress);
+            });
+
+            socket.on('job-completed', (data) => {
+                document.getElementById('status').textContent = 'Completed';
+                document.getElementById('progressText').textContent = 'All services completed successfully!';
+                updateProgress(100);
+                
+                // Show download button
+                const downloadBtn = document.getElementById('downloadBtn');
+                downloadBtn.style.display = 'inline-block';
+                downloadBtn.onclick = () => downloadResults(data.jobId);
+            });
+
+            socket.on('job-failed', (data) => {
+                document.getElementById('status').textContent = 'Failed';
+                document.getElementById('progressText').textContent = 'Processing failed: ' + data.error;
+                document.getElementById('progressBar').style.background = '#ef4444';
+            });
+        }
+
+        function updateProgress(progress) {
+            document.getElementById('progressBar').style.width = progress + '%';
+            
+            if (progress < 20) {
+                document.getElementById('progressText').textContent = 'Initializing services...';
+            } else if (progress < 50) {
+                document.getElementById('progressText').textContent = 'Analyzing your code...';
+            } else if (progress < 80) {
+                document.getElementById('progressText').textContent = 'Applying transformations...';
+            } else if (progress < 100) {
+                document.getElementById('progressText').textContent = 'Finalizing results...';
+            }
+        }
+
+        async function downloadResults(jobId) {
+            try {
+                const response = await fetch(`/api/dashboard/jobs/${jobId}/download`);
+                if (!response.ok) throw new Error('Download failed');
+                
+                const data = await response.json();
+                window.location.href = data.data.downloadUrl;
+                
+            } catch (error) {
+                console.error('Download failed:', error);
+                alert('Failed to download results. Please try again.');
+            }
+        }
+
+        // For demo purposes, simulate progress
+        if (!sessionId) {
+            let progress = 0;
+            const interval = setInterval(() => {
+                progress += Math.random() * 15;
+                if (progress >= 100) {
+                    progress = 100;
+                    clearInterval(interval);
+                    document.getElementById('status').textContent = 'Demo Complete';
+                    document.getElementById('progressText').textContent = 'This is a demo - no actual processing occurred';
+                }
+                updateProgress(progress);
+            }, 1000);
+        }
+
+        // Initialize
+        initializeStatus();
+    </script>
+    <script src="/socket.io/socket.io.js"></script>
+</body>
+</html>

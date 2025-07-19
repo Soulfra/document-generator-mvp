@@ -1,0 +1,69 @@
+# Analytics Dashboard Dockerfile
+FROM node:18-alpine
+
+# Install system dependencies
+RUN apk add --no-cache \
+    python3 \
+    make \
+    g++ \
+    curl
+
+# Set working directory
+WORKDIR /app
+
+# Copy package files
+COPY package*.json ./
+COPY tsconfig.json ./
+
+# Install dependencies
+RUN npm ci --only=production
+
+# Copy source code (analytics service and shared utilities)
+COPY src/monitoring/ ./src/monitoring/
+COPY src/utils/ ./src/utils/
+COPY src/services/viral/ ./src/services/viral/
+COPY prisma/ ./prisma/
+
+# Create a simple analytics server
+RUN echo 'import express from "express"; \
+import { presenceLogger } from "./monitoring/presence-logger"; \
+import { logger } from "./utils/logger"; \
+\
+const app = express(); \
+const port = process.env.ANALYTICS_PORT || 3002; \
+\
+app.use(express.json()); \
+\
+app.get("/health", (req, res) => { \
+  res.json({ status: "healthy", service: "analytics" }); \
+}); \
+\
+app.get("/analytics/:timeframe", async (req, res) => { \
+  try { \
+    const analytics = await presenceLogger.getAnalytics(req.params.timeframe); \
+    res.json({ success: true, data: analytics }); \
+  } catch (error) { \
+    res.status(500).json({ error: "Analytics fetch failed" }); \
+  } \
+}); \
+\
+app.listen(port, () => { \
+  logger.info(`Analytics service running on port ${port}`); \
+});' > src/analytics-server.ts
+
+# Build the analytics service
+RUN npx tsc src/analytics-server.ts --outDir dist --moduleResolution node --esModuleInterop --target es2020
+
+# Set permissions
+RUN chown -R node:node /app
+USER node
+
+# Health check
+HEALTHCHECK --interval=30s --timeout=10s --start-period=5s --retries=3 \
+  CMD curl -f http://localhost:3002/health || exit 1
+
+# Expose port
+EXPOSE 3002
+
+# Start the analytics service
+CMD ["node", "dist/analytics-server.js"]

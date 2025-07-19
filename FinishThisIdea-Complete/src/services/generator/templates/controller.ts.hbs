@@ -1,0 +1,114 @@
+/**
+ * {{pascalCase name}} Controller
+ * Handles business logic for {{displayName}}
+ */
+
+import { Request, Response, NextFunction } from 'express';
+import { {{pascalCase name}}Service } from '../services/{{name}}.service';
+import { logger } from '../utils/logger';
+import { validateInput } from '../utils/validation';
+import { AppError } from '../utils/errors';
+
+export class {{pascalCase name}}Controller {
+  private service: {{pascalCase name}}Service;
+
+  constructor() {
+    this.service = new {{pascalCase name}}Service();
+  }
+
+  /**
+   * Process {{name}} request
+   */
+  async process(req: Request, res: Response, next: NextFunction): Promise<void> {
+    try {
+      // Validate input
+      const validationResult = validateInput(req.body, {
+        {{#each features}}
+        // Add validation rules based on features
+        {{/each}}
+      });
+
+      if (!validationResult.valid) {
+        throw new AppError('Invalid input', 400, validationResult.errors);
+      }
+
+      // Process request
+      const result = await this.service.process(req.body);
+
+      // Log success
+      logger.info('{{name}} processed successfully', {
+        userId: req.user?.id,
+        requestId: req.id
+      });
+
+      res.json({
+        success: true,
+        data: result,
+        meta: {
+          service: '{{name}}',
+          version: process.env.npm_package_version,
+          timestamp: new Date().toISOString()
+        }
+      });
+    } catch (error) {
+      next(error);
+    }
+  }
+
+  /**
+   * Get service status
+   */
+  async getStatus(req: Request, res: Response, next: NextFunction): Promise<void> {
+    try {
+      const status = await this.service.getStatus();
+      
+      res.json({
+        success: true,
+        data: status
+      });
+    } catch (error) {
+      next(error);
+    }
+  }
+
+  /**
+   * Get service configuration
+   */
+  async getConfig(req: Request, res: Response, next: NextFunction): Promise<void> {
+    try {
+      const config = {
+        name: '{{displayName}}',
+        description: '{{description}}',
+        pricing: {{json pricing}},
+        features: {{json features}},
+        limits: await this.service.getLimits(req.user?.tier)
+      };
+      
+      res.json({
+        success: true,
+        data: config
+      });
+    } catch (error) {
+      next(error);
+    }
+  }
+
+  {{#each routes}}
+  /**
+   * {{this.description}}
+   */
+  async {{this.handler}}(req: Request, res: Response, next: NextFunction): Promise<void> {
+    try {
+      // Custom handler implementation
+      const result = await this.service.{{this.handler}}(req.body);
+      
+      res.json({
+        success: true,
+        data: result
+      });
+    } catch (error) {
+      next(error);
+    }
+  }
+  {{/each}}
+}

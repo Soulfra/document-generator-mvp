@@ -1,0 +1,245 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+// User model - shared across all services
+model User {
+  id            String    @id @default(uuid())
+  email         String    @unique
+  name          String?
+  apiKey        String?   @unique
+  organization  String?
+  role          UserRole  @default(USER)
+  status        UserStatus @default(ACTIVE)
+  
+  // Billing
+  stripeCustomerId  String?   @unique
+  subscription      Subscription?
+  usage             Usage[]
+  
+  // Jobs
+  jobs              Job[]
+  
+  // Settings
+  settings          Json      @default("{}")
+  preferences       Json      @default("{}")
+  
+  // Timestamps
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
+  lastLoginAt   DateTime?
+  
+  @@index([email])
+  @@index([apiKey])
+  @@index([organization])
+}
+
+enum UserRole {
+  USER
+  ADMIN
+  ENTERPRISE
+}
+
+enum UserStatus {
+  ACTIVE
+  SUSPENDED
+  DELETED
+}
+
+// Job model - tracks all processing jobs
+model Job {
+  id            String    @id @default(uuid())
+  userId        String
+  user          User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  
+  type          String    // Service type (e.g., "{{kebabCase name}}")
+  status        JobStatus
+  priority      Int       @default(5)
+  
+  // Data
+  input         Json
+  output        Json?
+  outputUrl     String?
+  
+  // Progress tracking
+  progress      Int       @default(0)
+  currentStep   String?
+  
+  // Error handling
+  error         Json?
+  attempts      Int       @default(0)
+  
+  // Metadata
+  metadata      Json      @default("{}")
+  
+  // Cost tracking
+  cost          Float     @default(0)
+  tokensUsed    Int       @default(0)
+  
+  // Timestamps
+  createdAt     DateTime  @default(now())
+  startedAt     DateTime?
+  completedAt   DateTime?
+  expiresAt     DateTime?
+  
+  @@index([userId, type, status])
+  @@index([type, status])
+  @@index([createdAt])
+}
+
+enum JobStatus {
+  PENDING
+  PROCESSING
+  COMPLETED
+  FAILED
+  CANCELLED
+}
+
+// Subscription model - for paid features
+model Subscription {
+  id            String    @id @default(uuid())
+  userId        String    @unique
+  user          User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  
+  plan          String
+  status        SubscriptionStatus
+  
+  // Stripe
+  stripeSubscriptionId  String?   @unique
+  stripePriceId         String?
+  
+  // Limits
+  jobLimit      Int?
+  storageLimit  Int?      // MB
+  features      Json      @default("[]")
+  
+  // Billing
+  currentPeriodStart  DateTime
+  currentPeriodEnd    DateTime
+  cancelAtPeriodEnd   Boolean   @default(false)
+  
+  // Timestamps
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
+  cancelledAt   DateTime?
+  
+  @@index([status])
+  @@index([currentPeriodEnd])
+}
+
+enum SubscriptionStatus {
+  ACTIVE
+  PAST_DUE
+  CANCELLED
+  INCOMPLETE
+}
+
+// Usage tracking
+model Usage {
+  id            String    @id @default(uuid())
+  userId        String
+  user          User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  
+  type          String    // Service type
+  metric        String    // What's being measured
+  quantity      Int
+  cost          Float     @default(0)
+  
+  metadata      Json      @default("{}")
+  
+  createdAt     DateTime  @default(now())
+  
+  @@index([userId, type, createdAt])
+  @@index([createdAt])
+}
+
+{{#if hasCustomModels}}
+// Custom models for {{name}} service
+{{#each customModels}}
+model {{this.name}} {
+  {{#each this.fields}}
+  {{this.name}}  {{this.type}}  {{#each this.attributes}}{{this}} {{/each}}
+  {{/each}}
+  
+  {{#if this.indexes}}
+  {{#each this.indexes}}
+  @@index([{{join this.fields ", "}}])
+  {{/each}}
+  {{/if}}
+}
+
+{{/each}}
+{{/if}}
+
+// Service-specific configuration
+model ServiceConfig {
+  id            String    @id @default(uuid())
+  service       String    @unique
+  
+  // Configuration
+  config        Json
+  features      Json      @default("[]")
+  limits        Json      @default("{}")
+  
+  // Status
+  enabled       Boolean   @default(true)
+  maintenance   Boolean   @default(false)
+  
+  // Timestamps
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
+}
+
+// Webhook configurations
+model Webhook {
+  id            String    @id @default(uuid())
+  userId        String
+  
+  url           String
+  secret        String
+  events        String[]
+  
+  // Status
+  active        Boolean   @default(true)
+  failures      Int       @default(0)
+  lastFailure   DateTime?
+  
+  // Timestamps
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
+  
+  @@index([userId])
+}
+
+// Audit log
+model AuditLog {
+  id            String    @id @default(uuid())
+  userId        String?
+  
+  action        String
+  resource      String
+  resourceId    String?
+  
+  // Details
+  before        Json?
+  after         Json?
+  metadata      Json      @default("{}")
+  
+  // Request info
+  ip            String?
+  userAgent     String?
+  
+  createdAt     DateTime  @default(now())
+  
+  @@index([userId, createdAt])
+  @@index([resource, resourceId])
+  @@index([action, createdAt])
+}

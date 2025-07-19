@@ -1,0 +1,200 @@
+# Prometheus Alerting Rules for FinishThisIdea Platform
+# Critical, warning, and info level alerts for platform monitoring
+
+groups:
+  - name: finishthisidea.critical
+    rules:
+      # Service availability alerts
+      - alert: ServiceDown
+        expr: up == 0
+        for: 1m
+        labels:
+          severity: critical
+          service: "{{ $labels.job }}"
+        annotations:
+          summary: "Service {{ $labels.job }} is down"
+          description: "Service {{ $labels.job }} has been down for more than 1 minute"
+          runbook: "https://docs.finishthisidea.com/runbooks/service-down"
+      
+      - alert: HighErrorRate
+        expr: finishthisidea:api_error_rate_5m > 0.1
+        for: 2m
+        labels:
+          severity: critical
+        annotations:
+          summary: "High API error rate detected"
+          description: "API error rate is {{ $value | humanizePercentage }} over the last 5 minutes"
+          runbook: "https://docs.finishthisidea.com/runbooks/high-error-rate"
+      
+      - alert: JobProcessingFailure
+        expr: finishthisidea:job_failure_rate_5m > 0.2
+        for: 3m
+        labels:
+          severity: critical
+        annotations:
+          summary: "High job failure rate"
+          description: "Job failure rate is {{ $value | humanizePercentage }} over the last 5 minutes"
+          runbook: "https://docs.finishthisidea.com/runbooks/job-failures"
+      
+      # Resource exhaustion alerts
+      - alert: HighMemoryUsage
+        expr: finishthisidea:memory_usage_percent > 90
+        for: 2m
+        labels:
+          severity: critical
+        annotations:
+          summary: "High memory usage detected"
+          description: "Memory usage is {{ $value }}% of available memory"
+          runbook: "https://docs.finishthisidea.com/runbooks/memory-pressure"
+      
+      - alert: DatabaseConnectionsExhausted
+        expr: finishthisidea_database_connections_active > 80
+        for: 1m
+        labels:
+          severity: critical
+        annotations:
+          summary: "Database connection pool nearly exhausted"
+          description: "Active database connections: {{ $value }}"
+          runbook: "https://docs.finishthisidea.com/runbooks/db-connections"
+
+  - name: finishthisidea.warning
+    rules:
+      # Performance degradation
+      - alert: SlowAPIResponse
+        expr: finishthisidea:api_response_time_p95_5m > 2
+        for: 5m
+        labels:
+          severity: warning
+        annotations:
+          summary: "Slow API response times"
+          description: "95th percentile response time is {{ $value }}s over the last 5 minutes"
+          runbook: "https://docs.finishthisidea.com/runbooks/slow-responses"
+      
+      - alert: EventLoopLag
+        expr: finishthisidea:event_loop_lag_p95_5m > 0.1
+        for: 3m
+        labels:
+          severity: warning
+        annotations:
+          summary: "High Node.js event loop lag"
+          description: "95th percentile event loop lag is {{ $value }}s"
+          runbook: "https://docs.finishthisidea.com/runbooks/event-loop-lag"
+      
+      # Business metric warnings
+      - alert: LowJobSuccessRate
+        expr: finishthisidea:job_success_ratio_5m < 0.95
+        for: 5m
+        labels:
+          severity: warning
+        annotations:
+          summary: "Job success rate below threshold"
+          description: "Job success rate is {{ $value | humanizePercentage }} over the last 5 minutes"
+          runbook: "https://docs.finishthisidea.com/runbooks/job-success-rate"
+      
+      - alert: HighPaymentFailureRate
+        expr: rate(finishthisidea_payments_total{status="failed"}[10m]) > 0.05
+        for: 5m
+        labels:
+          severity: warning
+        annotations:
+          summary: "High payment failure rate"
+          description: "Payment failure rate is {{ $value | humanizePercentage }}"
+          runbook: "https://docs.finishthisidea.com/runbooks/payment-failures"
+      
+      # Resource usage warnings
+      - alert: ModerateMemoryUsage
+        expr: finishthisidea:memory_usage_percent > 75
+        for: 10m
+        labels:
+          severity: warning
+        annotations:
+          summary: "Moderate memory usage"
+          description: "Memory usage is {{ $value }}% of available memory"
+          runbook: "https://docs.finishthisidea.com/runbooks/memory-usage"
+      
+      - alert: HighCPUUsage
+        expr: finishthisidea:cpu_usage_rate_5m > 80
+        for: 5m
+        labels:
+          severity: warning
+        annotations:
+          summary: "High CPU usage detected"
+          description: "CPU usage is {{ $value }}% over the last 5 minutes"
+          runbook: "https://docs.finishthisidea.com/runbooks/cpu-usage"
+
+  - name: finishthisidea.info
+    rules:
+      # Growth and business insights
+      - alert: UserGrowthSpike
+        expr: increase(finishthisidea_users_registered_total[1h]) > 100
+        for: 0m
+        labels:
+          severity: info
+        annotations:
+          summary: "Unusual user registration spike"
+          description: "{{ $value }} new users registered in the last hour"
+          runbook: "https://docs.finishthisidea.com/runbooks/growth-spike"
+      
+      - alert: HighAIUsage
+        expr: rate(finishthisidea_ai_requests_total[1h]) > 1000
+        for: 5m
+        labels:
+          severity: info
+        annotations:
+          summary: "High AI API usage"
+          description: "AI request rate is {{ $value }} requests/second over the last hour"
+          runbook: "https://docs.finishthisidea.com/runbooks/ai-usage"
+      
+      - alert: SocialEngagementSpike
+        expr: rate(finishthisidea_social_shares_total[1h]) > 50
+        for: 5m
+        labels:
+          severity: info
+        annotations:
+          summary: "High social media engagement"
+          description: "Social sharing rate is {{ $value }} shares/second"
+          runbook: "https://docs.finishthisidea.com/runbooks/viral-content"
+      
+      # Service health notifications
+      - alert: ServiceRecovered
+        expr: up == 1 and up offset 5m == 0
+        for: 1m
+        labels:
+          severity: info
+        annotations:
+          summary: "Service {{ $labels.job }} has recovered"
+          description: "Service {{ $labels.job }} is now responding after being down"
+          runbook: "https://docs.finishthisidea.com/runbooks/service-recovery"
+
+  - name: finishthisidea.capacity
+    rules:
+      # Capacity planning alerts
+      - alert: ApproachingJobQueueLimit
+        expr: finishthisidea_jobs_processing_current > 50
+        for: 10m
+        labels:
+          severity: warning
+        annotations:
+          summary: "Job queue approaching capacity"
+          description: "{{ $value }} jobs currently processing"
+          runbook: "https://docs.finishthisidea.com/runbooks/job-queue-capacity"
+      
+      - alert: RedisMemoryHigh
+        expr: finishthisidea_redis_connections_active > 100
+        for: 5m
+        labels:
+          severity: warning
+        annotations:
+          summary: "High Redis connection usage"
+          description: "{{ $value }} active Redis connections"
+          runbook: "https://docs.finishthisidea.com/runbooks/redis-capacity"
+      
+      - alert: UploadVolumeHigh
+        expr: rate(finishthisidea_uploads_total[1h]) > 100
+        for: 10m
+        labels:
+          severity: info
+        annotations:
+          summary: "High upload volume detected"
+          description: "Upload rate is {{ $value }} files/second over the last hour"
+          runbook: "https://docs.finishthisidea.com/runbooks/upload-volume"

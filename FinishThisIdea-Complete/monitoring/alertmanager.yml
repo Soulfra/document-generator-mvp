@@ -1,0 +1,226 @@
+# AlertManager Configuration for FinishThisIdea Platform
+# Handles alert routing, grouping, and notifications
+
+global:
+  # ResolveTimeout is the default value used by alertmanager if the alert does not include EndsAt
+  resolve_timeout: 5m
+  
+  # SMTP configuration for email alerts
+  smtp_smarthost: 'localhost:587'
+  smtp_from: 'alerts@finishthisidea.com'
+  smtp_auth_username: 'alerts@finishthisidea.com'
+  smtp_auth_password: 'your-email-password'
+
+# The directory from which notification templates are read
+templates:
+  - '/etc/alertmanager/templates/*.tmpl'
+
+# The root route on which each incoming alert enters
+route:
+  # The labels by which incoming alerts are grouped together
+  group_by: ['alertname', 'cluster', 'service']
+  
+  # When a new group of alerts is created by an incoming alert, wait at least 'group_wait' before sending notification
+  group_wait: 10s
+  
+  # When the first notification was sent, wait 'group_interval' before sending notification about new alerts added to the group
+  group_interval: 10s
+  
+  # If an alert has successfully been sent, wait 'repeat_interval' before resending them
+  repeat_interval: 1h
+  
+  # A default receiver
+  receiver: 'web.hook'
+  
+  # All the above attributes are inherited by all child routes
+  routes:
+    # Critical alerts - immediate notification
+    - match:
+        severity: critical
+      receiver: 'critical-alerts'
+      group_wait: 5s
+      repeat_interval: 15m
+      
+    # Warning alerts - grouped notifications
+    - match:
+        severity: warning
+      receiver: 'warning-alerts'
+      group_wait: 30s
+      repeat_interval: 2h
+      
+    # Info alerts - daily digest
+    - match:
+        severity: info
+      receiver: 'info-alerts'
+      group_wait: 5m
+      repeat_interval: 24h
+      
+    # Business growth alerts
+    - match:
+        alertname: UserGrowthSpike
+      receiver: 'growth-team'
+      
+    - match:
+        alertname: HighAIUsage
+      receiver: 'ai-team'
+      
+    # Payment and revenue alerts
+    - match_re:
+        alertname: .*Payment.*
+      receiver: 'finance-team'
+
+# Inhibition rules allow to mute a set of alerts given that another alert is firing
+inhibit_rules:
+  - source_match:
+      severity: 'critical'
+    target_match:
+      severity: 'warning'
+    equal: ['alertname', 'cluster', 'service']
+
+receivers:
+  # Default webhook receiver
+  - name: 'web.hook'
+    webhook_configs:
+      - url: 'http://localhost:5001/webhook/alerts'
+        send_resolved: true
+        http_config:
+          basic_auth:
+            username: 'alertmanager'
+            password: 'webhook-secret'
+
+  # Critical alerts - multiple channels
+  - name: 'critical-alerts'
+    email_configs:
+      - to: 'devops@finishthisidea.com,cto@finishthisidea.com'
+        subject: '[CRITICAL] FinishThisIdea Platform Alert'
+        body: |
+          Alert: {{ .GroupLabels.alertname }}
+          Summary: {{ range .Alerts }}{{ .Annotations.summary }}{{ end }}
+          Description: {{ range .Alerts }}{{ .Annotations.description }}{{ end }}
+          
+          Platform: FinishThisIdea
+          Severity: CRITICAL
+          Time: {{ .CommonLabels.time }}
+          
+          Please investigate immediately.
+          
+          Runbook: {{ range .Alerts }}{{ .Annotations.runbook }}{{ end }}
+        headers:
+          Priority: 'high'
+          X-Alert-Severity: 'critical'
+    
+    slack_configs:
+      - api_url: 'YOUR_SLACK_WEBHOOK_URL'
+        channel: '#alerts-critical'
+        title: ':rotating_light: Critical Alert - FinishThisIdea Platform'
+        text: |
+          *Alert:* {{ .GroupLabels.alertname }}
+          *Summary:* {{ range .Alerts }}{{ .Annotations.summary }}{{ end }}
+          *Description:* {{ range .Alerts }}{{ .Annotations.description }}{{ end }}
+          
+          *Runbook:* {{ range .Alerts }}{{ .Annotations.runbook }}{{ end }}
+        color: 'danger'
+        send_resolved: true
+
+  # Warning alerts - email digest
+  - name: 'warning-alerts'
+    email_configs:
+      - to: 'devops@finishthisidea.com'
+        subject: '[WARNING] FinishThisIdea Platform Alerts ({{ .Alerts | len }})'
+        body: |
+          {{ range .Alerts }}
+          Alert: {{ .Labels.alertname }}
+          Summary: {{ .Annotations.summary }}
+          Description: {{ .Annotations.description }}
+          Runbook: {{ .Annotations.runbook }}
+          
+          {{ end }}
+          
+          Platform: FinishThisIdea
+          Severity: WARNING
+          Total Alerts: {{ .Alerts | len }}
+        headers:
+          X-Alert-Severity: 'warning'
+    
+    slack_configs:
+      - api_url: 'YOUR_SLACK_WEBHOOK_URL'
+        channel: '#alerts-warning'
+        title: ':warning: Warning Alerts - FinishThisIdea Platform'
+        text: '{{ .Alerts | len }} warning alerts detected'
+        color: 'warning'
+
+  # Info alerts - daily digest
+  - name: 'info-alerts'
+    email_configs:
+      - to: 'team@finishthisidea.com'
+        subject: '[INFO] FinishThisIdea Platform Daily Summary'
+        body: |
+          Daily Platform Summary - {{ .CommonLabels.time }}
+          
+          {{ range .Alerts }}
+          {{ .Labels.alertname }}: {{ .Annotations.summary }}
+          {{ end }}
+          
+          Platform: FinishThisIdea
+          Report Type: Daily Info Digest
+        headers:
+          X-Alert-Severity: 'info'
+
+  # Growth team notifications
+  - name: 'growth-team'
+    email_configs:
+      - to: 'growth@finishthisidea.com,ceo@finishthisidea.com'
+        subject: '[GROWTH] User Activity Spike Detected'
+        body: |
+          Growth Alert: {{ range .Alerts }}{{ .Labels.alertname }}{{ end }}
+          
+          {{ range .Alerts }}
+          Summary: {{ .Annotations.summary }}
+          Description: {{ .Annotations.description }}
+          {{ end }}
+          
+          This could indicate viral growth or marketing campaign success.
+          Consider scaling infrastructure if needed.
+        headers:
+          X-Alert-Type: 'growth'
+    
+    slack_configs:
+      - api_url: 'YOUR_SLACK_WEBHOOK_URL'
+        channel: '#growth-alerts'
+        title: ':chart_with_upwards_trend: Growth Alert'
+        text: '{{ range .Alerts }}{{ .Annotations.summary }}{{ end }}'
+        color: 'good'
+
+  # AI team notifications
+  - name: 'ai-team'
+    email_configs:
+      - to: 'ai-team@finishthisidea.com'
+        subject: '[AI] High AI API Usage Detected'
+        body: |
+          AI Usage Alert: {{ range .Alerts }}{{ .Labels.alertname }}{{ end }}
+          
+          {{ range .Alerts }}
+          Summary: {{ .Annotations.summary }}
+          Description: {{ .Annotations.description }}
+          {{ end }}
+          
+          Consider monitoring costs and API rate limits.
+        headers:
+          X-Alert-Type: 'ai-usage'
+
+  # Finance team notifications
+  - name: 'finance-team'
+    email_configs:
+      - to: 'finance@finishthisidea.com,cfo@finishthisidea.com'
+        subject: '[FINANCE] Payment System Alert'
+        body: |
+          Payment Alert: {{ range .Alerts }}{{ .Labels.alertname }}{{ end }}
+          
+          {{ range .Alerts }}
+          Summary: {{ .Annotations.summary }}
+          Description: {{ .Annotations.description }}
+          {{ end }}
+          
+          Please review payment processing status immediately.
+        headers:
+          X-Alert-Type: 'payment'

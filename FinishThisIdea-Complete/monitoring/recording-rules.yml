@@ -1,0 +1,105 @@
+# Prometheus Recording Rules for FinishThisIdea Platform
+# These rules pre-compute frequently needed metrics for better performance
+
+groups:
+  - name: finishthisidea.business.rules
+    interval: 30s
+    rules:
+      # Job processing rates
+      - record: finishthisidea:job_completion_rate_5m
+        expr: rate(finishthisidea_jobs_total{status="COMPLETED"}[5m])
+      
+      - record: finishthisidea:job_failure_rate_5m
+        expr: rate(finishthisidea_jobs_total{status="FAILED"}[5m])
+      
+      - record: finishthisidea:job_success_ratio_5m
+        expr: |
+          rate(finishthisidea_jobs_total{status="COMPLETED"}[5m]) /
+          (rate(finishthisidea_jobs_total{status="COMPLETED"}[5m]) + rate(finishthisidea_jobs_total{status="FAILED"}[5m]))
+      
+      # API performance metrics
+      - record: finishthisidea:api_request_rate_5m
+        expr: rate(http_requests_total[5m])
+      
+      - record: finishthisidea:api_error_rate_5m
+        expr: rate(http_requests_total{status_code=~"5.."}[5m])
+      
+      - record: finishthisidea:api_success_ratio_5m
+        expr: |
+          rate(http_requests_total{status_code=~"2.."}[5m]) /
+          rate(http_requests_total[5m])
+      
+      # Response time percentiles
+      - record: finishthisidea:api_response_time_p50_5m
+        expr: histogram_quantile(0.50, rate(http_request_duration_seconds_bucket[5m]))
+      
+      - record: finishthisidea:api_response_time_p95_5m
+        expr: histogram_quantile(0.95, rate(http_request_duration_seconds_bucket[5m]))
+      
+      - record: finishthisidea:api_response_time_p99_5m
+        expr: histogram_quantile(0.99, rate(http_request_duration_seconds_bucket[5m]))
+
+  - name: finishthisidea.system.rules
+    interval: 30s
+    rules:
+      # Memory usage trends
+      - record: finishthisidea:memory_usage_percent
+        expr: |
+          (process_memory_usage_bytes{type="rss"} / (1024 * 1024 * 1024)) * 100
+      
+      # CPU usage trends
+      - record: finishthisidea:cpu_usage_rate_5m
+        expr: rate(process_cpu_usage_percent[5m])
+      
+      # Event loop lag trends
+      - record: finishthisidea:event_loop_lag_p95_5m
+        expr: histogram_quantile(0.95, rate(nodejs_eventloop_lag_seconds_bucket[5m]))
+
+  - name: finishthisidea.growth.rules
+    interval: 60s
+    rules:
+      # User growth metrics
+      - record: finishthisidea:user_registration_rate_1h
+        expr: increase(finishthisidea_users_registered_total[1h])
+      
+      # Upload trends
+      - record: finishthisidea:upload_rate_1h
+        expr: rate(finishthisidea_uploads_total[1h])
+      
+      # Revenue metrics
+      - record: finishthisidea:payment_success_rate_1h
+        expr: rate(finishthisidea_payments_total{status="succeeded"}[1h])
+      
+      # AI usage trends
+      - record: finishthisidea:ai_request_rate_1h
+        expr: rate(finishthisidea_ai_requests_total[1h])
+      
+      # Social engagement
+      - record: finishthisidea:social_share_rate_1h
+        expr: rate(finishthisidea_social_shares_total[1h])
+
+  - name: finishthisidea.alerts.rules
+    interval: 30s
+    rules:
+      # High-level health indicators
+      - record: finishthisidea:service_availability_5m
+        expr: |
+          (rate(http_requests_total{status_code=~"2.."}[5m]) + rate(http_requests_total{status_code=~"3.."}[5m])) /
+          rate(http_requests_total[5m])
+      
+      - record: finishthisidea:service_health_score
+        expr: |
+          (
+            finishthisidea:service_availability_5m * 0.4 +
+            finishthisidea:job_success_ratio_5m * 0.3 +
+            (1 - finishthisidea:api_error_rate_5m) * 0.3
+          )
+      
+      # Resource utilization indicators
+      - record: finishthisidea:resource_pressure_score
+        expr: |
+          (
+            (finishthisidea:memory_usage_percent / 100) * 0.4 +
+            (finishthisidea:cpu_usage_rate_5m / 100) * 0.3 +
+            (finishthisidea:event_loop_lag_p95_5m * 1000) * 0.3
+          )

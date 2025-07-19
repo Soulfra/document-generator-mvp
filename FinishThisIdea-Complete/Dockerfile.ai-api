@@ -1,0 +1,42 @@
+# AI API Microservice Dockerfile
+FROM node:18-alpine
+
+# Install system dependencies
+RUN apk add --no-cache \
+    python3 \
+    make \
+    g++ \
+    curl
+
+# Set working directory
+WORKDIR /app
+
+# Copy package files
+COPY package*.json ./
+COPY tsconfig.json ./
+
+# Install dependencies
+RUN npm ci --only=production
+
+# Copy source code (only AI API and shared utilities)
+COPY src/services/ai-api/ ./src/services/ai-api/
+COPY src/utils/ ./src/utils/
+COPY src/monitoring/ ./src/monitoring/
+COPY prisma/ ./prisma/
+
+# Build the AI API service
+RUN npx tsc src/services/ai-api/server.ts --outDir dist --moduleResolution node --esModuleInterop --target es2020
+
+# Set permissions
+RUN chown -R node:node /app
+USER node
+
+# Health check
+HEALTHCHECK --interval=30s --timeout=10s --start-period=5s --retries=3 \
+  CMD curl -f http://localhost:3001/health || exit 1
+
+# Expose port
+EXPOSE 3001
+
+# Start the AI API service
+CMD ["node", "dist/services/ai-api/server.js"]

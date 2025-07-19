@@ -1,0 +1,75 @@
+global:
+  scrape_interval: 15s
+  evaluation_interval: 15s
+  external_labels:
+    monitor: 'finishthisidea-platform'
+    environment: 'production'
+
+rule_files:
+  - "recording-rules.yml"
+  - "alerting-rules.yml"
+
+alerting:
+  alertmanagers:
+    - static_configs:
+        - targets:
+          - alertmanager:9093
+
+scrape_configs:
+  # Prometheus self-monitoring
+  - job_name: 'prometheus'
+    static_configs:
+      - targets: ['localhost:9090']
+
+  # Node Exporter - system metrics
+  - job_name: 'node-exporter'
+    static_configs:
+      - targets: ['node-exporter:9100']
+
+  # Main FinishThisIdea application
+  - job_name: 'finishthisidea-app'
+    static_configs:
+      - targets: ['app:3001']
+    metrics_path: '/api/metrics'
+    scrape_interval: 30s
+    scrape_timeout: 10s
+
+  # AI API microservice
+  - job_name: 'finishthisidea-ai-api'
+    static_configs:
+      - targets: ['ai-api:3001']
+    metrics_path: '/metrics'
+    scrape_interval: 30s
+
+  # Analytics service
+  - job_name: 'finishthisidea-analytics'
+    static_configs:
+      - targets: ['analytics:3002']
+    metrics_path: '/metrics'
+    scrape_interval: 30s
+
+  # PostgreSQL database metrics (if enabled)
+  - job_name: 'postgres'
+    static_configs:
+      - targets: ['postgres:5432']
+    scrape_interval: 30s
+
+  # Redis metrics (if enabled)
+  - job_name: 'redis'
+    static_configs:
+      - targets: ['redis:6379']
+    scrape_interval: 30s
+
+  # Nginx metrics (if enabled)
+  - job_name: 'nginx'
+    static_configs:
+      - targets: ['nginx:80']
+    metrics_path: '/nginx_status'
+    scrape_interval: 30s
+
+  # Ollama metrics (if available)
+  - job_name: 'ollama'
+    static_configs:
+      - targets: ['ollama:11434']
+    metrics_path: '/api/ps'
+    scrape_interval: 60s

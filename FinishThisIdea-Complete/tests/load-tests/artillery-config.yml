@@ -1,0 +1,215 @@
+# Artillery Load Testing Configuration
+# Comprehensive load testing scenarios for FinishThisIdea platform
+
+config:
+  target: "{{ $env.TARGET_URL || 'http://localhost:3000' }}"
+  phases:
+    # Warm-up phase
+    - duration: 60
+      arrivalRate: 1
+      name: "Warm-up"
+    
+    # Ramp-up phase
+    - duration: 120
+      arrivalRate: 1
+      rampTo: 10
+      name: "Ramp-up"
+    
+    # Sustained load
+    - duration: 300
+      arrivalRate: 10
+      name: "Sustained load"
+    
+    # Peak load
+    - duration: 120
+      arrivalRate: 10
+      rampTo: 25
+      name: "Peak load"
+    
+    # Cool-down
+    - duration: 60
+      arrivalRate: 25
+      rampTo: 1
+      name: "Cool-down"
+
+  # Load testing configuration
+  http:
+    timeout: 30
+    pool: 10
+  
+  # Metrics and monitoring
+  engines:
+    http:
+      timeout: 30
+  
+  # Environment variables
+  variables:
+    api_key: "{{ $env.TEST_API_KEY || 'test-api-key' }}"
+    user_email: "load-test@finishthisidea.com"
+    user_password: "LoadTest123!"
+
+  # Success criteria
+  ensure:
+    # 95% of requests should complete within 2 seconds
+    - http.response_time.p95: 2000
+    # 99% success rate
+    - http.request_rate: 0.99
+    # No more than 1% error rate
+    - vusers.failed: 0.01
+
+scenarios:
+  # Health check scenario (lightweight)
+  - name: "Health Checks"
+    weight: 20
+    flow:
+      - get:
+          url: "/health"
+          capture:
+            - json: "$.success"
+              as: "health_status"
+      
+      - get:
+          url: "/api/health"
+          headers:
+            X-Request-ID: "load-test-{{ $uuid }}"
+      
+      - think: 1
+
+  # API endpoints scenario
+  - name: "API Endpoints"
+    weight: 30
+    flow:
+      # Metrics endpoint
+      - get:
+          url: "/api/metrics"
+          headers:
+            X-Request-ID: "metrics-{{ $uuid }}"
+          expect:
+            - statusCode: 200
+      
+      # Documentation endpoints
+      - get:
+          url: "/api/docs"
+          headers:
+            X-Request-ID: "docs-{{ $uuid }}"
+      
+      - think: 2
+      
+      # Profile endpoints (public data)
+      - get:
+          url: "/api/profiles"
+          qs:
+            limit: 10
+            page: 1
+          headers:
+            X-Request-ID: "profiles-{{ $uuid }}"
+      
+      - think: 1
+
+  # Authentication flow scenario
+  - name: "Authentication Flow"
+    weight: 25
+    flow:
+      # Register new user
+      - post:
+          url: "/api/auth/register"
+          headers:
+            Content-Type: "application/json"
+            X-Request-ID: "auth-register-{{ $uuid }}"
+          json:
+            email: "load-test-{{ $uuid }}@example.com"
+            password: "{{ user_password }}"
+            displayName: "Load Test User {{ $uuid }}"
+          capture:
+            - json: "$.data.user.id"
+              as: "user_id"
+      
+      - think: 2
+      
+      # Login
+      - post:
+          url: "/api/auth/login"
+          headers:
+            Content-Type: "application/json"
+            X-Request-ID: "auth-login-{{ $uuid }}"
+          json:
+            email: "load-test-{{ $uuid }}@example.com"
+            password: "{{ user_password }}"
+          capture:
+            - json: "$.data.token"
+              as: "auth_token"
+      
+      - think: 1
+      
+      # Get user profile
+      - get:
+          url: "/api/auth/me"
+          headers:
+            Authorization: "Bearer {{ auth_token }}"
+            X-Request-ID: "auth-me-{{ $uuid }}"
+          expect:
+            - statusCode: 200
+
+  # Job management scenario
+  - name: "Job Management"
+    weight: 15
+    flow:
+      # Get jobs list
+      - get:
+          url: "/api/jobs"
+          qs:
+            page: 1
+            limit: 20
+            status: "COMPLETED"
+          headers:
+            X-Request-ID: "jobs-list-{{ $uuid }}"
+      
+      - think: 3
+      
+      # Get specific job (simulate browsing)
+      - get:
+          url: "/api/jobs/{{ $randomString() }}"
+          headers:
+            X-Request-ID: "job-detail-{{ $uuid }}"
+          expect:
+            - statusCode: [200, 404] # Allow 404 for non-existent jobs
+
+  # File upload simulation scenario
+  - name: "File Operations"
+    weight: 10
+    flow:
+      # Get upload presigned URL
+      - post:
+          url: "/api/upload/presigned"
+          headers:
+            Content-Type: "application/json"
+            X-Request-ID: "upload-presigned-{{ $uuid }}"
+          json:
+            filename: "test-file-{{ $uuid }}.txt"
+            contentType: "text/plain"
+            size: 1024
+      
+      - think: 2
+      
+      # Get upload status
+      - get:
+          url: "/api/upload/status"
+          headers:
+            X-Request-ID: "upload-status-{{ $uuid }}"
+
+# Custom functions for load testing
+processor: "./load-test-functions.js"
+
+# Reporting configuration
+plugins:
+  # Publish metrics to CloudWatch (if AWS environment)
+  cloudwatch:
+    namespace: "FinishThisIdea/LoadTest"
+  
+  # Metrics collection
+  metrics-by-endpoint:
+    useOnlyRequestNames: true
+  
+  # HTML report generation
+  html-report:
+    output: "./reports/load-test-report.html"

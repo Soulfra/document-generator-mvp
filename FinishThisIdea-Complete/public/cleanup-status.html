@@ -1,0 +1,445 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Cleanup Status - FinishThisIdea</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            line-height: 1.6;
+            color: #333;
+            background: #f8f9fa;
+            min-height: 100vh;
+            padding: 20px;
+        }
+        
+        .container {
+            max-width: 800px;
+            margin: 0 auto;
+        }
+        
+        .header {
+            text-align: center;
+            margin-bottom: 30px;
+        }
+        
+        .card {
+            background: white;
+            border-radius: 12px;
+            padding: 30px;
+            box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+            margin-bottom: 20px;
+        }
+        
+        .status-badge {
+            display: inline-block;
+            padding: 6px 12px;
+            border-radius: 20px;
+            font-size: 0.9rem;
+            font-weight: bold;
+            text-transform: uppercase;
+        }
+        
+        .status-pending {
+            background: #fff3cd;
+            color: #856404;
+        }
+        
+        .status-processing {
+            background: #cce5ff;
+            color: #004085;
+        }
+        
+        .status-completed {
+            background: #d4edda;
+            color: #155724;
+        }
+        
+        .status-failed {
+            background: #f8d7da;
+            color: #721c24;
+        }
+        
+        .progress {
+            width: 100%;
+            height: 10px;
+            background: #f0f0f0;
+            border-radius: 5px;
+            overflow: hidden;
+            margin: 15px 0;
+        }
+        
+        .progress-bar {
+            height: 100%;
+            background: #007bff;
+            transition: width 0.3s ease;
+        }
+        
+        .info-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+            gap: 20px;
+            margin: 20px 0;
+        }
+        
+        .info-item {
+            background: #f8f9fa;
+            padding: 15px;
+            border-radius: 8px;
+        }
+        
+        .info-label {
+            font-weight: bold;
+            color: #666;
+            font-size: 0.9rem;
+        }
+        
+        .info-value {
+            font-size: 1.1rem;
+            margin-top: 5px;
+        }
+        
+        .btn {
+            background: #007bff;
+            color: white;
+            border: none;
+            padding: 12px 24px;
+            border-radius: 6px;
+            font-size: 1rem;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            display: inline-block;
+            text-decoration: none;
+            margin: 5px;
+        }
+        
+        .btn:hover {
+            background: #0056b3;
+            transform: translateY(-1px);
+        }
+        
+        .btn-success {
+            background: #28a745;
+        }
+        
+        .btn-success:hover {
+            background: #218838;
+        }
+        
+        .btn-secondary {
+            background: #6c757d;
+        }
+        
+        .btn-secondary:hover {
+            background: #5a6268;
+        }
+        
+        .timeline {
+            margin: 20px 0;
+        }
+        
+        .timeline-item {
+            display: flex;
+            align-items: center;
+            margin: 10px 0;
+            padding: 10px 0;
+            border-left: 3px solid #e9ecef;
+            padding-left: 20px;
+        }
+        
+        .timeline-item.completed {
+            border-color: #28a745;
+        }
+        
+        .timeline-item.active {
+            border-color: #007bff;
+            background: #f8f9ff;
+            margin-left: -10px;
+            padding-left: 30px;
+            border-radius: 0 8px 8px 0;
+        }
+        
+        .auto-refresh {
+            font-size: 0.9rem;
+            color: #666;
+            text-align: center;
+            margin: 20px 0;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>Cleanup Status</h1>
+            <div class="auto-refresh">
+                Auto-refreshing every 5 seconds... 
+                <button id="toggle-refresh" class="btn btn-secondary" style="padding: 4px 8px; font-size: 0.8rem;">
+                    Pause
+                </button>
+            </div>
+        </div>
+
+        <div class="card">
+            <div id="job-header">
+                <h2>Job Details</h2>
+                <div id="job-not-found" style="display: none;">
+                    <p>Please enter a job ID to check status.</p>
+                    <input type="text" id="job-id-input" placeholder="Enter Job ID" style="padding: 8px; margin: 10px 5px;">
+                    <button id="check-job-btn" class="btn">Check Status</button>
+                </div>
+            </div>
+
+            <div id="job-content" style="display: none;">
+                <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px;">
+                    <h3 id="job-title">Codebase Cleanup</h3>
+                    <span id="status-badge" class="status-badge">Loading...</span>
+                </div>
+
+                <div class="progress">
+                    <div class="progress-bar" id="progress-bar" style="width: 0%"></div>
+                </div>
+                <div id="progress-text" style="text-align: center; margin: 10px 0;">0% complete</div>
+
+                <div class="info-grid">
+                    <div class="info-item">
+                        <div class="info-label">Job ID</div>
+                        <div class="info-value" id="job-id">-</div>
+                    </div>
+                    <div class="info-item">
+                        <div class="info-label">Original File</div>
+                        <div class="info-value" id="original-file">-</div>
+                    </div>
+                    <div class="info-item">
+                        <div class="info-label">File Size</div>
+                        <div class="info-value" id="file-size">-</div>
+                    </div>
+                    <div class="info-item">
+                        <div class="info-label">Created</div>
+                        <div class="info-value" id="created-at">-</div>
+                    </div>
+                </div>
+
+                <div class="timeline" id="timeline">
+                    <div class="timeline-item completed">
+                        <span>📁 File uploaded</span>
+                    </div>
+                    <div class="timeline-item completed">
+                        <span>💳 Payment processed</span>
+                    </div>
+                    <div class="timeline-item" id="processing-item">
+                        <span>🤖 AI cleaning code</span>
+                    </div>
+                    <div class="timeline-item" id="completion-item">
+                        <span>✅ Cleanup complete</span>
+                    </div>
+                </div>
+
+                <div id="results-section" style="display: none;">
+                    <h4>Processing Results</h4>
+                    <div class="info-grid" id="results-grid">
+                        <!-- Results will be populated here -->
+                    </div>
+                </div>
+
+                <div id="actions" style="text-align: center; margin-top: 30px;">
+                    <button id="refresh-btn" class="btn">Refresh Status</button>
+                    <button id="download-btn" class="btn btn-success" style="display: none;">Download Clean Code</button>
+                    <a href="/" class="btn btn-secondary">Start New Cleanup</a>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        const API_BASE = '/api';
+        let currentJobId = null;
+        let refreshInterval = null;
+        let autoRefreshEnabled = true;
+
+        // Get job ID from URL or prompt user
+        const urlParams = new URLSearchParams(window.location.search);
+        const jobIdFromUrl = urlParams.get('jobId');
+        
+        if (jobIdFromUrl) {
+            currentJobId = jobIdFromUrl;
+            showJobContent();
+            checkJobStatus();
+            startAutoRefresh();
+        } else {
+            document.getElementById('job-not-found').style.display = 'block';
+        }
+
+        // Event listeners
+        document.getElementById('check-job-btn').addEventListener('click', () => {
+            const jobId = document.getElementById('job-id-input').value.trim();
+            if (jobId) {
+                currentJobId = jobId;
+                showJobContent();
+                checkJobStatus();
+                startAutoRefresh();
+                // Update URL
+                window.history.pushState({}, '', `?jobId=${jobId}`);
+            }
+        });
+
+        document.getElementById('refresh-btn').addEventListener('click', checkJobStatus);
+
+        document.getElementById('toggle-refresh').addEventListener('click', () => {
+            autoRefreshEnabled = !autoRefreshEnabled;
+            const btn = document.getElementById('toggle-refresh');
+            
+            if (autoRefreshEnabled) {
+                btn.textContent = 'Pause';
+                startAutoRefresh();
+            } else {
+                btn.textContent = 'Resume';
+                stopAutoRefresh();
+            }
+        });
+
+        function showJobContent() {
+            document.getElementById('job-not-found').style.display = 'none';
+            document.getElementById('job-content').style.display = 'block';
+            document.getElementById('job-id').textContent = currentJobId;
+        }
+
+        async function checkJobStatus() {
+            if (!currentJobId) return;
+
+            try {
+                const response = await fetch(`${API_BASE}/cleanup/jobs/${currentJobId}`);
+                const result = await response.json();
+
+                if (result.success) {
+                    updateJobDisplay(result.data);
+                } else {
+                    showError(`Failed to get job status: ${result.error?.message || 'Unknown error'}`);
+                }
+            } catch (error) {
+                showError(`Error checking job status: ${error.message}`);
+            }
+        }
+
+        function updateJobDisplay(job) {
+            // Update basic info
+            document.getElementById('original-file').textContent = job.originalFileName || 'Unknown';
+            document.getElementById('file-size').textContent = job.fileSizeBytes 
+                ? `${(job.fileSizeBytes / 1024 / 1024).toFixed(1)} MB`
+                : 'Unknown';
+            document.getElementById('created-at').textContent = job.createdAt 
+                ? new Date(job.createdAt).toLocaleString()
+                : 'Unknown';
+
+            // Update status
+            const statusBadge = document.getElementById('status-badge');
+            const progressBar = document.getElementById('progress-bar');
+            const progressText = document.getElementById('progress-text');
+
+            statusBadge.className = `status-badge status-${job.status.toLowerCase()}`;
+            statusBadge.textContent = job.status;
+
+            progressBar.style.width = `${job.progress}%`;
+            progressText.textContent = `${job.progress}% complete`;
+
+            // Update timeline
+            const processingItem = document.getElementById('processing-item');
+            const completionItem = document.getElementById('completion-item');
+
+            if (job.status === 'PROCESSING') {
+                processingItem.classList.add('active');
+                progressBar.style.background = '#007bff';
+            } else if (job.status === 'COMPLETED') {
+                processingItem.classList.add('completed');
+                processingItem.classList.remove('active');
+                completionItem.classList.add('completed');
+                progressBar.style.background = '#28a745';
+                showResults(job);
+                stopAutoRefresh();
+            } else if (job.status === 'FAILED') {
+                processingItem.classList.remove('active');
+                progressBar.style.background = '#dc3545';
+                showError(job.error || 'Processing failed');
+                stopAutoRefresh();
+            }
+
+            // Show download button if completed
+            if (job.status === 'COMPLETED' && job.downloadUrl) {
+                const downloadBtn = document.getElementById('download-btn');
+                downloadBtn.style.display = 'inline-block';
+                downloadBtn.onclick = () => window.location.href = job.downloadUrl;
+            }
+        }
+
+        function showResults(job) {
+            if (!job.results) return;
+
+            const resultsSection = document.getElementById('results-section');
+            const resultsGrid = document.getElementById('results-grid');
+
+            resultsGrid.innerHTML = `
+                <div class="info-item">
+                    <div class="info-label">Total Files</div>
+                    <div class="info-value">${job.results.totalFiles || 'N/A'}</div>
+                </div>
+                <div class="info-item">
+                    <div class="info-label">Lines of Code</div>
+                    <div class="info-value">${job.results.linesOfCode?.toLocaleString() || 'N/A'}</div>
+                </div>
+                <div class="info-item">
+                    <div class="info-label">Languages</div>
+                    <div class="info-value">${Object.keys(job.results.languages || {}).join(', ') || 'N/A'}</div>
+                </div>
+                <div class="info-item">
+                    <div class="info-label">Processing Cost</div>
+                    <div class="info-value">$${job.results.processingCost?.toFixed(2) || '0.00'}</div>
+                </div>
+            `;
+
+            resultsSection.style.display = 'block';
+        }
+
+        function showError(message) {
+            const jobContent = document.getElementById('job-content');
+            if (jobContent.style.display !== 'none') {
+                const errorDiv = document.createElement('div');
+                errorDiv.style.cssText = 'background: #f8d7da; color: #721c24; padding: 15px; border-radius: 6px; margin: 15px 0;';
+                errorDiv.innerHTML = `<strong>Error:</strong> ${message}`;
+                
+                // Remove any existing error
+                const existingError = jobContent.querySelector('.error-message');
+                if (existingError) existingError.remove();
+                
+                errorDiv.className = 'error-message';
+                jobContent.insertBefore(errorDiv, document.getElementById('actions'));
+            }
+        }
+
+        function startAutoRefresh() {
+            if (refreshInterval) clearInterval(refreshInterval);
+            
+            refreshInterval = setInterval(() => {
+                if (autoRefreshEnabled) {
+                    checkJobStatus();
+                }
+            }, 5000);
+        }
+
+        function stopAutoRefresh() {
+            if (refreshInterval) {
+                clearInterval(refreshInterval);
+                refreshInterval = null;
+            }
+            document.getElementById('toggle-refresh').textContent = 'Auto-refresh stopped';
+            document.getElementById('toggle-refresh').disabled = true;
+        }
+
+        // Cleanup on page unload
+        window.addEventListener('beforeunload', () => {
+            if (refreshInterval) clearInterval(refreshInterval);
+        });
+    </script>
+</body>
+</html>

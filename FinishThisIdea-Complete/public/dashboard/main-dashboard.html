@@ -1,0 +1,1058 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <title>FinishThisIdea - Platform Dashboard</title>
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    
+    body {
+      background: #0a0a0a;
+      color: #00ff00;
+      font-family: 'Courier New', monospace;
+      height: 100vh;
+      display: flex;
+      flex-direction: column;
+      overflow: hidden;
+    }
+    
+    /* Header */
+    #header {
+      background: #111;
+      border-bottom: 2px solid #00ff00;
+      padding: 15px 20px;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+    
+    #header h1 {
+      font-size: 24px;
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+    
+    #status-bar {
+      display: flex;
+      gap: 20px;
+      font-size: 12px;
+    }
+    
+    .status-item {
+      display: flex;
+      align-items: center;
+      gap: 5px;
+    }
+    
+    .status-indicator {
+      width: 8px;
+      height: 8px;
+      border-radius: 50%;
+      background: #ff0000;
+    }
+    
+    .status-indicator.online { background: #00ff00; }
+    .status-indicator.warning { background: #ffaa00; }
+    
+    /* Main Layout */
+    #main {
+      flex: 1;
+      display: flex;
+      gap: 10px;
+      padding: 10px;
+      overflow: hidden;
+    }
+    
+    /* Panels */
+    .panel {
+      background: #111;
+      border: 1px solid #333;
+      border-radius: 4px;
+      padding: 15px;
+      display: flex;
+      flex-direction: column;
+      overflow: hidden;
+    }
+    
+    .panel-header {
+      border-bottom: 1px solid #333;
+      padding-bottom: 10px;
+      margin-bottom: 10px;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+    
+    .panel-title {
+      font-size: 14px;
+      color: #00ff00;
+      text-transform: uppercase;
+    }
+    
+    .panel-content {
+      flex: 1;
+      overflow-y: auto;
+    }
+    
+    /* Left Column */
+    #left-column {
+      width: 300px;
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+    }
+    
+    /* Center Column */
+    #center-column {
+      flex: 1;
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+    }
+    
+    /* Right Column */
+    #right-column {
+      width: 350px;
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+    }
+    
+    /* Service Status */
+    #service-status {
+      flex: 1;
+    }
+    
+    .service-item {
+      padding: 10px;
+      margin: 5px 0;
+      border: 1px solid #444;
+      border-radius: 4px;
+      cursor: pointer;
+      transition: all 0.2s;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+    
+    .service-item:hover {
+      border-color: #00ff00;
+      background: rgba(0, 255, 0, 0.1);
+    }
+    
+    .service-item.active {
+      border-color: #00ff00;
+      background: rgba(0, 255, 0, 0.2);
+    }
+    
+    /* Platform Visualization */
+    #platform-viz {
+      flex: 2;
+      position: relative;
+    }
+    
+    #platform-canvas {
+      width: 100%;
+      height: 100%;
+    }
+    
+    /* AI Terminal */
+    #ai-terminal {
+      flex: 1;
+    }
+    
+    #terminal-output {
+      background: #000;
+      padding: 10px;
+      height: 200px;
+      overflow-y: auto;
+      font-size: 12px;
+      white-space: pre-wrap;
+      border: 1px solid #333;
+      margin-bottom: 10px;
+    }
+    
+    #terminal-input-container {
+      display: flex;
+      gap: 10px;
+    }
+    
+    #terminal-input {
+      flex: 1;
+      background: #000;
+      border: 1px solid #333;
+      color: #00ff00;
+      padding: 8px;
+      font-family: inherit;
+      font-size: 12px;
+    }
+    
+    #terminal-submit {
+      background: #00ff00;
+      color: #000;
+      border: none;
+      padding: 8px 15px;
+      cursor: pointer;
+      font-family: inherit;
+      font-weight: bold;
+    }
+    
+    /* Platform Analytics */
+    .stat-row {
+      display: flex;
+      justify-content: space-between;
+      padding: 5px 0;
+      border-bottom: 1px solid #222;
+    }
+    
+    .stat-label {
+      color: #888;
+      font-size: 12px;
+    }
+    
+    .stat-value {
+      color: #00ff00;
+      font-size: 12px;
+    }
+    
+    /* Active Users */
+    .user-item {
+      padding: 8px;
+      margin: 5px 0;
+      border: 1px solid #333;
+      border-radius: 4px;
+      font-size: 12px;
+    }
+    
+    .user-online {
+      border-color: #00ff00;
+      animation: pulse 2s infinite;
+    }
+    
+    @keyframes pulse {
+      0% { opacity: 0.8; }
+      50% { opacity: 1; }
+      100% { opacity: 0.8; }
+    }
+    
+    /* Game Status */
+    .game-item {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      padding: 8px;
+      margin: 5px 0;
+      border: 1px solid #333;
+      border-radius: 4px;
+      font-size: 12px;
+    }
+    
+    .game-active { border-color: #00ff00; }
+    .game-pending { border-color: #ffaa00; }
+    
+    /* Navigation Tabs */
+    .nav-tabs {
+      display: flex;
+      gap: 5px;
+      margin-bottom: 10px;
+    }
+    
+    .nav-tab {
+      background: #222;
+      border: 1px solid #333;
+      color: #888;
+      padding: 5px 10px;
+      cursor: pointer;
+      font-size: 11px;
+      border-radius: 3px;
+    }
+    
+    .nav-tab.active {
+      background: #333;
+      color: #00ff00;
+      border-color: #00ff00;
+    }
+    
+    /* Scrollbar */
+    ::-webkit-scrollbar {
+      width: 8px;
+      height: 8px;
+    }
+    
+    ::-webkit-scrollbar-track {
+      background: #111;
+    }
+    
+    ::-webkit-scrollbar-thumb {
+      background: #333;
+      border-radius: 4px;
+    }
+    
+    ::-webkit-scrollbar-thumb:hover {
+      background: #444;
+    }
+    
+    /* Utilities */
+    .text-green { color: #00ff00; }
+    .text-red { color: #ff0000; }
+    .text-yellow { color: #ffaa00; }
+    .text-blue { color: #00aaff; }
+    .text-purple { color: #aa00ff; }
+    .text-dim { color: #666; }
+    
+    /* Button styles */
+    .btn {
+      background: none;
+      border: 1px solid #333;
+      color: #888;
+      padding: 4px 12px;
+      cursor: pointer;
+      font-family: inherit;
+      font-size: 11px;
+      border-radius: 3px;
+      transition: all 0.2s;
+    }
+    
+    .btn:hover {
+      border-color: #00ff00;
+      color: #00ff00;
+    }
+    
+    .btn.primary {
+      background: #00ff00;
+      color: #000;
+      border-color: #00ff00;
+    }
+    
+    /* Modal styles */
+    .modal {
+      display: none;
+      position: fixed;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      background: rgba(0, 0, 0, 0.8);
+      z-index: 1000;
+    }
+    
+    .modal-content {
+      position: absolute;
+      top: 50%;
+      left: 50%;
+      transform: translate(-50%, -50%);
+      background: #111;
+      border: 1px solid #333;
+      padding: 20px;
+      max-width: 500px;
+      width: 90%;
+    }
+  </style>
+</head>
+<body>
+  <div id="header">
+    <h1>🚀 FinishThisIdea <span class="text-dim">Platform Dashboard</span></h1>
+    <div id="status-bar">
+      <div class="status-item">
+        <span class="status-indicator online" id="api-status"></span>
+        <span>API: <span id="api-status-text">Online</span></span>
+      </div>
+      <div class="status-item">
+        <span class="status-indicator online" id="discord-status"></span>
+        <span>Discord: <span id="discord-status-text">Connected</span></span>
+      </div>
+      <div class="status-item">
+        <span class="status-indicator online" id="telegram-status"></span>
+        <span>Telegram: <span id="telegram-status-text">Active</span></span>
+      </div>
+      <div class="status-item">
+        <span class="text-dim">Session: <span id="session-user">Admin</span></span>
+      </div>
+    </div>
+  </div>
+  
+  <div id="main">
+    <!-- Left Column -->
+    <div id="left-column">
+      <!-- Service Status -->
+      <div class="panel" id="service-status">
+        <div class="panel-header">
+          <h3 class="panel-title">Platform Services</h3>
+          <span class="text-dim" id="service-count">Loading...</span>
+        </div>
+        <div class="panel-content" id="service-list">
+          <div class="service-item active" data-service="core">
+            <div>
+              <div class="text-green">Core Platform</div>
+              <div class="text-dim">API • Database • Auth</div>
+            </div>
+            <span class="text-green">●</span>
+          </div>
+          <div class="service-item" data-service="discord">
+            <div>
+              <div class="text-blue">Discord Bot</div>
+              <div class="text-dim">Commands • Events</div>
+            </div>
+            <span class="text-green">●</span>
+          </div>
+          <div class="service-item" data-service="telegram">
+            <div>
+              <div class="text-purple">Telegram Bot</div>
+              <div class="text-dim">Messages • QR Auth</div>
+            </div>
+            <span class="text-green">●</span>
+          </div>
+          <div class="service-item" data-service="arena">
+            <div>
+              <div class="text-yellow">AI Arena</div>
+              <div class="text-dim">Battles • Tournaments</div>
+            </div>
+            <span class="text-green">●</span>
+          </div>
+          <div class="service-item" data-service="billion">
+            <div>
+              <div class="text-purple">Billion Dollar Game</div>
+              <div class="text-dim">Collective Quest</div>
+            </div>
+            <span class="text-green">●</span>
+          </div>
+        </div>
+      </div>
+      
+      <!-- Game Status -->
+      <div class="panel" style="flex: 1;">
+        <div class="panel-header">
+          <h3 class="panel-title">Active Games</h3>
+          <button id="refresh-games" class="btn">↻</button>
+        </div>
+        <div class="panel-content" id="game-list">
+          <div class="game-item game-active">
+            <span>AI Arena Battle #1337</span>
+            <span class="text-green">Live</span>
+          </div>
+          <div class="game-item game-pending">
+            <span>Tournament Registration</span>
+            <span class="text-yellow">12/16</span>
+          </div>
+          <div class="game-item game-active">
+            <span>Billion Dollar Quest</span>
+            <span class="text-green">$847k</span>
+          </div>
+        </div>
+      </div>
+    </div>
+    
+    <!-- Center Column -->
+    <div id="center-column">
+      <!-- Platform Visualization -->
+      <div class="panel" id="platform-viz">
+        <div class="panel-header">
+          <h3 class="panel-title">Platform Network</h3>
+          <div class="nav-tabs">
+            <div class="nav-tab active" data-tab="network">Network</div>
+            <div class="nav-tab" data-tab="users">Users</div>
+            <div class="nav-tab" data-tab="activity">Activity</div>
+          </div>
+        </div>
+        <div class="panel-content">
+          <canvas id="platform-canvas"></canvas>
+        </div>
+      </div>
+      
+      <!-- AI Terminal -->
+      <div class="panel" id="ai-terminal">
+        <div class="panel-header">
+          <h3 class="panel-title">AI Assistant</h3>
+          <span class="text-dim" id="ai-model">GPT-4 Ready</span>
+        </div>
+        <div class="panel-content">
+          <div id="terminal-output">FinishThisIdea AI Assistant initialized...
+Platform dashboard active.
+> </div>
+          <div id="terminal-input-container">
+            <input type="text" id="terminal-input" placeholder="Ask about platform status, users, games..." autofocus />
+            <button id="terminal-submit">Ask</button>
+          </div>
+        </div>
+      </div>
+    </div>
+    
+    <!-- Right Column -->
+    <div id="right-column">
+      <!-- Platform Analytics -->
+      <div class="panel" style="flex: 1;">
+        <div class="panel-header">
+          <h3 class="panel-title">Platform Analytics</h3>
+          <span class="text-dim" id="analytics-time">Real-time</span>
+        </div>
+        <div class="panel-content">
+          <div class="stat-row">
+            <span class="stat-label">Total Users</span>
+            <span class="stat-value" id="stat-users">0</span>
+          </div>
+          <div class="stat-row">
+            <span class="stat-label">Active Sessions</span>
+            <span class="stat-value" id="stat-sessions">0</span>
+          </div>
+          <div class="stat-row">
+            <span class="stat-label">Code Analyzed</span>
+            <span class="stat-value" id="stat-analyses">0</span>
+          </div>
+          <div class="stat-row">
+            <span class="stat-label">AI Queries</span>
+            <span class="stat-value" id="stat-queries">0</span>
+          </div>
+          <div class="stat-row">
+            <span class="stat-label">Tokens Circulating</span>
+            <span class="stat-value" id="stat-tokens">0</span>
+          </div>
+          <div class="stat-row">
+            <span class="stat-label">Arena Battles</span>
+            <span class="stat-value" id="stat-battles">0</span>
+          </div>
+          <div class="stat-row">
+            <span class="stat-label">System Uptime</span>
+            <span class="stat-value" id="stat-uptime">00:00:00</span>
+          </div>
+        </div>
+      </div>
+      
+      <!-- Active Users -->
+      <div class="panel" style="flex: 1;">
+        <div class="panel-header">
+          <h3 class="panel-title">Online Users</h3>
+          <span class="text-dim" id="user-count">0 Online</span>
+        </div>
+        <div class="panel-content" id="user-list">
+          <div class="user-item user-online">
+            <div class="text-green">Admin User</div>
+            <div class="text-dim">Dashboard • All Permissions</div>
+            <div class="text-dim" style="font-size: 10px;">Last: now</div>
+          </div>
+        </div>
+      </div>
+      
+      <!-- Activity Log -->
+      <div class="panel" style="flex: 1;">
+        <div class="panel-header">
+          <h3 class="panel-title">System Activity</h3>
+          <span class="text-dim">Live Feed</span>
+        </div>
+        <div class="panel-content" id="activity-log" style="font-size: 11px;">
+          <div class="text-dim">[00:00:00] Platform dashboard initialized</div>
+        </div>
+      </div>
+    </div>
+  </div>
+  
+  <!-- Settings Modal -->
+  <div id="settings-modal" class="modal">
+    <div class="modal-content">
+      <h3 class="text-green">Dashboard Settings</h3>
+      <br>
+      <div class="stat-row">
+        <span>Auto-refresh interval:</span>
+        <select id="refresh-interval" style="background: #000; color: #00ff00; border: 1px solid #333;">
+          <option value="1000">1 second</option>
+          <option value="5000" selected>5 seconds</option>
+          <option value="10000">10 seconds</option>
+          <option value="30000">30 seconds</option>
+        </select>
+      </div>
+      <br>
+      <div class="stat-row">
+        <span>Theme:</span>
+        <select id="theme" style="background: #000; color: #00ff00; border: 1px solid #333;">
+          <option value="matrix" selected>Matrix Green</option>
+          <option value="blue">Cyber Blue</option>
+          <option value="purple">Quantum Purple</option>
+        </select>
+      </div>
+      <br>
+      <button class="btn primary" onclick="closeSettings()">Save</button>
+      <button class="btn" onclick="closeSettings()">Cancel</button>
+    </div>
+  </div>
+  
+  <script>
+    // Dashboard state
+    let platformStats = {
+      users: 1,
+      sessions: 1,
+      analyses: 0,
+      queries: 0,
+      tokens: 0,
+      battles: 0,
+      startTime: Date.now()
+    };
+    
+    let websocket = null;
+    let networkNodes = [];
+    let networkLinks = [];
+    let currentTab = 'network';
+    let refreshInterval = 5000;
+    
+    // Initialize dashboard
+    function init() {
+      setupTerminal();
+      setupVisualization();
+      connectWebSocket();
+      startStatusPolling();
+      updateUptime();
+      loadInitialData();
+      setupEventListeners();
+    }
+    
+    // Terminal functionality
+    function setupTerminal() {
+      const input = document.getElementById('terminal-input');
+      const output = document.getElementById('terminal-output');
+      const submit = document.getElementById('terminal-submit');
+      
+      async function sendQuery() {
+        const query = input.value.trim();
+        if (!query) return;
+        
+        input.value = '';
+        output.textContent += query + '\n';
+        
+        try {
+          // Connect to our AI service
+          const res = await fetch('/api/ai/query', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ 
+              prompt: query,
+              context: 'dashboard_admin',
+              userId: 'admin'
+            })
+          });
+          
+          const data = await res.json();
+          output.textContent += data.response + '\n> ';
+          
+          // Update stats
+          platformStats.queries++;
+          updateStats();
+          
+          // Add to activity log
+          addActivity(`AI Query: "${query}"`);
+          
+        } catch (error) {
+          output.textContent += `Error: ${error.message}\n> `;
+        }
+        
+        output.scrollTop = output.scrollHeight;
+      }
+      
+      submit.addEventListener('click', sendQuery);
+      input.addEventListener('keypress', (e) => {
+        if (e.key === 'Enter') sendQuery();
+      });
+    }
+    
+    // Platform visualization
+    function setupVisualization() {
+      const canvas = document.getElementById('platform-canvas');
+      const ctx = canvas.getContext('2d');
+      
+      // Set canvas size
+      function resizeCanvas() {
+        const container = canvas.parentElement;
+        canvas.width = container.clientWidth;
+        canvas.height = container.clientHeight;
+      }
+      
+      resizeCanvas();
+      window.addEventListener('resize', resizeCanvas);
+      
+      // Initialize with core platform node
+      networkNodes = [
+        { id: 'core', x: canvas.width / 2, y: canvas.height / 2, label: 'FinishThisIdea Core', color: '#00ff00', radius: 25 },
+        { id: 'discord', x: canvas.width / 2 - 100, y: canvas.height / 2 - 80, label: 'Discord Bot', color: '#00aaff', radius: 15 },
+        { id: 'telegram', x: canvas.width / 2 + 100, y: canvas.height / 2 - 80, label: 'Telegram Bot', color: '#aa00ff', radius: 15 },
+        { id: 'arena', x: canvas.width / 2 - 120, y: canvas.height / 2 + 80, label: 'AI Arena', color: '#ffaa00', radius: 15 },
+        { id: 'billion', x: canvas.width / 2 + 120, y: canvas.height / 2 + 80, label: 'Billion $ Game', color: '#ff00aa', radius: 15 }
+      ];
+      
+      networkLinks = [
+        { source: 'core', target: 'discord' },
+        { source: 'core', target: 'telegram' },
+        { source: 'core', target: 'arena' },
+        { source: 'core', target: 'billion' }
+      ];
+      
+      // Animation loop
+      function animate() {
+        ctx.fillStyle = '#0a0a0a';
+        ctx.fillRect(0, 0, canvas.width, canvas.height);
+        
+        switch(currentTab) {
+          case 'network':
+            drawNetwork();
+            break;
+          case 'users':
+            drawUserActivity();
+            break;
+          case 'activity':
+            drawActivityChart();
+            break;
+        }
+        
+        requestAnimationFrame(animate);
+      }
+      
+      function drawNetwork() {
+        // Draw links
+        ctx.strokeStyle = '#333';
+        ctx.lineWidth = 2;
+        networkLinks.forEach(link => {
+          const source = networkNodes.find(n => n.id === link.source);
+          const target = networkNodes.find(n => n.id === link.target);
+          if (source && target) {
+            ctx.beginPath();
+            ctx.moveTo(source.x, source.y);
+            ctx.lineTo(target.x, target.y);
+            ctx.stroke();
+          }
+        });
+        
+        // Draw nodes
+        networkNodes.forEach(node => {
+          // Node circle
+          ctx.fillStyle = node.color || '#00ff00';
+          ctx.beginPath();
+          ctx.arc(node.x, node.y, node.radius || 10, 0, Math.PI * 2);
+          ctx.fill();
+          
+          // Node label
+          ctx.fillStyle = '#00ff00';
+          ctx.font = '10px Courier New';
+          ctx.textAlign = 'center';
+          ctx.fillText(node.label, node.x, node.y - node.radius - 5);
+        });
+      }
+      
+      function drawUserActivity() {
+        // Simple user activity visualization
+        ctx.fillStyle = '#00ff00';
+        ctx.font = '12px Courier New';
+        ctx.textAlign = 'center';
+        ctx.fillText(`${platformStats.users} Active Users`, canvas.width / 2, canvas.height / 2);
+        ctx.fillText(`${platformStats.sessions} Sessions`, canvas.width / 2, canvas.height / 2 + 20);
+      }
+      
+      function drawActivityChart() {
+        // Simple activity chart
+        const data = [platformStats.analyses, platformStats.queries, platformStats.battles];
+        const labels = ['Analyses', 'Queries', 'Battles'];
+        const barWidth = 60;
+        const barSpacing = 20;
+        const startX = (canvas.width - (data.length * (barWidth + barSpacing))) / 2;
+        
+        data.forEach((value, i) => {
+          const height = Math.max(5, value * 2);
+          const x = startX + i * (barWidth + barSpacing);
+          const y = canvas.height / 2 - height / 2;
+          
+          ctx.fillStyle = '#00ff00';
+          ctx.fillRect(x, y, barWidth, height);
+          
+          ctx.fillStyle = '#666';
+          ctx.font = '10px Courier New';
+          ctx.textAlign = 'center';
+          ctx.fillText(labels[i], x + barWidth / 2, y + height + 15);
+          ctx.fillText(value.toString(), x + barWidth / 2, y - 5);
+        });
+      }
+      
+      animate();
+    }
+    
+    // WebSocket connection
+    function connectWebSocket() {
+      const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
+      const wsUrl = `${protocol}//${window.location.hostname}:8081`;
+      
+      websocket = new WebSocket(wsUrl);
+      
+      websocket.onopen = () => {
+        console.log('Dashboard WebSocket connected');
+        addActivity('Connected to platform real-time stream');
+        
+        // Subscribe to all dashboards
+        websocket.send(JSON.stringify({
+          type: 'subscribe',
+          dashboard: 'executive'
+        }));
+      };
+      
+      websocket.onmessage = (event) => {
+        const data = JSON.parse(event.data);
+        
+        switch(data.type) {
+          case 'dashboard-update':
+            handleDashboardUpdate(data);
+            break;
+          case 'user-joined':
+            addUser(data.user);
+            break;
+          case 'user-left':
+            removeUser(data.userId);
+            break;
+          case 'game-event':
+            handleGameEvent(data.event);
+            break;
+        }
+      };
+      
+      websocket.onerror = (error) => {
+        console.error('Dashboard WebSocket error:', error);
+        addActivity('WebSocket connection error');
+      };
+      
+      websocket.onclose = () => {
+        console.log('Dashboard WebSocket disconnected');
+        addActivity('Disconnected from real-time stream');
+        // Reconnect after 5 seconds
+        setTimeout(connectWebSocket, 5000);
+      };
+    }
+    
+    // Handle dashboard updates
+    function handleDashboardUpdate(data) {
+      if (data.dashboard === 'executive') {
+        const execData = data.data;
+        platformStats.users = execData.totalUsers || platformStats.users;
+        platformStats.sessions = execData.activeUsers || platformStats.sessions;
+        updateStats();
+      }
+    }
+    
+    // Handle game events
+    function handleGameEvent(event) {
+      switch(event.type) {
+        case 'arena.battle.started':
+          platformStats.battles++;
+          addActivity(`New arena battle: ${event.fighter1} vs ${event.fighter2}`);
+          break;
+        case 'billion.player.joined':
+          addActivity(`New player joined Billion Dollar Game: ${event.username}`);
+          break;
+        case 'code.analyzed':
+          platformStats.analyses++;
+          addActivity(`Code analysis completed for user ${event.userId}`);
+          break;
+      }
+      updateStats();
+    }
+    
+    // Add user to list
+    function addUser(user) {
+      const userList = document.getElementById('user-list');
+      const div = document.createElement('div');
+      div.className = 'user-item user-online';
+      div.id = `user-${user.id}`;
+      div.innerHTML = `
+        <div class="text-green">${user.username}</div>
+        <div class="text-dim">${user.platform} • ${user.activity}</div>
+        <div class="text-dim" style="font-size: 10px;">Last: now</div>
+      `;
+      userList.appendChild(div);
+      
+      platformStats.users++;
+      updateStats();
+    }
+    
+    // Remove user from list
+    function removeUser(userId) {
+      const userElement = document.getElementById(`user-${userId}`);
+      if (userElement) {
+        userElement.remove();
+        platformStats.users--;
+        updateStats();
+      }
+    }
+    
+    // Status polling
+    function startStatusPolling() {
+      setInterval(async () => {
+        try {
+          // Check service status
+          const res = await fetch('/api/services/status');
+          const status = await res.json();
+          
+          updateServiceStatus(status);
+        } catch (error) {
+          console.error('Status check failed:', error);
+        }
+      }, refreshInterval);
+    }
+    
+    // Update service status
+    function updateServiceStatus(status) {
+      // Update status indicators
+      document.getElementById('api-status').className = 
+        `status-indicator ${status.api ? 'online' : ''}`;
+      document.getElementById('api-status-text').textContent = 
+        status.api ? 'Online' : 'Offline';
+        
+      document.getElementById('discord-status').className = 
+        `status-indicator ${status.discord ? 'online' : ''}`;
+      document.getElementById('discord-status-text').textContent = 
+        status.discord ? 'Connected' : 'Disconnected';
+        
+      document.getElementById('telegram-status').className = 
+        `status-indicator ${status.telegram ? 'online' : ''}`;
+      document.getElementById('telegram-status-text').textContent = 
+        status.telegram ? 'Active' : 'Inactive';
+    }
+    
+    // Update stats
+    function updateStats() {
+      document.getElementById('stat-users').textContent = platformStats.users;
+      document.getElementById('stat-sessions').textContent = platformStats.sessions;
+      document.getElementById('stat-analyses').textContent = platformStats.analyses;
+      document.getElementById('stat-queries').textContent = platformStats.queries;
+      document.getElementById('stat-tokens').textContent = platformStats.tokens.toLocaleString();
+      document.getElementById('stat-battles').textContent = platformStats.battles;
+      document.getElementById('user-count').textContent = `${platformStats.users} Online`;
+    }
+    
+    // Update uptime
+    function updateUptime() {
+      setInterval(() => {
+        const uptime = Date.now() - platformStats.startTime;
+        const hours = Math.floor(uptime / 3600000);
+        const minutes = Math.floor((uptime % 3600000) / 60000);
+        const seconds = Math.floor((uptime % 60000) / 1000);
+        
+        document.getElementById('stat-uptime').textContent = 
+          `${hours.toString().padStart(2, '0')}:${minutes.toString().padStart(2, '0')}:${seconds.toString().padStart(2, '0')}`;
+      }, 1000);
+    }
+    
+    // Add activity
+    function addActivity(message) {
+      const log = document.getElementById('activity-log');
+      const time = new Date().toLocaleTimeString();
+      const entry = document.createElement('div');
+      entry.className = 'text-dim';
+      entry.textContent = `[${time}] ${message}`;
+      log.appendChild(entry);
+      log.scrollTop = log.scrollHeight;
+      
+      // Keep only last 50 entries
+      while (log.children.length > 50) {
+        log.removeChild(log.firstChild);
+      }
+    }
+    
+    // Load initial data
+    async function loadInitialData() {
+      try {
+        // Load platform stats
+        const res = await fetch('/api/dashboard/executive/data');
+        const data = await res.json();
+        
+        if (data) {
+          platformStats = { ...platformStats, ...data };
+          updateStats();
+        }
+      } catch (error) {
+        console.error('Failed to load initial data:', error);
+      }
+      
+      addActivity('Dashboard connected to FinishThisIdea platform');
+    }
+    
+    // Setup event listeners
+    function setupEventListeners() {
+      // Tab navigation
+      document.querySelectorAll('.nav-tab').forEach(tab => {
+        tab.addEventListener('click', () => {
+          document.querySelectorAll('.nav-tab').forEach(t => t.classList.remove('active'));
+          tab.classList.add('active');
+          currentTab = tab.dataset.tab;
+        });
+      });
+      
+      // Service selection
+      document.querySelectorAll('.service-item').forEach(item => {
+        item.addEventListener('click', () => {
+          document.querySelectorAll('.service-item').forEach(i => i.classList.remove('active'));
+          item.classList.add('active');
+          const service = item.dataset.service;
+          addActivity(`Viewing ${service} service details`);
+        });
+      });
+      
+      // Refresh games
+      document.getElementById('refresh-games').addEventListener('click', () => {
+        addActivity('Refreshing game status...');
+        loadGameStatus();
+      });
+      
+      // Keyboard shortcuts
+      document.addEventListener('keydown', (e) => {
+        if (e.ctrlKey || e.metaKey) {
+          switch(e.key) {
+            case '1':
+              e.preventDefault();
+              document.querySelector('[data-tab="network"]').click();
+              break;
+            case '2':
+              e.preventDefault();
+              document.querySelector('[data-tab="users"]').click();
+              break;
+            case '3':
+              e.preventDefault();
+              document.querySelector('[data-tab="activity"]').click();
+              break;
+          }
+        }
+      });
+    }
+    
+    // Load game status
+    async function loadGameStatus() {
+      try {
+        // Load AI Arena status
+        const arenaRes = await fetch('/api/arena/stats');
+        const arenaData = await arenaRes.json();
+        
+        // Load Billion Dollar Game status
+        const billionRes = await fetch('/api/billion/stats');
+        const billionData = await billionRes.json();
+        
+        platformStats.battles = arenaData.totalBattles || 0;
+        updateStats();
+        
+        addActivity(`Game status updated: ${arenaData.activeBattles} active battles, $${billionData.totalCollected?.toLocaleString()} raised`);
+      } catch (error) {
+        console.error('Failed to load game status:', error);
+      }
+    }
+    
+    // Settings modal
+    function openSettings() {
+      document.getElementById('settings-modal').style.display = 'block';
+    }
+    
+    function closeSettings() {
+      document.getElementById('settings-modal').style.display = 'none';
+      
+      // Apply settings
+      refreshInterval = parseInt(document.getElementById('refresh-interval').value);
+      addActivity(`Settings updated: ${refreshInterval/1000}s refresh`);
+    }
+    
+    // Double-click header to open settings
+    document.getElementById('header').addEventListener('dblclick', openSettings);
+    
+    // Initialize on load
+    window.addEventListener('load', init);
+  </script>
+</body>
+</html>

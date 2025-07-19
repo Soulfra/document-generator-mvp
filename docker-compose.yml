@@ -1,0 +1,311 @@
+version: '3.8'
+
+services:
+  # PostgreSQL Database
+  postgres:
+    image: postgres:16-alpine
+    container_name: document-generator-postgres
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres
+      POSTGRES_DB: document_generator
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    networks:
+      - document-generator
+
+  # Redis for caching and queues
+  redis:
+    image: redis:7-alpine
+    container_name: document-generator-redis
+    command: redis-server --appendonly yes
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis_data:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    networks:
+      - document-generator
+
+  # MinIO for S3-compatible storage
+  minio:
+    image: minio/minio:latest
+    container_name: document-generator-minio
+    command: server /data --console-address ":9001"
+    environment:
+      MINIO_ROOT_USER: minioadmin
+      MINIO_ROOT_PASSWORD: minioadmin123
+    ports:
+      - "9000:9000"
+      - "9001:9001"
+    volumes:
+      - minio_data:/data
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:9000/minio/health/live"]
+      interval: 30s
+      timeout: 20s
+      retries: 3
+    networks:
+      - document-generator
+
+  # Ollama for local AI
+  ollama:
+    image: ollama/ollama:latest
+    container_name: document-generator-ollama
+    ports:
+      - "11434:11434"
+    volumes:
+      - ollama_data:/root/.ollama
+    environment:
+      OLLAMA_HOST: 0.0.0.0
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:11434/api/tags"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+    deploy:
+      resources:
+        limits:
+          memory: 8G
+        reservations:
+          memory: 4G
+    networks:
+      - document-generator
+
+  # Template Processor Service (from MCP)
+  template-processor:
+    build:
+      context: ./mcp
+      dockerfile: Dockerfile
+    container_name: document-generator-template-processor
+    environment:
+      NODE_ENV: production
+      PORT: 3000
+      WS_PORT: 8081
+      DATABASE_URL: postgresql://postgres:postgres@postgres:5432/document_generator
+      REDIS_URL: redis://redis:6379
+      OLLAMA_BASE_URL: http://ollama:11434
+      OPENAI_API_KEY: ${OPENAI_API_KEY:-}
+      ANTHROPIC_API_KEY: ${ANTHROPIC_API_KEY:-}
+      DEMO_MODE: ${DEMO_MODE:-true}
+    ports:
+      - "3000:3000"
+      - "8081:8081"
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+      ollama:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:3000/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+    networks:
+      - document-generator
+    volumes:
+      - ./templates:/app/templates
+      - ./mcp/src:/app/src
+
+  # AI API Service (from FinishThisIdea)
+  ai-api:
+    build:
+      context: ./FinishThisIdea
+      dockerfile: Dockerfile
+    container_name: document-generator-ai-api
+    environment:
+      NODE_ENV: production
+      PORT: 3001
+      DATABASE_URL: postgresql://postgres:postgres@postgres:5432/document_generator
+      REDIS_URL: redis://redis:6379
+      S3_ENDPOINT: http://minio:9000
+      AWS_ACCESS_KEY_ID: minioadmin
+      AWS_SECRET_ACCESS_KEY: minioadmin123
+      S3_BUCKET: document-generator-uploads
+      OLLAMA_BASE_URL: http://ollama:11434
+      ANTHROPIC_API_KEY: ${ANTHROPIC_API_KEY:-}
+      OPENAI_API_KEY: ${OPENAI_API_KEY:-}
+      STRIPE_SECRET_KEY: ${STRIPE_SECRET_KEY:-}
+      STRIPE_WEBHOOK_SECRET: ${STRIPE_WEBHOOK_SECRET:-}
+    ports:
+      - "3001:3001"
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+      minio:
+        condition: service_healthy
+      ollama:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:3001/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+    networks:
+      - document-generator
+    volumes:
+      - ./FinishThisIdea/src:/app/src
+
+  # Platform Hub (from FinishThisIdea-Complete)
+  platform-hub:
+    build:
+      context: ./FinishThisIdea-Complete
+      dockerfile: Dockerfile
+    container_name: document-generator-platform-hub
+    environment:
+      NODE_ENV: production
+      PORT: 8080
+      API_GATEWAY_URL: http://template-processor:3000
+      AI_API_URL: http://ai-api:3001
+      WS_URL: ws://template-processor:8081
+    ports:
+      - "8080:8080"
+    depends_on:
+      - template-processor
+      - ai-api
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8080/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+    networks:
+      - document-generator
+    volumes:
+      - ./FinishThisIdea-Complete/public:/app/public
+
+  # Sovereign Agents Service
+  sovereign-agents:
+    build:
+      context: ./services/sovereign-agents
+      dockerfile: Dockerfile
+    container_name: document-generator-sovereign-agents
+    environment:
+      NODE_ENV: production
+      PORT: 8085
+      DATABASE_PATH: /app/data/sovereign-agents.db
+      DATA_DIR: /app/data
+      LOG_LEVEL: info
+      OLLAMA_BASE_URL: http://ollama:11434
+      ANTHROPIC_API_KEY: ${ANTHROPIC_API_KEY:-}
+      OPENAI_API_KEY: ${OPENAI_API_KEY:-}
+    ports:
+      - "8085:8085"
+    depends_on:
+      ollama:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "node", "health-check.js"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+    networks:
+      - document-generator
+    volumes:
+      - sovereign_data:/app/data
+      - sovereign_logs:/app/logs
+
+  # Analytics Service (optional, from FinishThisIdea-Complete)
+  analytics:
+    build:
+      context: ./FinishThisIdea-Complete
+      dockerfile: Dockerfile.analytics
+    container_name: document-generator-analytics
+    environment:
+      NODE_ENV: production
+      PORT: 3002
+      DATABASE_URL: postgresql://postgres:postgres@postgres:5432/document_generator
+      REDIS_URL: redis://redis:6379
+      SOVEREIGN_AGENTS_URL: http://sovereign-agents:8085
+    ports:
+      - "3002:3002"
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+      sovereign-agents:
+        condition: service_healthy
+    networks:
+      - document-generator
+
+  # Prometheus for monitoring
+  prometheus:
+    image: prom/prometheus:latest
+    container_name: document-generator-prometheus
+    command:
+      - '--config.file=/etc/prometheus/prometheus.yml'
+      - '--storage.tsdb.path=/prometheus'
+    ports:
+      - "9090:9090"
+    volumes:
+      - ./monitoring/prometheus.yml:/etc/prometheus/prometheus.yml
+      - prometheus_data:/prometheus
+    networks:
+      - document-generator
+
+  # Grafana for visualization
+  grafana:
+    image: grafana/grafana:latest
+    container_name: document-generator-grafana
+    environment:
+      GF_SECURITY_ADMIN_USER: admin
+      GF_SECURITY_ADMIN_PASSWORD: admin
+      GF_USERS_ALLOW_SIGN_UP: false
+    ports:
+      - "3003:3000"
+    volumes:
+      - ./monitoring/grafana/dashboards:/etc/grafana/provisioning/dashboards
+      - ./monitoring/grafana/datasources:/etc/grafana/provisioning/datasources
+      - grafana_data:/var/lib/grafana
+    depends_on:
+      - prometheus
+    networks:
+      - document-generator
+
+  # Nginx reverse proxy (optional, for production)
+  nginx:
+    image: nginx:alpine
+    container_name: document-generator-nginx
+    ports:
+      - "80:80"
+      - "443:443"
+    volumes:
+      - ./nginx/nginx.conf:/etc/nginx/nginx.conf
+      - ./nginx/ssl:/etc/nginx/ssl
+    depends_on:
+      - template-processor
+      - ai-api
+      - platform-hub
+    networks:
+      - document-generator
+    profiles:
+      - production
+
+networks:
+  document-generator:
+    driver: bridge
+
+volumes:
+  postgres_data:
+  redis_data:
+  minio_data:
+  ollama_data:
+  prometheus_data:
+  grafana_data:
+  sovereign_data:
+  sovereign_logs:

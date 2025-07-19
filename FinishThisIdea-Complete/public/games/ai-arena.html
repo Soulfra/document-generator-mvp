@@ -1,0 +1,1029 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>FinishThisIdea - AI Arena</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            background: linear-gradient(135deg, #0a0a0a, #1a1a2e, #16213e, #2a1a3a);
+            color: #fff;
+            min-height: 100vh;
+            overflow-x: hidden;
+        }
+
+        /* Header */
+        .arena-header {
+            background: rgba(255, 255, 255, 0.05);
+            backdrop-filter: blur(20px);
+            padding: 24px 32px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            border-bottom: 1px solid #333;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .arena-header::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: linear-gradient(45deg, transparent, rgba(255, 119, 198, 0.1), transparent);
+            transform: translateX(-100%);
+            transition: transform 0.6s;
+        }
+
+        .arena-header:hover::before {
+            transform: translateX(100%);
+        }
+
+        .arena-title {
+            font-size: 2.5em;
+            font-weight: 600;
+            background: linear-gradient(45deg, #ff77c6, #00d4ff, #00ff88);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            display: flex;
+            align-items: center;
+            gap: 12px;
+        }
+
+        .user-stats {
+            display: flex;
+            gap: 24px;
+            align-items: center;
+        }
+
+        .stat-item {
+            text-align: center;
+            padding: 8px 16px;
+            background: rgba(255, 255, 255, 0.1);
+            border-radius: 12px;
+            border: 1px solid #333;
+        }
+
+        .stat-value {
+            font-size: 1.4em;
+            font-weight: 600;
+            color: #00d4ff;
+        }
+
+        .stat-label {
+            font-size: 0.8em;
+            color: #888;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+        }
+
+        /* Navigation */
+        .arena-nav {
+            background: rgba(255, 255, 255, 0.02);
+            padding: 16px 32px;
+            display: flex;
+            gap: 32px;
+            border-bottom: 1px solid #333;
+        }
+
+        .nav-tab {
+            background: none;
+            border: none;
+            color: #888;
+            padding: 12px 24px;
+            border-radius: 8px;
+            cursor: pointer;
+            transition: all 0.3s;
+            font-size: 14px;
+            font-weight: 500;
+        }
+
+        .nav-tab:hover {
+            color: #fff;
+            background: rgba(255, 255, 255, 0.1);
+        }
+
+        .nav-tab.active {
+            color: #00d4ff;
+            background: rgba(0, 212, 255, 0.2);
+            border: 1px solid #00d4ff;
+        }
+
+        /* Main Content */
+        .arena-main {
+            padding: 32px;
+            max-width: 1400px;
+            margin: 0 auto;
+        }
+
+        .content-section {
+            display: none;
+        }
+
+        .content-section.active {
+            display: block;
+        }
+
+        /* Battle Arena */
+        .battle-grid {
+            display: grid;
+            grid-template-columns: 1fr 300px 1fr;
+            gap: 32px;
+            margin-bottom: 32px;
+            align-items: center;
+        }
+
+        .fighter-card {
+            background: rgba(255, 255, 255, 0.05);
+            border: 2px solid #333;
+            border-radius: 20px;
+            padding: 24px;
+            text-align: center;
+            backdrop-filter: blur(10px);
+            transition: all 0.3s;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .fighter-card.selected {
+            border-color: #00d4ff;
+            box-shadow: 0 0 30px rgba(0, 212, 255, 0.3);
+        }
+
+        .fighter-card::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: linear-gradient(45deg, transparent, rgba(0, 212, 255, 0.1), transparent);
+            transform: translateX(-100%);
+            transition: transform 0.6s;
+        }
+
+        .fighter-card:hover::before {
+            transform: translateX(100%);
+        }
+
+        .fighter-avatar {
+            width: 120px;
+            height: 120px;
+            border-radius: 50%;
+            background: linear-gradient(45deg, #667eea, #764ba2);
+            margin: 0 auto 16px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 48px;
+            font-weight: 600;
+        }
+
+        .fighter-name {
+            font-size: 1.4em;
+            font-weight: 600;
+            margin-bottom: 8px;
+            color: #fff;
+        }
+
+        .fighter-type {
+            color: #00d4ff;
+            font-size: 0.9em;
+            margin-bottom: 16px;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+        }
+
+        .fighter-stats {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 12px;
+            margin-bottom: 16px;
+        }
+
+        .fighter-stat {
+            background: rgba(255, 255, 255, 0.1);
+            padding: 8px 12px;
+            border-radius: 8px;
+            font-size: 0.9em;
+        }
+
+        .fighter-stat strong {
+            color: #00ff88;
+        }
+
+        .vs-indicator {
+            text-align: center;
+            font-size: 3em;
+            font-weight: 600;
+            color: #ff77c6;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 16px;
+        }
+
+        .battle-countdown {
+            font-size: 0.5em;
+            color: #888;
+        }
+
+        .battle-actions {
+            display: flex;
+            gap: 16px;
+            justify-content: center;
+            margin-top: 32px;
+        }
+
+        .action-btn {
+            background: linear-gradient(135deg, #667eea, #764ba2);
+            border: none;
+            color: white;
+            padding: 16px 32px;
+            border-radius: 25px;
+            font-size: 16px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .action-btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 8px 25px rgba(102, 126, 234, 0.4);
+        }
+
+        .action-btn.primary {
+            background: linear-gradient(135deg, #00ff88, #00d4ff);
+            color: #000;
+        }
+
+        .action-btn.danger {
+            background: linear-gradient(135deg, #ff4444, #cc0000);
+        }
+
+        /* Tournament Bracket */
+        .tournament-bracket {
+            display: grid;
+            grid-template-columns: repeat(4, 1fr);
+            gap: 24px;
+            margin-bottom: 32px;
+        }
+
+        .bracket-round {
+            background: rgba(255, 255, 255, 0.05);
+            border: 1px solid #333;
+            border-radius: 16px;
+            padding: 20px;
+        }
+
+        .round-title {
+            text-align: center;
+            font-weight: 600;
+            color: #00d4ff;
+            margin-bottom: 16px;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+        }
+
+        .bracket-match {
+            background: rgba(255, 255, 255, 0.1);
+            border-radius: 12px;
+            padding: 16px;
+            margin-bottom: 12px;
+            cursor: pointer;
+            transition: all 0.3s;
+        }
+
+        .bracket-match:hover {
+            background: rgba(255, 255, 255, 0.15);
+            transform: translateX(4px);
+        }
+
+        .match-fighters {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 8px;
+        }
+
+        .match-fighter {
+            font-size: 0.9em;
+            color: #ccc;
+        }
+
+        .match-fighter.winner {
+            color: #00ff88;
+            font-weight: 600;
+        }
+
+        .match-score {
+            text-align: center;
+            font-size: 0.8em;
+            color: #888;
+        }
+
+        /* Leaderboard */
+        .leaderboard-table {
+            background: rgba(255, 255, 255, 0.05);
+            border-radius: 16px;
+            overflow: hidden;
+            margin-bottom: 32px;
+        }
+
+        .leaderboard-header {
+            background: rgba(255, 255, 255, 0.1);
+            padding: 20px;
+            display: grid;
+            grid-template-columns: 60px 1fr 120px 120px 120px 120px;
+            gap: 20px;
+            font-weight: 600;
+            color: #00d4ff;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            font-size: 0.9em;
+        }
+
+        .leaderboard-row {
+            padding: 16px 20px;
+            display: grid;
+            grid-template-columns: 60px 1fr 120px 120px 120px 120px;
+            gap: 20px;
+            border-bottom: 1px solid #333;
+            align-items: center;
+            transition: background 0.3s;
+        }
+
+        .leaderboard-row:hover {
+            background: rgba(255, 255, 255, 0.05);
+        }
+
+        .rank {
+            font-size: 1.2em;
+            font-weight: 600;
+            color: #ff77c6;
+        }
+
+        .rank.top-3 {
+            color: #ffd700;
+        }
+
+        .fighter-info {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+        }
+
+        .mini-avatar {
+            width: 32px;
+            height: 32px;
+            border-radius: 50%;
+            background: linear-gradient(45deg, #667eea, #764ba2);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 14px;
+            font-weight: 600;
+        }
+
+        /* Create Fighter */
+        .create-fighter-form {
+            background: rgba(255, 255, 255, 0.05);
+            border: 1px solid #333;
+            border-radius: 20px;
+            padding: 32px;
+            max-width: 600px;
+            margin: 0 auto;
+        }
+
+        .form-group {
+            margin-bottom: 24px;
+        }
+
+        .form-label {
+            display: block;
+            margin-bottom: 8px;
+            font-weight: 600;
+            color: #fff;
+        }
+
+        .form-input {
+            width: 100%;
+            background: rgba(10, 10, 10, 0.8);
+            border: 2px solid #333;
+            color: #fff;
+            padding: 12px 16px;
+            border-radius: 8px;
+            font-size: 14px;
+            transition: border-color 0.3s;
+        }
+
+        .form-input:focus {
+            outline: none;
+            border-color: #667eea;
+        }
+
+        .form-select {
+            width: 100%;
+            background: rgba(10, 10, 10, 0.8);
+            border: 2px solid #333;
+            color: #fff;
+            padding: 12px 16px;
+            border-radius: 8px;
+            font-size: 14px;
+        }
+
+        .slider-container {
+            margin: 16px 0;
+        }
+
+        .slider {
+            width: 100%;
+            margin: 8px 0;
+        }
+
+        .slider-value {
+            color: #00d4ff;
+            font-weight: 600;
+            float: right;
+        }
+
+        /* Battle Log */
+        .battle-log {
+            background: rgba(0, 0, 0, 0.5);
+            border-radius: 16px;
+            padding: 24px;
+            height: 400px;
+            overflow-y: auto;
+            font-family: monospace;
+            font-size: 14px;
+            line-height: 1.6;
+        }
+
+        .log-entry {
+            margin-bottom: 8px;
+            padding: 8px 12px;
+            border-radius: 6px;
+            animation: fadeIn 0.5s ease-in;
+        }
+
+        .log-info {
+            background: rgba(0, 212, 255, 0.1);
+            border-left: 3px solid #00d4ff;
+        }
+
+        .log-success {
+            background: rgba(0, 255, 136, 0.1);
+            border-left: 3px solid #00ff88;
+        }
+
+        .log-warning {
+            background: rgba(255, 170, 0, 0.1);
+            border-left: 3px solid #ffaa00;
+        }
+
+        .log-error {
+            background: rgba(255, 68, 68, 0.1);
+            border-left: 3px solid #ff4444;
+        }
+
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(10px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+
+        /* Responsive */
+        @media (max-width: 768px) {
+            .battle-grid {
+                grid-template-columns: 1fr;
+                gap: 20px;
+            }
+
+            .vs-indicator {
+                transform: rotate(90deg);
+                font-size: 2em;
+            }
+
+            .tournament-bracket {
+                grid-template-columns: 1fr;
+            }
+
+            .leaderboard-header,
+            .leaderboard-row {
+                grid-template-columns: 40px 1fr 80px 80px;
+                gap: 12px;
+                font-size: 0.8em;
+            }
+
+            .arena-header {
+                flex-direction: column;
+                gap: 16px;
+                padding: 20px;
+            }
+
+            .user-stats {
+                gap: 16px;
+            }
+
+            .arena-nav {
+                padding: 16px 20px;
+                gap: 16px;
+                overflow-x: auto;
+            }
+
+            .arena-main {
+                padding: 20px;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="arena-header">
+        <div class="arena-title">⚔️ AI Arena</div>
+        <div class="user-stats">
+            <div class="stat-item">
+                <div class="stat-value" id="userRank">12</div>
+                <div class="stat-label">Rank</div>
+            </div>
+            <div class="stat-item">
+                <div class="stat-value" id="userWins">47</div>
+                <div class="stat-label">Wins</div>
+            </div>
+            <div class="stat-item">
+                <div class="stat-value" id="userTokens">2,340</div>
+                <div class="stat-label">Tokens</div>
+            </div>
+        </div>
+    </div>
+
+    <div class="arena-nav">
+        <button class="nav-tab active" onclick="showSection('battle')">⚔️ Battle</button>
+        <button class="nav-tab" onclick="showSection('tournament')">🏆 Tournament</button>
+        <button class="nav-tab" onclick="showSection('leaderboard')">📊 Leaderboard</button>
+        <button class="nav-tab" onclick="showSection('create')">🤖 Create Fighter</button>
+        <button class="nav-tab" onclick="showSection('history')">📜 Battle History</button>
+    </div>
+
+    <div class="arena-main">
+        <!-- Battle Section -->
+        <div class="content-section active" id="battleSection">
+            <div class="battle-grid">
+                <div class="fighter-card selected" id="playerFighter">
+                    <div class="fighter-avatar">🤖</div>
+                    <div class="fighter-name">CodeWarrior</div>
+                    <div class="fighter-type">Algorithmic Specialist</div>
+                    <div class="fighter-stats">
+                        <div class="fighter-stat">Attack: <strong>85</strong></div>
+                        <div class="fighter-stat">Defense: <strong>72</strong></div>
+                        <div class="fighter-stat">Speed: <strong>90</strong></div>
+                        <div class="fighter-stat">Intel: <strong>95</strong></div>
+                    </div>
+                    <div style="color: #00ff88; font-size: 0.9em;">Ready to Battle</div>
+                </div>
+
+                <div class="vs-indicator">
+                    VS
+                    <div class="battle-countdown" id="battleCountdown">Next match in 2:45</div>
+                </div>
+
+                <div class="fighter-card" id="opponentFighter">
+                    <div class="fighter-avatar">🧠</div>
+                    <div class="fighter-name">MindHacker</div>
+                    <div class="fighter-type">Neural Network Master</div>
+                    <div class="fighter-stats">
+                        <div class="fighter-stat">Attack: <strong>78</strong></div>
+                        <div class="fighter-stat">Defense: <strong>88</strong></div>
+                        <div class="fighter-stat">Speed: <strong>82</strong></div>
+                        <div class="fighter-stat">Intel: <strong>92</strong></div>
+                    </div>
+                    <div style="color: #ffaa00; font-size: 0.9em;">Searching opponent...</div>
+                </div>
+            </div>
+
+            <div class="battle-actions">
+                <button class="action-btn" onclick="quickMatch()">⚡ Quick Match</button>
+                <button class="action-btn primary" onclick="startBattle()">🚀 Start Battle</button>
+                <button class="action-btn" onclick="placeBet()">💰 Place Bet</button>
+            </div>
+
+            <div class="battle-log" id="battleLog">
+                <div class="log-entry log-info">[ARENA] Welcome to AI Arena! Select your fighter and prepare for battle.</div>
+                <div class="log-entry log-success">[SYSTEM] CodeWarrior is ready for deployment.</div>
+                <div class="log-entry log-info">[MATCHMAKING] Searching for worthy opponents...</div>
+            </div>
+        </div>
+
+        <!-- Tournament Section -->
+        <div class="content-section" id="tournamentSection">
+            <h2 style="text-align: center; margin-bottom: 32px; color: #00d4ff;">🏆 Championship Tournament</h2>
+            <div class="tournament-bracket">
+                <div class="bracket-round">
+                    <div class="round-title">Quarterfinals</div>
+                    <div class="bracket-match">
+                        <div class="match-fighters">
+                            <span class="match-fighter winner">CodeWarrior</span>
+                            <span class="match-fighter">ByteBeast</span>
+                        </div>
+                        <div class="match-score">3-1</div>
+                    </div>
+                    <div class="bracket-match">
+                        <div class="match-fighters">
+                            <span class="match-fighter winner">MindHacker</span>
+                            <span class="match-fighter">LogicLord</span>
+                        </div>
+                        <div class="match-score">3-2</div>
+                    </div>
+                </div>
+                
+                <div class="bracket-round">
+                    <div class="round-title">Semifinals</div>
+                    <div class="bracket-match">
+                        <div class="match-fighters">
+                            <span class="match-fighter">CodeWarrior</span>
+                            <span class="match-fighter">MindHacker</span>
+                        </div>
+                        <div class="match-score">Live</div>
+                    </div>
+                </div>
+                
+                <div class="bracket-round">
+                    <div class="round-title">Finals</div>
+                    <div class="bracket-match">
+                        <div class="match-fighters">
+                            <span class="match-fighter">TBD</span>
+                            <span class="match-fighter">TBD</span>
+                        </div>
+                        <div class="match-score">Pending</div>
+                    </div>
+                </div>
+                
+                <div class="bracket-round">
+                    <div class="round-title">Champion</div>
+                    <div class="bracket-match">
+                        <div class="match-fighters">
+                            <span class="match-fighter">🏆</span>
+                        </div>
+                        <div class="match-score">Winner</div>
+                    </div>
+                </div>
+            </div>
+
+            <div style="text-align: center;">
+                <button class="action-btn primary" onclick="joinTournament()">🎯 Join Tournament</button>
+                <button class="action-btn" onclick="viewSchedule()">📅 View Schedule</button>
+            </div>
+        </div>
+
+        <!-- Leaderboard Section -->
+        <div class="content-section" id="leaderboardSection">
+            <div class="leaderboard-table">
+                <div class="leaderboard-header">
+                    <div>Rank</div>
+                    <div>Fighter</div>
+                    <div>Wins</div>
+                    <div>Losses</div>
+                    <div>Win Rate</div>
+                    <div>Tokens</div>
+                </div>
+                <div class="leaderboard-row">
+                    <div class="rank top-3">1</div>
+                    <div class="fighter-info">
+                        <div class="mini-avatar">🧠</div>
+                        <div>
+                            <div>QuantumMind</div>
+                            <div style="font-size: 0.8em; color: #888;">AI Overlord</div>
+                        </div>
+                    </div>
+                    <div>156</div>
+                    <div>12</div>
+                    <div style="color: #00ff88;">92.8%</div>
+                    <div style="color: #ffd700;">15,420</div>
+                </div>
+                <div class="leaderboard-row">
+                    <div class="rank top-3">2</div>
+                    <div class="fighter-info">
+                        <div class="mini-avatar">⚡</div>
+                        <div>
+                            <div>SpeedDemon</div>
+                            <div style="font-size: 0.8em; color: #888;">Velocity Expert</div>
+                        </div>
+                    </div>
+                    <div>142</div>
+                    <div>18</div>
+                    <div style="color: #00ff88;">88.7%</div>
+                    <div style="color: #ffd700;">13,890</div>
+                </div>
+                <div class="leaderboard-row">
+                    <div class="rank top-3">3</div>
+                    <div class="fighter-info">
+                        <div class="mini-avatar">🛡️</div>
+                        <div>
+                            <div>IronDefense</div>
+                            <div style="font-size: 0.8em; color: #888;">Defensive Master</div>
+                        </div>
+                    </div>
+                    <div>128</div>
+                    <div>22</div>
+                    <div style="color: #00ff88;">85.3%</div>
+                    <div style="color: #ffd700;">12,650</div>
+                </div>
+                <div class="leaderboard-row">
+                    <div class="rank">12</div>
+                    <div class="fighter-info">
+                        <div class="mini-avatar">🤖</div>
+                        <div>
+                            <div style="color: #00d4ff;">CodeWarrior (You)</div>
+                            <div style="font-size: 0.8em; color: #888;">Algorithmic Specialist</div>
+                        </div>
+                    </div>
+                    <div>47</div>
+                    <div>15</div>
+                    <div style="color: #00ff88;">75.8%</div>
+                    <div style="color: #ffd700;">2,340</div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Create Fighter Section -->
+        <div class="content-section" id="createSection">
+            <div class="create-fighter-form">
+                <h2 style="text-align: center; margin-bottom: 32px; color: #00d4ff;">🤖 Create New AI Fighter</h2>
+                
+                <div class="form-group">
+                    <label class="form-label">Fighter Name</label>
+                    <input type="text" class="form-input" placeholder="Enter fighter name..." id="fighterName">
+                </div>
+
+                <div class="form-group">
+                    <label class="form-label">Fighter Type</label>
+                    <select class="form-select" id="fighterType">
+                        <option value="algorithmic">Algorithmic Specialist</option>
+                        <option value="neural">Neural Network Master</option>
+                        <option value="logic">Logic Expert</option>
+                        <option value="speed">Velocity Optimizer</option>
+                        <option value="defense">Defensive Strategist</option>
+                        <option value="hybrid">Hybrid AI</option>
+                    </select>
+                </div>
+
+                <div class="form-group">
+                    <label class="form-label">Attribute Distribution (100 points total)</label>
+                    
+                    <div class="slider-container">
+                        <label>Attack Power</label>
+                        <span class="slider-value" id="attackValue">25</span>
+                        <input type="range" class="slider" min="0" max="100" value="25" id="attackSlider" oninput="updateAttributes()">
+                    </div>
+                    
+                    <div class="slider-container">
+                        <label>Defense</label>
+                        <span class="slider-value" id="defenseValue">25</span>
+                        <input type="range" class="slider" min="0" max="100" value="25" id="defenseSlider" oninput="updateAttributes()">
+                    </div>
+                    
+                    <div class="slider-container">
+                        <label>Speed</label>
+                        <span class="slider-value" id="speedValue">25</span>
+                        <input type="range" class="slider" min="0" max="100" value="25" id="speedSlider" oninput="updateAttributes()">
+                    </div>
+                    
+                    <div class="slider-container">
+                        <label>Intelligence</label>
+                        <span class="slider-value" id="intelValue">25</span>
+                        <input type="range" class="slider" min="0" max="100" value="25" id="intelSlider" oninput="updateAttributes()">
+                    </div>
+                    
+                    <div style="text-align: center; margin-top: 16px;">
+                        <span id="pointsRemaining" style="color: #00ff88; font-weight: 600;">Points Remaining: 0</span>
+                    </div>
+                </div>
+
+                <div class="form-group">
+                    <label class="form-label">Special Abilities</label>
+                    <textarea class="form-input" placeholder="Describe your fighter's special abilities and strategies..." id="fighterAbilities" style="min-height: 100px; resize: vertical;"></textarea>
+                </div>
+
+                <div style="text-align: center; margin-top: 32px;">
+                    <button class="action-btn primary" onclick="createFighter()">🚀 Create Fighter</button>
+                    <button class="action-btn" onclick="previewFighter()">👁️ Preview</button>
+                </div>
+            </div>
+        </div>
+
+        <!-- Battle History Section -->
+        <div class="content-section" id="historySection">
+            <h2 style="text-align: center; margin-bottom: 32px; color: #00d4ff;">📜 Battle History</h2>
+            <div class="battle-log" style="height: 500px;">
+                <div class="log-entry log-success">[VICTORY] CodeWarrior defeated ByteBeast in Tournament Round 1 (3-1)</div>
+                <div class="log-entry log-success">[VICTORY] CodeWarrior defeated NeuralNet in Quick Match (2-0)</div>
+                <div class="log-entry log-error">[DEFEAT] CodeWarrior lost to QuantumMind in Championship Finals (1-3)</div>
+                <div class="log-entry log-success">[VICTORY] CodeWarrior defeated LogicLord in Ranked Match (3-2)</div>
+                <div class="log-entry log-warning">[DRAW] CodeWarrior tied with SpeedDemon in Exhibition (2-2)</div>
+                <div class="log-entry log-success">[VICTORY] CodeWarrior defeated IronDefense in Challenge Match (3-1)</div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        let battleInterval;
+        let countdownInterval;
+        let battleLogMessages = [
+            "[ARENA] Welcome to AI Arena! Select your fighter and prepare for battle.",
+            "[SYSTEM] CodeWarrior is ready for deployment.",
+            "[MATCHMAKING] Searching for worthy opponents..."
+        ];
+
+        function showSection(sectionName) {
+            // Hide all sections
+            document.querySelectorAll('.content-section').forEach(section => {
+                section.classList.remove('active');
+            });
+            
+            // Remove active class from all tabs
+            document.querySelectorAll('.nav-tab').forEach(tab => {
+                tab.classList.remove('active');
+            });
+            
+            // Show selected section and mark tab as active
+            document.getElementById(sectionName + 'Section').classList.add('active');
+            event.target.classList.add('active');
+        }
+
+        function quickMatch() {
+            addBattleLog("[MATCHMAKING] Initiating quick match...", "info");
+            setTimeout(() => {
+                addBattleLog("[MATCH FOUND] Opponent located: MindHacker", "success");
+                addBattleLog("[ARENA] Preparing battle environment...", "info");
+            }, 1500);
+        }
+
+        function startBattle() {
+            if (battleInterval) {
+                clearInterval(battleInterval);
+            }
+
+            addBattleLog("[BATTLE] Initializing battle sequence...", "info");
+            addBattleLog("[FIGHTERS] CodeWarrior vs MindHacker", "info");
+            
+            let round = 1;
+            battleInterval = setInterval(() => {
+                const actions = [
+                    `[ROUND ${round}] CodeWarrior executes Algorithm Strike!`,
+                    `[ROUND ${round}] MindHacker counters with Neural Pulse!`,
+                    `[ROUND ${round}] Critical hit! Damage dealt.`,
+                    `[ROUND ${round}] Defense systems activated.`
+                ];
+                
+                const types = ["success", "warning", "info", "error"];
+                const action = actions[Math.floor(Math.random() * actions.length)];
+                const type = types[Math.floor(Math.random() * types.length)];
+                
+                addBattleLog(action, type);
+                round++;
+                
+                if (round > 10) {
+                    clearInterval(battleInterval);
+                    addBattleLog("[VICTORY] CodeWarrior wins the battle! +250 tokens earned.", "success");
+                    updateUserStats();
+                }
+            }, 1000);
+        }
+
+        function placeBet() {
+            const betAmount = prompt("Enter bet amount (tokens):");
+            if (betAmount && !isNaN(betAmount)) {
+                addBattleLog(`[BET] Placed bet of ${betAmount} tokens on CodeWarrior`, "info");
+            }
+        }
+
+        function joinTournament() {
+            addBattleLog("[TOURNAMENT] Registration successful! Next match: Semifinals", "success");
+            alert("🎯 Tournament joined!\n\nYou've been registered for the Championship Tournament.\nNext match: Semifinals vs MindHacker\nScheduled: Today at 8:00 PM");
+        }
+
+        function viewSchedule() {
+            alert("📅 Tournament Schedule\n\nQuarterfinals: Completed\nSemifinals: Today 8:00 PM\nFinals: Tomorrow 8:00 PM\nPrize Pool: 50,000 tokens");
+        }
+
+        function createFighter() {
+            const name = document.getElementById('fighterName').value;
+            const type = document.getElementById('fighterType').value;
+            const abilities = document.getElementById('fighterAbilities').value;
+            
+            if (!name.trim()) {
+                alert("Please enter a fighter name!");
+                return;
+            }
+            
+            const total = getTotalAttributes();
+            if (total !== 100) {
+                alert(`Please distribute exactly 100 attribute points! Current total: ${total}`);
+                return;
+            }
+            
+            alert(`🤖 Fighter Created!\n\nName: ${name}\nType: ${type}\nThe fighter has been added to your roster and is ready for battle!`);
+            
+            // Reset form
+            document.getElementById('fighterName').value = '';
+            document.getElementById('fighterAbilities').value = '';
+            resetAttributes();
+        }
+
+        function previewFighter() {
+            const name = document.getElementById('fighterName').value || "Unnamed Fighter";
+            const type = document.getElementById('fighterType').selectedOptions[0].text;
+            const attack = document.getElementById('attackSlider').value;
+            const defense = document.getElementById('defenseSlider').value;
+            const speed = document.getElementById('speedSlider').value;
+            const intel = document.getElementById('intelSlider').value;
+            
+            alert(`👁️ Fighter Preview\n\nName: ${name}\nType: ${type}\n\nAttributes:\nAttack: ${attack}\nDefense: ${defense}\nSpeed: ${speed}\nIntelligence: ${intel}\n\nTotal: ${getTotalAttributes()}/100`);
+        }
+
+        function updateAttributes() {
+            const attack = parseInt(document.getElementById('attackSlider').value);
+            const defense = parseInt(document.getElementById('defenseSlider').value);
+            const speed = parseInt(document.getElementById('speedSlider').value);
+            const intel = parseInt(document.getElementById('intelSlider').value);
+            
+            document.getElementById('attackValue').textContent = attack;
+            document.getElementById('defenseValue').textContent = defense;
+            document.getElementById('speedValue').textContent = speed;
+            document.getElementById('intelValue').textContent = intel;
+            
+            const total = attack + defense + speed + intel;
+            const remaining = 100 - total;
+            
+            document.getElementById('pointsRemaining').textContent = `Points Remaining: ${remaining}`;
+            document.getElementById('pointsRemaining').style.color = remaining === 0 ? '#00ff88' : remaining < 0 ? '#ff4444' : '#ffaa00';
+        }
+
+        function getTotalAttributes() {
+            const attack = parseInt(document.getElementById('attackSlider').value);
+            const defense = parseInt(document.getElementById('defenseSlider').value);
+            const speed = parseInt(document.getElementById('speedSlider').value);
+            const intel = parseInt(document.getElementById('intelSlider').value);
+            return attack + defense + speed + intel;
+        }
+
+        function resetAttributes() {
+            ['attack', 'defense', 'speed', 'intel'].forEach(attr => {
+                document.getElementById(attr + 'Slider').value = 25;
+                document.getElementById(attr + 'Value').textContent = 25;
+            });
+            updateAttributes();
+        }
+
+        function addBattleLog(message, type) {
+            const log = document.getElementById('battleLog');
+            const entry = document.createElement('div');
+            entry.className = `log-entry log-${type}`;
+            entry.textContent = message;
+            log.appendChild(entry);
+            log.scrollTop = log.scrollHeight;
+        }
+
+        function updateUserStats() {
+            const wins = parseInt(document.getElementById('userWins').textContent) + 1;
+            const tokens = parseInt(document.getElementById('userTokens').textContent.replace(',', '')) + 250;
+            
+            document.getElementById('userWins').textContent = wins;
+            document.getElementById('userTokens').textContent = tokens.toLocaleString();
+        }
+
+        // Initialize countdown
+        function startCountdown() {
+            let seconds = 165; // 2:45
+            countdownInterval = setInterval(() => {
+                const minutes = Math.floor(seconds / 60);
+                const secs = seconds % 60;
+                document.getElementById('battleCountdown').textContent = 
+                    `Next match in ${minutes}:${secs.toString().padStart(2, '0')}`;
+                seconds--;
+                
+                if (seconds < 0) {
+                    clearInterval(countdownInterval);
+                    document.getElementById('battleCountdown').textContent = "Battle Ready!";
+                }
+            }, 1000);
+        }
+
+        // Initialize on page load
+        document.addEventListener('DOMContentLoaded', () => {
+            startCountdown();
+            updateAttributes();
+        });
+    </script>
+</body>
+</html>

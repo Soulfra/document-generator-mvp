@@ -1,0 +1,494 @@
+name: Desktop Integration Workflow
+description: One-command setup for local AI review workflow with desktop app integration
+version: "1.0"
+category: developer-tools
+pricing: $12
+
+triggers:
+  - manual
+  - git_commit
+  - pr_created
+
+inputs:
+  - name: branch_name
+    type: string
+    default: "{{ git.current_branch }}"
+    description: Git branch to review
+  - name: setup_mode
+    type: boolean
+    default: false
+    description: Run initial setup instead of review
+  - name: auto_open_apps
+    type: boolean
+    default: true
+    description: Automatically open desktop applications
+
+variables:
+  - name: REVIEW_ID
+    value: "{{ timestamp }}"
+  - name: REVIEW_DIR
+    value: ".local-review/reports/review-{{ variables.REVIEW_ID }}"
+  - name: PROJECT_ROOT
+    value: "{{ workspace.root }}"
+
+steps:
+  - name: setup_workflow
+    description: Set up local AI review workflow infrastructure
+    condition: "{{ inputs.setup_mode == true }}"
+    plugin: file_system
+    action: create_directory_structure
+    inputs:
+      base_path: "{{ variables.PROJECT_ROOT }}"
+      structure:
+        ".local-review/":
+          "scripts/": {}
+          "templates/": {}
+          "reports/": {}
+          "hooks/": {}
+          "configs/": {}
+          "README.md": |
+            # 🚀 Local AI Review Workflow
+            
+            ## Quick Start
+            ```bash
+            # Start a review (after making changes)
+            ai-review
+            
+            # Apply review results (after Claude responds)
+            ai-apply
+            ```
+            
+            ## How It Works
+            1. **ai-review** - Generates review materials and opens Claude
+            2. Copy/paste the review content into Claude Desktop or Claude.ai
+            3. Save Claude's response as `claude-review.md` in the review folder
+            4. **ai-apply** - Choose what to do based on Claude's recommendation
+
+  - name: install_shell_aliases
+    description: Install shell aliases for easy access
+    condition: "{{ inputs.setup_mode == true }}"
+    plugin: shell
+    action: install_aliases
+    inputs:
+      aliases:
+        ai-review: "./.local-review/scripts/desktop-review.sh"
+        ai-apply: "./.local-review/scripts/apply-review.sh"
+
+  - name: create_desktop_review_script
+    description: Create the main desktop review orchestrator script
+    condition: "{{ inputs.setup_mode == true }}"
+    plugin: file_generator
+    action: create_script
+    inputs:
+      path: "{{ variables.PROJECT_ROOT }}/.local-review/scripts/desktop-review.sh"
+      executable: true
+      content: |
+        #!/bin/bash
+        # Desktop AI Review Orchestrator
+        
+        BRANCH_NAME=${1:-$(git branch --show-current)}
+        REVIEW_ID=$(date +%s)
+        
+        echo "🎯 Starting desktop review for branch: $BRANCH_NAME"
+        echo "📋 Review ID: $REVIEW_ID"
+        
+        # Create review workspace
+        REVIEW_DIR=".local-review/reports/review-${REVIEW_ID}"
+        mkdir -p "$REVIEW_DIR"
+        
+        # Generate diff and context
+        echo "📄 Generating review materials..."
+        git diff main...HEAD > "$REVIEW_DIR/changes.diff"
+        git log --oneline main...HEAD > "$REVIEW_DIR/commits.log"
+        git diff --name-only main...HEAD > "$REVIEW_DIR/changed-files.txt"
+        
+        # Create comprehensive review context
+        cat > "$REVIEW_DIR/review-context.md" << CONTEXT
+        # Code Review Request - Review ID: $REVIEW_ID
+        
+        ## Branch Information
+        - **Branch**: $BRANCH_NAME
+        - **Base**: main
+        - **Commits**: $(git rev-list --count main...HEAD) commits
+        - **Files Changed**: $(wc -l < "$REVIEW_DIR/changed-files.txt") files
+        
+        ## Recent Commits
+        \`\`\`
+        $(cat "$REVIEW_DIR/commits.log")
+        \`\`\`
+        
+        ## Files Changed
+        $(cat "$REVIEW_DIR/changed-files.txt" | sed 's/^/- /')
+        
+        ## Code Changes
+        \`\`\`diff
+        $(cat "$REVIEW_DIR/changes.diff")
+        \`\`\`
+        
+        ## Review Guidelines
+        Please review this code for:
+        
+        ### 🔒 Security
+        - Input validation and sanitization
+        - Authentication/authorization checks
+        - Data exposure risks
+        - File handling security
+        
+        ### 🏗️ Architecture
+        - Consistency with project patterns
+        - Code organization and modularity
+        - Error handling patterns
+        - Template compatibility (can this be reused?)
+        
+        ### 🐛 Quality
+        - Potential bugs or edge cases
+        - Performance considerations
+        - Code readability and maintainability
+        - Test coverage
+        
+        ### 📝 Documentation
+        - Code comments and documentation
+        - API documentation updates
+        - Setup or configuration changes
+        
+        ## Please Provide
+        1. **Overall Score**: 0-100
+        2. **Critical Issues**: Must fix before merge
+        3. **Medium Issues**: Should fix soon
+        4. **Minor Issues**: Nice to have improvements
+        5. **Positive Notes**: What was done well
+        6. **Template Assessment**: How reusable is this code?
+        7. **Final Recommendation**: 
+           - ✅ APPROVE: Ready to merge
+           - 🔄 REQUEST_CHANGES: Issues need fixing
+           - 👨‍💻 NEEDS_HUMAN: Complex review needed
+        
+        Be specific about file names and line numbers where possible.
+        CONTEXT
+        
+        # Copy to clipboard if possible
+        if command -v pbcopy &> /dev/null; then
+            cat "$REVIEW_DIR/review-context.md" | pbcopy
+            echo "📋 Review content copied to clipboard!"
+        elif command -v xclip &> /dev/null; then
+            cat "$REVIEW_DIR/review-context.md" | xclip -selection clipboard
+            echo "📋 Review content copied to clipboard!"
+        fi
+        
+        # Open review materials
+        echo "🖥️  Opening review materials..."
+        
+        # Open in editor if available
+        if command -v cursor &> /dev/null; then
+            cursor "$REVIEW_DIR"
+        elif command -v code &> /dev/null; then
+            code "$REVIEW_DIR"
+        fi
+        
+        # Open Claude web interface
+        if [[ "$OSTYPE" == "darwin"* ]]; then
+            open "https://claude.ai"
+        elif [[ "$OSTYPE" == "linux-gnu"* ]]; then
+            xdg-open "https://claude.ai"
+        fi
+        
+        # Save review info
+        echo "$REVIEW_ID" > .local-review/current-review-id
+        echo "$BRANCH_NAME" > "$REVIEW_DIR/branch-name"
+        echo "$(date)" > "$REVIEW_DIR/created-at"
+        
+        echo ""
+        echo "📋 REVIEW PROCESS:"
+        echo "1. 📖 Review files opened in your editor"
+        echo "2. 🧠 Paste clipboard content into Claude"
+        echo "3. 💾 Save Claude's response as: $REVIEW_DIR/claude-review.md"
+        echo "4. ⚡ Run: ai-apply $REVIEW_ID"
+
+  - name: create_apply_review_script
+    description: Create the apply review results script
+    condition: "{{ inputs.setup_mode == true }}"
+    plugin: file_generator
+    action: create_script
+    inputs:
+      path: "{{ variables.PROJECT_ROOT }}/.local-review/scripts/apply-review.sh"
+      executable: true
+      content: |
+        #!/bin/bash
+        # Apply AI Review Results
+        
+        REVIEW_ID=${1:-$(cat .local-review/current-review-id 2>/dev/null)}
+        
+        if [ -z "$REVIEW_ID" ]; then
+            echo "❌ No review ID provided"
+            echo "Usage: ai-apply <review_id>"
+            exit 1
+        fi
+        
+        REVIEW_DIR=".local-review/reports/review-${REVIEW_ID}"
+        
+        if [ ! -d "$REVIEW_DIR" ]; then
+            echo "❌ Review directory not found: $REVIEW_DIR"
+            exit 1
+        fi
+        
+        echo "📊 Applying review results for Review ID: $REVIEW_ID"
+        
+        # Check for Claude review
+        if [ ! -f "$REVIEW_DIR/claude-review.md" ]; then
+            echo "❌ Claude review not found: $REVIEW_DIR/claude-review.md"
+            echo "📝 Please save Claude's response to that file first"
+            
+            # Open directory for easy saving
+            if [[ "$OSTYPE" == "darwin"* ]]; then
+                open "$REVIEW_DIR"
+            elif [[ "$OSTYPE" == "linux-gnu"* ]]; then
+                xdg-open "$REVIEW_DIR"
+            fi
+            exit 1
+        fi
+        
+        # Show review results
+        echo "📋 AI Review Results:"
+        echo "----------------------------------------"
+        cat "$REVIEW_DIR/claude-review.md"
+        echo "----------------------------------------"
+        
+        # Interactive decision
+        echo ""
+        echo "🎯 What would you like to do?"
+        echo "1) ✅ Approve (AI recommends merge)"
+        echo "2) 🔄 Request changes (create comment)"
+        echo "3) 👨‍💻 Request human review"
+        echo "4) 📝 Just save (no action)"
+        
+        read -p "Choose option (1-4): " CHOICE
+        
+        BRANCH_NAME=$(cat "$REVIEW_DIR/branch-name")
+        
+        case $CHOICE in
+            1)
+                echo "✅ Review approved! Ready to merge."
+                echo "🚀 Use GitHub Desktop or command line to merge $BRANCH_NAME"
+                ;;
+            2)
+                echo "🔄 Creating change request..."
+                echo "💬 Copy the review content to your PR for developer action"
+                ;;
+            3)
+                echo "👨‍💻 Requesting human review..."
+                echo "👥 Share the review with your team for human oversight"
+                ;;
+            4)
+                echo "📝 Review saved for reference"
+                ;;
+        esac
+        
+        # Log the review
+        echo "Review ID: $REVIEW_ID | Branch: $BRANCH_NAME | Action: $CHOICE | Date: $(date)" >> .local-review/review-history.log
+        
+        echo "✅ Review process completed!"
+
+  - name: install_git_hooks
+    description: Install git hooks for automatic review suggestions
+    condition: "{{ inputs.setup_mode == true }}"
+    plugin: git
+    action: install_hooks
+    inputs:
+      hooks:
+        post-commit: |
+          #!/bin/bash
+          # Auto-suggest review on commits
+          
+          BRANCH=$(git branch --show-current)
+          
+          if [[ "$BRANCH" != "main" && "$BRANCH" != "master" && "$BRANCH" != "develop" ]]; then
+              echo ""
+              echo "💡 New commit on $BRANCH"
+              echo "🔍 Run 'ai-review' to start AI code review"
+              echo ""
+          fi
+
+  - name: check_git_repository
+    description: Ensure we're in a git repository
+    condition: "{{ inputs.setup_mode == false }}"
+    plugin: git
+    action: validate_repository
+    inputs:
+      path: "{{ variables.PROJECT_ROOT }}"
+
+  - name: validate_branch_changes
+    description: Check if branch has changes to review
+    condition: "{{ inputs.setup_mode == false }}"
+    plugin: git
+    action: get_changes
+    inputs:
+      branch: "{{ inputs.branch_name }}"
+      base: "main"
+    outputs:
+      - diff_content
+      - changed_files
+      - commit_list
+
+  - name: create_review_workspace
+    description: Create workspace for current review
+    condition: "{{ inputs.setup_mode == false }}"
+    plugin: file_system
+    action: create_directory
+    inputs:
+      path: "{{ variables.REVIEW_DIR }}"
+
+  - name: generate_review_materials
+    description: Generate comprehensive review materials
+    condition: "{{ inputs.setup_mode == false }}"
+    plugin: file_generator
+    action: create_multiple_files
+    inputs:
+      files:
+        - path: "{{ variables.REVIEW_DIR }}/changes.diff"
+          content: "{{ steps.validate_branch_changes.outputs.diff_content }}"
+        - path: "{{ variables.REVIEW_DIR }}/commits.log"
+          content: "{{ steps.validate_branch_changes.outputs.commit_list }}"
+        - path: "{{ variables.REVIEW_DIR }}/changed-files.txt"
+          content: "{{ steps.validate_branch_changes.outputs.changed_files | join('\n') }}"
+        - path: "{{ variables.REVIEW_DIR }}/branch-name"
+          content: "{{ inputs.branch_name }}"
+        - path: "{{ variables.REVIEW_DIR }}/created-at"
+          content: "{{ now | date }}"
+
+  - name: create_review_context
+    description: Create comprehensive review context for Claude
+    condition: "{{ inputs.setup_mode == false }}"
+    plugin: document_generator
+    action: create_review_context
+    inputs:
+      template: "ai_review_context"
+      data:
+        review_id: "{{ variables.REVIEW_ID }}"
+        branch_name: "{{ inputs.branch_name }}"
+        base_branch: "main"
+        commits: "{{ steps.validate_branch_changes.outputs.commit_list }}"
+        changed_files: "{{ steps.validate_branch_changes.outputs.changed_files }}"
+        diff_content: "{{ steps.validate_branch_changes.outputs.diff_content }}"
+    outputs:
+      - review_context_md
+
+  - name: save_review_context
+    description: Save review context to workspace
+    condition: "{{ inputs.setup_mode == false }}"
+    plugin: file_system
+    action: write_file
+    inputs:
+      path: "{{ variables.REVIEW_DIR }}/review-context.md"
+      content: "{{ steps.create_review_context.outputs.review_context_md }}"
+
+  - name: copy_to_clipboard
+    description: Copy review context to system clipboard
+    condition: "{{ inputs.setup_mode == false && inputs.auto_open_apps == true }}"
+    plugin: system
+    action: copy_to_clipboard
+    inputs:
+      content: "{{ steps.create_review_context.outputs.review_context_md }}"
+
+  - name: open_desktop_apps
+    description: Open desktop applications for review
+    condition: "{{ inputs.setup_mode == false && inputs.auto_open_apps == true }}"
+    plugin: desktop
+    action: open_applications
+    inputs:
+      applications:
+        - name: "cursor"
+          args: ["{{ variables.REVIEW_DIR }}"]
+          fallback: "code"
+        - name: "github_desktop"
+          focus_repository: "{{ variables.PROJECT_ROOT }}"
+        - name: "claude_web"
+          url: "https://claude.ai"
+
+  - name: create_navigation_guide
+    description: Create navigation guide for the review process
+    condition: "{{ inputs.setup_mode == false }}"
+    plugin: file_generator
+    action: create_file
+    inputs:
+      path: "{{ variables.REVIEW_DIR }}/NAVIGATION.md"
+      content: |
+        # 🧭 Review Navigation
+        
+        ## Quick Links
+        - [📄 Review Context](./review-context.md) - Copy this to Claude
+        - [📊 Code Changes](./changes.diff) - Visual diff 
+        - [📝 Commits](./commits.log) - Recent commits
+        
+        ## Next Steps
+        1. 📖 Review the changes in this workspace
+        2. 🧠 Paste review-context.md into Claude
+        3. 💾 Save Claude's response as 'claude-review.md'
+        4. ⚡ Run: ai-apply {{ variables.REVIEW_ID }}
+        
+        ## Review ID: {{ variables.REVIEW_ID }}
+        ## Branch: {{ inputs.branch_name }}
+        ## Created: {{ now | date }}
+
+  - name: save_current_review_id
+    description: Save current review ID for easy access
+    condition: "{{ inputs.setup_mode == false }}"
+    plugin: file_system
+    action: write_file
+    inputs:
+      path: "{{ variables.PROJECT_ROOT }}/.local-review/current-review-id"
+      content: "{{ variables.REVIEW_ID }}"
+
+  - name: display_instructions
+    description: Display review process instructions
+    condition: "{{ inputs.setup_mode == false }}"
+    plugin: console
+    action: display_message
+    inputs:
+      message: |
+        
+        📋 REVIEW PROCESS:
+        1. 📖 Review files opened in your editor
+        2. 🧠 Paste clipboard content into Claude
+        3. 💾 Save Claude's response as: {{ variables.REVIEW_DIR }}/claude-review.md
+        4. ⚡ Run: ai-apply {{ variables.REVIEW_ID }}
+        
+        🔗 Review files: {{ variables.REVIEW_DIR }}
+
+  - name: trigger_ai_review_workflow
+    description: Optionally trigger full AI review workflow
+    condition: "{{ inputs.setup_mode == false }}"
+    plugin: automation
+    action: trigger_workflow
+    inputs:
+      workflow: "ai-code-review"
+      data:
+        pr_number: "{{ github.pr.number || 'manual' }}"
+        reviewer: "claude"
+        review_id: "{{ variables.REVIEW_ID }}"
+        branch_name: "{{ inputs.branch_name }}"
+
+notifications:
+  on_success:
+    - type: console
+      message: "✅ Desktop integration workflow completed successfully"
+  
+  on_failure:
+    - type: console
+      message: "❌ Desktop integration workflow failed"
+
+escalation:
+  rules:
+    - condition: "{{ steps.validate_branch_changes.outputs.changed_files | length == 0 }}"
+      action: "skip_review"
+      message: "No changes detected to review"
+
+premium_features:
+  - name: "Automatic App Opening"
+    description: "Automatically open Cursor, GitHub Desktop, and Claude"
+    tier: "premium"
+  - name: "Advanced Git Hooks"
+    description: "Custom git hooks for workflow automation"
+    tier: "premium"
+  - name: "Multi-Repository Support"
+    description: "Manage reviews across multiple repositories"
+    tier: "enterprise"

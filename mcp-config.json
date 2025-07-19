@@ -1,0 +1,208 @@
+{
+  "name": "document-generator-mcp",
+  "version": "1.0.0",
+  "description": "MCP configuration for Document Generator - Transform documents to MVPs",
+  "server": {
+    "command": "node",
+    "args": ["./mcp/server.js"],
+    "env": {
+      "NODE_ENV": "production",
+      "MCP_SERVER_PORT": "3333"
+    }
+  },
+  "tools": [
+    {
+      "name": "process_document",
+      "description": "Process a document and generate an MVP",
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "documentPath": {
+            "type": "string",
+            "description": "Path to the document to process"
+          },
+          "outputFormat": {
+            "type": "string",
+            "enum": ["docker", "vercel", "railway", "standalone"],
+            "default": "docker",
+            "description": "Output format for the generated MVP"
+          },
+          "template": {
+            "type": "string",
+            "description": "Template to use for generation"
+          }
+        },
+        "required": ["documentPath"]
+      }
+    },
+    {
+      "name": "analyze_chat",
+      "description": "Analyze chat logs and extract project requirements",
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "chatLogPath": {
+            "type": "string",
+            "description": "Path to chat log file"
+          },
+          "extractFeatures": {
+            "type": "boolean",
+            "default": true,
+            "description": "Extract feature list from conversation"
+          }
+        },
+        "required": ["chatLogPath"]
+      }
+    },
+    {
+      "name": "create_template",
+      "description": "Create a new document processing template",
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "name": {
+            "type": "string",
+            "description": "Template name"
+          },
+          "category": {
+            "type": "string",
+            "enum": ["business-ideas", "technical-architecture", "ux-ui-design", "marketing-growth"],
+            "description": "Template category"
+          },
+          "sections": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            },
+            "description": "Sections to include in template"
+          }
+        },
+        "required": ["name", "category"]
+      }
+    },
+    {
+      "name": "test_ai_service",
+      "description": "Test AI service connectivity and performance",
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "service": {
+            "type": "string",
+            "enum": ["ollama", "anthropic", "openai", "all"],
+            "default": "all",
+            "description": "AI service to test"
+          },
+          "testPrompt": {
+            "type": "string",
+            "default": "Generate a hello world function",
+            "description": "Test prompt to send"
+          }
+        }
+      }
+    },
+    {
+      "name": "generate_code",
+      "description": "Generate code from specifications using AI",
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "specification": {
+            "type": "string",
+            "description": "Code specification or requirements"
+          },
+          "language": {
+            "type": "string",
+            "enum": ["javascript", "typescript", "python", "java", "go", "rust"],
+            "description": "Programming language"
+          },
+          "framework": {
+            "type": "string",
+            "description": "Framework to use (optional)"
+          },
+          "includeTests": {
+            "type": "boolean",
+            "default": true,
+            "description": "Generate unit tests"
+          }
+        },
+        "required": ["specification", "language"]
+      }
+    }
+  ],
+  "prompts": [
+    {
+      "name": "mvp_from_idea",
+      "description": "Generate an MVP from a business idea",
+      "prompt": "I have a business idea: {{idea}}. Create a full MVP with the following requirements:\n1. Technology stack: {{techStack}}\n2. Key features: {{features}}\n3. Include authentication, payment processing, and admin panel\n4. Make it production-ready with Docker\n\nGenerate all necessary code, configuration, and documentation."
+    },
+    {
+      "name": "extract_requirements",
+      "description": "Extract requirements from a document",
+      "prompt": "Analyze this document and extract:\n1. Functional requirements\n2. Non-functional requirements\n3. User stories\n4. Technical constraints\n5. Success criteria\n\nDocument:\n{{document}}\n\nReturn as structured JSON."
+    },
+    {
+      "name": "improve_architecture",
+      "description": "Improve system architecture",
+      "prompt": "Review this architecture and suggest improvements:\n{{architecture}}\n\nConsider:\n1. Scalability\n2. Performance\n3. Security\n4. Cost optimization\n5. Maintainability\n\nProvide specific recommendations with implementation details."
+    }
+  ],
+  "resources": [
+    {
+      "uri": "file://./templates",
+      "name": "Document Templates",
+      "description": "Available templates for document processing",
+      "mimeType": "application/x-directory"
+    },
+    {
+      "uri": "file://./examples",
+      "name": "Example Documents",
+      "description": "Sample documents for testing",
+      "mimeType": "application/x-directory"
+    },
+    {
+      "uri": "file://./CLAUDE.md",
+      "name": "Project Context",
+      "description": "Main project context and instructions",
+      "mimeType": "text/markdown"
+    }
+  ],
+  "capabilities": {
+    "tools": true,
+    "prompts": true,
+    "resources": true,
+    "logging": true,
+    "rateLimiting": {
+      "requestsPerMinute": 60,
+      "tokensPerMinute": 100000
+    }
+  },
+  "security": {
+    "allowedPaths": [
+      "./templates",
+      "./examples",
+      "./output",
+      "/tmp/document-generator"
+    ],
+    "blockedCommands": [
+      "rm -rf",
+      "format",
+      "shutdown"
+    ]
+  },
+  "integration": {
+    "claudeCode": {
+      "autoLoad": true,
+      "contextFiles": [
+        "CLAUDE.md",
+        "CLAUDE.template-processor.md",
+        "CLAUDE.ai-services.md",
+        "CLAUDE.document-parser.md"
+      ],
+      "workflowHooks": {
+        "beforeProcess": "validate_document",
+        "afterProcess": "check_output_quality",
+        "onError": "log_and_retry"
+      }
+    }
+  }
+}

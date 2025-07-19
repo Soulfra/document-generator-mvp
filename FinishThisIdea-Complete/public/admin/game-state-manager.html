@@ -1,0 +1,1105 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>FinishThisIdea - Game State Manager</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            background: linear-gradient(135deg, #1a1a2e, #16213e, #0f3460);
+            color: #fff;
+            min-height: 100vh;
+            overflow-x: hidden;
+        }
+
+        /* Header */
+        .state-header {
+            background: rgba(0, 212, 255, 0.1);
+            backdrop-filter: blur(20px);
+            padding: 24px 32px;
+            display: flex;
+            justify-content: between;
+            align-items: center;
+            border-bottom: 2px solid #00d4ff;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .state-header::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: linear-gradient(45deg, transparent, rgba(0, 212, 255, 0.2), transparent);
+            transform: translateX(-100%);
+            transition: transform 0.6s;
+        }
+
+        .state-header:hover::before {
+            transform: translateX(100%);
+        }
+
+        .state-title {
+            font-size: 2.5em;
+            font-weight: 600;
+            background: linear-gradient(45deg, #00d4ff, #00ff88, #ff77c6);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            display: flex;
+            align-items: center;
+            gap: 12px;
+        }
+
+        .sync-status {
+            display: flex;
+            align-items: center;
+            gap: 16px;
+            margin-left: auto;
+        }
+
+        .status-indicator {
+            width: 12px;
+            height: 12px;
+            border-radius: 50%;
+            background: #00ff88;
+            animation: pulse 2s infinite;
+        }
+
+        .status-indicator.warning {
+            background: #ffd700;
+        }
+
+        .status-indicator.error {
+            background: #ff4757;
+        }
+
+        @keyframes pulse {
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0.5; }
+        }
+
+        .status-text {
+            font-size: 1.1em;
+            font-weight: 500;
+        }
+
+        .action-buttons {
+            display: flex;
+            gap: 12px;
+        }
+
+        .action-btn {
+            background: linear-gradient(45deg, #00d4ff, #0099cc);
+            border: none;
+            color: white;
+            padding: 10px 20px;
+            border-radius: 6px;
+            cursor: pointer;
+            font-weight: 500;
+            transition: all 0.3s ease;
+        }
+
+        .action-btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 6px 20px rgba(0, 212, 255, 0.3);
+        }
+
+        /* Main Layout */
+        .state-container {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            grid-template-rows: auto auto 1fr;
+            gap: 24px;
+            padding: 32px;
+            min-height: calc(100vh - 120px);
+        }
+
+        /* Overview Panel */
+        .overview-panel {
+            grid-column: 1 / -1;
+            background: rgba(255, 255, 255, 0.05);
+            border-radius: 16px;
+            padding: 24px;
+            border: 1px solid #333;
+            backdrop-filter: blur(10px);
+        }
+
+        .panel-title {
+            font-size: 1.4em;
+            font-weight: 600;
+            margin-bottom: 20px;
+            color: #00d4ff;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .overview-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 20px;
+        }
+
+        .overview-card {
+            background: rgba(255, 255, 255, 0.02);
+            border: 1px solid #444;
+            border-radius: 12px;
+            padding: 20px;
+            text-align: center;
+            transition: all 0.3s ease;
+        }
+
+        .overview-card:hover {
+            background: rgba(0, 212, 255, 0.1);
+            border-color: #00d4ff;
+            transform: translateY(-2px);
+        }
+
+        .overview-icon {
+            font-size: 2.5em;
+            margin-bottom: 12px;
+            display: block;
+        }
+
+        .overview-value {
+            font-size: 2em;
+            font-weight: 600;
+            color: #00d4ff;
+            margin-bottom: 8px;
+        }
+
+        .overview-label {
+            color: #ccc;
+            font-size: 0.9em;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+        }
+
+        /* Game States Panel */
+        .game-states-panel {
+            background: rgba(255, 255, 255, 0.05);
+            border-radius: 16px;
+            padding: 24px;
+            border: 1px solid #333;
+            backdrop-filter: blur(10px);
+            overflow-y: auto;
+        }
+
+        .game-list {
+            display: flex;
+            flex-direction: column;
+            gap: 16px;
+        }
+
+        .game-item {
+            background: rgba(255, 255, 255, 0.02);
+            border: 1px solid #444;
+            border-radius: 12px;
+            padding: 20px;
+            transition: all 0.3s ease;
+        }
+
+        .game-item:hover {
+            background: rgba(0, 212, 255, 0.05);
+            border-color: #00d4ff;
+        }
+
+        .game-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 12px;
+        }
+
+        .game-name {
+            font-size: 1.2em;
+            font-weight: 600;
+            color: #fff;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .game-status {
+            background: rgba(0, 255, 136, 0.2);
+            color: #00ff88;
+            padding: 4px 12px;
+            border-radius: 16px;
+            font-size: 0.8em;
+            font-weight: 500;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+        }
+
+        .game-status.syncing {
+            background: rgba(255, 215, 0, 0.2);
+            color: #ffd700;
+        }
+
+        .game-status.error {
+            background: rgba(255, 71, 87, 0.2);
+            color: #ff4757;
+        }
+
+        .game-details {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(120px, 1fr));
+            gap: 12px;
+            margin-top: 12px;
+        }
+
+        .detail-item {
+            text-align: center;
+            padding: 8px;
+            background: rgba(255, 255, 255, 0.05);
+            border-radius: 6px;
+        }
+
+        .detail-value {
+            font-size: 1.1em;
+            font-weight: 600;
+            color: #00d4ff;
+        }
+
+        .detail-label {
+            font-size: 0.8em;
+            color: #888;
+            margin-top: 4px;
+        }
+
+        /* Sync Panel */
+        .sync-panel {
+            background: rgba(255, 255, 255, 0.05);
+            border-radius: 16px;
+            padding: 24px;
+            border: 1px solid #333;
+            backdrop-filter: blur(10px);
+            overflow-y: auto;
+        }
+
+        .sync-controls {
+            display: flex;
+            gap: 12px;
+            margin-bottom: 24px;
+            flex-wrap: wrap;
+        }
+
+        .sync-btn {
+            background: linear-gradient(45deg, #00ff88, #00cc6a);
+            border: none;
+            color: white;
+            padding: 12px 20px;
+            border-radius: 8px;
+            cursor: pointer;
+            font-weight: 500;
+            transition: all 0.3s ease;
+            flex: 1;
+            min-width: 120px;
+        }
+
+        .sync-btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 6px 20px rgba(0, 255, 136, 0.3);
+        }
+
+        .sync-btn:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+            transform: none;
+        }
+
+        .sync-log {
+            max-height: 300px;
+            overflow-y: auto;
+            background: rgba(0, 0, 0, 0.3);
+            border-radius: 8px;
+            padding: 16px;
+            border: 1px solid #333;
+        }
+
+        .log-entry {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 8px 0;
+            border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+        }
+
+        .log-entry:last-child {
+            border-bottom: none;
+        }
+
+        .log-message {
+            color: #ccc;
+        }
+
+        .log-timestamp {
+            color: #666;
+            font-size: 0.8em;
+        }
+
+        .log-status {
+            padding: 2px 8px;
+            border-radius: 4px;
+            font-size: 0.7em;
+            font-weight: 500;
+            text-transform: uppercase;
+        }
+
+        .log-status.success {
+            background: rgba(0, 255, 136, 0.2);
+            color: #00ff88;
+        }
+
+        .log-status.warning {
+            background: rgba(255, 215, 0, 0.2);
+            color: #ffd700;
+        }
+
+        .log-status.error {
+            background: rgba(255, 71, 87, 0.2);
+            color: #ff4757;
+        }
+
+        /* Conflicts Section */
+        .conflicts-section {
+            margin-top: 24px;
+        }
+
+        .conflict-item {
+            background: rgba(255, 71, 87, 0.1);
+            border: 1px solid #ff4757;
+            border-radius: 8px;
+            padding: 16px;
+            margin-bottom: 12px;
+        }
+
+        .conflict-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 12px;
+        }
+
+        .conflict-title {
+            color: #ff4757;
+            font-weight: 600;
+        }
+
+        .conflict-actions {
+            display: flex;
+            gap: 8px;
+        }
+
+        .resolve-btn {
+            background: #00ff88;
+            border: none;
+            color: #000;
+            padding: 6px 12px;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 0.8em;
+            font-weight: 500;
+        }
+
+        .resolve-btn.reject {
+            background: #ff4757;
+            color: #fff;
+        }
+
+        /* Real-time Updates */
+        .live-indicator {
+            position: fixed;
+            top: 20px;
+            right: 20px;
+            background: rgba(0, 255, 136, 0.2);
+            border: 1px solid #00ff88;
+            border-radius: 20px;
+            padding: 8px 16px;
+            font-size: 0.9em;
+            color: #00ff88;
+            backdrop-filter: blur(10px);
+            z-index: 1000;
+        }
+
+        .live-dot {
+            width: 8px;
+            height: 8px;
+            background: #00ff88;
+            border-radius: 50%;
+            display: inline-block;
+            margin-right: 8px;
+            animation: pulse 1s infinite;
+        }
+
+        /* Responsive */
+        @media (max-width: 1024px) {
+            .state-container {
+                grid-template-columns: 1fr;
+                gap: 16px;
+                padding: 16px;
+            }
+            
+            .overview-grid {
+                grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+            }
+        }
+
+        @media (max-width: 768px) {
+            .state-header {
+                padding: 16px;
+                flex-direction: column;
+                gap: 16px;
+            }
+            
+            .state-title {
+                font-size: 2em;
+            }
+            
+            .sync-controls {
+                flex-direction: column;
+            }
+            
+            .sync-btn {
+                min-width: auto;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="live-indicator">
+        <span class="live-dot"></span>
+        Live Sync Active
+    </div>
+
+    <div class="state-header">
+        <div class="state-title">
+            🎮 Game State Manager
+        </div>
+        <div class="sync-status">
+            <div class="status-indicator" id="globalStatus"></div>
+            <div class="status-text" id="globalStatusText">All Systems Synchronized</div>
+        </div>
+        <div class="action-buttons">
+            <button class="action-btn" onclick="forceGlobalSync()">🔄 Force Sync</button>
+            <button class="action-btn" onclick="exportStates()">📤 Export</button>
+        </div>
+    </div>
+
+    <div class="state-container">
+        <!-- Overview Panel -->
+        <div class="overview-panel">
+            <div class="panel-title">
+                📊 System Overview
+            </div>
+            <div class="overview-grid">
+                <div class="overview-card">
+                    <span class="overview-icon">🎯</span>
+                    <div class="overview-value" id="activeGames">3</div>
+                    <div class="overview-label">Active Games</div>
+                </div>
+                <div class="overview-card">
+                    <span class="overview-icon">👥</span>
+                    <div class="overview-value" id="activePlayers">1,247</div>
+                    <div class="overview-label">Active Players</div>
+                </div>
+                <div class="overview-card">
+                    <span class="overview-icon">🔄</span>
+                    <div class="overview-value" id="syncOperations">89</div>
+                    <div class="overview-label">Sync Operations</div>
+                </div>
+                <div class="overview-card">
+                    <span class="overview-icon">⚡</span>
+                    <div class="overview-value" id="avgSyncTime">0.3s</div>
+                    <div class="overview-label">Avg Sync Time</div>
+                </div>
+                <div class="overview-card">
+                    <span class="overview-icon">🎪</span>
+                    <div class="overview-value" id="arenaMatches">24</div>
+                    <div class="overview-label">Arena Matches</div>
+                </div>
+                <div class="overview-card">
+                    <span class="overview-icon">💰</span>
+                    <div class="overview-value" id="gameProgress">67%</div>
+                    <div class="overview-label">Billion $ Progress</div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Game States Panel -->
+        <div class="game-states-panel">
+            <div class="panel-title">
+                🎮 Game States
+            </div>
+            <div class="game-list" id="gameList">
+                <div class="game-item">
+                    <div class="game-header">
+                        <div class="game-name">
+                            ⚔️ AI Arena
+                        </div>
+                        <div class="game-status">synchronized</div>
+                    </div>
+                    <div class="game-details">
+                        <div class="detail-item">
+                            <div class="detail-value">142</div>
+                            <div class="detail-label">Active Fighters</div>
+                        </div>
+                        <div class="detail-item">
+                            <div class="detail-value">8</div>
+                            <div class="detail-label">Live Battles</div>
+                        </div>
+                        <div class="detail-item">
+                            <div class="detail-value">0.2s</div>
+                            <div class="detail-label">Last Sync</div>
+                        </div>
+                        <div class="detail-item">
+                            <div class="detail-value">98.7%</div>
+                            <div class="detail-label">Uptime</div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="game-item">
+                    <div class="game-header">
+                        <div class="game-name">
+                            💰 Billion Dollar Game
+                        </div>
+                        <div class="game-status">synchronized</div>
+                    </div>
+                    <div class="game-details">
+                        <div class="detail-item">
+                            <div class="detail-value">847</div>
+                            <div class="detail-label">Active Players</div>
+                        </div>
+                        <div class="detail-item">
+                            <div class="detail-value">67%</div>
+                            <div class="detail-label">Progress</div>
+                        </div>
+                        <div class="detail-item">
+                            <div class="detail-value">1.1s</div>
+                            <div class="detail-label">Last Sync</div>
+                        </div>
+                        <div class="detail-item">
+                            <div class="detail-value">99.2%</div>
+                            <div class="detail-label">Uptime</div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="game-item">
+                    <div class="game-header">
+                        <div class="game-name">
+                            🏪 Idea Marketplace
+                        </div>
+                        <div class="game-status syncing">syncing</div>
+                    </div>
+                    <div class="game-details">
+                        <div class="detail-item">
+                            <div class="detail-value">2,143</div>
+                            <div class="detail-label">Active Ideas</div>
+                        </div>
+                        <div class="detail-item">
+                            <div class="detail-value">89</div>
+                            <div class="detail-label">Transactions</div>
+                        </div>
+                        <div class="detail-item">
+                            <div class="detail-value">2.7s</div>
+                            <div class="detail-label">Last Sync</div>
+                        </div>
+                        <div class="detail-item">
+                            <div class="detail-value">97.1%</div>
+                            <div class="detail-label">Uptime</div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Sync Panel -->
+        <div class="sync-panel">
+            <div class="panel-title">
+                🔄 Synchronization Control
+            </div>
+            
+            <div class="sync-controls">
+                <button class="sync-btn" onclick="syncArena()">⚔️ Sync Arena</button>
+                <button class="sync-btn" onclick="syncBillionDollar()">💰 Sync Billion $</button>
+                <button class="sync-btn" onclick="syncMarketplace()">🏪 Sync Marketplace</button>
+            </div>
+
+            <div class="sync-log" id="syncLog">
+                <div class="log-entry">
+                    <div class="log-message">AI Arena state synchronized successfully</div>
+                    <div class="log-status success">Success</div>
+                    <div class="log-timestamp">2 min ago</div>
+                </div>
+                <div class="log-entry">
+                    <div class="log-message">Billion Dollar Game progress updated</div>
+                    <div class="log-status success">Success</div>
+                    <div class="log-timestamp">3 min ago</div>
+                </div>
+                <div class="log-entry">
+                    <div class="log-message">Marketplace sync in progress...</div>
+                    <div class="log-status warning">In Progress</div>
+                    <div class="log-timestamp">5 min ago</div>
+                </div>
+                <div class="log-entry">
+                    <div class="log-message">Cross-platform data validation completed</div>
+                    <div class="log-status success">Success</div>
+                    <div class="log-timestamp">7 min ago</div>
+                </div>
+                <div class="log-entry">
+                    <div class="log-message">Conflict resolution: Arena fighter stats</div>
+                    <div class="log-status success">Resolved</div>
+                    <div class="log-timestamp">12 min ago</div>
+                </div>
+            </div>
+
+            <div class="conflicts-section">
+                <div class="panel-title">
+                    ⚠️ Conflicts & Resolutions
+                </div>
+                <div id="conflictsList">
+                    <!-- Conflicts will be populated here -->
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // Game State Manager Application
+        class GameStateManager {
+            constructor() {
+                this.ws = null;
+                this.games = new Map();
+                this.syncLog = [];
+                this.conflicts = [];
+                
+                this.init();
+            }
+
+            init() {
+                this.connectWebSocket();
+                this.startPeriodicSync();
+                this.loadInitialData();
+                console.log('🎮 Game State Manager initialized');
+            }
+
+            connectWebSocket() {
+                // Connect to game state WebSocket
+                const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
+                const wsUrl = `${protocol}//${window.location.hostname}:8085`;
+                
+                this.ws = new WebSocket(wsUrl);
+                
+                this.ws.onopen = () => {
+                    console.log('🔌 Connected to Game State WebSocket');
+                    this.updateStatus('synchronized', 'All Systems Synchronized');
+                };
+                
+                this.ws.onmessage = (event) => {
+                    const data = JSON.parse(event.data);
+                    this.handleWebSocketMessage(data);
+                };
+                
+                this.ws.onclose = () => {
+                    console.log('🔌 Disconnected from Game State WebSocket');
+                    this.updateStatus('error', 'Connection Lost - Retrying...');
+                    
+                    // Attempt to reconnect
+                    setTimeout(() => {
+                        this.connectWebSocket();
+                    }, 5000);
+                };
+                
+                this.ws.onerror = (error) => {
+                    console.error('🔌 WebSocket error:', error);
+                    this.updateStatus('warning', 'Connection Issues');
+                };
+            }
+
+            handleWebSocketMessage(data) {
+                switch (data.type) {
+                    case 'state_update':
+                        this.updateGameState(data.game, data.state);
+                        break;
+                    case 'sync_complete':
+                        this.addLogEntry(data.message, 'success');
+                        break;
+                    case 'sync_error':
+                        this.addLogEntry(data.message, 'error');
+                        break;
+                    case 'conflict_detected':
+                        this.addConflict(data.conflict);
+                        break;
+                    case 'metrics_update':
+                        this.updateMetrics(data.metrics);
+                        break;
+                }
+            }
+
+            loadInitialData() {
+                // Load initial game states
+                this.games.set('ai-arena', {
+                    name: 'AI Arena',
+                    icon: '⚔️',
+                    status: 'synchronized',
+                    fighters: 142,
+                    battles: 8,
+                    lastSync: Date.now(),
+                    uptime: 98.7
+                });
+
+                this.games.set('billion-dollar', {
+                    name: 'Billion Dollar Game',
+                    icon: '💰',
+                    status: 'synchronized',
+                    players: 847,
+                    progress: 67,
+                    lastSync: Date.now() - 1100,
+                    uptime: 99.2
+                });
+
+                this.games.set('marketplace', {
+                    name: 'Idea Marketplace',
+                    icon: '🏪',
+                    status: 'syncing',
+                    ideas: 2143,
+                    transactions: 89,
+                    lastSync: Date.now() - 2700,
+                    uptime: 97.1
+                });
+
+                this.updateGameDisplay();
+            }
+
+            updateGameState(gameId, state) {
+                if (this.games.has(gameId)) {
+                    const game = this.games.get(gameId);
+                    Object.assign(game, state);
+                    this.games.set(gameId, game);
+                    this.updateGameDisplay();
+                }
+            }
+
+            updateGameDisplay() {
+                const gameList = document.getElementById('gameList');
+                gameList.innerHTML = '';
+
+                this.games.forEach((game, gameId) => {
+                    const gameElement = this.createGameElement(game, gameId);
+                    gameList.appendChild(gameElement);
+                });
+            }
+
+            createGameElement(game, gameId) {
+                const gameDiv = document.createElement('div');
+                gameDiv.className = 'game-item';
+                
+                const timeSinceSync = Date.now() - game.lastSync;
+                const syncText = timeSinceSync < 1000 ? '0.1s' : 
+                                timeSinceSync < 60000 ? `${(timeSinceSync/1000).toFixed(1)}s` : 
+                                `${Math.floor(timeSinceSync/60000)} min`;
+
+                gameDiv.innerHTML = `
+                    <div class="game-header">
+                        <div class="game-name">
+                            ${game.icon} ${game.name}
+                        </div>
+                        <div class="game-status ${game.status}">${game.status}</div>
+                    </div>
+                    <div class="game-details">
+                        ${this.getGameDetails(game, gameId)}
+                    </div>
+                `;
+
+                return gameDiv;
+            }
+
+            getGameDetails(game, gameId) {
+                switch (gameId) {
+                    case 'ai-arena':
+                        return `
+                            <div class="detail-item">
+                                <div class="detail-value">${game.fighters}</div>
+                                <div class="detail-label">Active Fighters</div>
+                            </div>
+                            <div class="detail-item">
+                                <div class="detail-value">${game.battles}</div>
+                                <div class="detail-label">Live Battles</div>
+                            </div>
+                            <div class="detail-item">
+                                <div class="detail-value">${((Date.now() - game.lastSync)/1000).toFixed(1)}s</div>
+                                <div class="detail-label">Last Sync</div>
+                            </div>
+                            <div class="detail-item">
+                                <div class="detail-value">${game.uptime}%</div>
+                                <div class="detail-label">Uptime</div>
+                            </div>
+                        `;
+                    case 'billion-dollar':
+                        return `
+                            <div class="detail-item">
+                                <div class="detail-value">${game.players}</div>
+                                <div class="detail-label">Active Players</div>
+                            </div>
+                            <div class="detail-item">
+                                <div class="detail-value">${game.progress}%</div>
+                                <div class="detail-label">Progress</div>
+                            </div>
+                            <div class="detail-item">
+                                <div class="detail-value">${((Date.now() - game.lastSync)/1000).toFixed(1)}s</div>
+                                <div class="detail-label">Last Sync</div>
+                            </div>
+                            <div class="detail-item">
+                                <div class="detail-value">${game.uptime}%</div>
+                                <div class="detail-label">Uptime</div>
+                            </div>
+                        `;
+                    case 'marketplace':
+                        return `
+                            <div class="detail-item">
+                                <div class="detail-value">${game.ideas}</div>
+                                <div class="detail-label">Active Ideas</div>
+                            </div>
+                            <div class="detail-item">
+                                <div class="detail-value">${game.transactions}</div>
+                                <div class="detail-label">Transactions</div>
+                            </div>
+                            <div class="detail-item">
+                                <div class="detail-value">${((Date.now() - game.lastSync)/1000).toFixed(1)}s</div>
+                                <div class="detail-label">Last Sync</div>
+                            </div>
+                            <div class="detail-item">
+                                <div class="detail-value">${game.uptime}%</div>
+                                <div class="detail-label">Uptime</div>
+                            </div>
+                        `;
+                    default:
+                        return '';
+                }
+            }
+
+            updateStatus(status, text) {
+                const indicator = document.getElementById('globalStatus');
+                const statusText = document.getElementById('globalStatusText');
+                
+                indicator.className = `status-indicator ${status}`;
+                statusText.textContent = text;
+            }
+
+            addLogEntry(message, status) {
+                const logEntry = {
+                    message: message,
+                    status: status,
+                    timestamp: new Date()
+                };
+
+                this.syncLog.unshift(logEntry);
+                if (this.syncLog.length > 20) {
+                    this.syncLog.pop();
+                }
+
+                this.updateLogDisplay();
+            }
+
+            updateLogDisplay() {
+                const logContainer = document.getElementById('syncLog');
+                logContainer.innerHTML = '';
+
+                this.syncLog.forEach(entry => {
+                    const logDiv = document.createElement('div');
+                    logDiv.className = 'log-entry';
+                    
+                    const timeAgo = Math.floor((Date.now() - entry.timestamp) / 1000);
+                    const timeText = timeAgo < 60 ? `${timeAgo}s ago` : `${Math.floor(timeAgo/60)}m ago`;
+                    
+                    logDiv.innerHTML = `
+                        <div class="log-message">${entry.message}</div>
+                        <div class="log-status ${entry.status}">${entry.status}</div>
+                        <div class="log-timestamp">${timeText}</div>
+                    `;
+                    
+                    logContainer.appendChild(logDiv);
+                });
+            }
+
+            addConflict(conflict) {
+                this.conflicts.push(conflict);
+                this.updateConflictsDisplay();
+            }
+
+            updateConflictsDisplay() {
+                const conflictsContainer = document.getElementById('conflictsList');
+                conflictsContainer.innerHTML = '';
+
+                this.conflicts.forEach((conflict, index) => {
+                    const conflictDiv = document.createElement('div');
+                    conflictDiv.className = 'conflict-item';
+                    
+                    conflictDiv.innerHTML = `
+                        <div class="conflict-header">
+                            <div class="conflict-title">${conflict.title}</div>
+                            <div class="conflict-actions">
+                                <button class="resolve-btn" onclick="resolveConflict(${index}, 'accept')">Accept</button>
+                                <button class="resolve-btn reject" onclick="resolveConflict(${index}, 'reject')">Reject</button>
+                            </div>
+                        </div>
+                        <div class="conflict-description">${conflict.description}</div>
+                    `;
+                    
+                    conflictsContainer.appendChild(conflictDiv);
+                });
+            }
+
+            updateMetrics(metrics) {
+                // Update overview metrics
+                document.getElementById('activeGames').textContent = metrics.activeGames || 3;
+                document.getElementById('activePlayers').textContent = metrics.activePlayers?.toLocaleString() || '1,247';
+                document.getElementById('syncOperations').textContent = metrics.syncOperations || 89;
+                document.getElementById('avgSyncTime').textContent = metrics.avgSyncTime || '0.3s';
+                document.getElementById('arenaMatches').textContent = metrics.arenaMatches || 24;
+                document.getElementById('gameProgress').textContent = metrics.gameProgress || '67%';
+            }
+
+            startPeriodicSync() {
+                setInterval(() => {
+                    // Simulate periodic updates
+                    this.updateGameTimes();
+                    this.simulateActivity();
+                }, 1000);
+            }
+
+            updateGameTimes() {
+                this.games.forEach((game, gameId) => {
+                    // Update last sync times in display
+                    this.updateGameDisplay();
+                });
+            }
+
+            simulateActivity() {
+                // Simulate random activity
+                if (Math.random() < 0.1) {
+                    const activities = [
+                        'Player joined AI Arena',
+                        'New idea submitted to marketplace',
+                        'Billion Dollar Game progress updated',
+                        'Fighter battle completed',
+                        'Marketplace transaction processed'
+                    ];
+                    
+                    const activity = activities[Math.floor(Math.random() * activities.length)];
+                    this.addLogEntry(activity, 'success');
+                }
+            }
+
+            // Public methods for button actions
+            async syncGame(gameId) {
+                console.log(`🔄 Syncing ${gameId}...`);
+                this.addLogEntry(`Syncing ${gameId}...`, 'warning');
+                
+                // Simulate sync operation
+                const game = this.games.get(gameId);
+                if (game) {
+                    game.status = 'syncing';
+                    this.updateGameDisplay();
+                    
+                    setTimeout(() => {
+                        game.status = 'synchronized';
+                        game.lastSync = Date.now();
+                        this.updateGameDisplay();
+                        this.addLogEntry(`${game.name} synchronized successfully`, 'success');
+                    }, 2000);
+                }
+            }
+
+            async forceGlobalSync() {
+                console.log('🔄 Force global sync...');
+                this.updateStatus('syncing', 'Synchronizing All Systems...');
+                this.addLogEntry('Global synchronization initiated', 'warning');
+                
+                // Sync all games
+                const syncPromises = Array.from(this.games.keys()).map(gameId => 
+                    this.syncGame(gameId)
+                );
+                
+                setTimeout(() => {
+                    this.updateStatus('synchronized', 'All Systems Synchronized');
+                    this.addLogEntry('Global synchronization completed', 'success');
+                }, 3000);
+            }
+
+            async exportStates() {
+                console.log('📤 Exporting game states...');
+                
+                const exportData = {
+                    timestamp: new Date().toISOString(),
+                    games: Object.fromEntries(this.games),
+                    syncLog: this.syncLog.slice(0, 10),
+                    conflicts: this.conflicts
+                };
+                
+                const blob = new Blob([JSON.stringify(exportData, null, 2)], {
+                    type: 'application/json'
+                });
+                
+                const url = URL.createObjectURL(blob);
+                const a = document.createElement('a');
+                a.href = url;
+                a.download = `game-states-${Date.now()}.json`;
+                a.click();
+                
+                URL.revokeObjectURL(url);
+                this.addLogEntry('Game states exported successfully', 'success');
+            }
+        }
+
+        // Initialize the Game State Manager
+        const gameStateManager = new GameStateManager();
+
+        // Global functions for button actions
+        function syncArena() {
+            gameStateManager.syncGame('ai-arena');
+        }
+
+        function syncBillionDollar() {
+            gameStateManager.syncGame('billion-dollar');
+        }
+
+        function syncMarketplace() {
+            gameStateManager.syncGame('marketplace');
+        }
+
+        function forceGlobalSync() {
+            gameStateManager.forceGlobalSync();
+        }
+
+        function exportStates() {
+            gameStateManager.exportStates();
+        }
+
+        function resolveConflict(index, action) {
+            const conflict = gameStateManager.conflicts[index];
+            if (conflict) {
+                gameStateManager.addLogEntry(`Conflict resolved: ${conflict.title} (${action})`, 'success');
+                gameStateManager.conflicts.splice(index, 1);
+                gameStateManager.updateConflictsDisplay();
+            }
+        }
+
+        // Simulate some initial activity
+        setTimeout(() => {
+            gameStateManager.addLogEntry('Game State Manager fully initialized', 'success');
+        }, 1000);
+    </script>
+</body>
+</html>

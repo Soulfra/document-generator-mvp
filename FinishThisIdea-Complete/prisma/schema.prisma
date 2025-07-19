@@ -1,0 +1,657 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+enum JobStatus {
+  PENDING
+  PROCESSING
+  REVIEW
+  APPLYING
+  COMPLETED
+  FAILED
+  CANCELLED
+}
+
+enum PaymentStatus {
+  PENDING
+  SUCCEEDED
+  FAILED
+  REFUNDED
+}
+
+enum UserTier {
+  FREE
+  PREMIUM
+}
+
+enum UploadStatus {
+  PENDING
+  UPLOADED
+  FAILED
+  EXPIRED
+  DELETED
+}
+
+enum AgentExperienceLevel {
+  JUNIOR
+  MID
+  SENIOR
+  EXPERT
+}
+
+enum CollaborationOutcome {
+  SUCCESS
+  PARTIAL
+  FAILED
+}
+
+enum TokenAcquisitionType {
+  INITIAL
+  EARNED
+  REFERRAL
+  MINTED
+  REWARD
+}
+
+model Job {
+  id                String    @id @default(uuid())
+  type              String?   // Job type (cleanup, documentation, etc.)
+  status            JobStatus @default(PENDING)
+  inputFileUrl      String    @map("input_file_url")
+  outputFileUrl     String?   @map("output_file_url")
+  outputUrl         String?   @map("output_url") // Alternative output URL
+  downloadUrl       String?   @map("download_url") // Download URL for results
+  stripeSessionId   String?   @unique @map("stripe_session_id")
+  progress          Int       @default(0)
+  error             String?
+  metadata          Json?
+  
+  // Processing details
+  currentStep       String?   @map("current_step")
+  input             Json?     // Original input data
+  changes           Json?     // Changes made
+  decisions         Json?     // User decisions
+  
+  // User and Profile
+  userId            String?   @map("user_id")
+  contextProfileId  String?   @map("context_profile_id")
+  uploadId          String?   @map("upload_id")
+  
+  // File info
+  originalFileName  String    @map("original_file_name")
+  fileSizeBytes     Int       @map("file_size_bytes")
+  fileCount         Int?      @map("file_count")
+  
+  // Processing info
+  processingStartedAt DateTime? @map("processing_started_at")
+  processingEndedAt   DateTime? @map("processing_ended_at")
+  
+  // Cost tracking (CRITICAL FOR REVENUE)
+  cost              Float     @default(1.0) // Main cost field
+  totalCost         Float     @default(1.0) @map("total_cost") // Legacy field
+  tokensUsed        Int?      @map("tokens_used")
+  llmProvider       String?   @map("llm_provider")
+  attempts          Int       @default(0) // Number of processing attempts
+  
+  // Timestamps
+  createdAt         DateTime  @default(now()) @map("created_at")
+  updatedAt         DateTime  @updatedAt @map("updated_at")
+  expiresAt         DateTime  @map("expires_at")
+  
+  // Relations
+  user              User?     @relation(fields: [userId], references: [id], onDelete: SetNull)
+  payment           Payment?
+  analysisResult    AnalysisResult?
+  contextProfile    ContextProfile? @relation(fields: [contextProfileId], references: [id])
+  upload            Upload?         @relation(fields: [uploadId], references: [id])
+  documentation     Documentation?
+  
+  @@index([status])
+  @@index([createdAt])
+  @@index([stripeSessionId])
+  @@index([userId])
+  @@map("jobs")
+}
+
+model Payment {
+  id                    String        @id @default(uuid())
+  jobId                 String        @unique @map("job_id")
+  userId                String        @map("user_id")
+  stripePaymentIntentId String?       @unique @map("stripe_payment_intent_id")
+  stripeCustomerId      String?       @map("stripe_customer_id")
+  stripeSessionId       String?       @unique @map("stripe_session_id")
+  amount                Int           // in cents
+  currency              String        @default("usd")
+  status                PaymentStatus @default(PENDING)
+  metadata              Json?         // Additional payment metadata
+  
+  // Timestamps
+  createdAt             DateTime      @default(now()) @map("created_at")
+  updatedAt             DateTime      @updatedAt @map("updated_at")
+  paidAt                DateTime?     @map("paid_at")
+  
+  // Relations
+  job                   Job           @relation(fields: [jobId], references: [id], onDelete: Cascade)
+  user                  User          @relation(fields: [userId], references: [id], onDelete: Cascade)
+  
+  @@index([userId])
+  @@index([status])
+  @@index([stripePaymentIntentId])
+  @@index([stripeSessionId])
+  @@map("payments")
+}
+
+model AnalysisResult {
+  id                String   @id @default(uuid())
+  jobId             String   @unique @map("job_id")
+  
+  // Analysis data
+  totalFiles        Int      @map("total_files")
+  linesOfCode       Int      @map("lines_of_code")
+  languages         Json     // { "javascript": 60, "typescript": 30, "css": 10 }
+  issues            Json     // Array of identified issues
+  improvements      Json     // Array of improvements made
+  
+  // AI metrics
+  ollamaConfidence  Float?   @map("ollama_confidence")
+  claudeUsed        Boolean  @default(false) @map("claude_used")
+  processingCostUsd Float    @default(0) @map("processing_cost_usd")
+  
+  // Timestamps
+  createdAt         DateTime @default(now()) @map("created_at")
+  
+  // Relations
+  job               Job      @relation(fields: [jobId], references: [id], onDelete: Cascade)
+  
+  @@map("analysis_results")
+}
+
+model ContextProfile {
+  id                String   @id @default(uuid())
+  name              String
+  description       String   @db.Text
+  userId            String?  @map("user_id") // null for system defaults
+  data              Json     // Full profile data (ContextProfile type)
+  language          String?
+  framework         String?
+  version           String?
+  isDefault         Boolean  @default(false) @map("is_default")
+  isPublic          Boolean  @default(false) @map("is_public")
+  usageCount        Int      @default(0) @map("usage_count")
+  
+  // Timestamps
+  createdAt         DateTime @default(now()) @map("created_at")
+  updatedAt         DateTime @updatedAt @map("updated_at")
+  
+  // Relations
+  jobs              Job[]
+  user              User?    @relation(fields: [userId], references: [id], onDelete: SetNull)
+  
+  @@index([userId])
+  @@index([isPublic])
+  @@index([language])
+  @@index([framework])
+  @@map("context_profiles")
+}
+
+model Upload {
+  id                String       @id @default(uuid())
+  originalName      String       @map("original_name")
+  filename          String       // Stored filename
+  mimeType          String       @map("mime_type")
+  size              Int          // File size in bytes
+  path              String       // Storage path
+  url               String?      // Public URL if applicable
+  userId            String?      @map("user_id")
+  status            UploadStatus @default(PENDING)
+  
+  // Timestamps
+  createdAt         DateTime     @default(now()) @map("created_at")
+  updatedAt         DateTime     @updatedAt @map("updated_at")
+  
+  // Relations
+  jobs              Job[]
+  user              User?        @relation(fields: [userId], references: [id], onDelete: SetNull)
+  
+  @@index([originalName])
+  @@index([createdAt])
+  @@index([status])
+  @@index([userId])
+  @@map("uploads")
+}
+
+// ============================================================================
+// 🚀 VIRAL FEATURES - AGENT ECONOMY & SHOWCASE SYSTEM
+// ============================================================================
+
+model User {
+  id                String    @id @default(uuid())
+  email             String?   @unique
+  displayName       String?   @map("display_name")
+  name              String?   // For treasury display
+  stripeCustomerId  String?   @unique @map("stripe_customer_id")
+  tier              UserTier  @default(FREE)
+  
+  // User Metrics
+  userNumber        Int?      @unique @default(autoincrement()) @map("user_number") // For early adopter tracking
+  metadata          Json?     // For achievements, XP, preferences, etc.
+  
+  // Token Economics
+  platformTokens    Int       @default(0) @map("platform_tokens")
+  totalEarnings     Float     @default(0) @map("total_earnings_usd")
+  referralEarnings  Float     @default(0) @map("referral_earnings")
+  
+  // Viral Metrics
+  referralCode      String?   @unique @map("referral_code")
+  referredBy        String?   @map("referred_by_user_id")
+  referralCount     Int       @default(0) @map("referral_count")
+  
+  // Timestamps
+  createdAt         DateTime  @default(now()) @map("created_at")
+  updatedAt         DateTime  @updatedAt @map("updated_at")
+  lastActiveAt      DateTime? @map("last_active_at")
+  lastTokenUpdate   DateTime? @map("last_token_update")
+  lastDividendPayout DateTime? @map("last_dividend_payout")
+  lastLoginAt       DateTime? @map("last_login_at")
+  
+  // Relations
+  jobs              Job[]
+  uploads           Upload[]
+  payments          Payment[]
+  contextProfiles   ContextProfile[]
+  agents            UserAgent[]
+  showcases         ProjectShowcase[]
+  tokenHoldings     TokenHolding[]
+  collaborationParticipants CollaborationParticipant[] @relation("CollaborationParticipants")
+  referredUsers     User[]          @relation("UserReferrals")
+  referrer          User?           @relation("UserReferrals", fields: [referredBy], references: [id])
+  swipePatterns     SwipePattern[]
+  
+  // Agent Marketplace Relations
+  createdAgents     Agent[]         @relation("CreatedAgents")
+  purchasedAgents   AgentPurchase[]
+  agentRatings      AgentRating[]
+  agentExecutions   AgentExecution[]
+  
+  @@index([email])
+  @@index([referralCode])
+  @@index([referredBy])
+  @@index([platformTokens])
+  @@index([userNumber])
+  @@map("users")
+}
+
+model AgentTemplate {
+  id                String                @id @default(uuid())
+  name              String
+  description       String                @db.Text
+  specialization    String
+  capabilities      Json                  // Array of capabilities
+  modelPreferences  Json                  // Array of preferred models
+  personalityTraits Json                  // Array of personality traits
+  codeStyle         String
+  experienceLevel   AgentExperienceLevel
+  pricePerToken     Int                   // Cost to mint this template
+  
+  // Metadata
+  isActive          Boolean               @default(true) @map("is_active")
+  usageCount        Int                   @default(0) @map("usage_count")
+  
+  // Timestamps
+  createdAt         DateTime              @default(now()) @map("created_at")
+  updatedAt         DateTime              @updatedAt @map("updated_at")
+  
+  // Relations
+  agents            UserAgent[]
+  
+  @@index([specialization])
+  @@index([experienceLevel])
+  @@map("agent_templates")
+}
+
+model UserAgent {
+  id                String    @id @default(uuid())
+  templateId        String    @map("template_id")
+  ownerId           String    @map("owner_id")
+  customName        String    @map("custom_name")
+  
+  // Agent Stats
+  experience        Int       @default(0)
+  reputation        Int       @default(0)
+  earnings          Float     @default(0)
+  collaborationCount Int      @default(0) @map("collaboration_count")
+  
+  // Configuration
+  specializations   Json      // Array of specializations
+  isPublic          Boolean   @default(false) @map("is_public")
+  
+  // Timestamps
+  createdAt         DateTime  @default(now()) @map("created_at")
+  updatedAt         DateTime  @updatedAt @map("updated_at")
+  lastUsed          DateTime? @map("last_used_at")
+  
+  // Relations
+  template          AgentTemplate @relation(fields: [templateId], references: [id])
+  owner             User          @relation(fields: [ownerId], references: [id])
+  collaborations    CollaborationParticipant[]
+  
+  @@index([ownerId])
+  @@index([templateId])
+  @@index([isPublic])
+  @@map("user_agents")
+}
+
+model ProjectShowcase {
+  id                String    @id @default(uuid())
+  userId            String    @map("user_id")
+  title             String
+  description       String    @db.Text
+  
+  // Code Content
+  beforeCode        String    @db.Text @map("before_code")
+  afterCode         String    @db.Text @map("after_code")
+  improvements      Json      // Array of improvement descriptions
+  technologies      Json      // Array of technologies used
+  
+  // Metrics
+  metrics           Json      // Improvement metrics object
+  shareMetrics      Json      // Views, likes, shares, forks
+  
+  // Sharing
+  qrCode            String?   @db.Text @map("qr_code_data")
+  shareUrl          String    @unique @map("share_url")
+  isPublic          Boolean   @default(true) @map("is_public")
+  
+  // Timestamps
+  createdAt         DateTime  @default(now()) @map("created_at")
+  updatedAt         DateTime  @updatedAt @map("updated_at")
+  
+  // Relations
+  user              User      @relation(fields: [userId], references: [id])
+  
+  @@index([userId])
+  @@index([isPublic])
+  @@index([createdAt])
+  @@map("project_showcases")
+}
+
+model TokenHolding {
+  id                String              @id @default(uuid())
+  userId            String              @map("user_id")
+  amount            Int
+  acquisitionType   TokenAcquisitionType @map("acquisition_type")
+  source            String?             // Description of how tokens were earned
+  metadata          Json?               // Additional context
+  
+  // Timestamps
+  createdAt         DateTime            @default(now()) @map("created_at")
+  
+  // Relations
+  user              User                @relation(fields: [userId], references: [id])
+  
+  @@index([userId])
+  @@index([acquisitionType])
+  @@index([createdAt])
+  @@map("token_holdings")
+}
+
+model Collaboration {
+  id                String    @id @default(uuid())
+  projectId         String    @map("project_id")
+  outcome           CollaborationOutcome @default(SUCCESS)
+  revenueGenerated  Float     @default(0) @map("revenue_generated")
+  
+  // Timestamps
+  startedAt         DateTime  @default(now()) @map("started_at")
+  completedAt       DateTime? @map("completed_at")
+  
+  // Relations
+  participants      CollaborationParticipant[]
+  
+  @@index([projectId])
+  @@index([startedAt])
+  @@map("collaborations")
+}
+
+model CollaborationParticipant {
+  id                String        @id @default(uuid())
+  collaborationId   String        @map("collaboration_id")
+  agentId           String        @map("agent_id")
+  userId            String        @map("user_id")
+  role              String
+  contribution      Int           @default(0)
+  
+  // Relations
+  collaboration     Collaboration @relation(fields: [collaborationId], references: [id], onDelete: Cascade)
+  agent             UserAgent     @relation(fields: [agentId], references: [id])
+  user              User          @relation("CollaborationParticipants", fields: [userId], references: [id])
+  
+  @@unique([collaborationId, agentId])
+  @@index([agentId])
+  @@index([userId])
+  @@map("collaboration_participants")
+}
+
+model PlatformRevenue {
+  id                String    @id @default(uuid())
+  
+  // Core Revenue Tracking
+  totalRevenue      Float     @default(0) @map("total_revenue")
+  amount            Float     // Individual revenue entry amount
+  source            String    // 'cleanup', 'subscription', 'marketplace', etc.
+  userId            String?   @map("user_id")
+  
+  // Revenue Sharing
+  dividendRate      Float     @default(0.3) @map("dividend_rate")
+  dividendAmount    Float?    @map("dividend_amount")
+  tokenHoldersCount Int?      @map("token_holders_count")
+  
+  // Treasury Configuration
+  tokenHolders      Json?     @map("token_holders") // Array of token holders
+  gradeThresholds   Json?     @map("grade_thresholds") // Grade threshold mappings
+  status            String    @default("active") // 'active' | 'paused'
+  
+  // Timestamps
+  createdAt         DateTime  @default(now()) @map("created_at")
+  updatedAt         DateTime  @updatedAt @map("updated_at")
+  distributedAt     DateTime? @map("distributed_at")
+  lastRevenueUpdate DateTime? @map("last_revenue_update")
+  
+  @@index([source])
+  @@index([createdAt])
+  @@index([userId])
+  @@map("platform_revenue")
+}
+
+// ============================================================================
+// 📊 MONITORING & ANALYTICS - USER INTERACTION TRACKING
+// ============================================================================
+
+model UserInteraction {
+  id          String   @id @default(uuid())
+  sessionId   String   @map("session_id")
+  eventType   String   @map("event_type")
+  userId      String?  @map("user_id")
+  metadata    Json?
+  timestamp   DateTime
+  ipHash      String?  @map("ip_hash")
+  
+  @@index([sessionId])
+  @@index([eventType])
+  @@index([userId])
+  @@index([timestamp])
+  @@map("user_interactions")
+}
+
+// ============================================================================
+// 📄 DOCUMENTATION SYSTEM - CRITICAL REVENUE FEATURE ($3 UPSELL)
+// ============================================================================
+
+model Documentation {
+  id                String   @id @default(uuid())
+  jobId             String   @unique @map("job_id")
+  userId            String?  @map("user_id")
+  url               String   // S3 URL to documentation package
+  templates         String[] // List of template IDs used
+  metadata          Json     // Quality scores, tokens used, etc.
+  
+  // Timestamps
+  createdAt         DateTime @default(now()) @map("created_at")
+  updatedAt         DateTime @updatedAt @map("updated_at")
+  
+  // Relations
+  job               Job      @relation(fields: [jobId], references: [id], onDelete: Cascade)
+  
+  @@index([userId])
+  @@index([createdAt])
+  @@map("documentation")
+}
+
+model SwipePattern {
+  id                String   @id @default(uuid())
+  userId            String   @map("user_id")
+  changeType        String   @map("change_type")
+  pattern           String   // Pattern identifier
+  filePattern       String?  @map("file_pattern") // File pattern for the change
+  action            String?  // ACCEPT or REJECT
+  usageCount        Int      @default(1) @map("usage_count")
+  lastUsedAt        DateTime @default(now()) @map("last_used_at")
+  
+  // Timestamps
+  createdAt         DateTime @default(now()) @map("created_at")
+  updatedAt         DateTime @updatedAt @map("updated_at")
+  
+  // Relations
+  user              User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  
+  @@unique([userId, changeType, pattern], name: "userId_changeType_pattern")
+  @@index([userId])
+  @@map("swipe_patterns")
+}
+
+// ============================================================================
+// 🤖 AGENT MARKETPLACE - $1 AGENT MARKETPLACE WITH VOICE CREATION
+// ============================================================================
+
+model Agent {
+  id                String    @id @default(uuid())
+  name              String
+  description       String    @db.Text
+  category          String    // utility, creative, analysis, automation, communication, other
+  price             Float     @default(1.0)
+  tags              String[]
+  inputTypes        String[]  // text, json, file, image
+  outputTypes       String[]  // text, json, file, image, stream
+  configSchema      Json      @default("{}") @map("config_schema")
+  systemPrompt      String    @db.Text @map("system_prompt")
+  exampleInputs     Json[]    @default([]) @map("example_inputs")
+  exampleOutputs    Json[]    @default([]) @map("example_outputs")
+  
+  // Creator and remix tracking
+  creatorId         String    @map("creator_id")
+  remixFromId       String?   @map("remix_from_id")
+  
+  // Stats
+  downloadCount     Int       @default(0) @map("download_count")
+  executionCount    Int       @default(0) @map("execution_count")
+  totalRevenue      Float     @default(0) @map("total_revenue")
+  averageRating     Float?    @map("average_rating")
+  ratingCount       Int       @default(0) @map("rating_count")
+  
+  // Status
+  status            String    @default("active") // active, inactive, suspended
+  lastExecutedAt    DateTime? @map("last_executed_at")
+  
+  // Metadata
+  metadata          Json      @default("{}")
+  
+  // Timestamps
+  createdAt         DateTime  @default(now()) @map("created_at")
+  updatedAt         DateTime  @updatedAt @map("updated_at")
+  
+  // Relations
+  creator           User      @relation("CreatedAgents", fields: [creatorId], references: [id])
+  remixedFrom       Agent?    @relation("AgentRemixes", fields: [remixFromId], references: [id])
+  remixes           Agent[]   @relation("AgentRemixes")
+  purchases         AgentPurchase[]
+  ratings           AgentRating[]
+  executions        AgentExecution[]
+  
+  @@index([creatorId])
+  @@index([category])
+  @@index([status])
+  @@index([price])
+  @@index([downloadCount])
+  @@index([averageRating])
+  @@map("agents")
+}
+
+model AgentPurchase {
+  id                String    @id @default(uuid())
+  agentId           String    @map("agent_id")
+  userId            String    @map("user_id")
+  price             Float
+  status            String    @default("completed") // completed, refunded
+  metadata          Json      @default("{}")
+  
+  // Timestamps
+  createdAt         DateTime  @default(now()) @map("created_at")
+  
+  // Relations
+  agent             Agent     @relation(fields: [agentId], references: [id])
+  user              User      @relation(fields: [userId], references: [id])
+  
+  @@unique([agentId, userId])
+  @@index([userId])
+  @@index([agentId])
+  @@map("agent_purchases")
+}
+
+model AgentRating {
+  agentId           String    @map("agent_id")
+  userId            String    @map("user_id")
+  rating            Int       // 1-5
+  review            String?   @db.Text
+  
+  // Timestamps
+  createdAt         DateTime  @default(now()) @map("created_at")
+  updatedAt         DateTime  @updatedAt @map("updated_at")
+  
+  // Relations
+  agent             Agent     @relation(fields: [agentId], references: [id])
+  user              User      @relation(fields: [userId], references: [id])
+  
+  @@id([agentId, userId])
+  @@index([agentId])
+  @@index([userId])
+  @@map("agent_ratings")
+}
+
+model AgentExecution {
+  id                String    @id @default(uuid())
+  agentId           String    @map("agent_id")
+  userId            String    @map("user_id")
+  input             Json
+  output            Json?
+  config            Json      @default("{}")
+  status            String    @default("pending") // pending, running, completed, failed
+  error             String?   @db.Text
+  
+  // Timestamps
+  createdAt         DateTime  @default(now()) @map("created_at")
+  completedAt       DateTime? @map("completed_at")
+  
+  // Relations
+  agent             Agent     @relation(fields: [agentId], references: [id])
+  user              User      @relation(fields: [userId], references: [id])
+  
+  @@index([agentId])
+  @@index([userId])
+  @@index([status])
+  @@map("agent_executions")
+}

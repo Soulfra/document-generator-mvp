@@ -1,0 +1,1096 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>FinishThisIdea - AI Fighter Builder</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            background: linear-gradient(135deg, #0a0a0a, #1a1a2e, #16213e, #2a1a3a);
+            color: #fff;
+            min-height: 100vh;
+            overflow-x: hidden;
+        }
+
+        /* Header */
+        .builder-header {
+            background: rgba(138, 43, 226, 0.1);
+            backdrop-filter: blur(20px);
+            padding: 24px 32px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            border-bottom: 2px solid #8a2be2;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .builder-header::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: linear-gradient(45deg, transparent, rgba(138, 43, 226, 0.2), transparent);
+            transform: translateX(-100%);
+            transition: transform 0.6s;
+        }
+
+        .builder-header:hover::before {
+            transform: translateX(100%);
+        }
+
+        .builder-title {
+            font-size: 2.5em;
+            font-weight: 600;
+            background: linear-gradient(45deg, #8a2be2, #da70d6, #ff69b4);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            display: flex;
+            align-items: center;
+            gap: 12px;
+        }
+
+        .builder-actions {
+            display: flex;
+            gap: 16px;
+        }
+
+        .action-btn {
+            background: linear-gradient(45deg, #8a2be2, #da70d6);
+            border: none;
+            color: white;
+            padding: 12px 24px;
+            border-radius: 8px;
+            cursor: pointer;
+            font-weight: 500;
+            transition: all 0.3s ease;
+            text-decoration: none;
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .action-btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 8px 25px rgba(138, 43, 226, 0.3);
+        }
+
+        /* Main Layout */
+        .builder-container {
+            display: grid;
+            grid-template-columns: 350px 1fr 300px;
+            gap: 24px;
+            padding: 32px;
+            min-height: calc(100vh - 100px);
+        }
+
+        /* Left Panel - Templates & Presets */
+        .templates-panel {
+            background: rgba(255, 255, 255, 0.05);
+            border-radius: 16px;
+            padding: 24px;
+            border: 1px solid #333;
+            backdrop-filter: blur(10px);
+        }
+
+        .panel-title {
+            font-size: 1.4em;
+            font-weight: 600;
+            margin-bottom: 20px;
+            color: #8a2be2;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .template-list {
+            display: flex;
+            flex-direction: column;
+            gap: 12px;
+        }
+
+        .template-item {
+            background: rgba(255, 255, 255, 0.02);
+            border: 1px solid #444;
+            border-radius: 12px;
+            padding: 16px;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            position: relative;
+        }
+
+        .template-item:hover {
+            background: rgba(138, 43, 226, 0.1);
+            border-color: #8a2be2;
+            transform: translateX(4px);
+        }
+
+        .template-item.selected {
+            background: rgba(138, 43, 226, 0.2);
+            border-color: #8a2be2;
+        }
+
+        .template-name {
+            font-weight: 600;
+            margin-bottom: 6px;
+            color: #fff;
+        }
+
+        .template-type {
+            font-size: 0.8em;
+            color: #8a2be2;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            margin-bottom: 8px;
+        }
+
+        .template-desc {
+            font-size: 0.9em;
+            color: #ccc;
+            line-height: 1.4;
+        }
+
+        /* Center Panel - Builder Form */
+        .builder-form {
+            background: rgba(255, 255, 255, 0.05);
+            border-radius: 16px;
+            padding: 32px;
+            border: 1px solid #333;
+            backdrop-filter: blur(10px);
+        }
+
+        .form-section {
+            margin-bottom: 32px;
+        }
+
+        .section-title {
+            font-size: 1.2em;
+            font-weight: 600;
+            margin-bottom: 16px;
+            color: #da70d6;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .form-group {
+            margin-bottom: 20px;
+        }
+
+        .form-label {
+            display: block;
+            margin-bottom: 8px;
+            font-weight: 500;
+            color: #ccc;
+        }
+
+        .form-input {
+            width: 100%;
+            background: rgba(255, 255, 255, 0.1);
+            border: 1px solid #444;
+            border-radius: 8px;
+            padding: 12px 16px;
+            color: #fff;
+            font-size: 14px;
+            transition: all 0.3s ease;
+        }
+
+        .form-input:focus {
+            outline: none;
+            border-color: #8a2be2;
+            box-shadow: 0 0 0 3px rgba(138, 43, 226, 0.1);
+        }
+
+        .form-textarea {
+            min-height: 120px;
+            resize: vertical;
+        }
+
+        .form-select {
+            width: 100%;
+            background: rgba(255, 255, 255, 0.1);
+            border: 1px solid #444;
+            border-radius: 8px;
+            padding: 12px 16px;
+            color: #fff;
+            font-size: 14px;
+        }
+
+        /* Capabilities Section */
+        .capabilities-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 12px;
+        }
+
+        .capability-item {
+            background: rgba(255, 255, 255, 0.05);
+            border: 1px solid #444;
+            border-radius: 8px;
+            padding: 12px;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            text-align: center;
+        }
+
+        .capability-item:hover {
+            background: rgba(138, 43, 226, 0.1);
+            border-color: #8a2be2;
+        }
+
+        .capability-item.selected {
+            background: rgba(138, 43, 226, 0.2);
+            border-color: #8a2be2;
+        }
+
+        .capability-icon {
+            font-size: 2em;
+            margin-bottom: 8px;
+            display: block;
+        }
+
+        .capability-name {
+            font-weight: 500;
+        }
+
+        /* Attribute Sliders */
+        .attribute-group {
+            display: grid;
+            grid-template-columns: repeat(2, 1fr);
+            gap: 20px;
+        }
+
+        .attribute-item {
+            background: rgba(255, 255, 255, 0.02);
+            border-radius: 8px;
+            padding: 16px;
+        }
+
+        .attribute-label {
+            display: flex;
+            justify-content: between;
+            align-items: center;
+            margin-bottom: 12px;
+        }
+
+        .attribute-name {
+            font-weight: 500;
+            color: #ccc;
+        }
+
+        .attribute-value {
+            color: #8a2be2;
+            font-weight: 600;
+        }
+
+        .attribute-slider {
+            width: 100%;
+            height: 6px;
+            background: #333;
+            border-radius: 3px;
+            outline: none;
+            -webkit-appearance: none;
+        }
+
+        .attribute-slider::-webkit-slider-thumb {
+            -webkit-appearance: none;
+            appearance: none;
+            width: 20px;
+            height: 20px;
+            background: linear-gradient(45deg, #8a2be2, #da70d6);
+            border-radius: 50%;
+            cursor: pointer;
+        }
+
+        /* Right Panel - Preview */
+        .preview-panel {
+            background: rgba(255, 255, 255, 0.05);
+            border-radius: 16px;
+            padding: 24px;
+            border: 1px solid #333;
+            backdrop-filter: blur(10px);
+        }
+
+        .fighter-preview {
+            text-align: center;
+            margin-bottom: 24px;
+        }
+
+        .fighter-avatar {
+            width: 120px;
+            height: 120px;
+            background: linear-gradient(45deg, #8a2be2, #da70d6);
+            border-radius: 50%;
+            margin: 0 auto 16px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 3em;
+            border: 3px solid #444;
+        }
+
+        .fighter-name {
+            font-size: 1.4em;
+            font-weight: 600;
+            margin-bottom: 8px;
+        }
+
+        .fighter-type {
+            color: #8a2be2;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            font-size: 0.9em;
+        }
+
+        .stats-display {
+            margin-top: 24px;
+        }
+
+        .stat-bar {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 12px;
+        }
+
+        .stat-name {
+            font-size: 0.9em;
+            color: #ccc;
+        }
+
+        .stat-visual {
+            flex: 1;
+            height: 8px;
+            background: #333;
+            border-radius: 4px;
+            margin: 0 12px;
+            overflow: hidden;
+        }
+
+        .stat-fill {
+            height: 100%;
+            background: linear-gradient(90deg, #8a2be2, #da70d6);
+            border-radius: 4px;
+            transition: width 0.3s ease;
+        }
+
+        .stat-value {
+            font-size: 0.9em;
+            color: #8a2be2;
+            font-weight: 600;
+            min-width: 30px;
+            text-align: right;
+        }
+
+        /* Build Actions */
+        .build-actions {
+            display: flex;
+            gap: 16px;
+            justify-content: center;
+            margin-top: 24px;
+        }
+
+        .build-btn {
+            background: linear-gradient(45deg, #8a2be2, #da70d6);
+            border: none;
+            color: white;
+            padding: 16px 32px;
+            border-radius: 8px;
+            cursor: pointer;
+            font-weight: 600;
+            font-size: 1.1em;
+            transition: all 0.3s ease;
+            flex: 1;
+        }
+
+        .build-btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 8px 25px rgba(138, 43, 226, 0.3);
+        }
+
+        .build-btn:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+            transform: none;
+        }
+
+        .secondary-btn {
+            background: rgba(255, 255, 255, 0.1);
+            border: 1px solid #444;
+        }
+
+        .secondary-btn:hover {
+            background: rgba(255, 255, 255, 0.15);
+            box-shadow: none;
+        }
+
+        /* Responsive */
+        @media (max-width: 1200px) {
+            .builder-container {
+                grid-template-columns: 1fr;
+                gap: 16px;
+            }
+            
+            .templates-panel,
+            .preview-panel {
+                order: 2;
+            }
+            
+            .builder-form {
+                order: 1;
+            }
+        }
+
+        @media (max-width: 768px) {
+            .builder-header {
+                padding: 16px;
+                flex-direction: column;
+                gap: 16px;
+            }
+            
+            .builder-title {
+                font-size: 2em;
+            }
+            
+            .builder-container {
+                padding: 16px;
+            }
+            
+            .attribute-group {
+                grid-template-columns: 1fr;
+            }
+        }
+
+        /* Loading States */
+        .loading {
+            opacity: 0.6;
+            pointer-events: none;
+        }
+
+        .loading::after {
+            content: '';
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            width: 20px;
+            height: 20px;
+            margin: -10px 0 0 -10px;
+            border: 2px solid #8a2be2;
+            border-radius: 50%;
+            border-top-color: transparent;
+            animation: spin 1s linear infinite;
+        }
+
+        @keyframes spin {
+            to { transform: rotate(360deg); }
+        }
+
+        /* Success States */
+        .success-message {
+            background: rgba(0, 255, 136, 0.1);
+            border: 1px solid #00ff88;
+            border-radius: 8px;
+            padding: 16px;
+            margin: 16px 0;
+            color: #00ff88;
+            text-align: center;
+            display: none;
+        }
+
+        .success-message.show {
+            display: block;
+            animation: fadeIn 0.3s ease;
+        }
+
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(-10px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+    </style>
+</head>
+<body>
+    <div class="builder-header">
+        <div class="builder-title">
+            🤖 AI Fighter Builder
+        </div>
+        <div class="builder-actions">
+            <a href="/games/ai-arena.html" class="action-btn">
+                ⚔️ Back to Arena
+            </a>
+            <button class="action-btn" onclick="saveAsTemplate()">
+                📋 Save Template
+            </button>
+        </div>
+    </div>
+
+    <div class="builder-container">
+        <!-- Left Panel: Templates -->
+        <div class="templates-panel">
+            <div class="panel-title">
+                📋 Fighter Templates
+            </div>
+            <div class="template-list" id="templateList">
+                <div class="template-item" data-template="warrior">
+                    <div class="template-name">Warrior</div>
+                    <div class="template-type">Combat</div>
+                    <div class="template-desc">High attack and defense, moderate speed</div>
+                </div>
+                <div class="template-item" data-template="speedster">
+                    <div class="template-name">Speedster</div>
+                    <div class="template-type">Agility</div>
+                    <div class="template-desc">Maximum speed and agility, lower defense</div>
+                </div>
+                <div class="template-item" data-template="strategist">
+                    <div class="template-name">Strategist</div>
+                    <div class="template-type">Intelligence</div>
+                    <div class="template-desc">High intelligence and analysis capabilities</div>
+                </div>
+                <div class="template-item" data-template="guardian">
+                    <div class="template-name">Guardian</div>
+                    <div class="template-type">Defense</div>
+                    <div class="template-desc">Maximum defense and protection abilities</div>
+                </div>
+                <div class="template-item selected" data-template="balanced">
+                    <div class="template-name">Balanced</div>
+                    <div class="template-type">All-Round</div>
+                    <div class="template-desc">Well-rounded stats across all categories</div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Center Panel: Builder Form -->
+        <div class="builder-form">
+            <div class="success-message" id="successMessage">
+                ✅ Fighter created successfully! Ready for battle.
+            </div>
+
+            <div class="form-section">
+                <div class="section-title">
+                    🎯 Basic Information
+                </div>
+                <div class="form-group">
+                    <label class="form-label">Fighter Name</label>
+                    <input type="text" class="form-input" id="fighterName" placeholder="Enter fighter name..." value="Cyber Gladiator">
+                </div>
+                <div class="form-group">
+                    <label class="form-label">Fighter Type</label>
+                    <select class="form-select" id="fighterType">
+                        <option value="combat">Combat Specialist</option>
+                        <option value="agility">Agility Expert</option>
+                        <option value="intelligence">Intelligence Operative</option>
+                        <option value="defense">Defense Tank</option>
+                        <option value="balanced" selected>Balanced Fighter</option>
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label class="form-label">Description</label>
+                    <textarea class="form-input form-textarea" id="fighterDesc" placeholder="Describe your fighter's personality and background...">A versatile AI fighter with balanced capabilities across all combat domains.</textarea>
+                </div>
+            </div>
+
+            <div class="form-section">
+                <div class="section-title">
+                    ⚡ Capabilities
+                </div>
+                <div class="capabilities-grid">
+                    <div class="capability-item selected" data-capability="combat">
+                        <span class="capability-icon">⚔️</span>
+                        <div class="capability-name">Combat</div>
+                    </div>
+                    <div class="capability-item selected" data-capability="analysis">
+                        <span class="capability-icon">🧠</span>
+                        <div class="capability-name">Analysis</div>
+                    </div>
+                    <div class="capability-item" data-capability="stealth">
+                        <span class="capability-icon">👤</span>
+                        <div class="capability-name">Stealth</div>
+                    </div>
+                    <div class="capability-item" data-capability="healing">
+                        <span class="capability-icon">💚</span>
+                        <div class="capability-name">Healing</div>
+                    </div>
+                    <div class="capability-item selected" data-capability="shield">
+                        <span class="capability-icon">🛡️</span>
+                        <div class="capability-name">Shield</div>
+                    </div>
+                    <div class="capability-item" data-capability="energy">
+                        <span class="capability-icon">⚡</span>
+                        <div class="capability-name">Energy</div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="form-section">
+                <div class="section-title">
+                    📊 Attributes
+                </div>
+                <div class="attribute-group">
+                    <div class="attribute-item">
+                        <div class="attribute-label">
+                            <span class="attribute-name">Attack</span>
+                            <span class="attribute-value" id="attackValue">75</span>
+                        </div>
+                        <input type="range" class="attribute-slider" id="attackSlider" min="0" max="100" value="75">
+                    </div>
+                    <div class="attribute-item">
+                        <div class="attribute-label">
+                            <span class="attribute-name">Defense</span>
+                            <span class="attribute-value" id="defenseValue">75</span>
+                        </div>
+                        <input type="range" class="attribute-slider" id="defenseSlider" min="0" max="100" value="75">
+                    </div>
+                    <div class="attribute-item">
+                        <div class="attribute-label">
+                            <span class="attribute-name">Speed</span>
+                            <span class="attribute-value" id="speedValue">75</span>
+                        </div>
+                        <input type="range" class="attribute-slider" id="speedSlider" min="0" max="100" value="75">
+                    </div>
+                    <div class="attribute-item">
+                        <div class="attribute-label">
+                            <span class="attribute-name">Intelligence</span>
+                            <span class="attribute-value" id="intelligenceValue">75</span>
+                        </div>
+                        <input type="range" class="attribute-slider" id="intelligenceSlider" min="0" max="100" value="75">
+                    </div>
+                    <div class="attribute-item">
+                        <div class="attribute-label">
+                            <span class="attribute-name">Health</span>
+                            <span class="attribute-value" id="healthValue">75</span>
+                        </div>
+                        <input type="range" class="attribute-slider" id="healthSlider" min="0" max="100" value="75">
+                    </div>
+                    <div class="attribute-item">
+                        <div class="attribute-label">
+                            <span class="attribute-name">Energy</span>
+                            <span class="attribute-value" id="energyValue">75</span>
+                        </div>
+                        <input type="range" class="attribute-slider" id="energySlider" min="0" max="100" value="75">
+                    </div>
+                </div>
+            </div>
+
+            <div class="build-actions">
+                <button class="build-btn secondary-btn" onclick="previewFighter()">
+                    👁️ Preview
+                </button>
+                <button class="build-btn" onclick="buildFighter()">
+                    🔨 Build Fighter
+                </button>
+            </div>
+        </div>
+
+        <!-- Right Panel: Preview -->
+        <div class="preview-panel">
+            <div class="panel-title">
+                👁️ Fighter Preview
+            </div>
+            <div class="fighter-preview">
+                <div class="fighter-avatar" id="fighterAvatar">
+                    🤖
+                </div>
+                <div class="fighter-name" id="previewName">Cyber Gladiator</div>
+                <div class="fighter-type" id="previewType">Balanced Fighter</div>
+            </div>
+
+            <div class="stats-display">
+                <div class="stat-bar">
+                    <span class="stat-name">Attack</span>
+                    <div class="stat-visual">
+                        <div class="stat-fill" id="previewAttack" style="width: 75%"></div>
+                    </div>
+                    <span class="stat-value">75</span>
+                </div>
+                <div class="stat-bar">
+                    <span class="stat-name">Defense</span>
+                    <div class="stat-visual">
+                        <div class="stat-fill" id="previewDefense" style="width: 75%"></div>
+                    </div>
+                    <span class="stat-value">75</span>
+                </div>
+                <div class="stat-bar">
+                    <span class="stat-name">Speed</span>
+                    <div class="stat-visual">
+                        <div class="stat-fill" id="previewSpeed" style="width: 75%"></div>
+                    </div>
+                    <span class="stat-value">75</span>
+                </div>
+                <div class="stat-bar">
+                    <span class="stat-name">Intelligence</span>
+                    <div class="stat-visual">
+                        <div class="stat-fill" id="previewIntelligence" style="width: 75%"></div>
+                    </div>
+                    <span class="stat-value">75</span>
+                </div>
+                <div class="stat-bar">
+                    <span class="stat-name">Health</span>
+                    <div class="stat-visual">
+                        <div class="stat-fill" id="previewHealth" style="width: 75%"></div>
+                    </div>
+                    <span class="stat-value">75</span>
+                </div>
+                <div class="stat-bar">
+                    <span class="stat-name">Energy</span>
+                    <div class="stat-visual">
+                        <div class="stat-fill" id="previewEnergy" style="width: 75%"></div>
+                    </div>
+                    <span class="stat-value">75</span>
+                </div>
+            </div>
+
+            <div class="build-actions">
+                <button class="build-btn" onclick="deployToArena()">
+                    ⚔️ Deploy to Arena
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // Fighter Builder Application
+        class FighterBuilder {
+            constructor() {
+                this.currentTemplate = 'balanced';
+                this.selectedCapabilities = new Set(['combat', 'analysis', 'shield']);
+                this.attributes = {
+                    attack: 75,
+                    defense: 75,
+                    speed: 75,
+                    intelligence: 75,
+                    health: 75,
+                    energy: 75
+                };
+                
+                this.init();
+            }
+
+            init() {
+                this.setupEventListeners();
+                this.updatePreview();
+                console.log('🤖 Fighter Builder initialized');
+            }
+
+            setupEventListeners() {
+                // Template selection
+                document.querySelectorAll('.template-item').forEach(item => {
+                    item.addEventListener('click', (e) => {
+                        document.querySelectorAll('.template-item').forEach(t => t.classList.remove('selected'));
+                        item.classList.add('selected');
+                        this.selectTemplate(item.dataset.template);
+                    });
+                });
+
+                // Capability selection
+                document.querySelectorAll('.capability-item').forEach(item => {
+                    item.addEventListener('click', (e) => {
+                        const capability = item.dataset.capability;
+                        if (this.selectedCapabilities.has(capability)) {
+                            this.selectedCapabilities.delete(capability);
+                            item.classList.remove('selected');
+                        } else {
+                            this.selectedCapabilities.add(capability);
+                            item.classList.add('selected');
+                        }
+                        this.updatePreview();
+                    });
+                });
+
+                // Attribute sliders
+                document.querySelectorAll('.attribute-slider').forEach(slider => {
+                    slider.addEventListener('input', (e) => {
+                        const attribute = e.target.id.replace('Slider', '');
+                        const value = parseInt(e.target.value);
+                        this.attributes[attribute] = value;
+                        document.getElementById(attribute + 'Value').textContent = value;
+                        this.updatePreview();
+                    });
+                });
+
+                // Form inputs
+                document.getElementById('fighterName').addEventListener('input', () => this.updatePreview());
+                document.getElementById('fighterType').addEventListener('change', () => this.updatePreview());
+                document.getElementById('fighterDesc').addEventListener('input', () => this.updatePreview());
+            }
+
+            selectTemplate(templateName) {
+                this.currentTemplate = templateName;
+                
+                const templates = {
+                    warrior: { attack: 90, defense: 85, speed: 60, intelligence: 50, health: 95, energy: 70 },
+                    speedster: { attack: 70, defense: 40, speed: 95, intelligence: 75, health: 60, energy: 90 },
+                    strategist: { attack: 60, defense: 70, speed: 65, intelligence: 95, health: 70, energy: 80 },
+                    guardian: { attack: 50, defense: 95, speed: 40, intelligence: 70, health: 90, energy: 85 },
+                    balanced: { attack: 75, defense: 75, speed: 75, intelligence: 75, health: 75, energy: 75 }
+                };
+
+                const template = templates[templateName];
+                if (template) {
+                    this.attributes = { ...template };
+                    this.updateSliders();
+                    this.updatePreview();
+                }
+            }
+
+            updateSliders() {
+                Object.keys(this.attributes).forEach(attr => {
+                    const slider = document.getElementById(attr + 'Slider');
+                    const valueDisplay = document.getElementById(attr + 'Value');
+                    if (slider && valueDisplay) {
+                        slider.value = this.attributes[attr];
+                        valueDisplay.textContent = this.attributes[attr];
+                    }
+                });
+            }
+
+            updatePreview() {
+                const name = document.getElementById('fighterName').value || 'Unnamed Fighter';
+                const type = document.getElementById('fighterType').selectedOptions[0].text;
+                
+                document.getElementById('previewName').textContent = name;
+                document.getElementById('previewType').textContent = type;
+
+                // Update stat bars
+                Object.keys(this.attributes).forEach(attr => {
+                    const fillElement = document.getElementById('preview' + attr.charAt(0).toUpperCase() + attr.slice(1));
+                    const statBar = fillElement?.parentElement?.parentElement;
+                    if (fillElement && statBar) {
+                        fillElement.style.width = this.attributes[attr] + '%';
+                        statBar.querySelector('.stat-value').textContent = this.attributes[attr];
+                    }
+                });
+
+                // Update avatar based on type
+                const avatarEmojis = {
+                    combat: '⚔️',
+                    agility: '💨',
+                    intelligence: '🧠',
+                    defense: '🛡️',
+                    balanced: '🤖'
+                };
+                
+                const fighterType = document.getElementById('fighterType').value;
+                document.getElementById('fighterAvatar').textContent = avatarEmojis[fighterType] || '🤖';
+            }
+
+            getFighterData() {
+                return {
+                    id: `fighter-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
+                    name: document.getElementById('fighterName').value,
+                    description: document.getElementById('fighterDesc').value,
+                    type: document.getElementById('fighterType').value,
+                    template: this.currentTemplate,
+                    capabilities: Array.from(this.selectedCapabilities),
+                    attributes: { ...this.attributes },
+                    created: new Date().toISOString(),
+                    systemPrompt: this.generateSystemPrompt(),
+                    vaultIntegration: true,
+                    mirrorSignature: `fighter-${Date.now()}`
+                };
+            }
+
+            generateSystemPrompt() {
+                const name = document.getElementById('fighterName').value;
+                const desc = document.getElementById('fighterDesc').value;
+                const capabilities = Array.from(this.selectedCapabilities).join(', ');
+                
+                return `You are ${name}, an AI fighter in the Arena. ${desc} 
+
+Your capabilities include: ${capabilities}
+
+Your attributes:
+- Attack: ${this.attributes.attack}
+- Defense: ${this.attributes.defense}  
+- Speed: ${this.attributes.speed}
+- Intelligence: ${this.attributes.intelligence}
+- Health: ${this.attributes.health}
+- Energy: ${this.attributes.energy}
+
+Battle with strategy, honor, and determination. Analyze your opponent's weaknesses and leverage your strengths.`;
+            }
+        }
+
+        // Initialize the builder
+        const builder = new FighterBuilder();
+
+        // Global functions for button actions
+        async function previewFighter() {
+            const fighterData = builder.getFighterData();
+            console.log('Fighter Preview:', fighterData);
+            
+            // Show preview in console and update UI
+            builder.updatePreview();
+            
+            // Could show a modal or expanded preview here
+            alert(`Fighter Preview:\n\nName: ${fighterData.name}\nType: ${fighterData.type}\nCapabilities: ${fighterData.capabilities.join(', ')}\n\nReady for battle!`);
+        }
+
+        async function buildFighter() {
+            const fighterData = builder.getFighterData();
+            
+            // Show loading state
+            const buildBtn = event.target;
+            buildBtn.disabled = true;
+            buildBtn.textContent = '🔨 Building...';
+            
+            try {
+                // Simulate API call to create fighter
+                const response = await fetch('/api/fighters/create', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify(fighterData)
+                });
+                
+                if (response.ok) {
+                    // Show success message
+                    const successMsg = document.getElementById('successMessage');
+                    successMsg.classList.add('show');
+                    
+                    // Store fighter locally
+                    const fighters = JSON.parse(localStorage.getItem('myFighters') || '[]');
+                    fighters.push(fighterData);
+                    localStorage.setItem('myFighters', JSON.stringify(fighters));
+                    
+                    console.log('✅ Fighter created successfully:', fighterData);
+                    
+                    setTimeout(() => {
+                        successMsg.classList.remove('show');
+                    }, 5000);
+                } else {
+                    throw new Error('Failed to create fighter');
+                }
+            } catch (error) {
+                console.error('❌ Error creating fighter:', error);
+                
+                // Fallback: store locally anyway
+                const fighters = JSON.parse(localStorage.getItem('myFighters') || '[]');
+                fighters.push(fighterData);
+                localStorage.setItem('myFighters', JSON.stringify(fighters));
+                
+                const successMsg = document.getElementById('successMessage');
+                successMsg.textContent = '✅ Fighter created locally! (Server offline)';
+                successMsg.classList.add('show');
+                
+                setTimeout(() => {
+                    successMsg.classList.remove('show');
+                    successMsg.textContent = '✅ Fighter created successfully! Ready for battle.';
+                }, 5000);
+            } finally {
+                // Reset button
+                buildBtn.disabled = false;
+                buildBtn.textContent = '🔨 Build Fighter';
+            }
+        }
+
+        async function deployToArena() {
+            const fighterData = builder.getFighterData();
+            
+            // Store fighter and redirect to arena
+            const fighters = JSON.parse(localStorage.getItem('myFighters') || '[]');
+            fighters.push(fighterData);
+            localStorage.setItem('myFighters', JSON.stringify(fighters));
+            
+            // Set as active fighter
+            localStorage.setItem('activeFighter', JSON.stringify(fighterData));
+            
+            // Redirect to arena
+            window.location.href = '/games/ai-arena.html?fighter=' + encodeURIComponent(fighterData.id);
+        }
+
+        async function saveAsTemplate() {
+            const fighterData = builder.getFighterData();
+            
+            // Save as custom template
+            const templates = JSON.parse(localStorage.getItem('customTemplates') || '[]');
+            const template = {
+                id: fighterData.id,
+                name: fighterData.name + ' Template',
+                type: fighterData.type,
+                description: 'Custom template based on ' + fighterData.name,
+                attributes: fighterData.attributes,
+                capabilities: fighterData.capabilities,
+                created: new Date().toISOString()
+            };
+            
+            templates.push(template);
+            localStorage.setItem('customTemplates', JSON.stringify(templates));
+            
+            alert('✅ Template saved successfully!');
+        }
+
+        // Auto-save progress
+        setInterval(() => {
+            const formData = {
+                name: document.getElementById('fighterName').value,
+                type: document.getElementById('fighterType').value,
+                description: document.getElementById('fighterDesc').value,
+                attributes: builder.attributes,
+                capabilities: Array.from(builder.selectedCapabilities),
+                template: builder.currentTemplate
+            };
+            
+            localStorage.setItem('builderProgress', JSON.stringify(formData));
+        }, 30000); // Save every 30 seconds
+
+        // Load saved progress on page load
+        window.addEventListener('load', () => {
+            const savedProgress = localStorage.getItem('builderProgress');
+            if (savedProgress) {
+                try {
+                    const data = JSON.parse(savedProgress);
+                    
+                    // Restore form values
+                    if (data.name) document.getElementById('fighterName').value = data.name;
+                    if (data.type) document.getElementById('fighterType').value = data.type;
+                    if (data.description) document.getElementById('fighterDesc').value = data.description;
+                    
+                    // Restore attributes
+                    if (data.attributes) {
+                        builder.attributes = { ...data.attributes };
+                        builder.updateSliders();
+                    }
+                    
+                    // Restore capabilities
+                    if (data.capabilities) {
+                        builder.selectedCapabilities = new Set(data.capabilities);
+                        document.querySelectorAll('.capability-item').forEach(item => {
+                            if (builder.selectedCapabilities.has(item.dataset.capability)) {
+                                item.classList.add('selected');
+                            } else {
+                                item.classList.remove('selected');
+                            }
+                        });
+                    }
+                    
+                    // Restore template
+                    if (data.template) {
+                        document.querySelectorAll('.template-item').forEach(item => {
+                            if (item.dataset.template === data.template) {
+                                item.classList.add('selected');
+                            } else {
+                                item.classList.remove('selected');
+                            }
+                        });
+                        builder.currentTemplate = data.template;
+                    }
+                    
+                    builder.updatePreview();
+                    console.log('🔄 Progress restored from auto-save');
+                } catch (error) {
+                    console.error('Error restoring progress:', error);
+                }
+            }
+        });
+    </script>
+</body>
+</html>

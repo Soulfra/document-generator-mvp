@@ -1,0 +1,961 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>AI Conductor - Multi-LLM Orchestration</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            background: #0a0a0a;
+            color: #e0e0e0;
+            min-height: 100vh;
+            overflow-x: hidden;
+        }
+
+        .container {
+            max-width: 1400px;
+            margin: 0 auto;
+            padding: 20px;
+        }
+
+        .header {
+            background: linear-gradient(135deg, #1a1a2e 0%, #16213e 100%);
+            padding: 30px;
+            border-radius: 20px;
+            margin-bottom: 30px;
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.5);
+        }
+
+        .header h1 {
+            font-size: 2.5em;
+            margin-bottom: 10px;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+        }
+
+        .header p {
+            color: #b0b0b0;
+            font-size: 1.1em;
+        }
+
+        .main-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 20px;
+            margin-bottom: 30px;
+        }
+
+        .card {
+            background: #1a1a2e;
+            border-radius: 15px;
+            padding: 25px;
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            box-shadow: 0 5px 20px rgba(0, 0, 0, 0.3);
+            transition: transform 0.3s ease, box-shadow 0.3s ease;
+        }
+
+        .card:hover {
+            transform: translateY(-5px);
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.5);
+        }
+
+        .card h2 {
+            color: #667eea;
+            margin-bottom: 20px;
+            font-size: 1.5em;
+        }
+
+        .ai-builders {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 15px;
+        }
+
+        .ai-builder {
+            background: rgba(102, 126, 234, 0.1);
+            border: 1px solid rgba(102, 126, 234, 0.3);
+            border-radius: 10px;
+            padding: 15px;
+            transition: all 0.3s ease;
+        }
+
+        .ai-builder:hover {
+            background: rgba(102, 126, 234, 0.2);
+            transform: scale(1.05);
+        }
+
+        .ai-builder.active {
+            border-color: #4ade80;
+            background: rgba(74, 222, 128, 0.1);
+        }
+
+        .ai-builder h3 {
+            color: #e0e0e0;
+            margin-bottom: 5px;
+            font-size: 1.1em;
+        }
+
+        .ai-builder .type {
+            color: #667eea;
+            font-size: 0.9em;
+            margin-bottom: 10px;
+        }
+
+        .ai-builder .status {
+            display: inline-block;
+            padding: 3px 10px;
+            border-radius: 15px;
+            font-size: 0.8em;
+            font-weight: bold;
+        }
+
+        .status.idle {
+            background: rgba(156, 163, 175, 0.2);
+            color: #9ca3af;
+        }
+
+        .status.building {
+            background: rgba(251, 191, 36, 0.2);
+            color: #fbbf24;
+        }
+
+        .status.blocked {
+            background: rgba(239, 68, 68, 0.2);
+            color: #ef4444;
+        }
+
+        .project-form {
+            display: flex;
+            flex-direction: column;
+            gap: 15px;
+        }
+
+        .form-group {
+            display: flex;
+            flex-direction: column;
+            gap: 5px;
+        }
+
+        .form-group label {
+            color: #b0b0b0;
+            font-size: 0.9em;
+        }
+
+        .form-group input,
+        .form-group textarea,
+        .form-group select {
+            background: rgba(255, 255, 255, 0.05);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            border-radius: 8px;
+            padding: 10px;
+            color: #e0e0e0;
+            font-size: 1em;
+            transition: all 0.3s ease;
+        }
+
+        .form-group input:focus,
+        .form-group textarea:focus,
+        .form-group select:focus {
+            outline: none;
+            border-color: #667eea;
+            background: rgba(255, 255, 255, 0.1);
+        }
+
+        .form-group textarea {
+            resize: vertical;
+            min-height: 100px;
+        }
+
+        .button {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            border: none;
+            padding: 12px 25px;
+            border-radius: 8px;
+            font-size: 1em;
+            font-weight: bold;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            margin-top: 10px;
+        }
+
+        .button:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 5px 20px rgba(102, 126, 234, 0.5);
+        }
+
+        .button:active {
+            transform: translateY(0);
+        }
+
+        .conversation-ingestion {
+            display: flex;
+            flex-direction: column;
+            gap: 15px;
+        }
+
+        .source-selector {
+            display: flex;
+            gap: 10px;
+            flex-wrap: wrap;
+        }
+
+        .source-button {
+            padding: 8px 15px;
+            border-radius: 20px;
+            background: rgba(255, 255, 255, 0.05);
+            border: 1px solid rgba(255, 255, 255, 0.2);
+            color: #e0e0e0;
+            cursor: pointer;
+            transition: all 0.3s ease;
+        }
+
+        .source-button:hover {
+            background: rgba(255, 255, 255, 0.1);
+            border-color: #667eea;
+        }
+
+        .source-button.active {
+            background: rgba(102, 126, 234, 0.2);
+            border-color: #667eea;
+            color: #667eea;
+        }
+
+        .projects-list {
+            display: flex;
+            flex-direction: column;
+            gap: 15px;
+            max-height: 400px;
+            overflow-y: auto;
+        }
+
+        .project-item {
+            background: rgba(255, 255, 255, 0.05);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            border-radius: 10px;
+            padding: 15px;
+            transition: all 0.3s ease;
+        }
+
+        .project-item:hover {
+            background: rgba(255, 255, 255, 0.08);
+            border-color: #667eea;
+        }
+
+        .project-item h4 {
+            color: #667eea;
+            margin-bottom: 5px;
+        }
+
+        .project-item .goal {
+            color: #b0b0b0;
+            font-size: 0.9em;
+            margin-bottom: 10px;
+        }
+
+        .project-item .progress {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .progress-bar {
+            flex: 1;
+            height: 8px;
+            background: rgba(255, 255, 255, 0.1);
+            border-radius: 4px;
+            overflow: hidden;
+        }
+
+        .progress-fill {
+            height: 100%;
+            background: linear-gradient(90deg, #667eea 0%, #764ba2 100%);
+            transition: width 0.3s ease;
+        }
+
+        .progress-text {
+            color: #667eea;
+            font-size: 0.9em;
+            font-weight: bold;
+        }
+
+        .metrics-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 15px;
+        }
+
+        .metric {
+            background: rgba(255, 255, 255, 0.05);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            border-radius: 10px;
+            padding: 15px;
+            text-align: center;
+        }
+
+        .metric h3 {
+            color: #b0b0b0;
+            font-size: 0.9em;
+            margin-bottom: 10px;
+        }
+
+        .metric .value {
+            color: #667eea;
+            font-size: 2em;
+            font-weight: bold;
+        }
+
+        .metric .unit {
+            color: #b0b0b0;
+            font-size: 0.8em;
+        }
+
+        .thought-chain {
+            background: rgba(255, 255, 255, 0.05);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            border-radius: 10px;
+            padding: 20px;
+            margin-top: 20px;
+        }
+
+        .thought-node {
+            margin-left: 20px;
+            padding: 10px;
+            border-left: 2px solid #667eea;
+            margin-bottom: 10px;
+        }
+
+        .thought-node h4 {
+            color: #667eea;
+            margin-bottom: 5px;
+        }
+
+        .thought-node p {
+            color: #b0b0b0;
+            font-size: 0.9em;
+        }
+
+        .confidence {
+            display: inline-block;
+            padding: 3px 10px;
+            border-radius: 15px;
+            font-size: 0.8em;
+            margin-top: 5px;
+        }
+
+        .confidence.high {
+            background: rgba(74, 222, 128, 0.2);
+            color: #4ade80;
+        }
+
+        .confidence.medium {
+            background: rgba(251, 191, 36, 0.2);
+            color: #fbbf24;
+        }
+
+        .confidence.low {
+            background: rgba(239, 68, 68, 0.2);
+            color: #ef4444;
+        }
+
+        .cost-analysis {
+            background: rgba(255, 255, 255, 0.05);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            border-radius: 10px;
+            padding: 20px;
+        }
+
+        .cost-breakdown {
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+            margin-top: 15px;
+        }
+
+        .cost-item {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 10px;
+            background: rgba(255, 255, 255, 0.03);
+            border-radius: 8px;
+        }
+
+        .cost-item .model {
+            color: #e0e0e0;
+        }
+
+        .cost-item .amount {
+            color: #667eea;
+            font-weight: bold;
+        }
+
+        .loading {
+            display: none;
+            text-align: center;
+            padding: 20px;
+            color: #b0b0b0;
+        }
+
+        .loading.active {
+            display: block;
+        }
+
+        .spinner {
+            border: 3px solid rgba(255, 255, 255, 0.1);
+            border-top: 3px solid #667eea;
+            border-radius: 50%;
+            width: 40px;
+            height: 40px;
+            animation: spin 1s linear infinite;
+            margin: 0 auto 10px;
+        }
+
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+
+        .notification {
+            position: fixed;
+            bottom: 20px;
+            right: 20px;
+            background: #1a1a2e;
+            border: 1px solid #667eea;
+            border-radius: 10px;
+            padding: 15px 20px;
+            box-shadow: 0 5px 20px rgba(0, 0, 0, 0.5);
+            transform: translateX(400px);
+            transition: transform 0.3s ease;
+            max-width: 300px;
+        }
+
+        .notification.show {
+            transform: translateX(0);
+        }
+
+        .notification.success {
+            border-color: #4ade80;
+        }
+
+        .notification.error {
+            border-color: #ef4444;
+        }
+
+        @media (max-width: 768px) {
+            .main-grid {
+                grid-template-columns: 1fr;
+            }
+
+            .header h1 {
+                font-size: 2em;
+            }
+
+            .ai-builders {
+                grid-template-columns: 1fr;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>AI Conductor System</h1>
+            <p>Orchestrate multiple LLMs, manage projects, and optimize AI workflows</p>
+        </div>
+
+        <div class="main-grid">
+            <!-- AI Builders Status -->
+            <div class="card">
+                <h2>AI Builders</h2>
+                <div class="ai-builders" id="aiBuilders">
+                    <div class="loading active">
+                        <div class="spinner"></div>
+                        <p>Loading AI builders...</p>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Conversation Ingestion -->
+            <div class="card">
+                <h2>Ingest Conversation</h2>
+                <div class="conversation-ingestion">
+                    <div class="source-selector">
+                        <button class="source-button active" data-source="claude">Claude</button>
+                        <button class="source-button" data-source="gpt4">GPT-4</button>
+                        <button class="source-button" data-source="gemini">Gemini</button>
+                        <button class="source-button" data-source="local">Local LLM</button>
+                    </div>
+                    <div class="form-group">
+                        <label>Thread ID (optional)</label>
+                        <input type="text" id="threadId" placeholder="e.g., conv-12345">
+                    </div>
+                    <div class="form-group">
+                        <label>Conversation Content</label>
+                        <textarea id="conversationContent" placeholder="Paste or type the conversation content here..."></textarea>
+                    </div>
+                    <button class="button" onclick="ingestConversation()">Ingest Conversation</button>
+                </div>
+            </div>
+        </div>
+
+        <!-- Create Project -->
+        <div class="card">
+            <h2>Create New Project</h2>
+            <form class="project-form" onsubmit="createProject(event)">
+                <div class="form-group">
+                    <label>Project Name</label>
+                    <input type="text" id="projectName" required placeholder="e.g., Build AI Assistant">
+                </div>
+                <div class="form-group">
+                    <label>Project Goal</label>
+                    <textarea id="projectGoal" required placeholder="Describe what you want to achieve..."></textarea>
+                </div>
+                <div class="form-group">
+                    <label>Requirements (one per line)</label>
+                    <textarea id="projectRequirements" placeholder="List specific requirements..."></textarea>
+                </div>
+                <div class="form-group">
+                    <label>Preferred AI Models</label>
+                    <select id="preferredAI" multiple>
+                        <option value="claude">Claude (Best for architecture)</option>
+                        <option value="gpt4">GPT-4 (Best for complex tasks)</option>
+                        <option value="gemini">Gemini (Best for analysis)</option>
+                        <option value="local">Local LLM (Best for simple tasks)</option>
+                    </select>
+                </div>
+                <button type="submit" class="button">Create Project</button>
+            </form>
+        </div>
+
+        <!-- Active Projects -->
+        <div class="card">
+            <h2>Active Projects</h2>
+            <div class="projects-list" id="projectsList">
+                <div class="loading active">
+                    <div class="spinner"></div>
+                    <p>Loading projects...</p>
+                </div>
+            </div>
+        </div>
+
+        <!-- Thought Chain Generator -->
+        <div class="card">
+            <h2>Thought Chain Generator</h2>
+            <div class="form-group">
+                <label>Goal</label>
+                <input type="text" id="thoughtGoal" placeholder="What do you want to explore?">
+            </div>
+            <div class="form-group">
+                <label>Max Depth</label>
+                <input type="number" id="maxDepth" value="5" min="1" max="10">
+            </div>
+            <button class="button" onclick="generateThoughtChain()">Generate Thought Chain</button>
+            <div class="thought-chain" id="thoughtChain" style="display: none;"></div>
+        </div>
+
+        <!-- Metrics Dashboard -->
+        <div class="card">
+            <h2>Performance Metrics</h2>
+            <div class="metrics-grid" id="metricsGrid">
+                <div class="metric">
+                    <h3>Total Conversations</h3>
+                    <div class="value">0</div>
+                </div>
+                <div class="metric">
+                    <h3>Active Projects</h3>
+                    <div class="value">0</div>
+                </div>
+                <div class="metric">
+                    <h3>AI Efficiency</h3>
+                    <div class="value">0<span class="unit">%</span></div>
+                </div>
+                <div class="metric">
+                    <h3>Avg Response Time</h3>
+                    <div class="value">0<span class="unit">ms</span></div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Cost Analysis -->
+        <div class="card">
+            <h2>Cost Analysis</h2>
+            <div class="cost-analysis">
+                <h3>Total Cost: <span id="totalCost" style="color: #667eea;">$0.00</span></h3>
+                <div class="cost-breakdown" id="costBreakdown">
+                    <div class="loading active">
+                        <div class="spinner"></div>
+                        <p>Loading cost analysis...</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Notification -->
+    <div class="notification" id="notification"></div>
+
+    <script>
+        let ws = null;
+        let selectedSource = 'claude';
+        let currentProjectId = null;
+
+        // Initialize WebSocket connection
+        function initWebSocket() {
+            ws = new WebSocket('ws://localhost:8081');
+            
+            ws.onopen = () => {
+                console.log('WebSocket connected');
+                ws.send(JSON.stringify({
+                    type: 'subscribe',
+                    channels: ['conversation_updates', 'project_updates', 'ai_status']
+                }));
+            };
+
+            ws.onmessage = (event) => {
+                const data = JSON.parse(event.data);
+                handleWebSocketMessage(data);
+            };
+
+            ws.onclose = () => {
+                console.log('WebSocket disconnected');
+                setTimeout(initWebSocket, 5000); // Reconnect after 5 seconds
+            };
+
+            ws.onerror = (error) => {
+                console.error('WebSocket error:', error);
+            };
+        }
+
+        function handleWebSocketMessage(data) {
+            switch (data.type) {
+                case 'conversation_ingested':
+                    showNotification('Conversation ingested successfully', 'success');
+                    loadMetrics();
+                    break;
+                case 'project_created':
+                    showNotification(`Project "${data.name}" created`, 'success');
+                    loadProjects();
+                    break;
+                case 'project_updated':
+                    loadProjects();
+                    break;
+                case 'ai_assigned':
+                    showNotification(`AI assigned to task: ${data.task}`, 'success');
+                    loadAIBuilders();
+                    break;
+            }
+        }
+
+        // Source selection
+        document.querySelectorAll('.source-button').forEach(button => {
+            button.addEventListener('click', () => {
+                document.querySelectorAll('.source-button').forEach(b => b.classList.remove('active'));
+                button.classList.add('active');
+                selectedSource = button.dataset.source;
+            });
+        });
+
+        // Load AI Builders
+        async function loadAIBuilders() {
+            try {
+                const response = await fetch('/api/conductor/builders');
+                const data = await response.json();
+                
+                if (data.success) {
+                    displayAIBuilders(data.builders);
+                }
+            } catch (error) {
+                console.error('Error loading AI builders:', error);
+            }
+        }
+
+        function displayAIBuilders(builders) {
+            const container = document.getElementById('aiBuilders');
+            container.innerHTML = builders.map(builder => `
+                <div class="ai-builder ${builder.status === 'building' ? 'active' : ''}">
+                    <h3>${builder.name}</h3>
+                    <div class="type">${builder.type.toUpperCase()}</div>
+                    <div class="status ${builder.status}">${builder.status}</div>
+                    ${builder.currentTask ? `<div style="margin-top: 10px; color: #b0b0b0; font-size: 0.8em;">Task: ${builder.currentTask}</div>` : ''}
+                    <div style="margin-top: 10px; color: #667eea; font-size: 0.8em;">Score: ${(builder.performanceScore * 100).toFixed(0)}%</div>
+                </div>
+            `).join('');
+        }
+
+        // Ingest Conversation
+        async function ingestConversation() {
+            const content = document.getElementById('conversationContent').value;
+            const threadId = document.getElementById('threadId').value;
+            
+            if (!content) {
+                showNotification('Please enter conversation content', 'error');
+                return;
+            }
+
+            try {
+                const response = await fetch('/api/conductor/conversation', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        source: selectedSource,
+                        content: content,
+                        threadId: threadId || undefined
+                    })
+                });
+
+                const data = await response.json();
+                
+                if (data.success) {
+                    document.getElementById('conversationContent').value = '';
+                    document.getElementById('threadId').value = '';
+                    showNotification('Conversation ingested successfully', 'success');
+                } else {
+                    showNotification(data.error || 'Failed to ingest conversation', 'error');
+                }
+            } catch (error) {
+                console.error('Error ingesting conversation:', error);
+                showNotification('Failed to ingest conversation', 'error');
+            }
+        }
+
+        // Create Project
+        async function createProject(event) {
+            event.preventDefault();
+            
+            const name = document.getElementById('projectName').value;
+            const goal = document.getElementById('projectGoal').value;
+            const requirements = document.getElementById('projectRequirements').value
+                .split('\n')
+                .filter(r => r.trim());
+            const preferredAI = Array.from(document.getElementById('preferredAI').selectedOptions)
+                .map(option => option.value);
+
+            try {
+                const response = await fetch('/api/conductor/project', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        name,
+                        goal,
+                        requirements,
+                        preferredAI
+                    })
+                });
+
+                const data = await response.json();
+                
+                if (data.success) {
+                    event.target.reset();
+                    showNotification('Project created successfully', 'success');
+                    loadProjects();
+                } else {
+                    showNotification(data.error || 'Failed to create project', 'error');
+                }
+            } catch (error) {
+                console.error('Error creating project:', error);
+                showNotification('Failed to create project', 'error');
+            }
+        }
+
+        // Load Projects
+        async function loadProjects() {
+            try {
+                const response = await fetch('/api/conductor/projects');
+                const data = await response.json();
+                
+                if (data.success) {
+                    displayProjects(data.projects);
+                }
+            } catch (error) {
+                console.error('Error loading projects:', error);
+            }
+        }
+
+        function displayProjects(projects) {
+            const container = document.getElementById('projectsList');
+            
+            if (projects.length === 0) {
+                container.innerHTML = '<p style="color: #b0b0b0; text-align: center;">No active projects</p>';
+                return;
+            }
+
+            container.innerHTML = projects.map(project => `
+                <div class="project-item" onclick="selectProject('${project.id}')">
+                    <h4>${project.name}</h4>
+                    <div class="goal">${project.goal}</div>
+                    <div class="progress">
+                        <div class="progress-bar">
+                            <div class="progress-fill" style="width: ${project.progress}%"></div>
+                        </div>
+                        <div class="progress-text">${project.progress}%</div>
+                    </div>
+                    ${project.userInputNeeded ? `<div style="margin-top: 10px; color: #fbbf24; font-size: 0.9em;">⚠️ Input needed: ${project.userInputNeeded}</div>` : ''}
+                </div>
+            `).join('');
+        }
+
+        function selectProject(projectId) {
+            currentProjectId = projectId;
+            // Could expand to show project details
+        }
+
+        // Generate Thought Chain
+        async function generateThoughtChain() {
+            const goal = document.getElementById('thoughtGoal').value;
+            const maxDepth = document.getElementById('maxDepth').value;
+            
+            if (!goal) {
+                showNotification('Please enter a goal', 'error');
+                return;
+            }
+
+            const chainContainer = document.getElementById('thoughtChain');
+            chainContainer.style.display = 'block';
+            chainContainer.innerHTML = '<div class="loading active"><div class="spinner"></div><p>Generating thought chain...</p></div>';
+
+            try {
+                const response = await fetch('/api/conductor/thought-chain', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        goal,
+                        maxDepth: parseInt(maxDepth)
+                    })
+                });
+
+                const data = await response.json();
+                
+                if (data.success) {
+                    displayThoughtChain(data.thoughtChain);
+                } else {
+                    chainContainer.innerHTML = '<p style="color: #ef4444;">Failed to generate thought chain</p>';
+                }
+            } catch (error) {
+                console.error('Error generating thought chain:', error);
+                chainContainer.innerHTML = '<p style="color: #ef4444;">Failed to generate thought chain</p>';
+            }
+        }
+
+        function displayThoughtChain(chain) {
+            const container = document.getElementById('thoughtChain');
+            container.innerHTML = '<h3 style="margin-bottom: 15px;">Generated Thought Chain</h3>';
+            
+            chain.forEach(node => {
+                const confidenceClass = node.confidence > 0.7 ? 'high' : node.confidence > 0.4 ? 'medium' : 'low';
+                container.innerHTML += `
+                    <div class="thought-node">
+                        <h4>${node.thought}</h4>
+                        <p>${node.reasoning}</p>
+                        <span class="confidence ${confidenceClass}">Confidence: ${(node.confidence * 100).toFixed(0)}%</span>
+                    </div>
+                `;
+            });
+        }
+
+        // Load Metrics
+        async function loadMetrics() {
+            try {
+                const [healthResponse, performanceResponse] = await Promise.all([
+                    fetch('/api/conductor/health'),
+                    fetch('/api/conductor/analysis/ai-performance')
+                ]);
+
+                const healthData = await healthResponse.json();
+                const performanceData = await performanceResponse.json();
+
+                if (healthData.success) {
+                    updateMetrics(healthData.health.statistics, performanceData.performance);
+                }
+            } catch (error) {
+                console.error('Error loading metrics:', error);
+            }
+        }
+
+        function updateMetrics(stats, performance) {
+            const metrics = document.querySelectorAll('.metric .value');
+            if (stats) {
+                metrics[0].innerHTML = stats.totalConversations || 0;
+                metrics[1].innerHTML = stats.activeProjects || 0;
+            }
+            if (performance) {
+                metrics[2].innerHTML = `${Math.round(performance.overallEfficiency * 100)}<span class="unit">%</span>`;
+                metrics[3].innerHTML = `${Math.round(performance.builders[0]?.averageTime || 0)}<span class="unit">ms</span>`;
+            }
+        }
+
+        // Load Cost Analysis
+        async function loadCostAnalysis() {
+            try {
+                const response = await fetch('/api/conductor/analysis/cost');
+                const data = await response.json();
+                
+                if (data.success) {
+                    displayCostAnalysis(data.costAnalysis);
+                }
+            } catch (error) {
+                console.error('Error loading cost analysis:', error);
+            }
+        }
+
+        function displayCostAnalysis(analysis) {
+            document.getElementById('totalCost').textContent = `$${analysis.totalCost.toFixed(2)}`;
+            
+            const breakdownContainer = document.getElementById('costBreakdown');
+            breakdownContainer.innerHTML = Object.entries(analysis.costByModel).map(([model, cost]) => `
+                <div class="cost-item">
+                    <span class="model">${model}</span>
+                    <span class="amount">$${cost.toFixed(2)}</span>
+                </div>
+            `).join('');
+            
+            if (analysis.recommendations && analysis.recommendations.length > 0) {
+                breakdownContainer.innerHTML += '<h4 style="margin-top: 20px; margin-bottom: 10px; color: #667eea;">Cost Optimization Tips</h4>';
+                breakdownContainer.innerHTML += analysis.recommendations.map(rec => `
+                    <div style="padding: 10px; background: rgba(102, 126, 234, 0.1); border-radius: 8px; margin-bottom: 10px;">
+                        <div style="color: #e0e0e0; margin-bottom: 5px;">${rec.suggestion}</div>
+                        <div style="color: #4ade80; font-size: 0.9em;">Potential savings: $${rec.potentialSavings.toFixed(2)}</div>
+                    </div>
+                `).join('');
+            }
+        }
+
+        // Show Notification
+        function showNotification(message, type) {
+            const notification = document.getElementById('notification');
+            notification.textContent = message;
+            notification.className = `notification ${type} show`;
+            
+            setTimeout(() => {
+                notification.classList.remove('show');
+            }, 3000);
+        }
+
+        // Initialize
+        initWebSocket();
+        loadAIBuilders();
+        loadProjects();
+        loadMetrics();
+        loadCostAnalysis();
+
+        // Refresh data periodically
+        setInterval(() => {
+            loadAIBuilders();
+            loadMetrics();
+        }, 30000);
+
+        setInterval(() => {
+            loadCostAnalysis();
+        }, 60000);
+    </script>
+</body>
+</html>

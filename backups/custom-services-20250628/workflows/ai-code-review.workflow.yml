@@ -1,0 +1,252 @@
+name: AI Code Review System
+description: Automated AI-powered code review for PRs with Claude and GitHub Copilot
+version: "1.0"
+category: code-quality
+pricing: $15
+
+triggers:
+  - github_pr_opened
+  - github_pr_synchronized
+  - manual
+
+inputs:
+  - name: pr_number
+    type: string
+    required: true
+    description: GitHub Pull Request number
+  - name: reviewer
+    type: select
+    options: ["claude", "codex", "both"]
+    default: "both"
+    description: AI reviewer to use
+  - name: auto_merge
+    type: boolean
+    default: false
+    description: Auto-merge if AI approves
+
+variables:
+  - name: REVIEW_ID
+    value: "{{ timestamp }}"
+  - name: PR_BRANCH
+    value: "{{ github.pr.head_ref }}"
+  - name: PR_TITLE
+    value: "{{ github.pr.title }}"
+
+steps:
+  - name: validate_pr
+    description: Validate PR exists and has changes
+    plugin: github
+    action: get_pr_info
+    inputs:
+      pr_number: "{{ inputs.pr_number }}"
+    outputs:
+      - pr_info
+      - diff_content
+      - changed_files
+
+  - name: create_review_workspace
+    description: Create local review workspace with all materials
+    plugin: file_system
+    action: create_workspace
+    inputs:
+      workspace_id: "{{ variables.REVIEW_ID }}"
+      files:
+        - name: "changes.diff"
+          content: "{{ steps.validate_pr.outputs.diff_content }}"
+        - name: "changed-files.txt"
+          content: "{{ steps.validate_pr.outputs.changed_files | join('\n') }}"
+        - name: "pr-info.json"
+          content: "{{ steps.validate_pr.outputs.pr_info | json }}"
+
+  - name: generate_review_context
+    description: Generate comprehensive review context for AI
+    plugin: document_processor
+    action: create_review_context
+    inputs:
+      pr_number: "{{ inputs.pr_number }}"
+      pr_title: "{{ variables.PR_TITLE }}"
+      pr_branch: "{{ variables.PR_BRANCH }}"
+      diff_content: "{{ steps.validate_pr.outputs.diff_content }}"
+      changed_files: "{{ steps.validate_pr.outputs.changed_files }}"
+    outputs:
+      - review_context_md
+
+  - name: security_review
+    description: Perform security-focused code review
+    plugin: llm_orchestrator
+    action: security_review
+    inputs:
+      content: "{{ steps.generate_review_context.outputs.review_context_md }}"
+      model: "claude-3-5-sonnet"
+      temperature: 0.1
+      system_prompt: |
+        You are a senior security engineer performing code review. Focus on:
+        1. Input validation and sanitization
+        2. Authentication/authorization checks  
+        3. Data exposure risks
+        4. Injection vulnerabilities
+        5. File handling security
+        6. API security patterns
+        
+        Provide specific feedback with file names and line numbers.
+        Rate security from 0-100 and recommend: APPROVE, REQUEST_CHANGES, or NEEDS_HUMAN_REVIEW
+    outputs:
+      - security_score
+      - security_issues
+      - security_recommendation
+
+  - name: architecture_review
+    description: Perform architecture and maintainability review
+    plugin: llm_orchestrator
+    action: architecture_review
+    inputs:
+      content: "{{ steps.generate_review_context.outputs.review_context_md }}"
+      model: "claude-3-5-sonnet"
+      temperature: 0.1
+      system_prompt: |
+        You are a senior software architect performing code review. Focus on:
+        1. Project pattern consistency
+        2. Code organization and modularity
+        3. Error handling patterns
+        4. Documentation quality
+        5. Performance considerations
+        6. Template compatibility (can this be reused?)
+        
+        This is a document generator platform with template-first approach.
+        Rate architecture from 0-100 and recommend: APPROVE, REQUEST_CHANGES, or NEEDS_HUMAN_REVIEW
+    outputs:
+      - architecture_score
+      - architecture_issues
+      - architecture_recommendation
+
+  - name: codex_review
+    description: Get GitHub Copilot perspective on code changes
+    plugin: github_copilot
+    action: review_diff
+    condition: "{{ inputs.reviewer == 'codex' || inputs.reviewer == 'both' }}"
+    inputs:
+      diff_content: "{{ steps.validate_pr.outputs.diff_content }}"
+      focus_areas: ["security", "performance", "maintainability", "bugs"]
+    outputs:
+      - codex_feedback
+      - codex_score
+      - codex_recommendation
+
+  - name: calculate_overall_score
+    description: Calculate weighted overall score from all reviews
+    plugin: calculator
+    action: weighted_average
+    inputs:
+      scores:
+        - value: "{{ steps.security_review.outputs.security_score }}"
+          weight: 0.4
+        - value: "{{ steps.architecture_review.outputs.architecture_score }}"
+          weight: 0.4
+        - value: "{{ steps.codex_review.outputs.codex_score || 80 }}"
+          weight: 0.2
+    outputs:
+      - overall_score
+
+  - name: determine_final_recommendation
+    description: Determine final recommendation based on all reviews
+    plugin: decision_engine
+    action: review_decision
+    inputs:
+      overall_score: "{{ steps.calculate_overall_score.outputs.overall_score }}"
+      security_recommendation: "{{ steps.security_review.outputs.security_recommendation }}"
+      architecture_recommendation: "{{ steps.architecture_review.outputs.architecture_recommendation }}"
+      codex_recommendation: "{{ steps.codex_review.outputs.codex_recommendation || 'APPROVE' }}"
+      thresholds:
+        auto_approve: 85
+        needs_human: 60
+    outputs:
+      - final_recommendation
+      - confidence_score
+
+  - name: generate_review_report
+    description: Generate comprehensive review report
+    plugin: document_generator
+    action: create_review_report
+    inputs:
+      template: "ai_code_review_report"
+      data:
+        pr_number: "{{ inputs.pr_number }}"
+        pr_title: "{{ variables.PR_TITLE }}"
+        pr_branch: "{{ variables.PR_BRANCH }}"
+        review_id: "{{ variables.REVIEW_ID }}"
+        overall_score: "{{ steps.calculate_overall_score.outputs.overall_score }}"
+        final_recommendation: "{{ steps.determine_final_recommendation.outputs.final_recommendation }}"
+        confidence_score: "{{ steps.determine_final_recommendation.outputs.confidence_score }}"
+        security_review: "{{ steps.security_review.outputs }}"
+        architecture_review: "{{ steps.architecture_review.outputs }}"
+        codex_review: "{{ steps.codex_review.outputs }}"
+        changed_files: "{{ steps.validate_pr.outputs.changed_files }}"
+    outputs:
+      - review_report_md
+      - review_report_html
+
+  - name: post_github_review
+    description: Post AI review results to GitHub PR
+    plugin: github
+    action: create_pr_review
+    inputs:
+      pr_number: "{{ inputs.pr_number }}"
+      review_type: "{{ steps.determine_final_recommendation.outputs.final_recommendation }}"
+      body: "{{ steps.generate_review_report.outputs.review_report_md }}"
+      auto_merge: "{{ inputs.auto_merge }}"
+
+  - name: save_review_history
+    description: Save review for analytics and learning
+    plugin: database
+    action: save_review_record
+    inputs:
+      review_id: "{{ variables.REVIEW_ID }}"
+      pr_number: "{{ inputs.pr_number }}"
+      repository: "{{ github.repository }}"
+      overall_score: "{{ steps.calculate_overall_score.outputs.overall_score }}"
+      recommendation: "{{ steps.determine_final_recommendation.outputs.final_recommendation }}"
+      reviewer_type: "{{ inputs.reviewer }}"
+      review_data: "{{ steps.generate_review_report.outputs }}"
+
+  - name: trigger_learning
+    description: Feed review results back to improvement system
+    plugin: automation
+    action: trigger_workflow
+    inputs:
+      workflow: "self-improvement-feedback"
+      data:
+        event_type: "ai_code_review_completed"
+        review_id: "{{ variables.REVIEW_ID }}"
+        score: "{{ steps.calculate_overall_score.outputs.overall_score }}"
+        recommendation: "{{ steps.determine_final_recommendation.outputs.final_recommendation }}"
+
+notifications:
+  on_success:
+    - type: slack
+      channel: "#code-reviews"
+      message: "✅ AI Code Review completed for PR #{{ inputs.pr_number }}: {{ steps.determine_final_recommendation.outputs.final_recommendation }}"
+  
+  on_failure:
+    - type: slack
+      channel: "#alerts"
+      message: "❌ AI Code Review failed for PR #{{ inputs.pr_number }}"
+
+escalation:
+  rules:
+    - condition: "{{ steps.calculate_overall_score.outputs.overall_score < 60 }}"
+      action: "request_human_review"
+      assignee: "@senior-engineers"
+    - condition: "{{ 'CRITICAL' in steps.security_review.outputs.security_issues }}"
+      action: "block_merge"
+      notify: "@security-team"
+
+premium_features:
+  - name: "Multi-AI Review"
+    description: "Use both Claude and GitHub Copilot for comprehensive review"
+    tier: "premium"
+  - name: "Auto-merge"
+    description: "Automatically merge PRs that pass AI review"
+    tier: "premium"
+  - name: "Custom Review Templates"
+    description: "Create custom review criteria for your project"
+    tier: "enterprise"

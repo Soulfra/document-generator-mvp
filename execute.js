@@ -1,0 +1,1 @@
+require('./character-system-max.js');

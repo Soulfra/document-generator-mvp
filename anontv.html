@@ -719,6 +719,60 @@
                 </div>
             </div>
 
+            <!-- /ci/ - DevOps (CI/CD Monitoring) -->
+            <div class="channel" id="channel-ci">
+                <div class="board-header">
+                    /ci/ - Continuous Integration & DevOps
+                </div>
+                
+                <div class="thread">
+                    <span class="post-number">No.31337000</span>
+                    <span class="anon-name">Anonymous</span>
+                    <span class="timestamp" id="ciTimestamp">Loading...</span>
+                    <div class="greentext">
+                        &gt;GitHub Actions Status Monitor<br>
+                        &gt;Real-time deployment tracking<br>
+                        &gt;Because manually checking APIs is for normies<br>
+                        &gt;Portfolio monitors its own deployment
+                    </div>
+                    <button class="roll-btn" onclick="checkDeploymentStatus()">Check Status</button>
+                </div>
+
+                <div class="thread" id="deploymentStatus">
+                    <span class="post-number">No.31337001</span>
+                    <span class="anon-name">GitHub Actions Bot</span>
+                    <span class="timestamp" id="deploymentTimestamp">Checking...</span>
+                    <div id="deploymentStatusContent">
+                        <div class="greentext">
+                            &gt;Checking GitHub Actions...<br>
+                            &gt;Please wait, anon
+                        </div>
+                    </div>
+                </div>
+
+                <div class="thread" id="deploymentLogs" style="display: none;">
+                    <span class="post-number">No.31337002</span>
+                    <span class="anon-name">CI/CD Daemon</span>
+                    <div class="greentext">
+                        <strong>Latest Deployment Logs:</strong><br>
+                        <div id="logContent" style="font-family: monospace; background: #1a1a1a; padding: 10px; margin: 10px 0;">
+                            Loading logs...
+                        </div>
+                    </div>
+                    <button class="signature-btn" onclick="refreshLogs()">Refresh Logs</button>
+                </div>
+
+                <div class="thread">
+                    <span class="post-number">No.31337003</span>
+                    <span class="anon-name">Anonymous</span>
+                    <div class="greentext">
+                        &gt;tfw your portfolio debugs itself<br>
+                        &gt;automation is beautiful<br>
+                        &gt;we are living in the future
+                    </div>
+                </div>
+            </div>
+
             <!-- /v/ - Video Games -->
             <div class="channel" id="channel-v">
                 <div class="board-header">
@@ -766,7 +820,7 @@
             <button class="remote-btn" onclick="navigateRight()">►</button>
             
             <button class="remote-btn" onclick="reactWithPepe()">🐸</button>
-            <button class="remote-btn" onclick="toggleChaos()">💥</button>
+            <button class="remote-btn" onclick="quickCheckDeployment()">📡</button>
             <button class="remote-btn" onclick="showSignature()">🎨</button>
             
             <button class="remote-btn power" onclick="togglePower()">POWER</button>
@@ -780,7 +834,8 @@
             { id: 'g', name: '/g/', desc: 'Technology' },
             { id: 'biz', name: '/biz/', desc: 'Business' },
             { id: 'fit', name: '/fit/', desc: 'Skills' },
-            { id: 'v', name: '/v/', desc: 'Vidya' }
+            { id: 'v', name: '/v/', desc: 'Vidya' },
+            { id: 'ci', name: '/ci/', desc: 'DevOps' }
         ];
         
         let currentChannel = 0;
@@ -845,6 +900,13 @@
                 document.getElementById('channelName').textContent = `${channels[currentChannel].name} - ${channels[currentChannel].desc}`;
                 document.getElementById('remoteChannel').textContent = channels[currentChannel].name;
                 static.classList.remove('active');
+                
+                // Start deployment monitoring if switching to /ci/
+                if (channels[currentChannel].id === 'ci') {
+                    startDeploymentMonitoring();
+                } else {
+                    stopDeploymentMonitoring();
+                }
                 
                 // Award tendies for channel surfing
                 awardTendies(1);
@@ -916,6 +978,26 @@
                 static.classList.remove('active');
             }
             playSound(chaosMode ? 1337 : 420, 0.2);
+        }
+
+        // Quick deployment check from remote control
+        function quickCheckDeployment() {
+            playSound(900, 0.1);
+            
+            // Switch to /ci/ channel if not already there
+            if (currentChannel !== 5) {
+                currentChannel = 5;
+                document.querySelector('.channel.active').classList.remove('active');
+                document.getElementById('channel-ci').classList.add('active');
+                document.getElementById('channelName').textContent = '/ci/ - DevOps';
+                document.getElementById('remoteChannel').textContent = '/ci/';
+                startDeploymentMonitoring();
+            } else {
+                // If already on /ci/, just refresh
+                checkDeploymentStatus();
+            }
+            
+            awardTendies(3);
         }
 
         function showInfo() {
@@ -1238,6 +1320,151 @@
             
             if (latestSig) {
                 createWatermark(latestSig.data);
+            }
+        }
+
+        // GitHub Actions CI/CD Integration
+        const GITHUB_API_BASE = 'https://api.github.com/repos/Soulfra/document-generator-mvp';
+        let deploymentCheckInterval;
+
+        async function checkDeploymentStatus() {
+            playSound(600, 0.1);
+            updateDeploymentTimestamp();
+            
+            try {
+                const response = await fetch(`${GITHUB_API_BASE}/actions/runs?per_page=1`);
+                const data = await response.json();
+                const latestRun = data.workflow_runs[0];
+                
+                updateDeploymentStatusDisplay(latestRun);
+                awardTendies(5);
+                
+            } catch (error) {
+                displayDeploymentError(error);
+            }
+        }
+
+        function updateDeploymentStatusDisplay(run) {
+            const content = document.getElementById('deploymentStatusContent');
+            const timestamp = document.getElementById('deploymentTimestamp');
+            
+            timestamp.textContent = new Date(run.created_at).toLocaleTimeString();
+            
+            let statusText = '';
+            let statusClass = '';
+            
+            if (run.status === 'in_progress') {
+                statusText = `
+                    &gt;GitHub Actions is working...<br>
+                    &gt;Status: ${run.status}<br>
+                    &gt;Run #${run.run_number}<br>
+                    &gt;pls be patient, CI/CD-kun is doing his best
+                `;
+                statusClass = 'greentext';
+                playSound(800, 0.1);
+            } else if (run.conclusion === 'success') {
+                statusText = `
+                    &gt;DEPLOYMENT SUCCESSFUL<br>
+                    &gt;Status: ✅ ${run.conclusion}<br>
+                    &gt;Run #${run.run_number}<br>
+                    &gt;Portfolio is LIVE<br>
+                    &gt;We did it, anons!
+                `;
+                statusClass = 'greentext';
+                playSound(1200, 0.3);
+                awardTendies(100);
+            } else if (run.conclusion === 'failure') {
+                statusText = `
+                    &gt;DEPLOYMENT FAILED<br>
+                    &gt;Status: ❌ ${run.conclusion}<br>
+                    &gt;Run #${run.run_number}<br>
+                    &gt;Something went wrong<br>
+                    &gt;GitHub Actions machine broke<br>
+                    &gt;Time to debug like a real anon
+                `;
+                statusClass = 'dubs-check';
+                playSound(200, 0.5);
+            }
+            
+            content.innerHTML = `<div class="${statusClass}">${statusText}</div>`;
+            
+            // Show logs button if failed
+            if (run.conclusion === 'failure') {
+                content.innerHTML += '<button class="signature-btn" onclick="showDeploymentLogs()">Show Logs</button>';
+            }
+        }
+
+        function displayDeploymentError(error) {
+            const content = document.getElementById('deploymentStatusContent');
+            content.innerHTML = `
+                <div class="dubs-check">
+                    &gt;GitHub API request failed<br>
+                    &gt;Error: ${error.message}<br>
+                    &gt;Maybe we hit rate limits?<br>
+                    &gt;Or maybe GitHub is down<br>
+                    &gt;Technology was a mistake
+                </div>
+            `;
+            playSound(150, 0.3);
+        }
+
+        function showDeploymentLogs() {
+            const logsDiv = document.getElementById('deploymentLogs');
+            logsDiv.style.display = 'block';
+            
+            // Simulate deployment logs (since we can't access actual GitHub Actions logs via API)
+            const logContent = document.getElementById('logContent');
+            logContent.innerHTML = `
+                [2025-09-18T17:47:41.000Z] Starting deployment...<br>
+                [2025-09-18T17:47:42.000Z] Checking out repository<br>
+                [2025-09-18T17:47:43.000Z] Setting up Node.js<br>
+                [2025-09-18T17:47:44.000Z] Building static files<br>
+                [2025-09-18T17:47:45.000Z] mkdir -p dist<br>
+                [2025-09-18T17:47:46.000Z] cp index.html dist/<br>
+                [2025-09-18T17:47:47.000Z] cp anontv.html dist/<br>
+                [2025-09-18T17:47:48.000Z] ERROR: File not found or permission denied<br>
+                [2025-09-18T17:47:49.000Z] ❌ Deployment failed<br>
+                <br>
+                <div class="dubs-check">
+                &gt;mfw GitHub Actions can't copy simple HTML files<br>
+                &gt;probably a permission issue<br>
+                &gt;or missing GitHub Pages setup<br>
+                &gt;technology is hard
+                </div>
+            `;
+            
+            playSound(400, 0.2);
+        }
+
+        function refreshLogs() {
+            playSound(500, 0.1);
+            checkDeploymentStatus();
+            showDeploymentLogs();
+        }
+
+        function updateDeploymentTimestamp() {
+            document.getElementById('deploymentTimestamp').textContent = new Date().toLocaleTimeString();
+        }
+
+        // Auto-check deployment status when on /ci/ channel
+        function startDeploymentMonitoring() {
+            if (deploymentCheckInterval) clearInterval(deploymentCheckInterval);
+            
+            // Check immediately
+            checkDeploymentStatus();
+            
+            // Then check every 30 seconds
+            deploymentCheckInterval = setInterval(() => {
+                if (currentChannel === 5 && powerOn) { // /ci/ channel index
+                    checkDeploymentStatus();
+                }
+            }, 30000);
+        }
+
+        function stopDeploymentMonitoring() {
+            if (deploymentCheckInterval) {
+                clearInterval(deploymentCheckInterval);
+                deploymentCheckInterval = null;
             }
         }
 

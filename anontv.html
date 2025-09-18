@@ -376,6 +376,87 @@
             font-size: 18px;
             margin: 10px 0;
         }
+
+        /* Signature overlay */
+        .signature-overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0, 0, 0, 0.9);
+            z-index: 10000;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .signature-panel {
+            background: #282a2e;
+            border: 2px solid #00ff00;
+            border-radius: 10px;
+            padding: 20px;
+            text-align: center;
+            box-shadow: 0 0 30px rgba(0, 255, 0, 0.5);
+        }
+
+        .signature-panel h3 {
+            color: #00ff00;
+            margin-bottom: 15px;
+        }
+
+        #signatureCanvas {
+            border: 2px solid #373b41;
+            background: #1d1f21;
+            cursor: crosshair;
+            margin: 10px 0;
+        }
+
+        .signature-controls {
+            display: flex;
+            gap: 10px;
+            justify-content: center;
+            margin-top: 15px;
+        }
+
+        .signature-controls button {
+            background: #117743;
+            color: white;
+            border: none;
+            padding: 8px 16px;
+            border-radius: 5px;
+            cursor: pointer;
+            font-family: inherit;
+            transition: all 0.2s;
+        }
+
+        .signature-controls button:hover {
+            background: #1a9658;
+            box-shadow: 0 0 10px rgba(0, 255, 0, 0.5);
+        }
+
+        /* Watermark display */
+        .watermark {
+            position: absolute;
+            bottom: 10px;
+            left: 10px;
+            opacity: 0.3;
+            pointer-events: none;
+            border: 1px solid #373b41;
+            background: rgba(0, 0, 0, 0.5);
+        }
+
+        /* Portfolio signature button */
+        .signature-btn {
+            background: #4ecca3;
+            color: #000;
+            border: none;
+            padding: 5px 10px;
+            border-radius: 3px;
+            cursor: pointer;
+            font-size: 12px;
+            margin: 5px;
+        }
     </style>
 </head>
 <body>
@@ -413,6 +494,19 @@
 ⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠙⠒⠤⢴⠋⠀⠀⠀⠀
                 </pre>
                 <div style="color: #00ff00; margin-top: 20px;">Loading AnonTV...</div>
+            </div>
+
+            <!-- Signature Canvas (hidden by default) -->
+            <div class="signature-overlay" id="signatureOverlay" style="display: none;">
+                <div class="signature-panel">
+                    <h3>🎨 Create Your Portfolio Signature</h3>
+                    <canvas id="signatureCanvas" width="400" height="200"></canvas>
+                    <div class="signature-controls">
+                        <button onclick="clearSignature()">Clear</button>
+                        <button onclick="saveSignature()">Save & Watermark</button>
+                        <button onclick="closeSignature()">Close</button>
+                    </div>
+                </div>
             </div>
 
             <!-- /b/ - Random -->
@@ -464,6 +558,7 @@
                             >using javascript in 2025<br>
                             >ISHYGDDT<br>
                             <button onclick="reactWithPepe()">🐸 Nice</button>
+                            <button class="signature-btn" onclick="generateProjectSignature('tv-remote')">Sign This</button>
                         </div>
                     </div>
                 </div>
@@ -671,7 +766,7 @@
             <button class="remote-btn" onclick="navigateRight()">►</button>
             
             <button class="remote-btn" onclick="reactWithPepe()">🐸</button>
-            <button class="remote-btn" onclick="showInfo()">ℹ</button>
+            <button class="remote-btn" onclick="showSignature()">🎨</button>
             <button class="remote-btn" onclick="toggleSound()">🔊</button>
             
             <button class="remote-btn power" onclick="togglePower()">POWER</button>
@@ -723,6 +818,7 @@
                 document.getElementById('loadingScreen').style.display = 'none';
                 playSound(440, 0.1); // Startup beep
                 updateVisitorCount();
+                loadWatermarks(); // Load saved signatures
             }, 2000);
         });
 
@@ -802,7 +898,9 @@
         }
 
         function showInfo() {
-            alert('AnonTV Portfolio System v1.0\n\nAnon No.' + visitors + '\n\nYou are here forever.');
+            const sigCount = Object.keys(signatures).length;
+            const hasMainSig = Object.values(signatures).some(s => !s.project);
+            alert(`AnonTV Portfolio System v2.0\n\nAnon No.${visitors}\nSignatures: ${sigCount}\nWatermarked: ${hasMainSig ? 'YES' : 'NO'}\n\nYou are here forever.`);
         }
 
         // Project interactions
@@ -921,6 +1019,206 @@
                     break;
             }
         });
+
+        // Signature System
+        let isDrawing = false;
+        let signatureCanvas = null;
+        let signatureCtx = null;
+        let signatures = JSON.parse(localStorage.getItem('anontv-signatures') || '{}');
+
+        function initSignatureCanvas() {
+            signatureCanvas = document.getElementById('signatureCanvas');
+            signatureCtx = signatureCanvas.getContext('2d');
+            
+            // Set drawing style
+            signatureCtx.strokeStyle = '#00ff00';
+            signatureCtx.lineWidth = 2;
+            signatureCtx.lineCap = 'round';
+            
+            // Mouse events
+            signatureCanvas.addEventListener('mousedown', startDrawing);
+            signatureCanvas.addEventListener('mousemove', draw);
+            signatureCanvas.addEventListener('mouseup', stopDrawing);
+            signatureCanvas.addEventListener('mouseout', stopDrawing);
+            
+            // Touch events for mobile
+            signatureCanvas.addEventListener('touchstart', handleTouch);
+            signatureCanvas.addEventListener('touchmove', handleTouch);
+            signatureCanvas.addEventListener('touchend', stopDrawing);
+        }
+
+        function startDrawing(e) {
+            isDrawing = true;
+            draw(e);
+        }
+
+        function draw(e) {
+            if (!isDrawing) return;
+            
+            const rect = signatureCanvas.getBoundingClientRect();
+            const x = e.clientX - rect.left;
+            const y = e.clientY - rect.top;
+            
+            signatureCtx.lineTo(x, y);
+            signatureCtx.stroke();
+            signatureCtx.beginPath();
+            signatureCtx.moveTo(x, y);
+        }
+
+        function stopDrawing() {
+            if (isDrawing) {
+                signatureCtx.beginPath();
+                isDrawing = false;
+            }
+        }
+
+        function handleTouch(e) {
+            e.preventDefault();
+            const touch = e.touches[0];
+            const mouseEvent = new MouseEvent(e.type === 'touchstart' ? 'mousedown' : 
+                                            e.type === 'touchmove' ? 'mousemove' : 'mouseup', {
+                clientX: touch.clientX,
+                clientY: touch.clientY
+            });
+            signatureCanvas.dispatchEvent(mouseEvent);
+        }
+
+        function showSignature() {
+            document.getElementById('signatureOverlay').style.display = 'flex';
+            if (!signatureCanvas) {
+                setTimeout(initSignatureCanvas, 100);
+            }
+            playSound(600, 0.1);
+        }
+
+        function closeSignature() {
+            document.getElementById('signatureOverlay').style.display = 'none';
+            playSound(400, 0.1);
+        }
+
+        function clearSignature() {
+            if (signatureCtx) {
+                signatureCtx.clearRect(0, 0, signatureCanvas.width, signatureCanvas.height);
+                playSound(800, 0.05);
+            }
+        }
+
+        function saveSignature() {
+            if (!signatureCanvas) return;
+            
+            const dataURL = signatureCanvas.toDataURL();
+            const timestamp = Date.now();
+            const signatureId = 'sig_' + timestamp;
+            
+            signatures[signatureId] = {
+                data: dataURL,
+                timestamp: timestamp,
+                projects: []
+            };
+            
+            localStorage.setItem('anontv-signatures', JSON.stringify(signatures));
+            
+            // Create watermark
+            createWatermark(dataURL);
+            
+            closeSignature();
+            awardTendies(50);
+            
+            alert('Signature saved! Your portfolio is now watermarked with your unique fingerprint.');
+            playSound(1000, 0.2);
+        }
+
+        function createWatermark(dataURL) {
+            // Remove existing watermarks
+            const existingWatermarks = document.querySelectorAll('.watermark');
+            existingWatermarks.forEach(w => w.remove());
+            
+            // Create new watermark
+            const watermark = document.createElement('img');
+            watermark.className = 'watermark';
+            watermark.src = dataURL;
+            watermark.style.width = '100px';
+            watermark.style.height = '50px';
+            
+            document.querySelector('.tv-screen').appendChild(watermark);
+        }
+
+        function generateProjectSignature(projectId) {
+            const canvas = document.createElement('canvas');
+            canvas.width = 200;
+            canvas.height = 100;
+            const ctx = canvas.getContext('2d');
+            
+            // Generate unique visual fingerprint based on project and timestamp
+            ctx.fillStyle = '#1d1f21';
+            ctx.fillRect(0, 0, 200, 100);
+            
+            // Create hash-based pattern
+            const hash = simpleHash(projectId + Date.now());
+            const colors = ['#00ff00', '#ff0000', '#0000ff', '#ffff00', '#ff00ff'];
+            
+            for (let i = 0; i < 50; i++) {
+                ctx.fillStyle = colors[hash % colors.length];
+                ctx.fillRect(
+                    (hash * i) % 180,
+                    (hash * i * 2) % 80,
+                    10, 10
+                );
+            }
+            
+            // Add project text
+            ctx.fillStyle = '#00ff00';
+            ctx.font = '12px monospace';
+            ctx.fillText(projectId.toUpperCase(), 10, 20);
+            ctx.fillText('ANON_' + hash.toString(16).substr(0, 8), 10, 35);
+            
+            // Create mini watermark for this project
+            const projectSig = canvas.toDataURL();
+            signatures['project_' + projectId] = {
+                data: projectSig,
+                timestamp: Date.now(),
+                project: projectId
+            };
+            
+            localStorage.setItem('anontv-signatures', JSON.stringify(signatures));
+            
+            // Show signature in reply
+            const reply = document.getElementById(projectId + '-details');
+            if (reply) {
+                const sigImg = document.createElement('img');
+                sigImg.src = projectSig;
+                sigImg.style.width = '80px';
+                sigImg.style.height = '40px';
+                sigImg.style.border = '1px solid #00ff00';
+                sigImg.style.margin = '5px';
+                reply.appendChild(sigImg);
+            }
+            
+            awardTendies(25);
+            playSound(900, 0.15);
+        }
+
+        function simpleHash(str) {
+            let hash = 0;
+            for (let i = 0; i < str.length; i++) {
+                const char = str.charCodeAt(i);
+                hash = ((hash << 5) - hash) + char;
+                hash = hash & hash; // Convert to 32-bit integer
+            }
+            return Math.abs(hash);
+        }
+
+        // Load existing watermarks on startup
+        function loadWatermarks() {
+            const savedSignatures = JSON.parse(localStorage.getItem('anontv-signatures') || '{}');
+            const latestSig = Object.values(savedSignatures)
+                .filter(s => !s.project)
+                .sort((a, b) => b.timestamp - a.timestamp)[0];
+            
+            if (latestSig) {
+                createWatermark(latestSig.data);
+            }
+        }
 
         // Auto-generate some random posts periodically
         setInterval(() => {

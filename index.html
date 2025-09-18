@@ -469,6 +469,12 @@
             }
             
             connectToSocket() {
+                // For GitHub Pages deployment, simulate WebSocket connection
+                if (window.location.hostname.includes('github.io')) {
+                    this.simulateConnection();
+                    return;
+                }
+                
                 const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
                 const host = window.location.hostname === 'localhost' ? 'localhost:8081' : window.location.host;
                 const socketUrl = `${protocol}//${host}`;
@@ -745,9 +751,30 @@
                 container.scrollTop = container.scrollHeight;
             }
             
+            simulateConnection() {
+                this.log('Demo mode - Simulating connection for GitHub Pages');
+                
+                // Simulate connection after delay
+                setTimeout(() => {
+                    this.updateConnectionStatus('connected');
+                    this.services['Socket Server'].status = 'demo';
+                    this.services['HTTP Server'].status = 'demo';
+                    this.services['Template Processor'].status = 'demo';
+                    this.updateServiceGrid();
+                    this.updateSystemStatus('Demo Mode - Full functionality requires local setup');
+                    
+                    this.log('Connected in demo mode');
+                    this.log('💡 For full functionality, run locally with Docker');
+                    this.log('💡 Job application system requires backend services');
+                    
+                }, 1000);
+            }
+            
             startStatusUpdates() {
                 setInterval(() => {
-                    this.checkServices();
+                    if (!window.location.hostname.includes('github.io')) {
+                        this.checkServices();
+                    }
                 }, 30000); // Check every 30 seconds
             }
         }
@@ -759,7 +786,11 @@
             switch (feature) {
                 case 'job-application':
                     app.log('Opening Job Application System...');
-                    window.open('./mcp/src/web-demo/job-application-demo.html', '_blank');
+                    if (window.location.hostname.includes('github.io')) {
+                        window.open('./web-demo/job-application-demo.html', '_blank');
+                    } else {
+                        window.open('./mcp/src/web-demo/job-application-demo.html', '_blank');
+                    }
                     break;
                 case 'socket-platform':
                     app.log('Opening Socket Platform...');

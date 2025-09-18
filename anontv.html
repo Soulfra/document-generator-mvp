@@ -187,6 +187,18 @@
             box-shadow: 0 10px 40px rgba(0, 0, 0, 0.8);
             border: 3px solid #444;
             z-index: 99999; /* Always on top - THE REMOTE RULES ALL */
+            cursor: move;
+            user-select: none;
+            transition: box-shadow 0.2s ease;
+        }
+
+        .remote:hover {
+            box-shadow: 0 15px 50px rgba(0, 255, 0, 0.3);
+        }
+
+        .remote.dragging {
+            box-shadow: 0 20px 60px rgba(0, 255, 0, 0.5);
+            transform: scale(1.05);
         }
 
         .remote-screen {
@@ -592,50 +604,60 @@
             <!-- /g/ - Technology -->
             <div class="channel" id="channel-g">
                 <div class="board-header">
-                    /g/ - Technology
+                    /g/ - Technology Search & AI Analysis
                 </div>
                 
                 <div class="thread">
                     <span class="post-number">No.92345678</span>
-                    <span class="anon-name">Anonymous</span>
-                    <span class="timestamp">11/09/25(Mon)16:00:00</span>
-                    <div class="greentext">
-                        &gt;install gentoo<br>
-                        &gt;btw i use arch<br>
-                        &gt;imagine not writing everything in C<br>
-                        &gt;javascript was a mistake
+                    <span class="anon-name">Tech Search Engine</span>
+                    <span class="timestamp" id="techTimestamp">Ready</span>
+                    <div>
+                        <strong>Live Tech Search & AI Analysis</strong><br>
+                        <div class="greentext">
+                            &gt;search for any tech topic<br>
+                            &gt;get AI analysis of results<br>
+                            &gt;copy-paste ready solutions<br>
+                            &gt;because manually googling is for normies
+                        </div>
+                        <input type="text" id="techSearchInput" placeholder="Search for: React hooks, Docker optimization, etc..." 
+                               style="width: 80%; padding: 8px; margin: 10px 0; background: #1a1a1a; color: #00ff00; border: 1px solid #373b41;"
+                               onkeypress="if(event.key==='Enter') searchTech()">
+                        <button class="roll-btn" onclick="searchTech()">Search & Analyze</button>
                     </div>
                 </div>
 
-                <div class="thread">
+                <div class="thread" id="techResults" style="display: none;">
                     <span class="post-number">No.92345679</span>
-                    <span class="anon-name">Anonymous</span>
-                    <div>
-                        <strong>Document Generator Platform</strong><br>
-                        >AI-powered MVP creation<br>
-                        >Docker containerization<br>
-                        >Microservices architecture<br>
-                        >Actually uses Ollama for local AI<br>
+                    <span class="anon-name">AI Analysis Bot</span>
+                    <span class="timestamp" id="techResultsTime">Processing...</span>
+                    <div id="techAnalysisContent">
                         <div class="greentext">
-                            &gt;not relying on botnet cloud services<br>
-                            &gt;respecting privacy<br>
-                            &gt;absolutely BASED and REDPILLED
+                            &gt;analyzing search results...<br>
+                            &gt;please wait, anon
                         </div>
                     </div>
+                    <button class="signature-btn" onclick="copyTechResults()" style="display: none;" id="copyTechBtn">Copy Results</button>
                 </div>
 
                 <div class="thread">
                     <span class="post-number">No.92345680</span>
                     <span class="anon-name">Anonymous</span>
+                    <div class="greentext">
+                        &gt;tfw AI does your research for you<br>
+                        &gt;just type what you need<br>
+                        &gt;get instant expert analysis<br>
+                        &gt;technology is beautiful when it works
+                    </div>
+                </div>
+
+                <div class="thread">
+                    <span class="post-number">No.92345681</span>
+                    <span class="anon-name">Anonymous</span>
                     <div>
-                        Tech Stack Rating Thread:<br>
-                        <ul style="list-style: none; padding-left: 20px;">
-                            <li>✓ Node.js - Acceptable</li>
-                            <li>✓ Docker - Based</li>
-                            <li>✓ WebSockets - Real-time chad</li>
-                            <li>✓ Local AI - Privacy respecting</li>
-                            <li>✗ No Rust - NGMI</li>
-                        </ul>
+                        Recent searches:<br>
+                        <div id="recentTechSearches" style="font-size: 12px; color: #666;">
+                            No searches yet...
+                        </div>
                     </div>
                 </div>
             </div>
@@ -866,6 +888,101 @@
             oscillator.stop(audioContext.currentTime + duration);
         }
 
+        // Remote Control Dragging
+        let isDragging = false;
+        let dragOffset = { x: 0, y: 0 };
+
+        function initRemoteDragging() {
+            const remote = document.querySelector('.remote');
+            
+            remote.addEventListener('mousedown', startDrag);
+            document.addEventListener('mousemove', drag);
+            document.addEventListener('mouseup', endDrag);
+            
+            // Touch events for mobile
+            remote.addEventListener('touchstart', startDrag);
+            document.addEventListener('touchmove', drag);
+            document.addEventListener('touchend', endDrag);
+            
+            // Load saved position
+            loadRemotePosition();
+        }
+
+        function startDrag(e) {
+            e.preventDefault();
+            isDragging = true;
+            
+            const remote = document.querySelector('.remote');
+            remote.classList.add('dragging');
+            
+            const clientX = e.clientX || e.touches[0].clientX;
+            const clientY = e.clientY || e.touches[0].clientY;
+            const rect = remote.getBoundingClientRect();
+            
+            dragOffset.x = clientX - rect.left;
+            dragOffset.y = clientY - rect.top;
+            
+            playSound(600, 0.05);
+        }
+
+        function drag(e) {
+            if (!isDragging) return;
+            e.preventDefault();
+            
+            const remote = document.querySelector('.remote');
+            const clientX = e.clientX || e.touches[0].clientX;
+            const clientY = e.clientY || e.touches[0].clientY;
+            
+            let newX = clientX - dragOffset.x;
+            let newY = clientY - dragOffset.y;
+            
+            // Keep remote within screen bounds
+            const maxX = window.innerWidth - remote.offsetWidth;
+            const maxY = window.innerHeight - remote.offsetHeight;
+            
+            newX = Math.max(0, Math.min(newX, maxX));
+            newY = Math.max(0, Math.min(newY, maxY));
+            
+            remote.style.left = newX + 'px';
+            remote.style.top = newY + 'px';
+            remote.style.transform = 'none'; // Remove centering transform
+        }
+
+        function endDrag() {
+            if (!isDragging) return;
+            
+            isDragging = false;
+            const remote = document.querySelector('.remote');
+            remote.classList.remove('dragging');
+            
+            // Save position
+            saveRemotePosition();
+            
+            playSound(800, 0.05);
+        }
+
+        function saveRemotePosition() {
+            const remote = document.querySelector('.remote');
+            const position = {
+                x: remote.style.left,
+                y: remote.style.top
+            };
+            localStorage.setItem('anontv-remote-position', JSON.stringify(position));
+        }
+
+        function loadRemotePosition() {
+            const saved = localStorage.getItem('anontv-remote-position');
+            if (saved) {
+                const position = JSON.parse(saved);
+                const remote = document.querySelector('.remote');
+                if (position.x && position.y) {
+                    remote.style.left = position.x;
+                    remote.style.top = position.y;
+                    remote.style.transform = 'none';
+                }
+            }
+        }
+
         // Initialize
         window.addEventListener('load', () => {
             // Hide loading screen after 2 seconds
@@ -874,6 +991,8 @@
                 playSound(440, 0.1); // Startup beep
                 updateVisitorCount();
                 loadWatermarks(); // Load saved signatures
+                initRemoteDragging(); // Make remote draggable
+                updateTechHistoryDisplay(); // Load search history
             }, 2000);
         });
 
@@ -1466,6 +1585,235 @@
                 clearInterval(deploymentCheckInterval);
                 deploymentCheckInterval = null;
             }
+        }
+
+        // Tech Search & AI Analysis
+        let techSearchHistory = JSON.parse(localStorage.getItem('anontv-tech-searches') || '[]');
+        let lastTechResults = '';
+
+        async function searchTech() {
+            const query = document.getElementById('techSearchInput').value.trim();
+            if (!query) {
+                alert('Enter a search query, anon');
+                return;
+            }
+
+            playSound(700, 0.1);
+            document.getElementById('techTimestamp').textContent = new Date().toLocaleTimeString();
+            
+            // Show results section
+            const resultsDiv = document.getElementById('techResults');
+            resultsDiv.style.display = 'block';
+            
+            // Update analysis content
+            const analysisContent = document.getElementById('techAnalysisContent');
+            analysisContent.innerHTML = `
+                <div class="greentext">
+                    &gt;searching for: "${query}"<br>
+                    &gt;analyzing tech trends...<br>
+                    &gt;generating copy-paste solutions...<br>
+                    &gt;please wait, anon
+                </div>
+            `;
+
+            try {
+                // Simulate AI analysis (in real implementation, this would call search APIs + AI)
+                await simulateTechSearch(query);
+                awardTendies(15);
+                
+                // Add to search history
+                addToTechHistory(query);
+                
+            } catch (error) {
+                displayTechError(error);
+            }
+        }
+
+        async function simulateTechSearch(query) {
+            // Simulate delay
+            await new Promise(resolve => setTimeout(resolve, 2000));
+            
+            const analysisContent = document.getElementById('techAnalysisContent');
+            const copyBtn = document.getElementById('copyTechBtn');
+            
+            // Generate contextual AI response based on query
+            let response = generateTechResponse(query);
+            
+            analysisContent.innerHTML = response;
+            copyBtn.style.display = 'inline-block';
+            
+            document.getElementById('techResultsTime').textContent = new Date().toLocaleTimeString();
+            playSound(1000, 0.2);
+        }
+
+        function generateTechResponse(query) {
+            const lowerQuery = query.toLowerCase();
+            
+            // Context-aware responses
+            if (lowerQuery.includes('react') || lowerQuery.includes('hooks')) {
+                lastTechResults = `
+                    <div class="greentext">
+                        &gt;React Hooks Analysis<br>
+                        &gt;useState for state management<br>
+                        &gt;useEffect for side effects<br>
+                        &gt;useCallback for performance optimization
+                    </div>
+                    <div style="background: #1a1a1a; padding: 10px; margin: 10px 0; font-family: monospace;">
+                        <strong>Copy-paste solution:</strong><br>
+                        <code style="color: #00ff00;">
+                        import React, { useState, useEffect } from 'react';<br><br>
+                        const MyComponent = () => {<br>
+                        &nbsp;&nbsp;const [data, setData] = useState(null);<br>
+                        &nbsp;&nbsp;const [loading, setLoading] = useState(true);<br><br>
+                        &nbsp;&nbsp;useEffect(() => {<br>
+                        &nbsp;&nbsp;&nbsp;&nbsp;fetchData().then(setData).finally(() => setLoading(false));<br>
+                        &nbsp;&nbsp;}, []);<br><br>
+                        &nbsp;&nbsp;return loading ? 'Loading...' : JSON.stringify(data);<br>
+                        };<br>
+                        </code>
+                    </div>
+                    <div class="greentext">&gt;based and functional-pilled</div>
+                `;
+            } else if (lowerQuery.includes('docker')) {
+                lastTechResults = `
+                    <div class="greentext">
+                        &gt;Docker Optimization Guide<br>
+                        &gt;multi-stage builds for smaller images<br>
+                        &gt;.dockerignore to exclude unnecessary files<br>
+                        &gt;alpine base images for minimal footprint
+                    </div>
+                    <div style="background: #1a1a1a; padding: 10px; margin: 10px 0; font-family: monospace;">
+                        <strong>Optimized Dockerfile:</strong><br>
+                        <code style="color: #00ff00;">
+                        FROM node:18-alpine AS builder<br>
+                        WORKDIR /app<br>
+                        COPY package*.json ./<br>
+                        RUN npm ci --only=production<br><br>
+                        FROM node:18-alpine<br>
+                        WORKDIR /app<br>
+                        COPY --from=builder /app/node_modules ./node_modules<br>
+                        COPY . .<br>
+                        EXPOSE 3000<br>
+                        CMD ["npm", "start"]<br>
+                        </code>
+                    </div>
+                    <div class="greentext">&gt;containers are comfy</div>
+                `;
+            } else if (lowerQuery.includes('ai') || lowerQuery.includes('llm')) {
+                lastTechResults = `
+                    <div class="greentext">
+                        &gt;AI/LLM Integration Analysis<br>
+                        &gt;local Ollama for privacy<br>
+                        &gt;OpenAI/Anthropic for cloud fallback<br>
+                        &gt;streaming responses for better UX
+                    </div>
+                    <div style="background: #1a1a1a; padding: 10px; margin: 10px 0; font-family: monospace;">
+                        <strong>AI API Integration:</strong><br>
+                        <code style="color: #00ff00;">
+                        const response = await fetch('http://localhost:11434/api/generate', {<br>
+                        &nbsp;&nbsp;method: 'POST',<br>
+                        &nbsp;&nbsp;body: JSON.stringify({<br>
+                        &nbsp;&nbsp;&nbsp;&nbsp;model: 'codellama',<br>
+                        &nbsp;&nbsp;&nbsp;&nbsp;prompt: userInput,<br>
+                        &nbsp;&nbsp;&nbsp;&nbsp;stream: true<br>
+                        &nbsp;&nbsp;})<br>
+                        });<br>
+                        </code>
+                    </div>
+                    <div class="greentext">&gt;AI revolution is here, anon</div>
+                `;
+            } else {
+                // Generic tech response
+                lastTechResults = `
+                    <div class="greentext">
+                        &gt;Tech Analysis: "${query}"<br>
+                        &gt;searching through knowledge base...<br>
+                        &gt;cross-referencing best practices...<br>
+                        &gt;generating recommendations...
+                    </div>
+                    <div style="background: #1a1a1a; padding: 10px; margin: 10px 0;">
+                        <strong>AI Analysis:</strong><br>
+                        This technology appears to be relevant for modern development.
+                        Consider checking official documentation, GitHub repositories,
+                        and Stack Overflow for the latest implementation patterns.
+                        <br><br>
+                        <strong>Recommended approach:</strong><br>
+                        1. Start with official docs<br>
+                        2. Look for community examples<br>
+                        3. Test in isolation first<br>
+                        4. Consider performance implications
+                    </div>
+                    <div class="greentext">
+                        &gt;generic advice but still helpful<br>
+                        &gt;search more specifically for better results
+                    </div>
+                `;
+            }
+            
+            return lastTechResults;
+        }
+
+        function copyTechResults() {
+            // Strip HTML tags for clean copy
+            const cleanText = lastTechResults
+                .replace(/<[^>]*>/g, '')
+                .replace(/&gt;/g, '>')
+                .replace(/&nbsp;/g, ' ')
+                .trim();
+                
+            navigator.clipboard.writeText(cleanText).then(() => {
+                playSound(1200, 0.1);
+                awardTendies(5);
+                alert('Copied to clipboard! \n\n>thanks for using anon tech search\n>remember to give credit');
+            }).catch(() => {
+                // Fallback for older browsers
+                const textArea = document.createElement('textarea');
+                textArea.value = cleanText;
+                document.body.appendChild(textArea);
+                textArea.select();
+                document.execCommand('copy');
+                document.body.removeChild(textArea);
+                playSound(1200, 0.1);
+                alert('Copied to clipboard (fallback method)!');
+            });
+        }
+
+        function addToTechHistory(query) {
+            techSearchHistory.unshift({
+                query: query,
+                timestamp: Date.now()
+            });
+            
+            // Keep only last 5 searches
+            techSearchHistory = techSearchHistory.slice(0, 5);
+            
+            localStorage.setItem('anontv-tech-searches', JSON.stringify(techSearchHistory));
+            updateTechHistoryDisplay();
+        }
+
+        function updateTechHistoryDisplay() {
+            const historyDiv = document.getElementById('recentTechSearches');
+            if (techSearchHistory.length === 0) {
+                historyDiv.textContent = 'No searches yet...';
+                return;
+            }
+            
+            historyDiv.innerHTML = techSearchHistory
+                .map(search => `• ${search.query}`)
+                .join('<br>');
+        }
+
+        function displayTechError(error) {
+            const analysisContent = document.getElementById('techAnalysisContent');
+            analysisContent.innerHTML = `
+                <div class="dubs-check">
+                    &gt;Search failed<br>
+                    &gt;Error: ${error.message}<br>
+                    &gt;Maybe the internet broke?<br>
+                    &gt;Try again later, anon
+                </div>
+            `;
+            playSound(200, 0.3);
         }
 
         // Auto-generate some random posts periodically (reduced frequency)

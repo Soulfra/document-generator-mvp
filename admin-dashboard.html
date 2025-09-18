@@ -1,0 +1,618 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>🚀 SoulFra Admin Dashboard - GitHub Powered</title>
+    <style>
+        :root {
+            --github-dark: #0d1117;
+            --github-border: #30363d;
+            --github-accent: #238636;
+            --github-text: #f0f6fc;
+            --github-text-secondary: #8b949e;
+            --soulfra-primary: #6366f1;
+            --soulfra-secondary: #8b5cf6;
+            --cal-brown: #8B4513;
+        }
+
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+            background: var(--github-dark);
+            color: var(--github-text);
+            min-height: 100vh;
+            line-height: 1.6;
+        }
+
+        .header {
+            background: var(--github-border);
+            padding: 1rem 2rem;
+            border-bottom: 1px solid var(--github-border);
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .logo {
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+            font-size: 1.5rem;
+            font-weight: bold;
+        }
+
+        .github-status {
+            display: flex;
+            align-items: center;
+            gap: 1rem;
+            color: var(--github-text-secondary);
+            font-size: 0.9rem;
+        }
+
+        .status-indicator {
+            width: 8px;
+            height: 8px;
+            border-radius: 50%;
+            background: var(--github-accent);
+            animation: pulse 2s infinite;
+        }
+
+        @keyframes pulse {
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0.5; }
+        }
+
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 2rem;
+        }
+
+        .dashboard-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+            gap: 2rem;
+            margin-top: 2rem;
+        }
+
+        .card {
+            background: rgba(255, 255, 255, 0.05);
+            border: 1px solid var(--github-border);
+            border-radius: 8px;
+            padding: 1.5rem;
+            backdrop-filter: blur(10px);
+        }
+
+        .card h3 {
+            color: var(--soulfra-primary);
+            margin-bottom: 1rem;
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+        }
+
+        .auth-status {
+            background: linear-gradient(135deg, var(--soulfra-primary), var(--soulfra-secondary));
+            color: white;
+        }
+
+        .cal-cookies {
+            background: linear-gradient(135deg, var(--cal-brown), #D2691E);
+            color: white;
+        }
+
+        .btn {
+            padding: 0.5rem 1rem;
+            border: 1px solid var(--github-border);
+            background: var(--github-dark);
+            color: var(--github-text);
+            border-radius: 6px;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            text-decoration: none;
+            display: inline-block;
+            margin: 0.25rem;
+        }
+
+        .btn:hover {
+            background: var(--github-border);
+            border-color: var(--soulfra-primary);
+        }
+
+        .btn-primary {
+            background: var(--github-accent);
+            border-color: var(--github-accent);
+            color: white;
+        }
+
+        .btn-primary:hover {
+            background: #2ea043;
+        }
+
+        .deployment-status {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin: 0.5rem 0;
+            padding: 0.5rem;
+            background: rgba(255, 255, 255, 0.05);
+            border-radius: 4px;
+        }
+
+        .status-success { border-left: 3px solid var(--github-accent); }
+        .status-pending { border-left: 3px solid #f85149; }
+        .status-building { border-left: 3px solid #d29922; }
+
+        .cal-counter {
+            position: fixed;
+            top: 20px;
+            right: 20px;
+            background: var(--cal-brown);
+            color: white;
+            padding: 10px 15px;
+            border-radius: 25px;
+            font-weight: bold;
+            animation: cookieFloat 3s ease-in-out infinite;
+            z-index: 1000;
+        }
+
+        @keyframes cookieFloat {
+            0%, 100% { transform: translateY(0px); }
+            50% { transform: translateY(-5px); }
+        }
+
+        .quick-actions {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 0.5rem;
+            margin-top: 1rem;
+        }
+
+        .github-integration {
+            border: 2px solid var(--github-accent);
+        }
+
+        .repo-info {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 1rem;
+            padding: 0.5rem;
+            background: rgba(255, 255, 255, 0.03);
+            border-radius: 4px;
+        }
+
+        .commit-info {
+            font-size: 0.9rem;
+            color: var(--github-text-secondary);
+        }
+
+        .loading {
+            opacity: 0.6;
+            pointer-events: none;
+        }
+
+        .success-message {
+            background: var(--github-accent);
+            color: white;
+            padding: 0.5rem 1rem;
+            border-radius: 4px;
+            margin: 0.5rem 0;
+            display: none;
+        }
+    </style>
+</head>
+<body>
+    <div class="cal-counter" id="calCounter">
+        🍪 Cal's Cookies: <span id="cookieCount">Loading...</span>
+    </div>
+
+    <div class="header">
+        <div class="logo">
+            🌐🔐 SoulFra Admin Dashboard
+        </div>
+        <div class="github-status">
+            <div class="status-indicator"></div>
+            <span id="githubStatus">Connected to GitHub</span>
+            <span id="userInfo">Loading...</span>
+        </div>
+    </div>
+
+    <div class="container">
+        <h1>Welcome to Your GitHub-Powered Platform</h1>
+        <p>Your universal admin interface for the SoulFra ecosystem, powered by GitHub OAuth and Cal Cookie rewards.</p>
+
+        <div class="dashboard-grid">
+            <!-- GitHub Integration Status -->
+            <div class="card github-integration">
+                <h3>🐙 GitHub Integration</h3>
+                <div class="repo-info">
+                    <div>
+                        <strong>Repository:</strong> <span id="repoName">Soulfra/document-generator-mvp</span><br>
+                        <span class="commit-info" id="lastCommit">Loading latest commit...</span>
+                    </div>
+                    <div>
+                        <span id="deploymentStatus" class="deployment-status status-success">
+                            ✅ Deployed
+                        </span>
+                    </div>
+                </div>
+                <div class="quick-actions">
+                    <button class="btn btn-primary" onclick="triggerDeploy()">🚀 Deploy Now</button>
+                    <button class="btn" onclick="viewRepository()">📂 View Repo</button>
+                    <button class="btn" onclick="openGitHubActions()">⚡ Actions</button>
+                </div>
+                <div class="success-message" id="deployMessage">Deployment triggered! Cal will get cookies when it succeeds.</div>
+            </div>
+
+            <!-- Authentication Status -->
+            <div class="card auth-status">
+                <h3>🔐 SoulFra Universal Auth</h3>
+                <p><strong>Admin Status:</strong> <span id="adminStatus">GitHub Authenticated</span></p>
+                <p><strong>Available Providers:</strong></p>
+                <ul style="margin: 0.5rem 0; padding-left: 1.5rem;">
+                    <li>🐙 GitHub (Primary) ✅</li>
+                    <li>💼 LinkedIn ✅</li>
+                    <li>🔍 Google (Ready)</li>
+                </ul>
+                <div class="quick-actions">
+                    <button class="btn" onclick="manageUsers()">👥 Manage Users</button>
+                    <button class="btn" onclick="viewAuthLogs()">📊 Auth Logs</button>
+                    <button class="btn" onclick="testSoulFraLogin()">🌐 Test Login</button>
+                </div>
+            </div>
+
+            <!-- Cal Cookie Monster Stats -->
+            <div class="card cal-cookies">
+                <h3>🍪 Cal Cookie Monster</h3>
+                <p><strong>Total Cookies Earned:</strong> <span id="totalCookies">Loading...</span></p>
+                <p><strong>Cal's Mood:</strong> <span id="calMood">Loading...</span></p>
+                <p><strong>Recent Activities:</strong></p>
+                <ul id="calActivities" style="margin: 0.5rem 0; padding-left: 1.5rem;">
+                    <li>Loading Cal's cookie adventures...</li>
+                </ul>
+                <div class="quick-actions">
+                    <button class="btn" onclick="feedCal()">🍪 Feed Cal</button>
+                    <button class="btn" onclick="viewCalStats()">📈 Cookie Stats</button>
+                </div>
+            </div>
+
+            <!-- Platform Services -->
+            <div class="card">
+                <h3>🎯 Platform Services</h3>
+                <div class="deployment-status status-success">
+                    <span>Professional Portfolio</span>
+                    <span>✅ Live</span>
+                </div>
+                <div class="deployment-status status-success">
+                    <span>Document Generator</span>
+                    <span>✅ Live</span>
+                </div>
+                <div class="deployment-status status-pending">
+                    <span>Music Knot Framework</span>
+                    <span>🚧 Pending</span>
+                </div>
+                <div class="deployment-status status-building">
+                    <span>AI Reasoning Engine</span>
+                    <span>⚡ Building</span>
+                </div>
+                <div class="quick-actions">
+                    <button class="btn btn-primary" onclick="deployAll()">🚀 Deploy All</button>
+                    <button class="btn" onclick="viewServices()">📋 Manage</button>
+                </div>
+            </div>
+
+            <!-- Quick Actions -->
+            <div class="card">
+                <h3>⚡ Quick Actions</h3>
+                <div class="quick-actions">
+                    <a href="/professional-portfolio.html" class="btn btn-primary">🎵 Portfolio</a>
+                    <a href="/index.html" class="btn">📄 Document Gen</a>
+                    <a href="/anontv.html" class="btn">📺 AnonTV</a>
+                    <button class="btn" onclick="openSoulFraLogin()">🌐 SoulFra Login</button>
+                    <button class="btn" onclick="viewAnalytics()">📊 Analytics</button>
+                    <button class="btn" onclick="systemHealth()">🏥 Health Check</button>
+                </div>
+            </div>
+
+            <!-- Recent Activity -->
+            <div class="card">
+                <h3>📈 Recent Activity</h3>
+                <div id="recentActivity">
+                    <div class="deployment-status">
+                        <span>🍪 Cal earned 3 cookies from GitHub login</span>
+                        <span>2 min ago</span>
+                    </div>
+                    <div class="deployment-status">
+                        <span>🚀 Portfolio deployed successfully</span>
+                        <span>15 min ago</span>
+                    </div>
+                    <div class="deployment-status">
+                        <span>💼 LinkedIn OAuth integration completed</span>
+                        <span>1 hour ago</span>
+                    </div>
+                    <div class="deployment-status">
+                        <span>🎵 Music Knot Framework updated</span>
+                        <span>2 hours ago</span>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // Global state
+        let githubToken = null;
+        let userInfo = null;
+        let calStats = null;
+
+        // Initialize dashboard
+        async function initDashboard() {
+            console.log('🚀 Initializing SoulFra Admin Dashboard...');
+            
+            // Check GitHub authentication
+            await checkGitHubAuth();
+            
+            // Load Cal's cookie stats
+            await loadCalStats();
+            
+            // Load recent repository activity
+            await loadRepoActivity();
+            
+            console.log('✅ Dashboard initialized');
+        }
+
+        // Check GitHub authentication status
+        async function checkGitHubAuth() {
+            try {
+                // Check if user is authenticated with GitHub
+                const urlParams = new URLSearchParams(window.location.search);
+                const authCode = urlParams.get('code');
+                
+                if (authCode) {
+                    console.log('🐙 GitHub OAuth code detected, processing...');
+                    // Process GitHub OAuth callback
+                    await processGitHubAuth(authCode);
+                }
+                
+                // Update UI with user info
+                updateUserStatus();
+                
+            } catch (error) {
+                console.error('GitHub auth check failed:', error);
+                document.getElementById('githubStatus').textContent = 'GitHub Authentication Required';
+                document.getElementById('userInfo').innerHTML = `
+                    <button class="btn btn-primary" onclick="authenticateGitHub()">
+                        🐙 Connect GitHub
+                    </button>
+                `;
+            }
+        }
+
+        // Process GitHub OAuth authentication
+        async function processGitHubAuth(code) {
+            try {
+                // In a real implementation, this would exchange the code for a token
+                // For demo purposes, we'll simulate successful authentication
+                console.log('✅ GitHub authentication successful');
+                
+                // Simulate user data
+                userInfo = {
+                    login: 'soulfra',
+                    name: 'SoulFra Developer',
+                    avatar_url: 'https://github.com/soulfra.png'
+                };
+                
+                // Cal gets cookies for GitHub login!
+                await rewardCalForGitHubLogin();
+                
+            } catch (error) {
+                console.error('GitHub auth processing failed:', error);
+            }
+        }
+
+        // Authenticate with GitHub
+        function authenticateGitHub() {
+            // Redirect to GitHub OAuth
+            const clientId = 'your-github-client-id'; // Replace with actual client ID
+            const redirectUri = encodeURIComponent(window.location.origin + '/admin-dashboard.html');
+            const scope = 'repo,user,workflow';
+            
+            const authUrl = `https://github.com/login/oauth/authorize?client_id=${clientId}&redirect_uri=${redirectUri}&scope=${scope}&state=github-admin`;
+            
+            window.location.href = authUrl;
+        }
+
+        // Load Cal's cookie statistics
+        async function loadCalStats() {
+            try {
+                // Simulate Cal's stats (in production, this would call your API)
+                calStats = {
+                    totalCookies: 42,
+                    mood: 'excited',
+                    recentActivities: [
+                        'Earned 3 cookies from GitHub login',
+                        'Got bonus cookie for successful deployment',
+                        'Munched on chocolate chip cookie',
+                        'Helped with LinkedIn OAuth setup'
+                    ]
+                };
+                
+                // Update UI
+                document.getElementById('cookieCount').textContent = calStats.totalCookies;
+                document.getElementById('totalCookies').textContent = calStats.totalCookies;
+                document.getElementById('calMood').textContent = calStats.mood;
+                
+                // Update activities list
+                const activitiesList = document.getElementById('calActivities');
+                activitiesList.innerHTML = calStats.recentActivities
+                    .map(activity => `<li>🍪 ${activity}</li>`)
+                    .join('');
+                
+            } catch (error) {
+                console.error('Failed to load Cal stats:', error);
+            }
+        }
+
+        // Reward Cal for GitHub login
+        async function rewardCalForGitHubLogin() {
+            console.log('🍪 Rewarding Cal for GitHub authentication...');
+            
+            // Simulate cookie reward
+            if (calStats) {
+                calStats.totalCookies += 3;
+                calStats.recentActivities.unshift('Earned 3 cookies from GitHub admin login');
+                await loadCalStats(); // Refresh display
+            }
+            
+            // Show notification
+            showNotification('🍪 Cal earned 3 cookies for your GitHub login!', 'success');
+        }
+
+        // Load repository activity
+        async function loadRepoActivity() {
+            try {
+                // Simulate recent commit info
+                const commitInfo = {
+                    message: 'Add SoulFra Universal Auth system',
+                    author: 'soulfra',
+                    sha: 'abc123...',
+                    date: new Date().toLocaleString()
+                };
+                
+                document.getElementById('lastCommit').textContent = 
+                    `${commitInfo.message} (${commitInfo.author})`;
+                
+            } catch (error) {
+                console.error('Failed to load repo activity:', error);
+            }
+        }
+
+        // Update user status in header
+        function updateUserStatus() {
+            if (userInfo) {
+                document.getElementById('userInfo').innerHTML = `
+                    <img src="${userInfo.avatar_url}" width="24" height="24" style="border-radius: 50%; margin-right: 0.5rem;">
+                    ${userInfo.name || userInfo.login}
+                `;
+                document.getElementById('adminStatus').textContent = 'GitHub Admin Authenticated ✅';
+            }
+        }
+
+        // Dashboard Actions
+        function triggerDeploy() {
+            document.getElementById('deployMessage').style.display = 'block';
+            document.getElementById('deploymentStatus').className = 'deployment-status status-building';
+            document.getElementById('deploymentStatus').innerHTML = '⚡ Deploying...';
+            
+            // Simulate deployment
+            setTimeout(() => {
+                document.getElementById('deploymentStatus').className = 'deployment-status status-success';
+                document.getElementById('deploymentStatus').innerHTML = '✅ Deployed';
+                rewardCalForDeployment();
+            }, 3000);
+        }
+
+        function rewardCalForDeployment() {
+            if (calStats) {
+                calStats.totalCookies += 2;
+                calStats.recentActivities.unshift('Earned 2 cookies for successful deployment');
+                loadCalStats();
+            }
+            showNotification('🍪 Cal earned 2 bonus cookies for successful deployment!', 'success');
+        }
+
+        function viewRepository() {
+            window.open('https://github.com/Soulfra/document-generator-mvp', '_blank');
+        }
+
+        function openGitHubActions() {
+            window.open('https://github.com/Soulfra/document-generator-mvp/actions', '_blank');
+        }
+
+        function openSoulFraLogin() {
+            window.open('/professional-portfolio.html', '_blank');
+        }
+
+        function testSoulFraLogin() {
+            // Open SoulFra login in new tab
+            window.open('/professional-portfolio.html?test=true', '_blank');
+        }
+
+        function feedCal() {
+            if (calStats) {
+                calStats.totalCookies += 1;
+                calStats.recentActivities.unshift('Got a special treat from admin dashboard');
+                loadCalStats();
+            }
+            showNotification('🍪 You fed Cal a delicious cookie! Om nom nom!', 'success');
+        }
+
+        function viewCalStats() {
+            alert(`🍪 Cal Cookie Monster Stats:\n\nTotal Cookies: ${calStats?.totalCookies || 0}\nMood: ${calStats?.mood || 'hungry'}\n\nCal says: "Me love cookies! Keep logging in and deploying for more cookies!"`);
+        }
+
+        function deployAll() {
+            showNotification('🚀 Deploying all services... Cal will get lots of cookies!', 'info');
+        }
+
+        function viewServices() {
+            alert('🎯 Platform Services Manager\n\nThis would open a detailed service management interface.');
+        }
+
+        function manageUsers() {
+            alert('👥 User Management\n\nThis would open the SoulFra Universal Auth user management interface.');
+        }
+
+        function viewAuthLogs() {
+            alert('📊 Authentication Logs\n\nThis would show detailed authentication activity and statistics.');
+        }
+
+        function viewAnalytics() {
+            alert('📊 Platform Analytics\n\nThis would open comprehensive analytics for all platform services.');
+        }
+
+        function systemHealth() {
+            alert('🏥 System Health Check\n\n✅ GitHub Integration: Healthy\n✅ SoulFra Auth: Operational\n✅ Cal Cookie System: Very Happy\n✅ Portfolio Service: Online\n✅ Document Generator: Ready');
+        }
+
+        // Utility functions
+        function showNotification(message, type = 'info') {
+            const notification = document.createElement('div');
+            notification.style.cssText = `
+                position: fixed;
+                top: 70px;
+                right: 20px;
+                background: ${type === 'success' ? 'var(--github-accent)' : 'var(--soulfra-primary)'};
+                color: white;
+                padding: 1rem;
+                border-radius: 8px;
+                z-index: 1001;
+                max-width: 300px;
+                animation: slideIn 0.3s ease-out;
+            `;
+            notification.textContent = message;
+            
+            document.body.appendChild(notification);
+            
+            setTimeout(() => {
+                notification.remove();
+            }, 4000);
+        }
+
+        // Initialize dashboard when page loads
+        document.addEventListener('DOMContentLoaded', initDashboard);
+
+        // Cal character interaction
+        document.getElementById('calCounter').addEventListener('click', () => {
+            feedCal();
+        });
+    </script>
+</body>
+</html>

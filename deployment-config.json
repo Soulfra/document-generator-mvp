@@ -1,0 +1,465 @@
+{
+  "environments": {
+    "development": {
+      "name": "Development",
+      "url": "http://localhost:8080",
+      "apiUrl": "http://localhost:3001",
+      "branch": "develop",
+      "autoDeployment": true,
+      "deploymentStrategy": "recreate",
+      "scaling": {
+        "minInstances": 1,
+        "maxInstances": 2,
+        "targetCPU": 80,
+        "targetMemory": 80
+      },
+      "database": {
+        "migrate": true,
+        "seed": true,
+        "backup": false
+      },
+      "monitoring": {
+        "enabled": true,
+        "alerting": false,
+        "logLevel": "debug"
+      },
+      "featureFlags": {
+        "defaultState": "enabled",
+        "rolloutPercentage": 100,
+        "overrides": {
+          "experimental-features": true,
+          "debug-mode": true
+        }
+      },
+      "healthChecks": {
+        "enabled": true,
+        "interval": 30,
+        "timeout": 5,
+        "retries": 3,
+        "endpoints": ["/health", "/api/health"]
+      },
+      "resources": {
+        "cpu": "0.5",
+        "memory": "512Mi",
+        "storage": "5Gi"
+      }
+    },
+    "staging": {
+      "name": "Staging",
+      "url": "https://soulfra.github.io/document-generator-mvp",
+      "apiUrl": "https://api-staging.soulfra.io",
+      "branch": "develop",
+      "autoDeployment": true,
+      "deploymentStrategy": "rolling",
+      "scaling": {
+        "minInstances": 2,
+        "maxInstances": 5,
+        "targetCPU": 70,
+        "targetMemory": 70
+      },
+      "database": {
+        "migrate": true,
+        "seed": false,
+        "backup": true,
+        "backupSchedule": "0 3 * * *"
+      },
+      "monitoring": {
+        "enabled": true,
+        "alerting": true,
+        "logLevel": "info",
+        "tracing": {
+          "enabled": true,
+          "samplingRate": 0.1
+        }
+      },
+      "featureFlags": {
+        "defaultState": "disabled",
+        "rolloutPercentage": 50,
+        "gradualRollout": {
+          "enabled": true,
+          "initialPercentage": 10,
+          "incrementPercentage": 10,
+          "intervalHours": 6
+        },
+        "overrides": {
+          "beta-features": true,
+          "analytics-v2": false
+        }
+      },
+      "healthChecks": {
+        "enabled": true,
+        "interval": 60,
+        "timeout": 10,
+        "retries": 3,
+        "endpoints": ["/health", "/api/health", "/api/ready"],
+        "thresholds": {
+          "responseTime": 1000,
+          "errorRate": 0.05
+        }
+      },
+      "resources": {
+        "cpu": "1",
+        "memory": "1Gi",
+        "storage": "10Gi"
+      },
+      "security": {
+        "ssl": {
+          "enabled": true,
+          "enforced": true
+        },
+        "cors": {
+          "enabled": true,
+          "origins": ["https://staging.document-generator.app"]
+        },
+        "rateLimit": {
+          "enabled": true,
+          "requests": 1000,
+          "windowMs": 60000
+        }
+      }
+    },
+    "production": {
+      "name": "Production",
+      "url": "https://soulfra.io/document-generator",
+      "apiUrl": "https://api.soulfra.io",
+      "branch": "main",
+      "autoDeployment": false,
+      "deploymentStrategy": "blue-green",
+      "requiresApproval": true,
+      "approvers": ["devops-team", "engineering-lead"],
+      "scaling": {
+        "minInstances": 3,
+        "maxInstances": 20,
+        "targetCPU": 60,
+        "targetMemory": 60,
+        "scaleDownDelay": 300
+      },
+      "database": {
+        "migrate": true,
+        "seed": false,
+        "backup": true,
+        "backupSchedule": "0 */6 * * *",
+        "replication": {
+          "enabled": true,
+          "readReplicas": 2
+        }
+      },
+      "monitoring": {
+        "enabled": true,
+        "alerting": true,
+        "logLevel": "warn",
+        "providers": ["datadog", "sentry", "prometheus"],
+        "tracing": {
+          "enabled": true,
+          "samplingRate": 0.01
+        },
+        "customMetrics": {
+          "enabled": true,
+          "namespace": "DocumentGenerator"
+        }
+      },
+      "featureFlags": {
+        "defaultState": "disabled",
+        "rolloutPercentage": 0,
+        "gradualRollout": {
+          "enabled": true,
+          "initialPercentage": 5,
+          "incrementPercentage": 5,
+          "intervalHours": 24,
+          "maxPercentage": 100
+        },
+        "requiresApproval": true,
+        "canaryDeployment": {
+          "enabled": true,
+          "percentage": 10,
+          "duration": 3600
+        }
+      },
+      "healthChecks": {
+        "enabled": true,
+        "interval": 30,
+        "timeout": 10,
+        "retries": 5,
+        "endpoints": ["/health", "/api/health", "/api/ready", "/api/live"],
+        "thresholds": {
+          "responseTime": 500,
+          "errorRate": 0.01,
+          "availability": 0.999
+        }
+      },
+      "resources": {
+        "cpu": "2",
+        "memory": "4Gi",
+        "storage": "50Gi"
+      },
+      "security": {
+        "ssl": {
+          "enabled": true,
+          "enforced": true,
+          "hsts": {
+            "enabled": true,
+            "maxAge": 31536000,
+            "includeSubDomains": true,
+            "preload": true
+          }
+        },
+        "cors": {
+          "enabled": true,
+          "origins": [
+            "https://document-generator.app",
+            "https://www.document-generator.app"
+          ],
+          "credentials": true
+        },
+        "rateLimit": {
+          "enabled": true,
+          "requests": 100,
+          "windowMs": 60000,
+          "keyGenerator": "ip-user",
+          "skipSuccessfulRequests": false
+        },
+        "waf": {
+          "enabled": true,
+          "provider": "cloudflare"
+        }
+      },
+      "backup": {
+        "enabled": true,
+        "retention": {
+          "daily": 7,
+          "weekly": 4,
+          "monthly": 12
+        },
+        "encryption": true,
+        "crossRegion": true
+      },
+      "disaster_recovery": {
+        "enabled": true,
+        "rpo": 3600,
+        "rto": 14400,
+        "failoverRegions": ["us-west-2", "eu-west-1"]
+      }
+    }
+  },
+  "deploymentThresholds": {
+    "rollbackCriteria": {
+      "errorRateThreshold": 0.10,
+      "responseTimeThreshold": 3000,
+      "availabilityThreshold": 0.95,
+      "consecutiveFailures": 3
+    },
+    "successCriteria": {
+      "errorRateThreshold": 0.02,
+      "responseTimeThreshold": 1000,
+      "availabilityThreshold": 0.99,
+      "minimumDuration": 300
+    }
+  },
+  "featureFlagRules": {
+    "autoEnable": {
+      "conditions": [
+        {
+          "metric": "errorRate",
+          "operator": "<",
+          "value": 0.01,
+          "duration": 3600
+        },
+        {
+          "metric": "responseTime",
+          "operator": "<",
+          "value": 500,
+          "duration": 3600
+        }
+      ],
+      "action": {
+        "type": "incrementPercentage",
+        "value": 10
+      }
+    },
+    "autoDisable": {
+      "conditions": [
+        {
+          "metric": "errorRate",
+          "operator": ">",
+          "value": 0.05,
+          "duration": 300
+        },
+        {
+          "metric": "responseTime",
+          "operator": ">",
+          "value": 2000,
+          "duration": 300
+        }
+      ],
+      "action": {
+        "type": "disable",
+        "notifyChannels": ["slack", "pagerduty"]
+      }
+    },
+    "killSwitch": {
+      "conditions": [
+        {
+          "metric": "errorRate",
+          "operator": ">",
+          "value": 0.20,
+          "duration": 60
+        },
+        {
+          "metric": "availability",
+          "operator": "<",
+          "value": 0.90,
+          "duration": 60
+        }
+      ],
+      "action": {
+        "type": "killAll",
+        "flags": ["all-new", "experimental"],
+        "notifyChannels": ["slack", "pagerduty", "email"]
+      }
+    }
+  },
+  "notifications": {
+    "channels": {
+      "slack": {
+        "enabled": true,
+        "webhookUrl": "${SLACK_WEBHOOK_URL}",
+        "channels": {
+          "deployments": "#deployments",
+          "alerts": "#alerts",
+          "critical": "#incidents"
+        }
+      },
+      "pagerduty": {
+        "enabled": true,
+        "apiKey": "${PAGERDUTY_API_KEY}",
+        "serviceId": "${PAGERDUTY_SERVICE_ID}",
+        "severity": {
+          "critical": "high",
+          "warning": "low"
+        }
+      },
+      "email": {
+        "enabled": true,
+        "smtp": {
+          "host": "${SMTP_HOST}",
+          "port": 587,
+          "secure": false,
+          "auth": {
+            "user": "${SMTP_USER}",
+            "pass": "${SMTP_PASS}"
+          }
+        },
+        "recipients": {
+          "deployments": ["devops@company.com"],
+          "alerts": ["engineering@company.com"],
+          "critical": ["oncall@company.com", "cto@company.com"]
+        }
+      },
+      "webhook": {
+        "enabled": false,
+        "url": "${CUSTOM_WEBHOOK_URL}",
+        "headers": {
+          "Authorization": "Bearer ${WEBHOOK_TOKEN}"
+        }
+      }
+    },
+    "events": {
+      "deployment_started": {
+        "channels": ["slack"],
+        "template": "Deployment to {{environment}} started (version: {{version}})"
+      },
+      "deployment_success": {
+        "channels": ["slack", "email"],
+        "template": "✅ Deployment to {{environment}} successful (version: {{version}})"
+      },
+      "deployment_failed": {
+        "channels": ["slack", "pagerduty", "email"],
+        "template": "❌ Deployment to {{environment}} failed (version: {{version}})"
+      },
+      "rollback_initiated": {
+        "channels": ["slack", "pagerduty"],
+        "template": "⚠️ Rollback initiated for {{environment}}"
+      },
+      "feature_flag_changed": {
+        "channels": ["slack"],
+        "template": "Feature flag '{{flag}}' changed to {{state}} in {{environment}}"
+      },
+      "health_check_failed": {
+        "channels": ["slack", "pagerduty"],
+        "template": "Health check failed in {{environment}}: {{endpoint}}"
+      },
+      "threshold_exceeded": {
+        "channels": ["slack", "pagerduty"],
+        "template": "Threshold exceeded in {{environment}}: {{metric}} = {{value}}"
+      }
+    }
+  },
+  "integrations": {
+    "github": {
+      "enabled": true,
+      "createDeployment": true,
+      "updateStatus": true,
+      "autoMerge": {
+        "enabled": false,
+        "deleteAfterMerge": true
+      }
+    },
+    "jira": {
+      "enabled": false,
+      "updateTickets": true,
+      "transitionOnDeploy": {
+        "staging": "In Testing",
+        "production": "Done"
+      }
+    },
+    "datadog": {
+      "enabled": true,
+      "apiKey": "${DATADOG_API_KEY}",
+      "appKey": "${DATADOG_APP_KEY}",
+      "tags": ["service:document-generator"],
+      "customMetrics": true
+    },
+    "sentry": {
+      "enabled": true,
+      "dsn": "${SENTRY_DSN}",
+      "environment": "{{environment}}",
+      "tracesSampleRate": 0.1,
+      "createRelease": true
+    }
+  },
+  "compliance": {
+    "enabled": true,
+    "standards": ["SOC2", "GDPR", "HIPAA"],
+    "auditLog": {
+      "enabled": true,
+      "retention": 365,
+      "encryption": true
+    },
+    "dataProtection": {
+      "encryption": {
+        "atRest": true,
+        "inTransit": true
+      },
+      "pii": {
+        "detection": true,
+        "masking": true
+      }
+    }
+  },
+  "costOptimization": {
+    "enabled": true,
+    "scaleDown": {
+      "schedule": "0 22 * * 1-5",
+      "minInstances": 1,
+      "excludeEnvironments": ["production"]
+    },
+    "scaleUp": {
+      "schedule": "0 6 * * 1-5",
+      "restoreOriginal": true
+    },
+    "unusedResources": {
+      "cleanup": true,
+      "ageThreshold": 30
+    }
+  }
+}

@@ -33,36 +33,60 @@ jobs:
       with:
         node-version: '20'
         
-    - name: Build static files
+    - name: Install dependencies
       run: |
-        echo "Creating dist directory..."
-        mkdir -p dist
+        echo "Installing Node.js dependencies..."
+        npm install --silent || echo "No package.json found, skipping npm install"
         
-        echo "Copying core files..."
-        cp index.html dist/
-        cp anontv.html dist/
+        echo "Installing build tools..."
+        npm install -g typescript @typescript-eslint/parser || echo "TypeScript install failed, continuing..."
         
-        echo "Copying JavaScript files..."
-        cp -f api-config.js dist/ || echo "api-config.js not found, skipping"
-        cp -f arweave-wallet-auth.js dist/ || echo "arweave-wallet-auth.js not found, skipping"
-        cp -f cal-alive-character.js dist/ || echo "cal-alive-character.js not found, skipping"
-        cp -f arweave-vercel-bridge.js dist/ || echo "arweave-vercel-bridge.js not found, skipping"
-        cp -f stripe-arweave-bridge.js dist/ || echo "stripe-arweave-bridge.js not found, skipping"
+    - name: Simple Build System
+      run: |
+        echo "🏗️ Running Simple Build System..."
         
-        echo "Copying TV Portfolio files..."
-        cp -f mauertv.html dist/ || echo "mauertv.html not found, skipping"
-        cp -f tv-remote-signature-interface.js dist/ || echo "tv-remote-signature-interface.js not found, skipping"
-        cp -f portfolio-generator.js dist/ || echo "portfolio-generator.js not found, skipping"
+        # Make build script executable
+        chmod +x simple-build.js
         
-        echo "Copying MCP demo files if they exist..."
-        if [ -d "mcp/src/web-demo" ]; then
-          cp -r mcp/src/web-demo dist/
-        fi
+        # Run simple build (fast, focused on essentials)
+        node simple-build.js
         
-        echo "Listing contents of dist directory:"
+        echo "📊 Build completed, checking output..."
         ls -la dist/
         
-        echo "Static build complete"
+        echo "📦 Build manifest:"
+        if [ -f "dist/build-manifest.json" ]; then
+          cat dist/build-manifest.json
+        fi
+        
+    - name: Copy essential files (fallback)
+      run: |
+        echo "🔄 Ensuring essential files are in dist..."
+        
+        # Core platform files
+        cp -f index.html dist/ 2>/dev/null || echo "index.html already in dist"
+        cp -f anontv.html dist/ 2>/dev/null || echo "anontv.html not found"
+        
+        # SoulFra Auth system
+        cp -f professional-portfolio.html dist/ 2>/dev/null || echo "professional-portfolio.html already in dist"
+        cp -f admin-dashboard.html dist/ 2>/dev/null || echo "admin-dashboard.html already in dist"
+        cp -f soulfra-universal-auth.js dist/ 2>/dev/null || echo "soulfra-universal-auth.js already in dist"
+        cp -f cal-cookie-monster.js dist/ 2>/dev/null || echo "cal-cookie-monster.js already in dist"
+        cp -f github-admin-bridge.js dist/ 2>/dev/null || echo "github-admin-bridge.js already in dist"
+        cp -f auth-system.js dist/ 2>/dev/null || echo "auth-system.js already in dist"
+        
+        # Supporting files
+        cp -f api-config.js dist/ 2>/dev/null || echo "api-config.js already in dist"
+        cp -f arweave-wallet-auth.js dist/ 2>/dev/null || echo "arweave-wallet-auth.js not found"
+        cp -f cal-alive-character.js dist/ 2>/dev/null || echo "cal-alive-character.js not found"
+        
+        # MCP demo files
+        if [ -d "mcp/src/web-demo" ]; then
+          cp -r mcp/src/web-demo dist/ 2>/dev/null || echo "MCP demo files already copied"
+        fi
+        
+        echo "📁 Final dist contents:"
+        ls -la dist/
       
     - name: Setup Pages
       uses: actions/configure-pages@v4

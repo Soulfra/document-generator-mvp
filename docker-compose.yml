@@ -77,9 +77,9 @@ services:
     deploy:
       resources:
         limits:
-          memory: 8G
+          memory: 2G
         reservations:
-          memory: 4G
+          memory: 1G
     networks:
       - document-generator
 
@@ -99,6 +99,9 @@ services:
       OPENAI_API_KEY: ${OPENAI_API_KEY:-}
       ANTHROPIC_API_KEY: ${ANTHROPIC_API_KEY:-}
       DEMO_MODE: ${DEMO_MODE:-true}
+      # Puppeteer configuration
+      PUPPETEER_SKIP_CHROMIUM_DOWNLOAD: "true"
+      PUPPETEER_EXECUTABLE_PATH: /usr/bin/chromium
     ports:
       - "3000:3000"
       - "8081:8081"
@@ -119,6 +122,11 @@ services:
     volumes:
       - ./templates:/app/templates
       - ./mcp/src:/app/src
+    # Add security capabilities for Chrome
+    cap_add:
+      - SYS_ADMIN
+    security_opt:
+      - seccomp:unconfined
 
   # AI API Service (from FinishThisIdea)
   ai-api:
@@ -243,39 +251,75 @@ services:
     networks:
       - document-generator
 
-  # Prometheus for monitoring
-  prometheus:
-    image: prom/prometheus:latest
-    container_name: document-generator-prometheus
-    command:
-      - '--config.file=/etc/prometheus/prometheus.yml'
-      - '--storage.tsdb.path=/prometheus'
-    ports:
-      - "9090:9090"
-    volumes:
-      - ./monitoring/prometheus.yml:/etc/prometheus/prometheus.yml
-      - prometheus_data:/prometheus
-    networks:
-      - document-generator
+  # DISABLED: Prometheus for monitoring (resource intensive)
+  # prometheus:
+  #   image: prom/prometheus:latest
+  #   container_name: document-generator-prometheus
+  #   command:
+  #     - '--config.file=/etc/prometheus/prometheus.yml'
+  #     - '--storage.tsdb.path=/prometheus'
+  #   ports:
+  #     - "9090:9090"
+  #   volumes:
+  #     - ./monitoring/prometheus.yml:/etc/prometheus/prometheus.yml
+  #     - prometheus_data:/prometheus
+  #   networks:
+  #     - document-generator
 
-  # Grafana for visualization
-  grafana:
-    image: grafana/grafana:latest
-    container_name: document-generator-grafana
+  # DISABLED: Grafana for visualization (resource intensive)
+  # grafana:
+  #   image: grafana/grafana:latest
+  #   container_name: document-generator-grafana
+  #   environment:
+  #     GF_SECURITY_ADMIN_USER: admin
+  #     GF_SECURITY_ADMIN_PASSWORD: admin
+  #     GF_USERS_ALLOW_SIGN_UP: false
+  #   ports:
+  #     - "3003:3000"
+  #   volumes:
+  #     - ./monitoring/grafana/dashboards:/etc/grafana/provisioning/dashboards
+  #     - ./monitoring/grafana/datasources:/etc/grafana/provisioning/datasources
+  #     - grafana_data:/var/lib/grafana
+  #   depends_on:
+  #     - prometheus
+  #   networks:
+  #     - document-generator
+
+  # GIF Processing Service with ImageMagick & ffmpeg
+  gif-processor:
+    build:
+      context: ./WORKING-MINIMAL-SYSTEM
+      dockerfile: Dockerfile.gif-processor
+    container_name: document-generator-gif-processor
     environment:
-      GF_SECURITY_ADMIN_USER: admin
-      GF_SECURITY_ADMIN_PASSWORD: admin
-      GF_USERS_ALLOW_SIGN_UP: false
+      NODE_ENV: production
+      PORT: 8093
+      OUTPUT_DIR: /app/generated-gifs
+      TEMP_DIR: /app/temp-frames
+      MAX_CONCURRENT_GENERATIONS: 3
+      ENABLE_WEBSOCKET: true
+      DEBUG_MODE: false
     ports:
-      - "3003:3000"
+      - "8093:8093"
     volumes:
-      - ./monitoring/grafana/dashboards:/etc/grafana/provisioning/dashboards
-      - ./monitoring/grafana/datasources:/etc/grafana/provisioning/datasources
-      - grafana_data:/var/lib/grafana
-    depends_on:
-      - prometheus
+      - ./WORKING-MINIMAL-SYSTEM:/app/src
+      - gif_output:/app/generated-gifs
+      - gif_temp:/app/temp-frames
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8093/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
     networks:
       - document-generator
+    depends_on:
+      - redis
+    deploy:
+      resources:
+        limits:
+          memory: 1G
+        reservations:
+          memory: 512M
 
   # Nginx reverse proxy (optional, for production)
   nginx:
@@ -309,3 +353,5 @@ volumes:
   grafana_data:
   sovereign_data:
   sovereign_logs:
+  gif_output:
+  gif_temp:

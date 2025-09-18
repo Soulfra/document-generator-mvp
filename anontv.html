@@ -1,0 +1,945 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>AnonTV - Portfolio Broadcasting System</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+            cursor: url('data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" width="32" height="32" viewBox="0 0 32 32"><text y="28" font-size="28">👆</text></svg>'), auto;
+        }
+
+        body {
+            background: #1d1f21;
+            color: #c5c8c6;
+            font-family: 'Lucida Console', 'Courier New', monospace;
+            overflow: hidden;
+            height: 100vh;
+        }
+
+        /* CRT TV Effect */
+        .tv-frame {
+            width: 90vw;
+            height: 85vh;
+            margin: 2.5vh auto;
+            background: #0a0a0a;
+            border-radius: 30px;
+            position: relative;
+            box-shadow: 
+                0 0 100px rgba(0, 255, 0, 0.3),
+                inset 0 0 120px rgba(0, 0, 0, 0.8),
+                0 20px 100px rgba(0, 0, 0, 0.8);
+            border: 15px solid #2a2a2a;
+        }
+
+        .tv-screen {
+            width: 100%;
+            height: 100%;
+            background: #0f0f0f;
+            border-radius: 20px;
+            overflow: hidden;
+            position: relative;
+        }
+
+        /* Scanlines */
+        .tv-screen::before {
+            content: "";
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: repeating-linear-gradient(
+                0deg,
+                rgba(0, 0, 0, 0.15),
+                rgba(0, 0, 0, 0.15) 1px,
+                transparent 1px,
+                transparent 2px
+            );
+            pointer-events: none;
+            z-index: 999;
+        }
+
+        /* Static noise */
+        .static {
+            position: absolute;
+            width: 100%;
+            height: 100%;
+            background-image: 
+                repeating-radial-gradient(circle at 50% 50%, transparent 0, rgba(255,255,255,.1) 1px, transparent 2px);
+            background-size: 3px 3px;
+            opacity: 0;
+            pointer-events: none;
+            z-index: 998;
+            animation: staticNoise 0.1s infinite;
+        }
+
+        .static.active {
+            opacity: 1;
+        }
+
+        @keyframes staticNoise {
+            0%, 100% { transform: translate(0, 0); }
+            10% { transform: translate(-1px, -1px); }
+            20% { transform: translate(1px, -1px); }
+            30% { transform: translate(-1px, 1px); }
+            40% { transform: translate(1px, 1px); }
+            50% { transform: translate(-1px, 0); }
+            60% { transform: translate(1px, 0); }
+            70% { transform: translate(0, -1px); }
+            80% { transform: translate(0, 1px); }
+            90% { transform: translate(1px, -1px); }
+        }
+
+        /* Channel indicator */
+        .channel-info {
+            position: absolute;
+            top: 20px;
+            right: 20px;
+            background: rgba(0, 0, 0, 0.8);
+            padding: 10px 20px;
+            border: 2px solid #00ff00;
+            font-size: 20px;
+            z-index: 100;
+            font-family: 'Courier New', monospace;
+            color: #00ff00;
+            text-shadow: 0 0 10px #00ff00;
+        }
+
+        /* 4chan board channels */
+        .channel {
+            position: absolute;
+            width: 100%;
+            height: 100%;
+            display: none;
+            padding: 40px;
+            overflow-y: auto;
+            background: #1d1f21;
+        }
+
+        .channel.active {
+            display: block;
+        }
+
+        /* 4chan styling */
+        .board-header {
+            background: #282a2e;
+            padding: 10px;
+            margin-bottom: 20px;
+            border: 1px solid #373b41;
+            font-size: 18px;
+            color: #81a2be;
+        }
+
+        .thread {
+            background: #282a2e;
+            margin: 10px 0;
+            padding: 15px;
+            border: 1px solid #373b41;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+
+        .thread:hover {
+            border-color: #00ff00;
+            box-shadow: 0 0 10px rgba(0, 255, 0, 0.3);
+        }
+
+        .post-number {
+            color: #00ff00;
+            font-weight: bold;
+        }
+
+        .greentext {
+            color: #789922;
+            line-height: 1.5;
+            margin: 10px 0;
+        }
+
+        .quote-link {
+            color: #dd0000;
+            text-decoration: underline;
+            cursor: pointer;
+        }
+
+        .anon-name {
+            color: #117743;
+            font-weight: bold;
+        }
+
+        .timestamp {
+            color: #707070;
+            font-size: 12px;
+        }
+
+        /* Remote Control */
+        .remote {
+            position: fixed;
+            bottom: 20px;
+            left: 50%;
+            transform: translateX(-50%);
+            background: #2a2a2a;
+            border-radius: 30px;
+            padding: 20px;
+            box-shadow: 0 10px 40px rgba(0, 0, 0, 0.8);
+            border: 3px solid #444;
+            z-index: 1000;
+        }
+
+        .remote-screen {
+            background: #0a0a0a;
+            color: #00ff00;
+            padding: 5px 20px;
+            margin-bottom: 15px;
+            text-align: center;
+            border-radius: 5px;
+            font-size: 14px;
+        }
+
+        .remote-buttons {
+            display: grid;
+            grid-template-columns: repeat(3, 50px);
+            gap: 10px;
+            justify-content: center;
+        }
+
+        .remote-btn {
+            width: 50px;
+            height: 50px;
+            background: #444;
+            border: 2px solid #666;
+            border-radius: 50%;
+            color: #fff;
+            font-size: 20px;
+            cursor: pointer;
+            transition: all 0.1s;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            box-shadow: 0 4px 8px rgba(0, 0, 0, 0.4);
+        }
+
+        .remote-btn:hover {
+            background: #555;
+            transform: translateY(-2px);
+            box-shadow: 0 6px 12px rgba(0, 0, 0, 0.6);
+        }
+
+        .remote-btn:active {
+            transform: translateY(0);
+            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.4);
+            background: #333;
+        }
+
+        .remote-btn.power {
+            background: #ff0000;
+            border-color: #cc0000;
+            grid-column: span 3;
+            width: auto;
+            border-radius: 25px;
+            margin-top: 10px;
+        }
+
+        .remote-btn.power:hover {
+            background: #ff3333;
+        }
+
+        /* Pepe reactions */
+        .pepe-react {
+            position: fixed;
+            font-size: 40px;
+            pointer-events: none;
+            z-index: 9999;
+            animation: pepeFloat 2s ease-out forwards;
+        }
+
+        @keyframes pepeFloat {
+            0% {
+                transform: translateY(0) rotate(0deg);
+                opacity: 1;
+            }
+            100% {
+                transform: translateY(-200px) rotate(360deg);
+                opacity: 0;
+            }
+        }
+
+        /* Tendies meter */
+        .tendies-meter {
+            position: absolute;
+            bottom: 20px;
+            right: 20px;
+            background: rgba(0, 0, 0, 0.8);
+            padding: 10px 20px;
+            border: 2px solid #ffd700;
+            color: #ffd700;
+            font-weight: bold;
+            z-index: 100;
+        }
+
+        /* Scrollbar styling */
+        ::-webkit-scrollbar {
+            width: 12px;
+        }
+
+        ::-webkit-scrollbar-track {
+            background: #1d1f21;
+        }
+
+        ::-webkit-scrollbar-thumb {
+            background: #373b41;
+            border-radius: 6px;
+        }
+
+        ::-webkit-scrollbar-thumb:hover {
+            background: #4b5056;
+        }
+
+        /* Projects as threads */
+        .project-thread {
+            margin: 20px 0;
+        }
+
+        .reply {
+            margin-left: 40px;
+            background: #1d1f21;
+            padding: 10px;
+            border-left: 3px solid #373b41;
+            margin-top: 10px;
+        }
+
+        /* Loading screen */
+        .loading-screen {
+            position: absolute;
+            width: 100%;
+            height: 100%;
+            background: #0a0a0a;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            z-index: 9999;
+            flex-direction: column;
+        }
+
+        .ascii-pepe {
+            color: #00ff00;
+            font-size: 12px;
+            line-height: 1;
+            white-space: pre;
+            font-family: monospace;
+        }
+
+        /* Skills as /fit/ progress */
+        .gains-bar {
+            background: #1d1f21;
+            border: 2px solid #373b41;
+            height: 30px;
+            margin: 10px 0;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .gains-fill {
+            background: linear-gradient(90deg, #789922, #00ff00);
+            height: 100%;
+            transition: width 2s ease-out;
+            display: flex;
+            align-items: center;
+            padding: 0 10px;
+            font-weight: bold;
+            color: #000;
+        }
+
+        /* Roll button */
+        .roll-btn {
+            background: #117743;
+            color: white;
+            border: none;
+            padding: 10px 20px;
+            font-family: inherit;
+            cursor: pointer;
+            margin: 10px 0;
+            transition: all 0.2s;
+        }
+
+        .roll-btn:hover {
+            background: #1a9658;
+            box-shadow: 0 0 10px rgba(0, 255, 0, 0.5);
+        }
+
+        .dubs-check {
+            color: #ff0000;
+            font-weight: bold;
+            font-size: 18px;
+            margin: 10px 0;
+        }
+    </style>
+</head>
+<body>
+    <!-- TV Frame -->
+    <div class="tv-frame">
+        <div class="tv-screen">
+            <!-- Static effect -->
+            <div class="static" id="static"></div>
+            
+            <!-- Channel indicator -->
+            <div class="channel-info">
+                <span id="channelName">/b/</span> - Random
+            </div>
+
+            <!-- Tendies meter -->
+            <div class="tendies-meter">
+                <span id="tendiesCount">0</span> GBP
+            </div>
+
+            <!-- Loading Screen -->
+            <div class="loading-screen" id="loadingScreen">
+                <pre class="ascii-pepe">
+⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⣠⣴⣶⣶⣶⣶⣶⣤⡄⠀⠀⠀⠀
+⠀⠀⠀⠀⠀⠀⠀⢀⣾⣿⣿⣿⠉⠉⠉⠉⠉⠙⢢⠀⠀⠀
+⠀⠀⠀⠀⠀⠀⠀⢸⣿⣿⣿⠏⠀⠀⠀⠀⠀⠀⠈⠀⠀⠀
+⠀⠀⠀⠀⠀⠀⠀⢘⡉⢻⡇⠀⠀⠀⠀⠀⠀⠀⠀⢐⠀⠀
+⠀⠀⠀⠀⠀⠀⠀⠳⡦⣸⣷⣄⡀⢀⣀⡀⠀⠀⠀⡂⠀⠀
+⠀⠀⠀⠀⠀⠀⠀⠀⡊⣿⣿⣿⣿⣯⡩⣉⠹⢷⢦⠁⠀⠀
+⠀⠀⠀⠀⠀⠀⠀⢰⠀⢻⣿⣿⣿⣿⣿⣿⣶⣶⡞⠀⠀⠀
+⠀⠀⠀⠀⠀⠀⢀⡌⠀⠀⢀⠉⠻⣿⣿⣿⣿⣿⡇⠀⠀⠀
+⠀⣀⠠⠤⠐⠚⠱⠀⠀⠀⠈⠀⠀⠀⠉⣻⠛⠋⠀⠀⠀⠀
+⡇⠀⠀⡊⠠⠐⠁⠀⠀⠀⠀⢰⠀⢀⠆⠿⡀⠀⠀⠀⠀⠀
+⡗⠒⠒⠀⠀⠀⠠⠤⢤⡀⠀⢸⠀⠘⠀⠀⢌⠑⢢⠀⠀⠀
+⡇⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠘⢄⠀⠀⠀⠈⠑⡾⠀⠀⠀
+⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠙⠒⠤⢴⠋⠀⠀⠀⠀
+                </pre>
+                <div style="color: #00ff00; margin-top: 20px;">Loading AnonTV...</div>
+            </div>
+
+            <!-- /b/ - Random -->
+            <div class="channel active" id="channel-b">
+                <div class="board-header">
+                    /b/ - Random Portfolio Chaos
+                </div>
+                
+                <div class="thread">
+                    <span class="post-number">No.42069420</span>
+                    <span class="anon-name">Anonymous</span>
+                    <span class="timestamp">11/09/25(Mon)13:37:00</span>
+                    <div class="greentext">
+                        &gt;be me<br>
+                        &gt;web developer<br>
+                        &gt;decide to make portfolio<br>
+                        &gt;make it look like 4chan instead<br>
+                        &gt;mfw recruiters are confused<br>
+                        &gt;mfw i dont care<br>
+                        &gt;feelsgoodman.jpg
+                    </div>
+                    <button class="roll-btn" onclick="rollForProject()">Roll for project details</button>
+                    <div id="rollResult"></div>
+                </div>
+
+                <div class="project-thread">
+                    <div class="thread" onclick="toggleProject('tv-remote')">
+                        <span class="post-number">No.69696969</span>
+                        <span class="anon-name">Anonymous</span>
+                        <span class="timestamp">11/09/25(Mon)14:20:00</span>
+                        <div class="greentext">
+                            &gt;be working on TV Remote Signature System<br>
+                            &gt;spend 100 hours on it<br>
+                            &gt;realize nobody uses TV remotes anymore<br>
+                            &gt;implement it anyway<br>
+                            &gt;absolutely based
+                        </div>
+                        <div>
+                            <a class="quote-link">&gt;&gt;69696970</a>
+                            <a class="quote-link">&gt;&gt;69696971</a>
+                        </div>
+                    </div>
+                    <div class="reply" id="tv-remote-details" style="display: none;">
+                        <span class="post-number">No.69696970</span>
+                        <span class="anon-name">Anonymous</span><br>
+                        <span class="quote-link">&gt;&gt;69696969</span><br>
+                        <div>
+                            Tech stack: Node.js, WebSockets, Canvas API<br>
+                            >using javascript in 2025<br>
+                            >ISHYGDDT<br>
+                            <button onclick="reactWithPepe()">🐸 Nice</button>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="project-thread">
+                    <div class="thread" onclick="toggleProject('portfolio-gen')">
+                        <span class="post-number">No.88888888</span>
+                        <span class="anon-name">Anonymous</span>
+                        <span class="timestamp">11/09/25(Mon)15:00:00</span>
+                        <div class="greentext">
+                            &gt;Portfolio Generator<br>
+                            &gt;literally makes portfolios for other people<br>
+                            &gt;portfolioception.exe<br>
+                            &gt;we need to go deeper
+                        </div>
+                        <div class="dubs-check">CHECK EM! QUADS!</div>
+                    </div>
+                    <div class="reply" id="portfolio-gen-details" style="display: none;">
+                        <span class="post-number">No.88888889</span>
+                        <span class="anon-name">Anonymous</span><br>
+                        <div>
+                            Transforms student projects into job-ready portfolios<br>
+                            >helping normies get jobs<br>
+                            >wagecucking enabler<br>
+                            Still pretty based desu
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- /g/ - Technology -->
+            <div class="channel" id="channel-g">
+                <div class="board-header">
+                    /g/ - Technology
+                </div>
+                
+                <div class="thread">
+                    <span class="post-number">No.92345678</span>
+                    <span class="anon-name">Anonymous</span>
+                    <span class="timestamp">11/09/25(Mon)16:00:00</span>
+                    <div class="greentext">
+                        &gt;install gentoo<br>
+                        &gt;btw i use arch<br>
+                        &gt;imagine not writing everything in C<br>
+                        &gt;javascript was a mistake
+                    </div>
+                </div>
+
+                <div class="thread">
+                    <span class="post-number">No.92345679</span>
+                    <span class="anon-name">Anonymous</span>
+                    <div>
+                        <strong>Document Generator Platform</strong><br>
+                        >AI-powered MVP creation<br>
+                        >Docker containerization<br>
+                        >Microservices architecture<br>
+                        >Actually uses Ollama for local AI<br>
+                        <div class="greentext">
+                            &gt;not relying on botnet cloud services<br>
+                            &gt;respecting privacy<br>
+                            &gt;absolutely BASED and REDPILLED
+                        </div>
+                    </div>
+                </div>
+
+                <div class="thread">
+                    <span class="post-number">No.92345680</span>
+                    <span class="anon-name">Anonymous</span>
+                    <div>
+                        Tech Stack Rating Thread:<br>
+                        <ul style="list-style: none; padding-left: 20px;">
+                            <li>✓ Node.js - Acceptable</li>
+                            <li>✓ Docker - Based</li>
+                            <li>✓ WebSockets - Real-time chad</li>
+                            <li>✓ Local AI - Privacy respecting</li>
+                            <li>✗ No Rust - NGMI</li>
+                        </ul>
+                    </div>
+                </div>
+            </div>
+
+            <!-- /biz/ - Business & Finance -->
+            <div class="channel" id="channel-biz">
+                <div class="board-header">
+                    /biz/ - Business & Finance
+                </div>
+                
+                <div class="thread">
+                    <span class="post-number">No.55555555</span>
+                    <span class="anon-name">Anonymous</span>
+                    <div class="greentext">
+                        &gt;be me<br>
+                        &gt;have portfolio<br>
+                        &gt;apply to 100 jobs<br>
+                        &gt;0 responses<br>
+                        &gt;make 4chan portfolio<br>
+                        &gt;get hired at based startup<br>
+                        &gt;wagmi.png
+                    </div>
+                </div>
+
+                <div class="thread">
+                    <span class="post-number">No.55555556</span>
+                    <span class="anon-name">Anonymous</span>
+                    <div>
+                        <strong>Portfolio ROI Analysis:</strong><br>
+                        Time invested: 200 hours<br>
+                        Memes created: 420<br>
+                        Jobs landed: 1<br>
+                        Salary: Not telling you IRS<br>
+                        <div class="greentext">
+                            &gt;he doesn't accept payment in crypto<br>
+                            &gt;NGMI
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- /fit/ - Health & Fitness (Skills) -->
+            <div class="channel" id="channel-fit">
+                <div class="board-header">
+                    /fit/ - Skills & Gains
+                </div>
+                
+                <div class="thread">
+                    <span class="post-number">No.77777777</span>
+                    <span class="anon-name">Anonymous</span>
+                    <div>
+                        SKILL GAINS THREAD - WE'RE ALL GONNA MAKE IT BRAHS
+                    </div>
+                </div>
+
+                <div class="thread">
+                    <span class="post-number">No.77777778</span>
+                    <span class="anon-name">Anonymous</span>
+                    <div>
+                        Current Stats:
+                        <div class="gains-bar">
+                            <div class="gains-fill" style="width: 90%">JavaScript - 90% MAXED</div>
+                        </div>
+                        <div class="gains-bar">
+                            <div class="gains-fill" style="width: 85%">React - 85% SOLID</div>
+                        </div>
+                        <div class="gains-bar">
+                            <div class="gains-fill" style="width: 80%">AI Integration - 80% GROWING</div>
+                        </div>
+                        <div class="gains-bar">
+                            <div class="gains-fill" style="width: 75%">System Architecture - 75% DECENT</div>
+                        </div>
+                        <div class="gains-bar">
+                            <div class="gains-fill" style="width: 70%">Creative Coding - 70% AESTHETIC</div>
+                        </div>
+                        <div class="greentext">
+                            &gt;not maxing all stats<br>
+                            &gt;DYEL bro?
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- /v/ - Video Games -->
+            <div class="channel" id="channel-v">
+                <div class="board-header">
+                    /v/ - Vidya (Gaming Projects)
+                </div>
+                
+                <div class="thread">
+                    <span class="post-number">No.13371337</span>
+                    <span class="anon-name">Anonymous</span>
+                    <div class="greentext">
+                        &gt;portfolio is literally a TV you control with a remote<br>
+                        &gt;most innovative UI of 2025<br>
+                        &gt;10/10 would navigate again<br>
+                        &gt;GOTY material
+                    </div>
+                </div>
+
+                <div class="thread">
+                    <span class="post-number">No.13371338</span>
+                    <span class="anon-name">Anonymous</span>
+                    <div>
+                        Rate my portfolio game:<br>
+                        Graphics: CRT filter kino ■■■■■■■■□□ 8/10<br>
+                        Gameplay: Remote control ■■■■■■■■■□ 9/10<br>
+                        Story: Anon gets job ■■■■■■□□□□ 6/10<br>
+                        Replayability: Infinite ■■■■■■■■■■ 10/10<br>
+                        <br>
+                        Overall: Better than Cyberpunk launch/10
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Remote Control -->
+    <div class="remote">
+        <div class="remote-screen">CH: <span id="remoteChannel">/b/</span></div>
+        <div class="remote-buttons">
+            <button class="remote-btn" onclick="changeChannel(-1)">▲</button>
+            <button class="remote-btn" onclick="selectOK()" style="background: #00ff00; color: #000;">OK</button>
+            <button class="remote-btn" onclick="changeChannel(1)">▼</button>
+            
+            <button class="remote-btn" onclick="navigateLeft()">◄</button>
+            <button class="remote-btn" onclick="goHome()">⌂</button>
+            <button class="remote-btn" onclick="navigateRight()">►</button>
+            
+            <button class="remote-btn" onclick="reactWithPepe()">🐸</button>
+            <button class="remote-btn" onclick="showInfo()">ℹ</button>
+            <button class="remote-btn" onclick="toggleSound()">🔊</button>
+            
+            <button class="remote-btn power" onclick="togglePower()">POWER</button>
+        </div>
+    </div>
+
+    <script>
+        // Channel management
+        const channels = [
+            { id: 'b', name: '/b/', desc: 'Random' },
+            { id: 'g', name: '/g/', desc: 'Technology' },
+            { id: 'biz', name: '/biz/', desc: 'Business' },
+            { id: 'fit', name: '/fit/', desc: 'Skills' },
+            { id: 'v', name: '/v/', desc: 'Vidya' }
+        ];
+        
+        let currentChannel = 0;
+        let powerOn = true;
+        let soundOn = true;
+        let tendies = 0;
+        let visitors = Math.floor(Math.random() * 1000) + 1;
+
+        // Sound effects (using Web Audio API for retro sounds)
+        const audioContext = new (window.AudioContext || window.webkitAudioContext)();
+        
+        function playSound(frequency, duration) {
+            if (!soundOn) return;
+            
+            const oscillator = audioContext.createOscillator();
+            const gainNode = audioContext.createGain();
+            
+            oscillator.connect(gainNode);
+            gainNode.connect(audioContext.destination);
+            
+            oscillator.frequency.value = frequency;
+            oscillator.type = 'square';
+            
+            gainNode.gain.setValueAtTime(0.1, audioContext.currentTime);
+            gainNode.gain.exponentialRampToValueAtTime(0.01, audioContext.currentTime + duration);
+            
+            oscillator.start(audioContext.currentTime);
+            oscillator.stop(audioContext.currentTime + duration);
+        }
+
+        // Initialize
+        window.addEventListener('load', () => {
+            // Hide loading screen after 2 seconds
+            setTimeout(() => {
+                document.getElementById('loadingScreen').style.display = 'none';
+                playSound(440, 0.1); // Startup beep
+                updateVisitorCount();
+            }, 2000);
+        });
+
+        // Channel navigation
+        function changeChannel(direction) {
+            if (!powerOn) return;
+            
+            // Show static
+            const static = document.getElementById('static');
+            static.classList.add('active');
+            
+            // Play channel change sound
+            playSound(200 + Math.random() * 400, 0.05);
+            
+            // Hide current channel
+            document.querySelector('.channel.active').classList.remove('active');
+            
+            // Change channel
+            currentChannel = (currentChannel + direction + channels.length) % channels.length;
+            
+            // Show new channel
+            setTimeout(() => {
+                document.getElementById(`channel-${channels[currentChannel].id}`).classList.add('active');
+                document.getElementById('channelName').textContent = `${channels[currentChannel].name} - ${channels[currentChannel].desc}`;
+                document.getElementById('remoteChannel').textContent = channels[currentChannel].name;
+                static.classList.remove('active');
+                
+                // Award tendies for channel surfing
+                awardTendies(1);
+            }, 200);
+        }
+
+        // Remote functions
+        function selectOK() {
+            playSound(880, 0.1);
+            // Trigger click on first visible button
+            const activeChannel = document.querySelector('.channel.active');
+            const firstButton = activeChannel.querySelector('button');
+            if (firstButton) firstButton.click();
+        }
+
+        function navigateLeft() {
+            playSound(600, 0.05);
+            changeChannel(-1);
+        }
+
+        function navigateRight() {
+            playSound(700, 0.05);
+            changeChannel(1);
+        }
+
+        function goHome() {
+            playSound(440, 0.2);
+            currentChannel = 0;
+            document.querySelector('.channel.active').classList.remove('active');
+            document.getElementById('channel-b').classList.add('active');
+            document.getElementById('channelName').textContent = '/b/ - Random';
+            document.getElementById('remoteChannel').textContent = '/b/';
+        }
+
+        function togglePower() {
+            powerOn = !powerOn;
+            const screen = document.querySelector('.tv-screen');
+            
+            if (!powerOn) {
+                playSound(100, 0.5);
+                screen.style.background = '#000';
+                screen.style.opacity = '0';
+            } else {
+                location.reload();
+            }
+        }
+
+        function toggleSound() {
+            soundOn = !soundOn;
+            playSound(soundOn ? 1000 : 100, 0.1);
+        }
+
+        function showInfo() {
+            alert('AnonTV Portfolio System v1.0\n\nAnon No.' + visitors + '\n\nYou are here forever.');
+        }
+
+        // Project interactions
+        function toggleProject(projectId) {
+            const details = document.getElementById(projectId + '-details');
+            const isVisible = details.style.display !== 'none';
+            details.style.display = isVisible ? 'none' : 'block';
+            
+            if (!isVisible) {
+                playSound(440, 0.05);
+                awardTendies(5);
+            }
+        }
+
+        // Roll for projects
+        function rollForProject() {
+            const roll = Math.floor(Math.random() * 100000000);
+            const rollStr = roll.toString().padStart(8, '0');
+            const result = document.getElementById('rollResult');
+            
+            playSound(300 + Math.random() * 500, 0.1);
+            
+            // Check for dubs, trips, etc
+            let message = `Your roll: ${rollStr}<br>`;
+            
+            if (rollStr.match(/(\d)\1{1}$/)) {
+                message += '<span class="dubs-check">DUBS! Nice.</span><br>';
+                awardTendies(22);
+            } else if (rollStr.match(/(\d)\1{2}$/)) {
+                message += '<span class="dubs-check">TRIPS! Checked!</span><br>';
+                awardTendies(111);
+            } else if (rollStr.match(/(\d)\1{3}$/)) {
+                message += '<span class="dubs-check">QUADS! WITNESSED!</span><br>';
+                awardTendies(1111);
+            }
+            
+            // Random project reveal based on roll
+            if (rollStr[7] % 2 === 0) {
+                message += 'You unlocked: Advanced project details!';
+            } else {
+                message += 'Better luck next roll, newfag.';
+            }
+            
+            result.innerHTML = message;
+        }
+
+        // Pepe reactions
+        function reactWithPepe() {
+            const pepes = ['🐸', '🌿', '💚', '📗', '🟢'];
+            const pepe = pepes[Math.floor(Math.random() * pepes.length)];
+            
+            const reaction = document.createElement('div');
+            reaction.className = 'pepe-react';
+            reaction.textContent = pepe;
+            reaction.style.left = Math.random() * window.innerWidth + 'px';
+            reaction.style.top = Math.random() * window.innerHeight + 'px';
+            
+            document.body.appendChild(reaction);
+            playSound(800 + Math.random() * 400, 0.1);
+            
+            awardTendies(10);
+            
+            setTimeout(() => reaction.remove(), 2000);
+        }
+
+        // Tendies system
+        function awardTendies(amount) {
+            tendies += amount;
+            document.getElementById('tendiesCount').textContent = tendies;
+            
+            if (tendies > 100 && tendies < 110) {
+                alert('Achievement Unlocked: Good Boy Points Master');
+            }
+        }
+
+        // Update visitor count
+        function updateVisitorCount() {
+            setInterval(() => {
+                visitors += Math.floor(Math.random() * 3);
+                // Randomly update channel info with visitor count
+                if (Math.random() < 0.1) {
+                    const channelInfo = document.querySelector('.channel-info');
+                    const originalText = channelInfo.innerHTML;
+                    channelInfo.innerHTML += ` | ${visitors} anons viewing`;
+                    setTimeout(() => {
+                        channelInfo.innerHTML = originalText;
+                    }, 3000);
+                }
+            }, 5000);
+        }
+
+        // Keyboard controls
+        document.addEventListener('keydown', (e) => {
+            switch(e.key) {
+                case 'ArrowUp':
+                    changeChannel(-1);
+                    break;
+                case 'ArrowDown':
+                    changeChannel(1);
+                    break;
+                case 'ArrowLeft':
+                    navigateLeft();
+                    break;
+                case 'ArrowRight':
+                    navigateRight();
+                    break;
+                case 'Enter':
+                    selectOK();
+                    break;
+                case 'p':
+                case 'P':
+                    reactWithPepe();
+                    break;
+                case 'Escape':
+                    goHome();
+                    break;
+            }
+        });
+
+        // Auto-generate some random posts periodically
+        setInterval(() => {
+            if (Math.random() < 0.3 && powerOn) {
+                const messages = [
+                    '>still using a portfolio in 2025',
+                    'based and redpilled portfolio desu',
+                    'fake and gay',
+                    '>he doesnt know',
+                    'check em',
+                    'absolutely proprietary',
+                    '>mfw javascript',
+                    'install gentoo',
+                    'cope and seethe'
+                ];
+                
+                console.log(messages[Math.floor(Math.random() * messages.length)]);
+            }
+        }, 10000);
+    </script>
+</body>
+</html>

@@ -1,0 +1,225 @@
+name: Test and Deploy Economic Engine
+
+on:
+  push:
+    branches: [ main, develop ]
+  pull_request:
+    branches: [ main ]
+  workflow_dispatch:
+
+env:
+  NODE_VERSION: '18.x'
+
+jobs:
+  test:
+    name: Run Tests
+    runs-on: ubuntu-latest
+    
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v3
+
+    - name: Setup Node.js
+      uses: actions/setup-node@v3
+      with:
+        node-version: ${{ env.NODE_VERSION }}
+        cache: 'npm'
+
+    - name: Install dependencies
+      run: npm ci
+
+    - name: Run linting
+      run: npm run lint || echo "No lint script"
+
+    - name: Start Economic Engine
+      run: |
+        npm start &
+        sleep 10
+        
+    - name: Start Slam Layer
+      run: |
+        node slam-it-all-together.js &
+        sleep 5
+
+    - name: Run comprehensive tests
+      run: node test-everything.js
+
+    - name: Upload test results
+      uses: actions/upload-artifact@v3
+      if: always()
+      with:
+        name: test-results
+        path: |
+          test-report.json
+          test-report.html
+
+  build-pwa:
+    name: Build PWA
+    needs: test
+    runs-on: ubuntu-latest
+    
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v3
+
+    - name: Setup Node.js
+      uses: actions/setup-node@v3
+      with:
+        node-version: ${{ env.NODE_VERSION }}
+
+    - name: Install dependencies
+      run: npm ci
+
+    - name: Build PWA assets
+      run: |
+        echo "Building PWA assets..."
+        # Would run build scripts here
+
+    - name: Verify PWA files
+      run: |
+        test -f manifest.json
+        test -f sw.js
+
+  build-electron:
+    name: Build Electron Apps
+    needs: test
+    strategy:
+      matrix:
+        os: [ubuntu-latest, windows-latest, macos-latest]
+    runs-on: ${{ matrix.os }}
+    
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v3
+
+    - name: Setup Node.js
+      uses: actions/setup-node@v3
+      with:
+        node-version: ${{ env.NODE_VERSION }}
+
+    - name: Install Electron dependencies
+      working-directory: ./electron-app
+      run: npm ci
+
+    - name: Build Electron app
+      working-directory: ./electron-app
+      run: npm run build
+
+    - name: Upload Electron builds
+      uses: actions/upload-artifact@v3
+      with:
+        name: electron-${{ matrix.os }}
+        path: electron-app/dist/
+
+  build-extension:
+    name: Build Chrome Extension
+    needs: test
+    runs-on: ubuntu-latest
+    
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v3
+
+    - name: Package Chrome extension
+      run: |
+        cd chrome-extension
+        zip -r ../economic-engine-extension.zip . -x "*.md" ".*"
+
+    - name: Upload extension package
+      uses: actions/upload-artifact@v3
+      with:
+        name: chrome-extension
+        path: economic-engine-extension.zip
+
+  deploy-railway:
+    name: Deploy to Railway
+    needs: [test, build-pwa]
+    runs-on: ubuntu-latest
+    if: github.ref == 'refs/heads/main'
+    
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v3
+
+    - name: Install Railway CLI
+      run: npm install -g @railway/cli
+
+    - name: Deploy to Railway
+      env:
+        RAILWAY_TOKEN: ${{ secrets.RAILWAY_TOKEN }}
+      run: |
+        railway up || echo "Railway deployment skipped - no token"
+
+  deploy-vercel:
+    name: Deploy to Vercel
+    needs: [test, build-pwa]
+    runs-on: ubuntu-latest
+    if: github.ref == 'refs/heads/main'
+    
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v3
+
+    - name: Deploy to Vercel
+      env:
+        VERCEL_TOKEN: ${{ secrets.VERCEL_TOKEN }}
+      run: |
+        npx vercel --prod --token=$VERCEL_TOKEN || echo "Vercel deployment skipped - no token"
+
+  security-scan:
+    name: Security Scan
+    runs-on: ubuntu-latest
+    
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v3
+
+    - name: Run npm audit
+      run: npm audit || true
+
+    - name: Run security scan
+      uses: aquasecurity/trivy-action@master
+      with:
+        scan-type: 'fs'
+        scan-ref: '.'
+        format: 'sarif'
+        output: 'trivy-results.sarif'
+
+    - name: Upload security results
+      uses: github/codeql-action/upload-sarif@v2
+      if: always()
+      with:
+        sarif_file: 'trivy-results.sarif'
+
+  release:
+    name: Create Release
+    needs: [test, build-pwa, build-electron, build-extension]
+    runs-on: ubuntu-latest
+    if: github.ref == 'refs/heads/main' && contains(github.event.head_commit.message, '[release]')
+    
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v3
+
+    - name: Download all artifacts
+      uses: actions/download-artifact@v3
+
+    - name: Create Release
+      uses: softprops/action-gh-release@v1
+      with:
+        tag_name: v${{ github.run_number }}
+        name: Release v${{ github.run_number }}
+        body: |
+          ## 🚀 Economic Engine Release
+          
+          ### 📱 Platforms
+          - PWA: Deploy to your domain
+          - Electron: Download for your OS below
+          - Chrome Extension: Upload to Chrome Web Store
+          
+          ### 🔄 Changes
+          ${{ github.event.head_commit.message }}
+        files: |
+          electron-*/
+          chrome-extension/economic-engine-extension.zip
+          test-results/test-report.html

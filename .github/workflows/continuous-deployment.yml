@@ -1,0 +1,435 @@
+name: Continuous Deployment
+
+on:
+  workflow_run:
+    workflows: ["Automated Deployment Pipeline"]
+    types:
+      - completed
+    branches:
+      - main
+      - develop
+  workflow_dispatch:
+    inputs:
+      target_environment:
+        description: 'Target environment for deployment'
+        required: true
+        type: choice
+        options:
+          - development
+          - staging
+          - production
+      deployment_strategy:
+        description: 'Deployment strategy'
+        required: true
+        default: 'rolling'
+        type: choice
+        options:
+          - rolling
+          - blue-green
+          - canary
+          - recreate
+
+env:
+  REGISTRY: ghcr.io
+  IMAGE_NAME: ${{ github.repository }}
+  HELM_VERSION: v3.12.0
+  KUBECTL_VERSION: v1.28.0
+
+jobs:
+  # Prepare deployment configuration
+  prepare-deployment:
+    runs-on: ubuntu-latest
+    if: ${{ github.event.workflow_run.conclusion == 'success' || github.event_name == 'workflow_dispatch' }}
+    outputs:
+      environment: ${{ steps.determine-env.outputs.environment }}
+      version: ${{ steps.version.outputs.version }}
+      deployment-id: ${{ steps.deployment-id.outputs.id }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Determine environment
+        id: determine-env
+        run: |
+          if [[ "${{ github.event_name }}" == "workflow_dispatch" ]]; then
+            echo "environment=${{ github.event.inputs.target_environment }}" >> $GITHUB_OUTPUT
+          elif [[ "${{ github.ref }}" == "refs/heads/main" ]]; then
+            echo "environment=production" >> $GITHUB_OUTPUT
+          elif [[ "${{ github.ref }}" == "refs/heads/develop" ]]; then
+            echo "environment=staging" >> $GITHUB_OUTPUT
+          else
+            echo "environment=development" >> $GITHUB_OUTPUT
+          fi
+
+      - name: Generate version
+        id: version
+        run: |
+          VERSION=$(date +%Y%m%d%H%M%S)-${GITHUB_SHA:0:7}
+          echo "version=${VERSION}" >> $GITHUB_OUTPUT
+
+      - name: Generate deployment ID
+        id: deployment-id
+        run: |
+          DEPLOYMENT_ID=$(uuidgen)
+          echo "id=${DEPLOYMENT_ID}" >> $GITHUB_OUTPUT
+
+  # Deploy to Development
+  deploy-development:
+    runs-on: ubuntu-latest
+    needs: prepare-deployment
+    if: needs.prepare-deployment.outputs.environment == 'development'
+    environment:
+      name: development
+      url: https://dev.document-generator.app
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Configure AWS credentials
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          aws-access-key-id: ${{ secrets.DEV_AWS_ACCESS_KEY_ID }}
+          aws-secret-access-key: ${{ secrets.DEV_AWS_SECRET_ACCESS_KEY }}
+          aws-region: us-east-1
+
+      - name: Deploy to development
+        run: |
+          echo "Deploying version ${{ needs.prepare-deployment.outputs.version }} to development"
+          
+          # Update ECS service
+          aws ecs update-service \
+            --cluster dev-cluster \
+            --service document-generator-dev \
+            --force-new-deployment \
+            --desired-count 2
+
+      - name: Run post-deployment tests
+        run: |
+          npm run test:smoke -- --url https://dev.document-generator.app
+
+      - name: Update development feature flags
+        run: |
+          node scripts/feature-flag-automation.js \
+            --environment development \
+            --action enable-progressive \
+            --flags all-new \
+            --percentage 100
+
+  # Deploy to Staging
+  deploy-staging:
+    runs-on: ubuntu-latest
+    needs: prepare-deployment
+    if: needs.prepare-deployment.outputs.environment == 'staging'
+    environment:
+      name: staging
+      url: https://staging.document-generator.app
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup Kubernetes tools
+        run: |
+          # Install kubectl
+          curl -LO "https://dl.k8s.io/release/${KUBECTL_VERSION}/bin/linux/amd64/kubectl"
+          chmod +x kubectl
+          sudo mv kubectl /usr/local/bin/
+          
+          # Install Helm
+          curl -fsSL -o get_helm.sh https://raw.githubusercontent.com/helm/helm/main/scripts/get-helm-3
+          chmod +x get_helm.sh
+          ./get_helm.sh --version ${HELM_VERSION}
+
+      - name: Configure kubectl
+        run: |
+          echo "${{ secrets.STAGING_KUBECONFIG }}" | base64 -d > kubeconfig
+          export KUBECONFIG=$(pwd)/kubeconfig
+
+      - name: Deploy with Helm
+        run: |
+          helm upgrade --install document-generator \
+            ./charts/document-generator \
+            --namespace staging \
+            --create-namespace \
+            --set image.tag=${{ needs.prepare-deployment.outputs.version }} \
+            --set environment=staging \
+            --set replicaCount=3 \
+            --set ingress.enabled=true \
+            --set ingress.hosts[0].host=staging.document-generator.app \
+            --wait \
+            --timeout=10m
+
+      - name: Verify deployment
+        run: |
+          kubectl rollout status deployment/document-generator -n staging
+          kubectl get pods -n staging -l app=document-generator
+
+      - name: Run integration tests
+        run: |
+          npm run test:integration -- --url https://staging.document-generator.app
+
+      - name: Run performance tests
+        run: |
+          npm run test:performance -- --url https://staging.document-generator.app
+
+      - name: Database migrations
+        run: |
+          kubectl exec -n staging deployment/document-generator -- npm run prisma:migrate:deploy
+
+      - name: Update staging feature flags
+        run: |
+          node scripts/feature-flag-automation.js \
+            --environment staging \
+            --action gradual-rollout \
+            --percentage 25 \
+            --increment 25 \
+            --interval 1800
+
+  # Deploy to Production
+  deploy-production:
+    runs-on: ubuntu-latest
+    needs: [prepare-deployment, deploy-staging]
+    if: needs.prepare-deployment.outputs.environment == 'production'
+    environment:
+      name: production
+      url: https://document-generator.app
+    concurrency:
+      group: production-deployment
+      cancel-in-progress: false
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Create deployment record
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const deployment = await github.rest.repos.createDeployment({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              ref: context.sha,
+              environment: 'production',
+              description: 'Production deployment v${{ needs.prepare-deployment.outputs.version }}',
+              auto_merge: false,
+              required_contexts: []
+            });
+            
+            core.setOutput('deployment_id', deployment.data.id);
+
+      - name: Setup deployment tools
+        run: |
+          # Install kubectl
+          curl -LO "https://dl.k8s.io/release/${KUBECTL_VERSION}/bin/linux/amd64/kubectl"
+          chmod +x kubectl
+          sudo mv kubectl /usr/local/bin/
+          
+          # Install Helm
+          curl -fsSL -o get_helm.sh https://raw.githubusercontent.com/helm/helm/main/scripts/get-helm-3
+          chmod +x get_helm.sh
+          ./get_helm.sh --version ${HELM_VERSION}
+
+      - name: Configure production kubectl
+        run: |
+          echo "${{ secrets.PROD_KUBECONFIG }}" | base64 -d > kubeconfig
+          export KUBECONFIG=$(pwd)/kubeconfig
+
+      - name: Pre-deployment checks
+        run: |
+          # Check cluster health
+          kubectl get nodes
+          kubectl top nodes
+          
+          # Check current deployment
+          kubectl get deployment document-generator -n production -o yaml
+          
+          # Backup current configuration
+          kubectl get all -n production -o yaml > backup-before-deployment.yaml
+
+      - name: Deploy using strategy
+        run: |
+          STRATEGY="${{ github.event.inputs.deployment_strategy || 'rolling' }}"
+          
+          case $STRATEGY in
+            "blue-green")
+              ./scripts/deploy-blue-green.sh ${{ needs.prepare-deployment.outputs.version }}
+              ;;
+            "canary")
+              ./scripts/deploy-canary.sh ${{ needs.prepare-deployment.outputs.version }}
+              ;;
+            "recreate")
+              helm upgrade --install document-generator \
+                ./charts/document-generator \
+                --namespace production \
+                --set image.tag=${{ needs.prepare-deployment.outputs.version }} \
+                --set strategy.type=Recreate \
+                --wait
+              ;;
+            *)
+              # Default rolling update
+              helm upgrade --install document-generator \
+                ./charts/document-generator \
+                --namespace production \
+                --set image.tag=${{ needs.prepare-deployment.outputs.version }} \
+                --set strategy.type=RollingUpdate \
+                --set strategy.rollingUpdate.maxSurge=1 \
+                --set strategy.rollingUpdate.maxUnavailable=0 \
+                --wait
+              ;;
+          esac
+
+      - name: Wait for rollout
+        run: |
+          kubectl rollout status deployment/document-generator -n production --timeout=600s
+
+      - name: Health checks
+        run: |
+          # Wait for pods to be ready
+          kubectl wait --for=condition=ready pod -l app=document-generator -n production --timeout=300s
+          
+          # Check endpoints
+          for i in {1..10}; do
+            if curl -f https://document-generator.app/health; then
+              echo "Health check passed"
+              break
+            fi
+            echo "Health check attempt $i failed, retrying..."
+            sleep 30
+          done
+
+      - name: Run smoke tests
+        run: |
+          npm run test:smoke -- --url https://document-generator.app --timeout 300000
+
+      - name: Update deployment status
+        uses: actions/github-script@v7
+        if: always()
+        with:
+          script: |
+            await github.rest.repos.createDeploymentStatus({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              deployment_id: ${{ steps.create-deployment.outputs.deployment_id }},
+              state: '${{ job.status }}',
+              environment_url: 'https://document-generator.app',
+              description: 'Deployment ${{ job.status }}'
+            });
+
+      - name: Production feature flags
+        run: |
+          node scripts/feature-flag-automation.js \
+            --environment production \
+            --action gradual-rollout \
+            --percentage 10 \
+            --increment 10 \
+            --interval 3600
+
+  # Monitor deployment
+  monitor-deployment:
+    runs-on: ubuntu-latest
+    needs: [deploy-development, deploy-staging, deploy-production]
+    if: always()
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup monitoring
+        run: |
+          npm install @datadog/datadog-api-client @sentry/node
+
+      - name: Monitor metrics
+        run: |
+          node scripts/monitor-deployment.js \
+            --deployment-id ${{ needs.prepare-deployment.outputs.deployment-id }} \
+            --environment ${{ needs.prepare-deployment.outputs.environment }} \
+            --duration 1800
+
+      - name: Generate deployment report
+        run: |
+          node scripts/generate-deployment-report.js \
+            --deployment-id ${{ needs.prepare-deployment.outputs.deployment-id }} \
+            --output deployment-report.html
+
+      - name: Upload deployment report
+        uses: actions/upload-artifact@v4
+        with:
+          name: deployment-report-${{ needs.prepare-deployment.outputs.deployment-id }}
+          path: deployment-report.html
+
+  # Rollback if needed
+  rollback-on-failure:
+    runs-on: ubuntu-latest
+    needs: [prepare-deployment, deploy-production]
+    if: failure() && needs.prepare-deployment.outputs.environment == 'production'
+    environment:
+      name: production-rollback
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Configure production kubectl
+        run: |
+          echo "${{ secrets.PROD_KUBECONFIG }}" | base64 -d > kubeconfig
+          export KUBECONFIG=$(pwd)/kubeconfig
+
+      - name: Rollback deployment
+        run: |
+          echo "🔄 Rolling back production deployment"
+          
+          # Rollback Kubernetes deployment
+          kubectl rollout undo deployment/document-generator -n production
+          
+          # Wait for rollback
+          kubectl rollout status deployment/document-generator -n production
+
+      - name: Disable feature flags
+        run: |
+          node scripts/feature-flag-automation.js \
+            --environment production \
+            --action kill-switch \
+            --flags all-new
+
+      - name: Verify rollback
+        run: |
+          # Health check
+          curl -f https://document-generator.app/health || exit 1
+          
+          # Run critical tests
+          npm run test:critical -- --url https://document-generator.app
+
+      - name: Notify team
+        uses: 8398a7/action-slack@v3
+        with:
+          status: custom
+          custom_payload: |
+            {
+              text: "🚨 Production Deployment Rolled Back",
+              attachments: [{
+                color: "danger",
+                fields: [
+                  { title: "Version", value: "${{ needs.prepare-deployment.outputs.version }}", short: true },
+                  { title: "Deployment ID", value: "${{ needs.prepare-deployment.outputs.deployment-id }}", short: true },
+                  { title: "Reason", value: "Deployment health checks failed", short: false }
+                ]
+              }]
+            }
+        env:
+          SLACK_WEBHOOK_URL: ${{ secrets.SLACK_WEBHOOK }}
+
+  # Cleanup old resources
+  cleanup:
+    runs-on: ubuntu-latest
+    needs: [deploy-production]
+    if: success()
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Cleanup old deployments
+        run: |
+          # Remove old Kubernetes resources
+          kubectl delete pods -n production -l app=document-generator --field-selector status.phase=Failed
+          
+          # Clean old Docker images
+          ./scripts/cleanup-docker-images.sh --keep-last 5
+          
+          # Archive old logs
+          ./scripts/archive-logs.sh --older-than 30d
+
+      - name: Update deployment inventory
+        run: |
+          echo "${{ needs.prepare-deployment.outputs.version }}" >> deployments.log
+          git add deployments.log
+          git commit -m "chore: Update deployment log [skip ci]"
+          git push

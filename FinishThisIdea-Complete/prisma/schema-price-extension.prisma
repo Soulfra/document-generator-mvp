@@ -1,0 +1,217 @@
+// Price Data Extension for Prisma Schema
+// Add these models to your existing schema.prisma file
+
+model PriceHistory {
+  id                String    @id @default(uuid())
+  symbol            String
+  category          String    // crypto, gaming, stocks, forex
+  price             Decimal   @db.Decimal(20, 8)
+  currency          String    @default("USD")
+  source            String?   // coingecko, osrs_wiki, binance, etc
+  confidence        Int       @default(0) // 0-100
+  
+  // Additional price data
+  volume            Decimal?  @db.Decimal(20, 8)
+  high24h           Decimal?  @map("high_24h") @db.Decimal(20, 8)
+  low24h            Decimal?  @map("low_24h") @db.Decimal(20, 8)
+  change24h         Decimal?  @map("change_24h") @db.Decimal(10, 6)
+  marketCap         Decimal?  @map("market_cap") @db.Decimal(20, 2)
+  
+  // Metadata
+  metadata          Json?     // Additional data specific to source
+  timestamp         DateTime  @default(now())
+  createdAt         DateTime  @default(now()) @map("created_at")
+  
+  // Relations
+  alerts            PriceAlert[]
+  manualFetches     ManualFetchRequest[]
+  
+  @@unique([symbol, category, timestamp])
+  @@index([symbol])
+  @@index([category])
+  @@index([timestamp(sort: Desc)])
+  @@index([symbol, timestamp(sort: Desc)])
+  @@map("price_history")
+}
+
+model PriceHourly {
+  id                String    @id @default(uuid())
+  symbol            String
+  category          String
+  hourTimestamp     DateTime  @map("hour_timestamp")
+  
+  // OHLC data
+  openPrice         Decimal   @map("open_price") @db.Decimal(20, 8)
+  highPrice         Decimal   @map("high_price") @db.Decimal(20, 8)
+  lowPrice          Decimal   @map("low_price") @db.Decimal(20, 8)
+  closePrice        Decimal   @map("close_price") @db.Decimal(20, 8)
+  
+  // Volume and samples
+  volume            Decimal?  @db.Decimal(20, 8)
+  sampleCount       Int       @default(1) @map("sample_count")
+  
+  // Timestamps
+  createdAt         DateTime  @default(now()) @map("created_at")
+  updatedAt         DateTime  @updatedAt @map("updated_at")
+  
+  @@unique([symbol, category, hourTimestamp])
+  @@index([symbol, hourTimestamp(sort: Desc)])
+  @@index([category])
+  @@map("price_hourly")
+}
+
+model ManualFetchRequest {
+  id                String    @id @default(uuid())
+  userId            String?   @map("user_id")
+  ipAddress         String?   @map("ip_address")
+  symbol            String
+  category          String
+  
+  // Request details
+  success           Boolean   @default(true)
+  responseTimeMs    Int?      @map("response_time_ms")
+  errorMessage      String?   @map("error_message") @db.Text
+  source            String?   // Which API was used
+  cached            Boolean   @default(false)
+  
+  // Timestamps
+  requestedAt       DateTime  @default(now()) @map("requested_at")
+  
+  // Relations
+  user              User?     @relation(fields: [userId], references: [id], onDelete: SetNull)
+  priceHistory      PriceHistory? @relation(fields: [symbol, category, requestedAt], references: [symbol, category, timestamp])
+  
+  @@index([userId])
+  @@index([requestedAt(sort: Desc)])
+  @@index([symbol])
+  @@map("manual_fetch_requests")
+}
+
+model PriceAlert {
+  id                String    @id @default(uuid())
+  userId            String    @map("user_id")
+  symbol            String
+  category          String
+  
+  // Alert configuration
+  alertType         String    @map("alert_type") // above, below, change_percent
+  thresholdValue    Decimal   @map("threshold_value") @db.Decimal(20, 8)
+  isActive          Boolean   @default(true) @map("is_active")
+  
+  // Trigger tracking
+  triggeredCount    Int       @default(0) @map("triggered_count")
+  lastTriggeredAt   DateTime? @map("last_triggered_at")
+  lastPrice         Decimal?  @map("last_price") @db.Decimal(20, 8)
+  
+  // Notification preferences
+  notifyEmail       Boolean   @default(true) @map("notify_email")
+  notifyWebhook     String?   @map("notify_webhook")
+  notifyForum       Boolean   @default(false) @map("notify_forum")
+  
+  // Timestamps
+  createdAt         DateTime  @default(now()) @map("created_at")
+  updatedAt         DateTime  @updatedAt @map("updated_at")
+  
+  // Relations
+  user              User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  priceHistory      PriceHistory[]
+  
+  @@index([userId])
+  @@index([symbol, category])
+  @@index([isActive])
+  @@map("price_alerts")
+}
+
+model SourceReliability {
+  id                String    @id @default(uuid())
+  sourceName        String    @unique @map("source_name")
+  
+  // Reliability metrics
+  totalRequests     Int       @default(0) @map("total_requests")
+  successfulRequests Int      @default(0) @map("successful_requests")
+  failedRequests    Int       @default(0) @map("failed_requests")
+  avgResponseTimeMs Int?      @map("average_response_time_ms")
+  
+  // Status tracking
+  lastSuccessAt     DateTime? @map("last_success_at")
+  lastFailureAt     DateTime? @map("last_failure_at")
+  isActive          Boolean   @default(true) @map("is_active")
+  
+  // API limits and costs
+  rateLimit         String?   @map("rate_limit") // e.g., "60/min"
+  monthlyCost       Decimal   @default(0) @map("monthly_cost") @db.Decimal(10, 2)
+  apiTier           String    @default("free") @map("api_tier") // free, basic, pro
+  
+  // Timestamps
+  createdAt         DateTime  @default(now()) @map("created_at")
+  updatedAt         DateTime  @updatedAt @map("updated_at")
+  
+  @@map("source_reliability")
+}
+
+// Gaming specific models
+model OSRSItem {
+  id                Int       @id // OSRS item ID
+  name              String
+  shortName         String    @map("short_name")
+  category          String?   // weapon, armor, consumable, etc
+  isTracked         Boolean   @default(true) @map("is_tracked")
+  
+  // Price tracking preferences
+  updateFrequency   Int       @default(600) @map("update_frequency") // seconds
+  minPrice          Decimal?  @map("min_price") @db.Decimal(20, 0) // GP
+  maxPrice          Decimal?  @map("max_price") @db.Decimal(20, 0) // GP
+  
+  // Metadata
+  examineText       String?   @map("examine_text") @db.Text
+  wikiUrl           String?   @map("wiki_url")
+  iconUrl           String?   @map("icon_url")
+  
+  // Timestamps
+  createdAt         DateTime  @default(now()) @map("created_at")
+  updatedAt         DateTime  @updatedAt @map("updated_at")
+  
+  @@map("osrs_items")
+}
+
+// Forum integration model
+model ForumPricePost {
+  id                String    @id @default(uuid())
+  forumPostId       String    @unique @map("forum_post_id")
+  symbol            String
+  category          String
+  
+  // Post details
+  userId            String    @map("user_id")
+  threadId          String    @map("thread_id")
+  content           String    @db.Text
+  priceAtPost       Decimal   @map("price_at_post") @db.Decimal(20, 8)
+  
+  // Engagement metrics
+  views             Int       @default(0)
+  replies           Int       @default(0)
+  reactions         Json?     // { likes: 10, dislikes: 2, etc }
+  
+  // Timestamps
+  postedAt          DateTime  @default(now()) @map("posted_at")
+  
+  // Relations
+  user              User      @relation(fields: [userId], references: [id])
+  
+  @@index([symbol, category])
+  @@index([userId])
+  @@index([postedAt(sort: Desc)])
+  @@map("forum_price_posts")
+}
+
+// Update User model to include new relations
+model User {
+  // ... existing fields ...
+  
+  // New relations for price system
+  manualFetches     ManualFetchRequest[]
+  priceAlerts       PriceAlert[]
+  forumPricePosts   ForumPricePost[]
+  
+  // ... rest of model ...
+}

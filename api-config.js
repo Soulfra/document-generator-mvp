@@ -40,21 +40,24 @@ class APIConfig {
                 mode: 'full',
                 apiBase: 'http://localhost:3000',
                 wsBase: 'ws://localhost:8081',
-                features: ['real-scraping', 'websockets', 'database', 'ai-processing'],
+                stripeApiBase: 'http://localhost:3003',
+                features: ['real-scraping', 'websockets', 'database', 'ai-processing', 'stripe-payments'],
                 description: 'Local Development'
             },
             'static-hosting': {
                 mode: 'hybrid',
                 apiBase: 'https://document-generator-backend.up.railway.app',
                 wsBase: 'wss://document-generator-backend.up.railway.app',
-                features: ['real-scraping', 'api-calls', 'ai-processing'],
+                stripeApiBase: 'https://stripe-api.up.railway.app',
+                features: ['real-scraping', 'api-calls', 'ai-processing', 'stripe-payments'],
                 description: 'Static + Railway Backend'
             },
             'production': {
                 mode: 'full',
                 apiBase: 'https://document-generator-backend.up.railway.app',
                 wsBase: 'wss://document-generator-backend.up.railway.app',
-                features: ['real-scraping', 'websockets', 'database', 'ai-processing'],
+                stripeApiBase: 'https://stripe-api.up.railway.app',
+                features: ['real-scraping', 'websockets', 'database', 'ai-processing', 'stripe-payments'],
                 description: 'Production with Full Backend'
             }
         };

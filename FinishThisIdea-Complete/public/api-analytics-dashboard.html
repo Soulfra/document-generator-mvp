@@ -1,0 +1,999 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>API Documentation & Analytics Dashboard</title>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/prismjs@1.29.0/prism.min.js"></script>
+    <link href="https://cdn.jsdelivr.net/npm/prismjs@1.29.0/themes/prism-tomorrow.min.css" rel="stylesheet">
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            background: #0f0f0f;
+            color: #e0e0e0;
+            line-height: 1.6;
+        }
+
+        .dashboard {
+            display: grid;
+            grid-template-columns: 250px 1fr;
+            height: 100vh;
+        }
+
+        /* Sidebar */
+        .sidebar {
+            background: #1a1a1a;
+            border-right: 1px solid #333;
+            overflow-y: auto;
+            padding: 20px;
+        }
+
+        .sidebar h2 {
+            color: #00ff41;
+            margin-bottom: 20px;
+            font-size: 18px;
+        }
+
+        .nav-section {
+            margin-bottom: 30px;
+        }
+
+        .nav-section h3 {
+            color: #888;
+            font-size: 12px;
+            text-transform: uppercase;
+            margin-bottom: 10px;
+        }
+
+        .nav-link {
+            display: block;
+            padding: 8px 12px;
+            color: #ccc;
+            text-decoration: none;
+            border-radius: 4px;
+            margin-bottom: 4px;
+            transition: all 0.2s;
+        }
+
+        .nav-link:hover {
+            background: #2a2a2a;
+            color: #00ff41;
+        }
+
+        .nav-link.active {
+            background: #00ff41;
+            color: #000;
+        }
+
+        /* Main Content */
+        .main-content {
+            overflow-y: auto;
+            padding: 30px;
+        }
+
+        .header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 30px;
+            padding-bottom: 20px;
+            border-bottom: 1px solid #333;
+        }
+
+        .header h1 {
+            color: #00ff41;
+            font-size: 28px;
+        }
+
+        .header-actions {
+            display: flex;
+            gap: 15px;
+        }
+
+        .btn {
+            padding: 10px 20px;
+            border: 1px solid #00ff41;
+            background: transparent;
+            color: #00ff41;
+            border-radius: 4px;
+            cursor: pointer;
+            transition: all 0.3s;
+            text-decoration: none;
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .btn:hover {
+            background: #00ff41;
+            color: #000;
+        }
+
+        .btn-primary {
+            background: #00ff41;
+            color: #000;
+        }
+
+        /* Metrics Grid */
+        .metrics-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 20px;
+            margin-bottom: 30px;
+        }
+
+        .metric-card {
+            background: #1a1a1a;
+            border: 1px solid #333;
+            border-radius: 8px;
+            padding: 20px;
+            text-align: center;
+            transition: all 0.3s;
+        }
+
+        .metric-card:hover {
+            border-color: #00ff41;
+            transform: translateY(-2px);
+        }
+
+        .metric-value {
+            font-size: 36px;
+            font-weight: bold;
+            color: #00ff41;
+            margin: 10px 0;
+        }
+
+        .metric-label {
+            color: #888;
+            font-size: 14px;
+        }
+
+        .metric-change {
+            font-size: 12px;
+            margin-top: 5px;
+        }
+
+        .metric-change.positive {
+            color: #4ade80;
+        }
+
+        .metric-change.negative {
+            color: #f87171;
+        }
+
+        /* Content Sections */
+        .content-section {
+            background: #1a1a1a;
+            border: 1px solid #333;
+            border-radius: 8px;
+            padding: 30px;
+            margin-bottom: 30px;
+        }
+
+        .section-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 20px;
+        }
+
+        .section-title {
+            color: #00ff41;
+            font-size: 20px;
+        }
+
+        /* API Documentation */
+        .endpoint-list {
+            display: grid;
+            gap: 15px;
+        }
+
+        .endpoint-card {
+            background: #222;
+            border: 1px solid #444;
+            border-radius: 6px;
+            padding: 20px;
+            transition: all 0.3s;
+        }
+
+        .endpoint-card:hover {
+            border-color: #00ff41;
+        }
+
+        .endpoint-header {
+            display: flex;
+            align-items: center;
+            gap: 15px;
+            margin-bottom: 10px;
+        }
+
+        .method-badge {
+            padding: 4px 12px;
+            border-radius: 4px;
+            font-size: 12px;
+            font-weight: bold;
+            text-transform: uppercase;
+        }
+
+        .method-badge.get { background: #3b82f6; }
+        .method-badge.post { background: #10b981; }
+        .method-badge.put { background: #f59e0b; }
+        .method-badge.delete { background: #ef4444; }
+
+        .endpoint-path {
+            font-family: monospace;
+            color: #fff;
+            font-size: 16px;
+            flex: 1;
+        }
+
+        .endpoint-stats {
+            display: flex;
+            gap: 20px;
+            font-size: 12px;
+            color: #888;
+        }
+
+        .endpoint-description {
+            color: #bbb;
+            margin: 10px 0;
+        }
+
+        .code-block {
+            background: #0d0d0d;
+            border: 1px solid #333;
+            border-radius: 6px;
+            padding: 15px;
+            margin: 15px 0;
+            overflow-x: auto;
+        }
+
+        /* Charts */
+        .chart-container {
+            position: relative;
+            height: 300px;
+            margin: 20px 0;
+        }
+
+        /* Tables */
+        .data-table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-top: 20px;
+        }
+
+        .data-table th,
+        .data-table td {
+            padding: 12px;
+            text-align: left;
+            border-bottom: 1px solid #333;
+        }
+
+        .data-table th {
+            background: #0d0d0d;
+            color: #00ff41;
+            font-weight: 600;
+            text-transform: uppercase;
+            font-size: 12px;
+        }
+
+        .data-table tr:hover {
+            background: #222;
+        }
+
+        /* Real-time Status */
+        .status-indicator {
+            display: inline-block;
+            width: 8px;
+            height: 8px;
+            border-radius: 50%;
+            margin-right: 8px;
+        }
+
+        .status-indicator.healthy { background: #4ade80; }
+        .status-indicator.degraded { background: #f59e0b; }
+        .status-indicator.down { background: #ef4444; }
+
+        /* Forms */
+        .form-preview {
+            background: #222;
+            border: 1px solid #444;
+            border-radius: 6px;
+            padding: 20px;
+            margin: 20px 0;
+        }
+
+        .form-field {
+            margin-bottom: 20px;
+        }
+
+        .form-label {
+            display: block;
+            color: #00ff41;
+            margin-bottom: 8px;
+            font-size: 14px;
+        }
+
+        .form-input {
+            width: 100%;
+            padding: 10px;
+            background: #0d0d0d;
+            border: 1px solid #444;
+            border-radius: 4px;
+            color: #fff;
+            font-size: 14px;
+        }
+
+        .form-input:focus {
+            outline: none;
+            border-color: #00ff41;
+        }
+
+        /* Loading State */
+        .loading {
+            text-align: center;
+            padding: 40px;
+            color: #666;
+        }
+
+        .spinner {
+            border: 3px solid #333;
+            border-top: 3px solid #00ff41;
+            border-radius: 50%;
+            width: 40px;
+            height: 40px;
+            animation: spin 1s linear infinite;
+            margin: 0 auto 20px;
+        }
+
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+
+        /* Responsive */
+        @media (max-width: 768px) {
+            .dashboard {
+                grid-template-columns: 1fr;
+            }
+
+            .sidebar {
+                display: none;
+            }
+
+            .metrics-grid {
+                grid-template-columns: 1fr;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="dashboard">
+        <!-- Sidebar Navigation -->
+        <aside class="sidebar">
+            <h2>API Platform</h2>
+            
+            <div class="nav-section">
+                <h3>Overview</h3>
+                <a href="#overview" class="nav-link active" data-section="overview">
+                    Dashboard
+                </a>
+                <a href="#analytics" class="nav-link" data-section="analytics">
+                    Analytics
+                </a>
+            </div>
+
+            <div class="nav-section">
+                <h3>Documentation</h3>
+                <a href="#api-docs" class="nav-link" data-section="api-docs">
+                    API Reference
+                </a>
+                <a href="#getting-started" class="nav-link" data-section="getting-started">
+                    Getting Started
+                </a>
+                <a href="#auth" class="nav-link" data-section="auth">
+                    Authentication
+                </a>
+            </div>
+
+            <div class="nav-section">
+                <h3>Forms</h3>
+                <a href="#form-builder" class="nav-link" data-section="form-builder">
+                    Form Builder
+                </a>
+                <a href="#form-analytics" class="nav-link" data-section="form-analytics">
+                    Form Analytics
+                </a>
+                <a href="#templates" class="nav-link" data-section="templates">
+                    Templates
+                </a>
+            </div>
+
+            <div class="nav-section">
+                <h3>Tools</h3>
+                <a href="#doc-converter" class="nav-link" data-section="doc-converter">
+                    Doc → API Converter
+                </a>
+                <a href="#sdk-generator" class="nav-link" data-section="sdk-generator">
+                    SDK Generator
+                </a>
+            </div>
+        </aside>
+
+        <!-- Main Content Area -->
+        <main class="main-content">
+            <!-- Overview Section -->
+            <section id="overview" class="content-view">
+                <div class="header">
+                    <h1>API Dashboard</h1>
+                    <div class="header-actions">
+                        <button class="btn" onclick="refreshData()">
+                            🔄 Refresh
+                        </button>
+                        <button class="btn btn-primary" onclick="exportReport()">
+                            📊 Export Report
+                        </button>
+                    </div>
+                </div>
+
+                <!-- Metrics Grid -->
+                <div class="metrics-grid">
+                    <div class="metric-card">
+                        <div class="metric-label">Total API Calls</div>
+                        <div class="metric-value" id="total-calls">45,678</div>
+                        <div class="metric-change positive">↑ 12.5% from last week</div>
+                    </div>
+                    <div class="metric-card">
+                        <div class="metric-label">Active Endpoints</div>
+                        <div class="metric-value" id="active-endpoints">42</div>
+                        <div class="metric-change">No change</div>
+                    </div>
+                    <div class="metric-card">
+                        <div class="metric-label">Avg Response Time</div>
+                        <div class="metric-value" id="avg-response">145ms</div>
+                        <div class="metric-change positive">↓ 23ms improvement</div>
+                    </div>
+                    <div class="metric-card">
+                        <div class="metric-label">Error Rate</div>
+                        <div class="metric-value" id="error-rate">0.23%</div>
+                        <div class="metric-change positive">↓ 0.05% decrease</div>
+                    </div>
+                </div>
+
+                <!-- API Usage Chart -->
+                <div class="content-section">
+                    <div class="section-header">
+                        <h2 class="section-title">API Usage Over Time</h2>
+                        <select class="form-input" style="width: 150px;" onchange="updateTimeRange(this.value)">
+                            <option value="24h">Last 24 Hours</option>
+                            <option value="7d" selected>Last 7 Days</option>
+                            <option value="30d">Last 30 Days</option>
+                        </select>
+                    </div>
+                    <div class="chart-container">
+                        <canvas id="usage-chart"></canvas>
+                    </div>
+                </div>
+
+                <!-- Top Endpoints -->
+                <div class="content-section">
+                    <div class="section-header">
+                        <h2 class="section-title">Top Endpoints</h2>
+                    </div>
+                    <table class="data-table">
+                        <thead>
+                            <tr>
+                                <th>Endpoint</th>
+                                <th>Method</th>
+                                <th>Calls</th>
+                                <th>Avg Response</th>
+                                <th>Success Rate</th>
+                                <th>Status</th>
+                            </tr>
+                        </thead>
+                        <tbody id="top-endpoints-table">
+                            <tr>
+                                <td>/api/v1/generate</td>
+                                <td><span class="method-badge post">POST</span></td>
+                                <td>12,345</td>
+                                <td>234ms</td>
+                                <td>99.8%</td>
+                                <td><span class="status-indicator healthy"></span>Healthy</td>
+                            </tr>
+                            <tr>
+                                <td>/api/v1/analyze</td>
+                                <td><span class="method-badge post">POST</span></td>
+                                <td>8,901</td>
+                                <td>456ms</td>
+                                <td>98.9%</td>
+                                <td><span class="status-indicator healthy"></span>Healthy</td>
+                            </tr>
+                            <tr>
+                                <td>/api/v1/templates</td>
+                                <td><span class="method-badge get">GET</span></td>
+                                <td>6,789</td>
+                                <td>123ms</td>
+                                <td>99.9%</td>
+                                <td><span class="status-indicator healthy"></span>Healthy</td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+            </section>
+
+            <!-- API Documentation Section -->
+            <section id="api-docs" class="content-view" style="display: none;">
+                <div class="header">
+                    <h1>API Documentation</h1>
+                    <div class="header-actions">
+                        <button class="btn" onclick="downloadOpenAPI()">
+                            📄 Download OpenAPI
+                        </button>
+                        <button class="btn" onclick="testEndpoint()">
+                            🧪 API Explorer
+                        </button>
+                    </div>
+                </div>
+
+                <div class="endpoint-list">
+                    <!-- Document Generation Endpoint -->
+                    <div class="endpoint-card">
+                        <div class="endpoint-header">
+                            <span class="method-badge post">POST</span>
+                            <span class="endpoint-path">/api/v1/generate</span>
+                            <div class="endpoint-stats">
+                                <span>📊 12.3k calls/day</span>
+                                <span>⚡ 234ms avg</span>
+                                <span>✅ 99.8% success</span>
+                            </div>
+                        </div>
+                        <p class="endpoint-description">
+                            Generate an MVP from a document. Supports multiple formats including Markdown, PDF, and chat logs.
+                        </p>
+                        <div class="code-block">
+                            <pre><code class="language-javascript">// Request
+{
+  "document": {
+    "type": "markdown",
+    "content": "# My SaaS Idea\\n\\nA platform for..."
+  },
+  "options": {
+    "template": "saas-mvp",
+    "deployment": "docker"
+  }
+}
+
+// Response
+{
+  "success": true,
+  "mvp": {
+    "id": "mvp_123",
+    "name": "My SaaS Platform",
+    "downloadUrl": "https://api.example.com/download/mvp_123.zip"
+  }
+}</code></pre>
+                        </div>
+                    </div>
+
+                    <!-- Template Listing Endpoint -->
+                    <div class="endpoint-card">
+                        <div class="endpoint-header">
+                            <span class="method-badge get">GET</span>
+                            <span class="endpoint-path">/api/v1/templates</span>
+                            <div class="endpoint-stats">
+                                <span>📊 6.8k calls/day</span>
+                                <span>⚡ 123ms avg</span>
+                                <span>✅ 99.9% success</span>
+                            </div>
+                        </div>
+                        <p class="endpoint-description">
+                            List all available MVP templates with filtering and search capabilities.
+                        </p>
+                        <div class="code-block">
+                            <pre><code class="language-javascript">// Query Parameters
+?category=saas&search=marketplace&limit=20
+
+// Response
+{
+  "templates": [{
+    "id": "saas-marketplace",
+    "name": "SaaS Marketplace",
+    "description": "Multi-vendor marketplace platform",
+    "category": "saas",
+    "popularity": 95
+  }],
+  "pagination": {
+    "total": 42,
+    "page": 1,
+    "limit": 20
+  }
+}</code></pre>
+                        </div>
+                    </div>
+                </div>
+            </section>
+
+            <!-- Form Builder Section -->
+            <section id="form-builder" class="content-view" style="display: none;">
+                <div class="header">
+                    <h1>Form Builder</h1>
+                    <div class="header-actions">
+                        <button class="btn" onclick="createNewForm()">
+                            ➕ New Form
+                        </button>
+                        <button class="btn" onclick="importForm()">
+                            📥 Import
+                        </button>
+                    </div>
+                </div>
+
+                <div class="content-section">
+                    <h2 class="section-title">Quick Start Templates</h2>
+                    <div class="metrics-grid">
+                        <div class="metric-card" onclick="useTemplate('onboarding')">
+                            <div class="metric-label">User Onboarding</div>
+                            <div class="metric-value">🚀</div>
+                            <div style="color: #888; font-size: 14px;">Multi-step wizard</div>
+                        </div>
+                        <div class="metric-card" onclick="useTemplate('contact')">
+                            <div class="metric-label">Contact Form</div>
+                            <div class="metric-value">✉️</div>
+                            <div style="color: #888; font-size: 14px;">Simple contact</div>
+                        </div>
+                        <div class="metric-card" onclick="useTemplate('survey')">
+                            <div class="metric-label">Feedback Survey</div>
+                            <div class="metric-value">📊</div>
+                            <div style="color: #888; font-size: 14px;">Customer feedback</div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="content-section">
+                    <h2 class="section-title">Form Preview</h2>
+                    <div class="form-preview">
+                        <div class="form-field">
+                            <label class="form-label">Full Name</label>
+                            <input type="text" class="form-input" placeholder="John Doe">
+                        </div>
+                        <div class="form-field">
+                            <label class="form-label">Email Address</label>
+                            <input type="email" class="form-input" placeholder="john@example.com">
+                        </div>
+                        <div class="form-field">
+                            <label class="form-label">Message</label>
+                            <textarea class="form-input" rows="4" placeholder="Your message here..."></textarea>
+                        </div>
+                        <button class="btn btn-primary" style="width: 100%;">Submit Form</button>
+                    </div>
+                </div>
+            </section>
+
+            <!-- Document Converter Section -->
+            <section id="doc-converter" class="content-view" style="display: none;">
+                <div class="header">
+                    <h1>Document to API Converter</h1>
+                </div>
+
+                <div class="content-section">
+                    <h2 class="section-title">Convert Your Document</h2>
+                    <div class="form-field">
+                        <label class="form-label">Document Type</label>
+                        <select class="form-input">
+                            <option>Markdown</option>
+                            <option>Plain Text</option>
+                            <option>JSON</option>
+                            <option>Chat Log</option>
+                        </select>
+                    </div>
+                    <div class="form-field">
+                        <label class="form-label">Paste your document content</label>
+                        <textarea class="form-input" rows="10" placeholder="# API Documentation
+
+## GET /users
+Returns a list of users..."></textarea>
+                    </div>
+                    <div style="display: flex; gap: 10px;">
+                        <button class="btn btn-primary" onclick="convertDocument()">
+                            🔄 Convert to OpenAPI
+                        </button>
+                        <button class="btn" onclick="previewConversion()">
+                            👁️ Preview
+                        </button>
+                    </div>
+                </div>
+
+                <div class="content-section" id="conversion-result" style="display: none;">
+                    <h2 class="section-title">Conversion Result</h2>
+                    <div class="code-block">
+                        <pre><code class="language-yaml" id="openapi-result"></code></pre>
+                    </div>
+                </div>
+            </section>
+        </main>
+    </div>
+
+    <script>
+        // Chart.js configuration
+        Chart.defaults.color = '#888';
+        Chart.defaults.borderColor = '#333';
+
+        // Initialize usage chart
+        const usageCtx = document.getElementById('usage-chart')?.getContext('2d');
+        let usageChart;
+
+        if (usageCtx) {
+            usageChart = new Chart(usageCtx, {
+                type: 'line',
+                data: {
+                    labels: generateTimeLabels(7),
+                    datasets: [{
+                        label: 'API Calls',
+                        data: generateRandomData(7, 1000, 2000),
+                        borderColor: '#00ff41',
+                        backgroundColor: 'rgba(0, 255, 65, 0.1)',
+                        tension: 0.3
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: {
+                        legend: {
+                            display: false
+                        }
+                    },
+                    scales: {
+                        y: {
+                            beginAtZero: true,
+                            grid: {
+                                color: '#333'
+                            }
+                        },
+                        x: {
+                            grid: {
+                                color: '#333'
+                            }
+                        }
+                    }
+                }
+            });
+        }
+
+        // Navigation
+        document.querySelectorAll('.nav-link').forEach(link => {
+            link.addEventListener('click', (e) => {
+                e.preventDefault();
+                const section = link.dataset.section;
+                showSection(section);
+                
+                // Update active state
+                document.querySelectorAll('.nav-link').forEach(l => l.classList.remove('active'));
+                link.classList.add('active');
+            });
+        });
+
+        function showSection(sectionId) {
+            document.querySelectorAll('.content-view').forEach(view => {
+                view.style.display = 'none';
+            });
+            const section = document.getElementById(sectionId);
+            if (section) {
+                section.style.display = 'block';
+            }
+        }
+
+        // Helper functions
+        function generateTimeLabels(days) {
+            const labels = [];
+            const now = new Date();
+            for (let i = days - 1; i >= 0; i--) {
+                const date = new Date(now);
+                date.setDate(date.getDate() - i);
+                labels.push(date.toLocaleDateString('en-US', { month: 'short', day: 'numeric' }));
+            }
+            return labels;
+        }
+
+        function generateRandomData(count, min, max) {
+            return Array.from({ length: count }, () => 
+                Math.floor(Math.random() * (max - min + 1)) + min
+            );
+        }
+
+        // Real-time updates simulation
+        setInterval(() => {
+            // Update metrics
+            const totalCalls = document.getElementById('total-calls');
+            if (totalCalls) {
+                const current = parseInt(totalCalls.textContent.replace(/,/g, ''));
+                totalCalls.textContent = (current + Math.floor(Math.random() * 10)).toLocaleString();
+            }
+
+            // Update response time
+            const avgResponse = document.getElementById('avg-response');
+            if (avgResponse) {
+                const variance = Math.random() * 20 - 10;
+                avgResponse.textContent = Math.floor(145 + variance) + 'ms';
+            }
+        }, 5000);
+
+        // Action handlers
+        function refreshData() {
+            console.log('Refreshing data...');
+            // Show loading state
+            showNotification('Data refreshed successfully!');
+        }
+
+        function exportReport() {
+            console.log('Exporting report...');
+            showNotification('Report exported successfully!');
+        }
+
+        function downloadOpenAPI() {
+            console.log('Downloading OpenAPI spec...');
+            showNotification('OpenAPI spec downloaded!');
+        }
+
+        function testEndpoint() {
+            console.log('Opening API explorer...');
+            showNotification('API Explorer opened in new tab!');
+        }
+
+        function createNewForm() {
+            console.log('Creating new form...');
+            showNotification('Form editor opened!');
+        }
+
+        function useTemplate(template) {
+            console.log('Using template:', template);
+            showNotification(`Loading ${template} template...`);
+        }
+
+        function convertDocument() {
+            console.log('Converting document...');
+            
+            // Simulate conversion
+            const result = document.getElementById('conversion-result');
+            const codeBlock = document.getElementById('openapi-result');
+            
+            if (result && codeBlock) {
+                result.style.display = 'block';
+                codeBlock.textContent = `openapi: 3.0.0
+info:
+  title: Generated API
+  version: 1.0.0
+  description: Auto-generated from document
+paths:
+  /users:
+    get:
+      summary: Returns a list of users
+      responses:
+        '200':
+          description: Successful response
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/User'
+components:
+  schemas:
+    User:
+      type: object
+      properties:
+        id:
+          type: string
+        name:
+          type: string
+        email:
+          type: string`;
+                
+                // Re-highlight
+                if (window.Prism) {
+                    Prism.highlightElement(codeBlock);
+                }
+            }
+            
+            showNotification('Document converted successfully!');
+        }
+
+        function showNotification(message) {
+            // Simple notification system
+            const notification = document.createElement('div');
+            notification.style.cssText = `
+                position: fixed;
+                top: 20px;
+                right: 20px;
+                background: #00ff41;
+                color: #000;
+                padding: 15px 20px;
+                border-radius: 4px;
+                box-shadow: 0 4px 6px rgba(0, 0, 0, 0.3);
+                z-index: 1000;
+                animation: slideIn 0.3s ease-out;
+            `;
+            notification.textContent = message;
+            document.body.appendChild(notification);
+            
+            setTimeout(() => {
+                notification.remove();
+            }, 3000);
+        }
+
+        // WebSocket connection for real-time updates
+        function connectWebSocket() {
+            const ws = new WebSocket('ws://localhost:8081');
+            
+            ws.onopen = () => {
+                console.log('Connected to real-time updates');
+            };
+            
+            ws.onmessage = (event) => {
+                const data = JSON.parse(event.data);
+                console.log('Real-time update:', data);
+                
+                // Handle different event types
+                switch (data.type) {
+                    case 'api:usage':
+                        updateAPIMetrics(data.payload);
+                        break;
+                    case 'form:submission':
+                        updateFormMetrics(data.payload);
+                        break;
+                    case 'anomaly:detected':
+                        showNotification(`⚠️ Anomaly detected: ${data.payload.message}`);
+                        break;
+                }
+            };
+            
+            ws.onerror = (error) => {
+                console.error('WebSocket error:', error);
+            };
+            
+            ws.onclose = () => {
+                console.log('WebSocket connection closed, reconnecting...');
+                setTimeout(connectWebSocket, 5000);
+            };
+        }
+
+        function updateAPIMetrics(metrics) {
+            // Update real-time metrics from WebSocket
+            if (metrics.totalCalls) {
+                const element = document.getElementById('total-calls');
+                if (element) element.textContent = metrics.totalCalls.toLocaleString();
+            }
+        }
+
+        function updateFormMetrics(metrics) {
+            // Update form metrics from WebSocket
+            console.log('Form metrics:', metrics);
+        }
+
+        // Initialize WebSocket on load
+        // connectWebSocket();
+
+        // Add CSS animation
+        const style = document.createElement('style');
+        style.textContent = `
+            @keyframes slideIn {
+                from {
+                    transform: translateX(100%);
+                    opacity: 0;
+                }
+                to {
+                    transform: translateX(0);
+                    opacity: 1;
+                }
+            }
+        `;
+        document.head.appendChild(style);
+    </script>
+</body>
+</html>

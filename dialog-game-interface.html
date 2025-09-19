@@ -1,0 +1,853 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Dialog Phone Mirror - Interactive Knot Game</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            background: #000;
+            color: #fff;
+            overflow: hidden;
+            height: 100vh;
+        }
+        
+        .game-container {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            height: 100vh;
+            position: relative;
+        }
+        
+        /* Left side - First person hands view */
+        .hands-view {
+            background: radial-gradient(ellipse at center, #1a1a1a 0%, #000 70%);
+            position: relative;
+            overflow: hidden;
+            border-right: 2px solid #333;
+        }
+        
+        .hands-container {
+            position: absolute;
+            bottom: -10%;
+            left: 50%;
+            transform: translateX(-50%);
+            width: 80%;
+            height: 60%;
+        }
+        
+        .hand {
+            position: absolute;
+            width: 200px;
+            height: 300px;
+            background: linear-gradient(135deg, #d4a373 0%, #c19660 100%);
+            border-radius: 50px 50px 100px 100px;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.5);
+        }
+        
+        .hand.left {
+            left: 10%;
+            transform: rotate(-15deg);
+        }
+        
+        .hand.right {
+            right: 10%;
+            transform: rotate(15deg);
+        }
+        
+        .phone {
+            position: absolute;
+            width: 250px;
+            height: 450px;
+            background: #1a1a1a;
+            border-radius: 30px;
+            left: 50%;
+            bottom: 30%;
+            transform: translateX(-50%);
+            box-shadow: 0 0 50px rgba(78, 204, 163, 0.5);
+            border: 2px solid #333;
+            transition: all 0.3s ease;
+        }
+        
+        .phone.ringing {
+            animation: ring 0.5s ease-in-out infinite alternate;
+        }
+        
+        @keyframes ring {
+            0% { transform: translateX(-50%) rotate(-2deg); }
+            100% { transform: translateX(-50%) rotate(2deg); }
+        }
+        
+        .phone-screen {
+            margin: 20px;
+            height: calc(100% - 40px);
+            background: #000;
+            border-radius: 20px;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            overflow: hidden;
+        }
+        
+        .phone-status {
+            color: #4ecca3;
+            font-size: 18px;
+            margin-bottom: 20px;
+            text-align: center;
+        }
+        
+        .answer-button {
+            width: 80px;
+            height: 80px;
+            background: #4ecca3;
+            border-radius: 50%;
+            border: none;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            font-size: 30px;
+            color: #000;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+        
+        .answer-button:hover {
+            transform: scale(1.1);
+            box-shadow: 0 0 30px rgba(78, 204, 163, 0.8);
+        }
+        
+        .answer-button.active {
+            background: #e94560;
+        }
+        
+        /* Right side - Mirror/hypnotoad view */
+        .mirror-view {
+            background: #000;
+            position: relative;
+            overflow: hidden;
+        }
+        
+        .hypno-container {
+            width: 100%;
+            height: 100%;
+            position: relative;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+        
+        .hypno-spiral {
+            width: 600px;
+            height: 600px;
+            position: absolute;
+            animation: spiral 10s linear infinite;
+        }
+        
+        @keyframes spiral {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+        
+        .spiral-layer {
+            position: absolute;
+            width: 100%;
+            height: 100%;
+            border-radius: 50%;
+            background: conic-gradient(
+                from 0deg,
+                transparent,
+                #4ecca3 90deg,
+                transparent 180deg,
+                #e94560 270deg,
+                transparent
+            );
+            opacity: 0.3;
+        }
+        
+        .spiral-layer:nth-child(1) { transform: scale(1); animation-duration: 8s; }
+        .spiral-layer:nth-child(2) { transform: scale(0.8); animation-duration: 6s; animation-direction: reverse; }
+        .spiral-layer:nth-child(3) { transform: scale(0.6); animation-duration: 4s; }
+        .spiral-layer:nth-child(4) { transform: scale(0.4); animation-duration: 3s; animation-direction: reverse; }
+        
+        .reflection-content {
+            position: relative;
+            z-index: 10;
+            text-align: center;
+            max-width: 600px;
+            padding: 2rem;
+        }
+        
+        .character-avatar {
+            width: 150px;
+            height: 150px;
+            border-radius: 50%;
+            background: radial-gradient(circle, #4ecca3 0%, #2a7f5e 100%);
+            margin: 0 auto 2rem;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 60px;
+            box-shadow: 0 0 50px rgba(78, 204, 163, 0.5);
+            animation: float 3s ease-in-out infinite;
+        }
+        
+        @keyframes float {
+            0%, 100% { transform: translateY(0); }
+            50% { transform: translateY(-20px); }
+        }
+        
+        .dialog-box {
+            background: rgba(26, 26, 26, 0.9);
+            border: 2px solid #4ecca3;
+            border-radius: 20px;
+            padding: 2rem;
+            backdrop-filter: blur(10px);
+            opacity: 0;
+            transform: translateY(20px);
+            transition: all 0.5s ease;
+        }
+        
+        .dialog-box.active {
+            opacity: 1;
+            transform: translateY(0);
+        }
+        
+        .dialog-text {
+            font-size: 20px;
+            line-height: 1.6;
+            margin-bottom: 1.5rem;
+            color: #fff;
+        }
+        
+        .dialog-choices {
+            display: flex;
+            flex-direction: column;
+            gap: 1rem;
+        }
+        
+        .choice-button {
+            background: rgba(78, 204, 163, 0.1);
+            border: 2px solid #4ecca3;
+            color: #4ecca3;
+            padding: 1rem;
+            border-radius: 10px;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            font-size: 16px;
+            text-align: left;
+        }
+        
+        .choice-button:hover {
+            background: rgba(78, 204, 163, 0.3);
+            transform: translateX(10px);
+        }
+        
+        .knot-visualization {
+            position: absolute;
+            top: 20px;
+            right: 20px;
+            width: 150px;
+            height: 150px;
+            opacity: 0;
+            transition: all 0.5s ease;
+        }
+        
+        .knot-visualization.active {
+            opacity: 1;
+        }
+        
+        .knot-svg {
+            width: 100%;
+            height: 100%;
+            animation: rotate 20s linear infinite;
+        }
+        
+        @keyframes rotate {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+        
+        .perfect-loop-gif {
+            position: absolute;
+            width: 100px;
+            height: 100px;
+            border-radius: 50%;
+            overflow: hidden;
+            opacity: 0.7;
+        }
+        
+        .perfect-loop-gif.tl { top: 50px; left: 50px; }
+        .perfect-loop-gif.tr { top: 50px; right: 50px; }
+        .perfect-loop-gif.bl { bottom: 50px; left: 50px; }
+        .perfect-loop-gif.br { bottom: 50px; right: 50px; }
+        
+        .perfect-loop-gif img {
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+        }
+        
+        .drawing-tools {
+            position: absolute;
+            bottom: 20px;
+            left: 20px;
+            display: flex;
+            gap: 1rem;
+            z-index: 100;
+        }
+        
+        .tool-button {
+            width: 50px;
+            height: 50px;
+            background: rgba(26, 26, 26, 0.9);
+            border: 2px solid #4ecca3;
+            border-radius: 10px;
+            color: #4ecca3;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 24px;
+            transition: all 0.3s ease;
+        }
+        
+        .tool-button:hover {
+            background: rgba(78, 204, 163, 0.2);
+            transform: scale(1.1);
+        }
+        
+        .tool-button.active {
+            background: #4ecca3;
+            color: #000;
+        }
+    </style>
+</head>
+<body>
+    <div class="game-container">
+        <!-- Left side - Hands holding phone -->
+        <div class="hands-view">
+            <div class="hands-container">
+                <div class="hand left"></div>
+                <div class="hand right"></div>
+                
+                <div class="phone" id="phone">
+                    <div class="phone-screen">
+                        <div class="phone-status" id="phone-status">
+                            📞 Incoming call...
+                        </div>
+                        <button class="answer-button" id="answer-btn" onclick="answerPhone()">
+                            📞
+                        </button>
+                        <div style="display: none;" id="call-info">
+                            <div style="color: #4ecca3; font-size: 14px; margin-top: 20px;">
+                                Call Duration: <span id="call-duration">0:00</span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- Drawing tools -->
+            <div class="drawing-tools">
+                <button class="tool-button" onclick="activateTool('pen')" title="Pen">✏️</button>
+                <button class="tool-button" onclick="activateTool('inkscape')" title="Inkscape">🎨</button>
+                <button class="tool-button" onclick="activateTool('obsidian')" title="Obsidian">📝</button>
+                <button class="tool-button" onclick="activateTool('camera')" title="Camera">📷</button>
+            </div>
+        </div>
+        
+        <!-- Right side - Mirror/reflection view -->
+        <div class="mirror-view">
+            <div class="hypno-container">
+                <!-- Hypnotic spiral background -->
+                <div class="hypno-spiral">
+                    <div class="spiral-layer"></div>
+                    <div class="spiral-layer"></div>
+                    <div class="spiral-layer"></div>
+                    <div class="spiral-layer"></div>
+                </div>
+                
+                <!-- Character and dialog -->
+                <div class="reflection-content">
+                    <div class="character-avatar" id="character">🪢</div>
+                    
+                    <div class="dialog-box" id="dialog-box">
+                        <div class="dialog-text" id="dialog-text">
+                            ...
+                        </div>
+                        <div class="dialog-choices" id="dialog-choices">
+                            <!-- Choices will be populated dynamically -->
+                        </div>
+                    </div>
+                </div>
+                
+                <!-- Knot visualization -->
+                <div class="knot-visualization" id="knot-viz">
+                    <svg class="knot-svg" viewBox="0 0 100 100">
+                        <path id="knot-path" stroke="#4ecca3" stroke-width="3" fill="none"/>
+                    </svg>
+                </div>
+                
+                <!-- Perfect loop GIFs -->
+                <div class="perfect-loop-gif tl">
+                    <div style="width: 100%; height: 100%; background: conic-gradient(from 0deg, #4ecca3, #e94560, #4ecca3); animation: rotate 3s linear infinite;"></div>
+                </div>
+                <div class="perfect-loop-gif tr">
+                    <div style="width: 100%; height: 100%; background: conic-gradient(from 90deg, #e94560, #4ecca3, #e94560); animation: rotate 4s linear infinite reverse;"></div>
+                </div>
+                <div class="perfect-loop-gif bl">
+                    <div style="width: 100%; height: 100%; background: conic-gradient(from 180deg, #4ecca3, #e94560, #4ecca3); animation: rotate 5s linear infinite;"></div>
+                </div>
+                <div class="perfect-loop-gif br">
+                    <div style="width: 100%; height: 100%; background: conic-gradient(from 270deg, #e94560, #4ecca3, #e94560); animation: rotate 6s linear infinite reverse;"></div>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <!-- Include frameworks -->
+    <script src="music-knot-web.js"></script>
+    <script src="creative-tools-integration.js"></script>
+    
+    <script>
+        // Initialize frameworks
+        const musicKnot = new MusicKnotFramework();
+        const creativeTools = new CreativeToolsIntegration();
+        
+        // Game state
+        let phoneAnswered = false;
+        let callDuration = 0;
+        let callTimer = null;
+        let currentDialog = null;
+        let knotSequence = [];
+        let activeTool = null;
+        
+        // Dialog tree structure
+        const dialogTree = {
+            start: {
+                speaker: "Unknown Caller",
+                text: "Hello? Can you hear me? I've been trying to reach you about the knots...",
+                choices: [
+                    { text: "Who is this?", next: "introduction" },
+                    { text: "What knots?", next: "explain_knots" },
+                    { text: "Wrong number.", next: "insist" }
+                ]
+            },
+            introduction: {
+                speaker: "The Knot Keeper",
+                text: "I am the keeper of mathematical harmonies. Each knot holds a musical secret. Your skills... they form patterns.",
+                choices: [
+                    { text: "Tell me about my skills.", next: "skill_revelation" },
+                    { text: "How do you know about me?", next: "mirror_truth" },
+                    { text: "Show me the patterns.", next: "knot_demonstration" }
+                ]
+            },
+            explain_knots: {
+                speaker: "The Knot Keeper",
+                text: "Look at your reflection. See how your abilities twist and turn? JavaScript spirals like a trefoil, Python coils like a figure-eight...",
+                choices: [
+                    { text: "I see them now.", next: "awakening" },
+                    { text: "This is confusing.", next: "clarity" },
+                    { text: "Teach me more.", next: "lesson_one" }
+                ]
+            },
+            insist: {
+                speaker: "The Knot Keeper",
+                text: "There are no wrong numbers in topology. Every connection has meaning. Look at your hands, then look beyond...",
+                choices: [
+                    { text: "Okay, I'm listening.", next: "introduction" },
+                    { text: "This is weird.", next: "embrace_weird" },
+                    { text: "What do you want?", next: "the_request" }
+                ]
+            },
+            skill_revelation: {
+                speaker: "The Knot Keeper",
+                text: "Your JavaScript forms a Lydian trefoil - 3 crossings of creative logic. Your Python? A Dorian figure-eight, infinite and balanced.",
+                choices: [
+                    { text: "Play the JavaScript knot.", next: "play_js", action: () => playSkillKnot('javascript') },
+                    { text: "Play the Python knot.", next: "play_python", action: () => playSkillKnot('python') },
+                    { text: "What about my other skills?", next: "full_repertoire" }
+                ]
+            },
+            mirror_truth: {
+                speaker: "The Knot Keeper",
+                text: "The mirror shows what your hands cannot see. Every line of code you write creates vibrations in the mathematical fabric.",
+                choices: [
+                    { text: "Am I creating music?", next: "music_reality" },
+                    { text: "Show me the vibrations.", next: "visualization" },
+                    { text: "I want to understand.", next: "deep_knowledge" }
+                ]
+            },
+            awakening: {
+                speaker: "The Knot Keeper", 
+                text: "Yes... the patterns are becoming clear. Draw what you see. Use any tool - pen, code, or thought. The knots respond to intention.",
+                choices: [
+                    { text: "I'll draw with code.", next: "code_drawing" },
+                    { text: "I'll use pen and paper.", next: "physical_drawing" },
+                    { text: "I'll visualize in my mind.", next: "mental_knots" }
+                ]
+            },
+            embrace_weird: {
+                speaker: "The Knot Keeper",
+                text: "Weird is just a word for patterns we haven't recognized yet. Your whole career has been building to this moment of understanding.",
+                choices: [
+                    { text: "I'm ready to learn.", next: "lesson_one" },
+                    { text: "Show me everything.", next: "full_revelation" },
+                    { text: "Start with something simple.", next: "two_note_topology" }
+                ]
+            },
+            two_note_topology: {
+                speaker: "The Knot Keeper",
+                text: "Perfect. Hold two notes in your mind. The interval between them determines the knot type. Minor second? An unknot. Perfect fifth? A square knot.",
+                choices: [
+                    { text: "Play C to G (Perfect 5th).", next: "interval_demo", action: () => playInterval(60, 67) },
+                    { text: "Play C to Eb (Minor 3rd).", next: "interval_demo", action: () => playInterval(60, 63) },
+                    { text: "Let me choose my own.", next: "custom_interval" }
+                ]
+            },
+            lesson_one: {
+                speaker: "The Knot Keeper",
+                text: "Lesson One: Every skill you possess has a frequency. When combined, they create mathematical braids that sing. Listen closely...",
+                choices: [
+                    { text: "Play my skill symphony.", next: "skill_symphony", action: () => playFullSkillset() },
+                    { text: "Teach me to braid.", next: "braiding_lesson" },
+                    { text: "I need more time.", next: "patience" }
+                ]
+            },
+            full_revelation: {
+                speaker: "The Knot Keeper",
+                text: "Very well. *The spiral intensifies* Your entire portfolio is a living knot diagram. Each project adds a crossing. Each solution changes the writhe.",
+                choices: [
+                    { text: "Transform my portfolio.", next: "portfolio_transformation", action: () => transformPortfolio() },
+                    { text: "Show me the diagram.", next: "living_diagram" },
+                    { text: "This is too much.", next: "gentle_return" }
+                ]
+            }
+        };
+        
+        // Initialize phone ringing
+        window.onload = () => {
+            setTimeout(() => {
+                startPhoneRinging();
+            }, 2000);
+        };
+        
+        function startPhoneRinging() {
+            const phone = document.getElementById('phone');
+            phone.classList.add('ringing');
+            
+            // Play ringing sound (using Music Knot Framework)
+            playRingtone();
+        }
+        
+        async function playRingtone() {
+            await musicKnot.init();
+            // Simple ring pattern
+            const ringPattern = [
+                { frequency: 440, startTime: 0, duration: 0.2, velocity: 0.5 },
+                { frequency: 440, startTime: 0.4, duration: 0.2, velocity: 0.5 },
+                { frequency: 0, startTime: 0.6, duration: 1.4, velocity: 0 }
+            ];
+            
+            // Repeat ring
+            const ringInterval = setInterval(() => {
+                if (!phoneAnswered) {
+                    musicKnot.playNoteSequence(ringPattern);
+                } else {
+                    clearInterval(ringInterval);
+                }
+            }, 2000);
+        }
+        
+        function answerPhone() {
+            if (phoneAnswered) return;
+            
+            phoneAnswered = true;
+            const phone = document.getElementById('phone');
+            const answerBtn = document.getElementById('answer-btn');
+            const phoneStatus = document.getElementById('phone-status');
+            const callInfo = document.getElementById('call-info');
+            
+            phone.classList.remove('ringing');
+            answerBtn.classList.add('active');
+            answerBtn.innerHTML = '📵';
+            phoneStatus.innerHTML = '📞 Connected';
+            callInfo.style.display = 'block';
+            
+            // Start call timer
+            startCallTimer();
+            
+            // Start dialog
+            setTimeout(() => {
+                startDialog('start');
+            }, 1000);
+            
+            // Play connection sound
+            playConnectionSound();
+        }
+        
+        function startCallTimer() {
+            callTimer = setInterval(() => {
+                callDuration++;
+                const minutes = Math.floor(callDuration / 60);
+                const seconds = callDuration % 60;
+                document.getElementById('call-duration').textContent = 
+                    `${minutes}:${seconds.toString().padStart(2, '0')}`;
+            }, 1000);
+        }
+        
+        async function playConnectionSound() {
+            const connectionNotes = [
+                { frequency: 800, startTime: 0, duration: 0.1, velocity: 0.3 },
+                { frequency: 1000, startTime: 0.1, duration: 0.1, velocity: 0.3 },
+                { frequency: 1200, startTime: 0.2, duration: 0.2, velocity: 0.3 }
+            ];
+            musicKnot.playNoteSequence(connectionNotes);
+        }
+        
+        function startDialog(dialogId) {
+            const dialog = dialogTree[dialogId];
+            if (!dialog) return;
+            
+            currentDialog = dialogId;
+            const dialogBox = document.getElementById('dialog-box');
+            const dialogText = document.getElementById('dialog-text');
+            const dialogChoices = document.getElementById('dialog-choices');
+            const character = document.getElementById('character');
+            
+            // Update character based on speaker
+            if (dialog.speaker === "The Knot Keeper") {
+                character.innerHTML = '🧙‍♂️';
+            }
+            
+            // Animate dialog appearance
+            dialogBox.classList.remove('active');
+            setTimeout(() => {
+                dialogText.textContent = dialog.text;
+                
+                // Clear and populate choices
+                dialogChoices.innerHTML = '';
+                dialog.choices.forEach((choice, index) => {
+                    const button = document.createElement('button');
+                    button.className = 'choice-button';
+                    button.textContent = `${index + 1}. ${choice.text}`;
+                    button.onclick = () => makeChoice(choice);
+                    dialogChoices.appendChild(button);
+                });
+                
+                dialogBox.classList.add('active');
+            }, 300);
+            
+            // Show knot visualization for certain dialogs
+            if (dialogId.includes('knot') || dialogId.includes('skill')) {
+                showKnotVisualization();
+            }
+        }
+        
+        function makeChoice(choice) {
+            // Execute any associated action
+            if (choice.action) {
+                choice.action();
+            }
+            
+            // Record choice in knot sequence
+            knotSequence.push(choice.text);
+            
+            // Move to next dialog
+            if (choice.next) {
+                startDialog(choice.next);
+            }
+        }
+        
+        async function playSkillKnot(skill) {
+            const knot = await musicKnot.playSkillMusic(skill);
+            updateKnotVisualization(knot);
+        }
+        
+        async function playInterval(note1, note2) {
+            const result = musicKnot.generateFromTwoNotes(note1, note2);
+            updateKnotVisualization(result.knot);
+        }
+        
+        async function playFullSkillset() {
+            const skills = ['javascript', 'python', 'react', 'nodejs', 'ai', 'blockchain'];
+            for (const skill of skills) {
+                await playSkillKnot(skill);
+                await new Promise(resolve => setTimeout(resolve, 1000));
+            }
+        }
+        
+        function updateKnotVisualization(knot) {
+            const knotViz = document.getElementById('knot-viz');
+            const knotPath = document.getElementById('knot-path');
+            
+            // Generate SVG path based on knot type
+            const paths = {
+                'trefoil': 'M50,20 Q80,40 50,50 Q20,60 50,80 Q80,60 50,50 Q20,40 50,20',
+                'figure-eight': 'M30,50 Q30,20 50,20 Q70,20 70,50 Q70,80 50,80 Q30,80 30,50 M70,50 Q70,20 50,20 Q30,20 30,50',
+                'square': 'M30,30 L70,30 L70,70 L30,70 Z',
+                'unknot': 'M50,20 A30,30 0 1,1 50,80 A30,30 0 1,1 50,20'
+            };
+            
+            knotPath.setAttribute('d', paths[knot.type] || paths['unknot']);
+            knotPath.style.stroke = knot.mode.color;
+            
+            knotViz.classList.add('active');
+        }
+        
+        function showKnotVisualization() {
+            const knotViz = document.getElementById('knot-viz');
+            knotViz.classList.add('active');
+        }
+        
+        function activateTool(tool) {
+            activeTool = tool;
+            
+            // Update button states
+            document.querySelectorAll('.tool-button').forEach(btn => {
+                btn.classList.remove('active');
+            });
+            event.target.classList.add('active');
+            
+            // Tool-specific actions
+            switch(tool) {
+                case 'pen':
+                    enableDrawingMode();
+                    break;
+                case 'inkscape':
+                    openInkscapeExport();
+                    break;
+                case 'obsidian':
+                    exportToObsidian();
+                    break;
+                case 'camera':
+                    activateCamera();
+                    break;
+            }
+        }
+        
+        function enableDrawingMode() {
+            // Initialize drawing canvas on hands view
+            if (!creativeTools.canvas) {
+                creativeTools.initDrawingCanvas('hands-view');
+            }
+            
+            // Listen for knot detection
+            window.addEventListener('knot-drawn', async (event) => {
+                const { type, analysis } = event.detail;
+                
+                // Play the drawn knot's music
+                const knot = musicKnot.createMusicalKnot({
+                    type: 'drawn',
+                    knotType: type,
+                    crossings: analysis.crossings,
+                    writhe: analysis.writhe
+                });
+                
+                const notes = musicKnot.generateNotesFromKnot(knot, {
+                    base: 60,
+                    pattern: [0, analysis.crossings % 12, analysis.writhe % 12]
+                });
+                
+                musicKnot.playNoteSequence(notes);
+                updateKnotVisualization(knot);
+                
+                // Show notification
+                showDrawingNotification(type, analysis);
+            });
+        }
+        
+        function showDrawingNotification(type, analysis) {
+            const notification = document.createElement('div');
+            notification.style.cssText = `
+                position: fixed;
+                top: 20px;
+                left: 50%;
+                transform: translateX(-50%);
+                background: rgba(26, 26, 26, 0.95);
+                border: 2px solid #4ecca3;
+                color: #fff;
+                padding: 1rem 2rem;
+                border-radius: 20px;
+                z-index: 2000;
+            `;
+            notification.innerHTML = `
+                <div style="text-align: center;">
+                    <div style="font-size: 2rem; margin-bottom: 0.5rem;">🪢</div>
+                    <div>Drew a ${type} knot!</div>
+                    <div style="font-size: 0.875rem; opacity: 0.7;">
+                        ${analysis.crossings} crossings • Writhe: ${analysis.writhe}
+                    </div>
+                </div>
+            `;
+            document.body.appendChild(notification);
+            
+            setTimeout(() => notification.remove(), 3000);
+        }
+        
+        function openInkscapeExport() {
+            if (creativeTools.knotPaths.length > 0) {
+                creativeTools.exportToInkscape();
+            } else {
+                // Export current knot visualization
+                const svgContent = document.querySelector('.knot-svg').outerHTML;
+                const blob = new Blob([svgContent], { type: 'image/svg+xml' });
+                const url = URL.createObjectURL(blob);
+                
+                const a = document.createElement('a');
+                a.href = url;
+                a.download = `knot-${currentDialog}-${Date.now()}.svg`;
+                a.click();
+            }
+        }
+        
+        function exportToObsidian() {
+            const sessionData = {
+                duration: `${Math.floor(callDuration / 60)}:${(callDuration % 60).toString().padStart(2, '0')}`,
+                knotType: musicKnot.currentKnot?.type || 'unknown',
+                crossings: musicKnot.currentKnot?.crossings || 0,
+                writhe: musicKnot.currentKnot?.writhe || 0,
+                mode: musicKnot.currentKnot?.mode.name || 'Chromatic',
+                notes: knotSequence.join(' → '),
+                notation: 'C D E F G', // Would generate actual notation
+                insights: `Dialog path created a ${musicKnot.currentKnot?.type || 'unique'} knot pattern`
+            };
+            
+            creativeTools.exportToObsidian(sessionData);
+        }
+        
+        function activateCamera() {
+            creativeTools.activateCamera();
+            
+            // Listen for knot detection in images
+            window.addEventListener('knot-detected-in-image', (event) => {
+                const { knotType, confidence } = event.detail;
+                
+                // Create knot from detected pattern
+                const knot = musicKnot.createMusicalKnot({
+                    type: 'captured',
+                    skill: knotType === 'trefoil' ? 'javascript' : 
+                           knotType === 'figure-eight' ? 'python' : 'react'
+                });
+                
+                musicKnot.playSkillMusic(knot.data.skill);
+                updateKnotVisualization(knot);
+            });
+        }
+        
+        function transformPortfolio() {
+            // Epic transformation sequence
+            document.body.style.animation = 'hue-rotate 2s';
+            playFullSkillset();
+        }
+    </script>
+</body>
+</html>

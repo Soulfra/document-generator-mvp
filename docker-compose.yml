@@ -54,7 +54,7 @@ services:
     healthcheck:
       test: ["CMD", "curl", "-f", "http://localhost:9000/minio/health/live"]
       interval: 30s
-      timeout: 20s
+      timeout: 10s
       retries: 3
     networks:
       - document-generator
@@ -251,6 +251,37 @@ services:
     networks:
       - document-generator
 
+  # Stripe API Service for payment processing
+  stripe-api:
+    build:
+      context: .
+      dockerfile: Dockerfile.stripe-api
+    container_name: document-generator-stripe-api
+    environment:
+      NODE_ENV: production
+      PORT: 3003
+      STRIPE_SECRET_KEY: ${STRIPE_SECRET_KEY:-sk_test_demo_key}
+      STRIPE_WEBHOOK_SECRET: ${STRIPE_WEBHOOK_SECRET:-whsec_demo_secret}
+      STRIPE_PUBLISHABLE_KEY: ${STRIPE_PUBLISHABLE_KEY:-pk_test_demo_key}
+      CORS_ORIGINS: "http://localhost:8080,https://soulfra.github.io,https://document-generator-mvp.vercel.app"
+      DATABASE_URL: postgresql://postgres:postgres@postgres:5432/document_generator
+      REDIS_URL: redis://redis:6379
+      ARWEAVE_SYNC_ENABLED: ${ARWEAVE_SYNC_ENABLED:-true}
+    ports:
+      - "3003:3003"
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:3003/api/stripe/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+    networks:
+      - document-generator
+
   # DISABLED: Prometheus for monitoring (resource intensive)
   # prometheus:
   #   image: prom/prometheus:latest
@@ -339,6 +370,58 @@ services:
       - document-generator
     profiles:
       - production
+
+  # Health Check API Service
+  health-check:
+    image: node:18-alpine
+    container_name: document-generator-health-check
+    working_dir: /app
+    command: ["node", "health-check.js"]
+    environment:
+      NODE_ENV: production
+      HEALTH_CHECK_PORT: 3333
+    ports:
+      - "3333:3333"
+    volumes:
+      - ./api/health-check.js:/app/health-check.js
+      - ./package.json:/app/package.json
+    healthcheck:
+      test: ["CMD", "wget", "--no-verbose", "--tries=1", "--spider", "http://localhost:3333/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+    networks:
+      - document-generator
+    depends_on:
+      - redis
+
+  # Status Monitoring Service
+  status-monitor:
+    image: node:18-alpine
+    container_name: document-generator-status-monitor
+    working_dir: /app
+    command: ["node", "status-monitor.js"]
+    environment:
+      NODE_ENV: production
+      STATUS_MONITOR_PORT: 3334
+      REDIS_HOST: redis
+      REDIS_PORT: 6379
+    ports:
+      - "3334:3334"
+      - "3335:3335"  # WebSocket port
+    volumes:
+      - ./services/status-monitor.js:/app/status-monitor.js
+      - ./package.json:/app/package.json
+    healthcheck:
+      test: ["CMD", "wget", "--no-verbose", "--tries=1", "--spider", "http://localhost:3334/"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+    networks:
+      - document-generator
+    depends_on:
+      redis:
+        condition: service_healthy
 
 networks:
   document-generator:

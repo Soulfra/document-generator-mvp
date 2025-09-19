@@ -1,0 +1,798 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>🎮 Game Action Visualizer - See Characters in Action!</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        
+        body {
+            font-family: 'Courier New', monospace;
+            background: #0a0a0a;
+            color: #fff;
+            overflow: hidden;
+        }
+        
+        .header {
+            background: rgba(0, 0, 0, 0.8);
+            border-bottom: 2px solid #ff6600;
+            padding: 10px 20px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            position: relative;
+            z-index: 100;
+        }
+        
+        .game-selector {
+            display: flex;
+            gap: 10px;
+        }
+        
+        .game-btn {
+            background: #333;
+            border: 2px solid #666;
+            color: #fff;
+            padding: 8px 15px;
+            cursor: pointer;
+            transition: all 0.3s;
+        }
+        
+        .game-btn:hover, .game-btn.active {
+            background: #ff6600;
+            border-color: #ff9900;
+        }
+        
+        .stats {
+            display: flex;
+            gap: 20px;
+            font-size: 0.9em;
+        }
+        
+        .stat-item {
+            padding: 5px 10px;
+            background: rgba(255, 102, 0, 0.2);
+            border: 1px solid #ff6600;
+            border-radius: 3px;
+        }
+        
+        .game-container {
+            display: none;
+            height: calc(100vh - 60px);
+            position: relative;
+            overflow: hidden;
+        }
+        
+        .game-container.active {
+            display: block;
+        }
+        
+        /* RuneScape Style Game */
+        .runescape-game {
+            background: linear-gradient(to bottom, #87CEEB 0%, #98D8E8 60%, #8B7355 60%, #654321 100%);
+            position: relative;
+        }
+        
+        .runescape-character {
+            position: absolute;
+            bottom: 40%;
+            left: 50%;
+            transform: translateX(-50%);
+            width: 40px;
+            height: 60px;
+            transition: all 0.5s;
+        }
+        
+        .character-body {
+            width: 100%;
+            height: 40px;
+            background: #ff9966;
+            border: 2px solid #000;
+            position: relative;
+        }
+        
+        .character-head {
+            width: 25px;
+            height: 25px;
+            background: #ffcc99;
+            border: 2px solid #000;
+            border-radius: 50%;
+            position: absolute;
+            top: -20px;
+            left: 50%;
+            transform: translateX(-50%);
+        }
+        
+        .pickaxe {
+            width: 30px;
+            height: 3px;
+            background: #666;
+            position: absolute;
+            right: -25px;
+            top: 15px;
+            transform-origin: left center;
+            animation: mine 1s infinite;
+        }
+        
+        .pickaxe::before {
+            content: '';
+            width: 10px;
+            height: 15px;
+            background: #999;
+            position: absolute;
+            right: -10px;
+            top: -6px;
+        }
+        
+        @keyframes mine {
+            0%, 100% { transform: rotate(-30deg); }
+            50% { transform: rotate(30deg); }
+        }
+        
+        .ore {
+            position: absolute;
+            width: 30px;
+            height: 30px;
+            background: radial-gradient(circle, #666 0%, #333 100%);
+            border: 2px solid #000;
+            border-radius: 40%;
+            bottom: 38%;
+        }
+        
+        .ore.iron { background: radial-gradient(circle, #8B7355 0%, #654321 100%); }
+        .ore.gold { background: radial-gradient(circle, #FFD700 0%, #B8860B 100%); }
+        .ore.mithril { background: radial-gradient(circle, #4169E1 0%, #191970 100%); }
+        
+        .ore-particle {
+            position: absolute;
+            width: 5px;
+            height: 5px;
+            background: #666;
+            border-radius: 50%;
+            animation: particle-fly 1s ease-out forwards;
+        }
+        
+        @keyframes particle-fly {
+            0% { transform: translate(0, 0) scale(1); opacity: 1; }
+            100% { transform: translate(var(--dx), var(--dy)) scale(0); opacity: 0; }
+        }
+        
+        .xp-drop {
+            position: absolute;
+            color: #ffff00;
+            font-weight: bold;
+            font-size: 18px;
+            text-shadow: 2px 2px 0 #000;
+            animation: xp-rise 2s ease-out forwards;
+            pointer-events: none;
+        }
+        
+        @keyframes xp-rise {
+            0% { transform: translateY(0); opacity: 1; }
+            100% { transform: translateY(-50px); opacity: 0; }
+        }
+        
+        .inventory {
+            position: absolute;
+            bottom: 10px;
+            right: 10px;
+            width: 200px;
+            background: rgba(0, 0, 0, 0.8);
+            border: 2px solid #666;
+            padding: 10px;
+        }
+        
+        .inventory-grid {
+            display: grid;
+            grid-template-columns: repeat(4, 40px);
+            gap: 5px;
+        }
+        
+        .inventory-slot {
+            width: 40px;
+            height: 40px;
+            background: rgba(50, 50, 50, 0.8);
+            border: 1px solid #666;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            position: relative;
+        }
+        
+        .inventory-item {
+            width: 30px;
+            height: 30px;
+            border-radius: 20%;
+        }
+        
+        .inventory-count {
+            position: absolute;
+            bottom: 2px;
+            right: 2px;
+            font-size: 10px;
+            color: #ffff00;
+            text-shadow: 1px 1px 0 #000;
+        }
+        
+        /* Minecraft Style Game */
+        .minecraft-game {
+            background: #87CEEB;
+            position: relative;
+        }
+        
+        .minecraft-world {
+            position: absolute;
+            bottom: 0;
+            width: 100%;
+            height: 40%;
+            display: flex;
+            align-items: flex-end;
+        }
+        
+        .block {
+            width: 50px;
+            height: 50px;
+            position: relative;
+            display: inline-block;
+        }
+        
+        .block.grass {
+            background: linear-gradient(to bottom, #7CFC00 0%, #7CFC00 20%, #8B4513 20%, #8B4513 100%);
+            border: 1px solid rgba(0, 0, 0, 0.2);
+        }
+        
+        .block.stone {
+            background: #696969;
+            border: 1px solid #000;
+            background-image: repeating-linear-gradient(45deg, transparent, transparent 5px, rgba(0,0,0,.1) 5px, rgba(0,0,0,.1) 10px);
+        }
+        
+        .block.breaking {
+            position: relative;
+            overflow: hidden;
+        }
+        
+        .block.breaking::after {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background-image: url('data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" width="50" height="50"><path d="M0,25 L10,15 L20,20 L30,10 L40,15 L50,25 L40,35 L30,30 L20,40 L10,35 Z" fill="none" stroke="black" stroke-width="2"/></svg>');
+            animation: break-block 1s linear infinite;
+        }
+        
+        @keyframes break-block {
+            0% { opacity: 0; }
+            50% { opacity: 1; }
+            100% { opacity: 0; }
+        }
+        
+        .minecraft-player {
+            position: absolute;
+            bottom: 40%;
+            left: 50%;
+            transform: translateX(-50%);
+            width: 40px;
+            height: 80px;
+        }
+        
+        .mc-head {
+            width: 40px;
+            height: 40px;
+            background: #ffcc99;
+            border: 2px solid #000;
+            position: relative;
+        }
+        
+        .mc-body {
+            width: 40px;
+            height: 40px;
+            background: #00aaff;
+            border: 2px solid #000;
+            margin-top: -2px;
+        }
+        
+        .mc-arm {
+            position: absolute;
+            width: 15px;
+            height: 40px;
+            background: #ffcc99;
+            border: 2px solid #000;
+            right: -17px;
+            top: 0;
+            transform-origin: top center;
+            animation: swing-arm 0.8s infinite;
+        }
+        
+        @keyframes swing-arm {
+            0%, 100% { transform: rotate(-45deg); }
+            50% { transform: rotate(45deg); }
+        }
+        
+        .block-drop {
+            position: absolute;
+            width: 20px;
+            height: 20px;
+            animation: drop-item 1s ease-in forwards;
+        }
+        
+        @keyframes drop-item {
+            0% { transform: translateY(0) rotate(0deg); }
+            100% { transform: translateY(200px) rotate(360deg); }
+        }
+        
+        /* Action Log */
+        .action-log {
+            position: absolute;
+            left: 10px;
+            top: 70px;
+            width: 300px;
+            max-height: 200px;
+            background: rgba(0, 0, 0, 0.8);
+            border: 2px solid #ff6600;
+            padding: 10px;
+            overflow-y: auto;
+        }
+        
+        .action-entry {
+            padding: 5px;
+            margin-bottom: 5px;
+            background: rgba(255, 102, 0, 0.1);
+            border-left: 3px solid #ff6600;
+            font-size: 12px;
+            animation: slide-in 0.3s ease-out;
+        }
+        
+        @keyframes slide-in {
+            from { transform: translateX(-20px); opacity: 0; }
+            to { transform: translateX(0); opacity: 1; }
+        }
+        
+        .timestamp {
+            color: #999;
+            font-size: 10px;
+        }
+        
+        /* API Status */
+        .api-status {
+            position: absolute;
+            right: 10px;
+            top: 70px;
+            width: 250px;
+            background: rgba(0, 0, 0, 0.8);
+            border: 2px solid #00ff00;
+            padding: 10px;
+        }
+        
+        .api-indicator {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 5px;
+            margin-bottom: 5px;
+        }
+        
+        .status-light {
+            width: 10px;
+            height: 10px;
+            border-radius: 50%;
+            background: #ff0000;
+        }
+        
+        .status-light.active {
+            background: #00ff00;
+            animation: pulse 1s infinite;
+        }
+        
+        @keyframes pulse {
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0.5; }
+        }
+    </style>
+</head>
+<body>
+    <div class="header">
+        <h1>🎮 GAME ACTION VISUALIZER</h1>
+        <div class="game-selector">
+            <button class="game-btn active" onclick="switchGame('runescape')">⛏️ RuneScape</button>
+            <button class="game-btn" onclick="switchGame('minecraft')">🟫 Minecraft</button>
+            <button class="game-btn" onclick="switchGame('roblox')">🎯 Roblox</button>
+        </div>
+        <div class="stats">
+            <div class="stat-item">Actions: <span id="action-count">0</span></div>
+            <div class="stat-item">XP: <span id="xp-count">0</span></div>
+            <div class="stat-item">Items: <span id="item-count">0</span></div>
+        </div>
+    </div>
+    
+    <!-- RuneScape Game -->
+    <div id="runescape" class="game-container runescape-game active">
+        <div class="runescape-character" id="rs-character">
+            <div class="character-head"></div>
+            <div class="character-body">
+                <div class="pickaxe"></div>
+            </div>
+        </div>
+        
+        <div class="inventory">
+            <h3 style="color: #ff6600; margin-bottom: 10px;">Inventory</h3>
+            <div class="inventory-grid" id="rs-inventory">
+                <!-- Inventory slots will be generated -->
+            </div>
+        </div>
+    </div>
+    
+    <!-- Minecraft Game -->
+    <div id="minecraft" class="game-container minecraft-game">
+        <div class="minecraft-world" id="mc-world">
+            <!-- Blocks will be generated -->
+        </div>
+        <div class="minecraft-player" id="mc-player">
+            <div class="mc-head"></div>
+            <div class="mc-body">
+                <div class="mc-arm"></div>
+            </div>
+        </div>
+    </div>
+    
+    <!-- Action Log -->
+    <div class="action-log">
+        <h3 style="color: #ff6600; margin-bottom: 10px;">Live Actions</h3>
+        <div id="action-log-content"></div>
+    </div>
+    
+    <!-- API Status -->
+    <div class="api-status">
+        <h3 style="color: #00ff00; margin-bottom: 10px;">System Status</h3>
+        <div class="api-indicator">
+            <span>Game Engine</span>
+            <div class="status-light" id="game-engine-status"></div>
+        </div>
+        <div class="api-indicator">
+            <span>Guardian Layer</span>
+            <div class="status-light" id="guardian-status"></div>
+        </div>
+        <div class="api-indicator">
+            <span>Groove Sync</span>
+            <div class="status-light" id="groove-status"></div>
+        </div>
+        <div class="api-indicator">
+            <span>Trust System</span>
+            <div class="status-light" id="trust-status"></div>
+        </div>
+    </div>
+    
+    <script>
+        let currentGame = 'runescape';
+        let actionCount = 0;
+        let totalXP = 0;
+        let inventory = {};
+        let miningInterval = null;
+        let blockBreakInterval = null;
+        
+        // Initialize inventory
+        function initializeInventory() {
+            const invGrid = document.getElementById('rs-inventory');
+            invGrid.innerHTML = '';
+            for (let i = 0; i < 28; i++) {
+                const slot = document.createElement('div');
+                slot.className = 'inventory-slot';
+                slot.id = `slot-${i}`;
+                invGrid.appendChild(slot);
+            }
+        }
+        
+        // Switch between games
+        function switchGame(game) {
+            currentGame = game;
+            document.querySelectorAll('.game-btn').forEach(btn => btn.classList.remove('active'));
+            document.querySelectorAll('.game-container').forEach(container => container.classList.remove('active'));
+            
+            event.target.classList.add('active');
+            document.getElementById(game).classList.add('active');
+            
+            // Clear intervals
+            if (miningInterval) clearInterval(miningInterval);
+            if (blockBreakInterval) clearInterval(blockBreakInterval);
+            
+            // Start game simulation
+            if (game === 'runescape') {
+                startRuneScapeSimulation();
+            } else if (game === 'minecraft') {
+                startMinecraftSimulation();
+            }
+            
+            logAction(`Switched to ${game.toUpperCase()} visualization`);
+        }
+        
+        // RuneScape Mining Simulation
+        function startRuneScapeSimulation() {
+            // Generate ore rocks
+            generateOreRocks();
+            
+            // Start mining animation
+            miningInterval = setInterval(() => {
+                mineOre();
+            }, 2000);
+        }
+        
+        function generateOreRocks() {
+            const game = document.getElementById('runescape');
+            const existingOres = game.querySelectorAll('.ore');
+            existingOres.forEach(ore => ore.remove());
+            
+            const oreTypes = ['iron', 'gold', 'mithril'];
+            const positions = [30, 60, 80];
+            
+            positions.forEach((pos, index) => {
+                const ore = document.createElement('div');
+                ore.className = `ore ${oreTypes[index % oreTypes.length]}`;
+                ore.style.left = `${pos}%`;
+                ore.id = `ore-${index}`;
+                game.appendChild(ore);
+            });
+        }
+        
+        function mineOre() {
+            const character = document.getElementById('rs-character');
+            const ores = document.querySelectorAll('.ore');
+            if (ores.length === 0) {
+                generateOreRocks();
+                return;
+            }
+            
+            // Pick random ore
+            const targetOre = ores[Math.floor(Math.random() * ores.length)];
+            const oreType = targetOre.classList[1];
+            
+            // Move character to ore
+            const oreLeft = parseFloat(targetOre.style.left);
+            character.style.left = `${oreLeft - 5}%`;
+            
+            // Create mining particles
+            for (let i = 0; i < 5; i++) {
+                setTimeout(() => {
+                    createParticle(targetOre);
+                }, i * 200);
+            }
+            
+            // Mine the ore after animation
+            setTimeout(() => {
+                // Remove ore
+                targetOre.remove();
+                
+                // Add to inventory
+                addToInventory(oreType);
+                
+                // Create XP drop
+                createXPDrop(character, getOreXP(oreType));
+                
+                // Log action
+                logAction(`Mined ${oreType} ore! +${getOreXP(oreType)} XP`);
+                
+                // Send to API
+                sendGameAction('mine', { ore: oreType, xp: getOreXP(oreType) });
+            }, 1000);
+        }
+        
+        function createParticle(ore) {
+            const particle = document.createElement('div');
+            particle.className = 'ore-particle';
+            particle.style.left = ore.style.left;
+            particle.style.bottom = '38%';
+            particle.style.setProperty('--dx', `${(Math.random() - 0.5) * 50}px`);
+            particle.style.setProperty('--dy', `${-Math.random() * 50}px`);
+            
+            document.getElementById('runescape').appendChild(particle);
+            
+            setTimeout(() => particle.remove(), 1000);
+        }
+        
+        function createXPDrop(element, xp) {
+            const drop = document.createElement('div');
+            drop.className = 'xp-drop';
+            drop.textContent = `+${xp} XP`;
+            drop.style.left = element.style.left;
+            drop.style.bottom = '60%';
+            
+            document.getElementById('runescape').appendChild(drop);
+            
+            totalXP += xp;
+            document.getElementById('xp-count').textContent = totalXP;
+            
+            setTimeout(() => drop.remove(), 2000);
+        }
+        
+        function getOreXP(oreType) {
+            const xpMap = { iron: 35, gold: 65, mithril: 80 };
+            return xpMap[oreType] || 25;
+        }
+        
+        function addToInventory(item) {
+            inventory[item] = (inventory[item] || 0) + 1;
+            updateInventoryDisplay();
+            
+            const totalItems = Object.values(inventory).reduce((sum, count) => sum + count, 0);
+            document.getElementById('item-count').textContent = totalItems;
+        }
+        
+        function updateInventoryDisplay() {
+            const itemColors = {
+                iron: '#8B7355',
+                gold: '#FFD700',
+                mithril: '#4169E1'
+            };
+            
+            let slotIndex = 0;
+            for (const [item, count] of Object.entries(inventory)) {
+                if (slotIndex >= 28) break;
+                
+                const slot = document.getElementById(`slot-${slotIndex}`);
+                slot.innerHTML = `
+                    <div class="inventory-item" style="background: ${itemColors[item] || '#666'}"></div>
+                    <span class="inventory-count">${count}</span>
+                `;
+                slotIndex++;
+            }
+        }
+        
+        // Minecraft Simulation
+        function startMinecraftSimulation() {
+            generateMinecraftWorld();
+            
+            blockBreakInterval = setInterval(() => {
+                breakBlock();
+            }, 3000);
+        }
+        
+        function generateMinecraftWorld() {
+            const world = document.getElementById('mc-world');
+            world.innerHTML = '';
+            
+            // Generate ground blocks
+            for (let i = 0; i < 20; i++) {
+                const block = document.createElement('div');
+                block.className = 'block grass';
+                block.id = `block-${i}`;
+                world.appendChild(block);
+            }
+            
+            // Add some stone blocks
+            for (let i = 0; i < 10; i++) {
+                const block = document.createElement('div');
+                block.className = 'block stone';
+                block.style.position = 'absolute';
+                block.style.left = `${Math.random() * 80 + 10}%`;
+                block.style.bottom = `${Math.random() * 20 + 40}%`;
+                block.id = `stone-${i}`;
+                world.appendChild(block);
+            }
+        }
+        
+        function breakBlock() {
+            const blocks = document.querySelectorAll('.block.stone');
+            if (blocks.length === 0) {
+                generateMinecraftWorld();
+                return;
+            }
+            
+            const targetBlock = blocks[Math.floor(Math.random() * blocks.length)];
+            const player = document.getElementById('mc-player');
+            
+            // Move player to block
+            player.style.left = targetBlock.style.left;
+            
+            // Add breaking animation
+            targetBlock.classList.add('breaking');
+            
+            setTimeout(() => {
+                // Create block drop
+                const drop = document.createElement('div');
+                drop.className = 'block-drop';
+                drop.style.left = targetBlock.style.left;
+                drop.style.bottom = targetBlock.style.bottom;
+                drop.style.background = '#696969';
+                
+                document.getElementById('minecraft').appendChild(drop);
+                
+                // Remove block
+                targetBlock.remove();
+                
+                // Remove drop after animation
+                setTimeout(() => drop.remove(), 1000);
+                
+                logAction('Broke stone block! +1 Cobblestone');
+                sendGameAction('break', { block: 'stone', drops: ['cobblestone'] });
+            }, 1000);
+        }
+        
+        // Action logging
+        function logAction(message) {
+            actionCount++;
+            document.getElementById('action-count').textContent = actionCount;
+            
+            const logContent = document.getElementById('action-log-content');
+            const entry = document.createElement('div');
+            entry.className = 'action-entry';
+            entry.innerHTML = `
+                <span class="timestamp">[${new Date().toLocaleTimeString()}]</span> ${message}
+            `;
+            
+            logContent.insertBefore(entry, logContent.firstChild);
+            
+            // Keep only last 10 entries
+            while (logContent.children.length > 10) {
+                logContent.removeChild(logContent.lastChild);
+            }
+        }
+        
+        // API Integration
+        async function sendGameAction(action, data) {
+            try {
+                // Send to game engine
+                await fetch('http://localhost:4009/games/action', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        game: currentGame,
+                        action: action,
+                        data: data,
+                        timestamp: Date.now()
+                    })
+                });
+                
+                // Send to guardian layer
+                await fetch('http://localhost:4300/guardian/defend', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        type: 'game_action',
+                        source: currentGame,
+                        severity: 0.1,
+                        damage: 0
+                    })
+                });
+            } catch (error) {
+                console.error('Failed to send game action:', error);
+            }
+        }
+        
+        // Check API status
+        async function checkAPIStatus() {
+            const apis = [
+                { id: 'game-engine-status', url: 'http://localhost:4009/games/status' },
+                { id: 'guardian-status', url: 'http://localhost:4300/guardian/status' },
+                { id: 'groove-status', url: 'http://localhost:3006/groove/status' },
+                { id: 'trust-status', url: 'http://localhost:3008/trust/status' }
+            ];
+            
+            for (const api of apis) {
+                try {
+                    const response = await fetch(api.url);
+                    if (response.ok) {
+                        document.getElementById(api.id).classList.add('active');
+                    }
+                } catch (error) {
+                    document.getElementById(api.id).classList.remove('active');
+                }
+            }
+        }
+        
+        // Initialize
+        document.addEventListener('DOMContentLoaded', () => {
+            initializeInventory();
+            startRuneScapeSimulation();
+            
+            // Check API status every 5 seconds
+            setInterval(checkAPIStatus, 5000);
+            checkAPIStatus();
+            
+            logAction('Game Action Visualizer initialized!');
+            logAction('You can now see characters mining ore and breaking blocks!');
+        });
+    </script>
+</body>
+</html>

@@ -1,0 +1,369 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Wormhole PWA Merger - Railway × Vercel DNS Fusion</title>
+    <link rel="manifest" href="/manifest.json">
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body {
+            background: #000;
+            color: #fff;
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+            overflow: hidden;
+            height: 100vh;
+        }
+        
+        #wormhole-container {
+            position: relative;
+            width: 100%;
+            height: 100%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+        
+        .deployment-portal {
+            position: absolute;
+            width: 300px;
+            height: 300px;
+            border-radius: 50%;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            cursor: pointer;
+            transition: all 0.5s ease;
+        }
+        
+        #railway-portal {
+            left: 20%;
+            background: radial-gradient(circle at center, #e66465, #9198e5);
+            box-shadow: 0 0 100px #e66465;
+            animation: pulse-railway 3s infinite;
+        }
+        
+        #vercel-portal {
+            right: 20%;
+            background: radial-gradient(circle at center, #000, #fff);
+            box-shadow: 0 0 100px #fff;
+            animation: pulse-vercel 3s infinite;
+        }
+        
+        @keyframes pulse-railway {
+            0%, 100% { transform: scale(1); }
+            50% { transform: scale(1.1); }
+        }
+        
+        @keyframes pulse-vercel {
+            0%, 100% { transform: scale(1); }
+            50% { transform: scale(1.1); }
+        }
+        
+        .portal-label {
+            font-size: 24px;
+            font-weight: bold;
+            margin-bottom: 10px;
+        }
+        
+        .portal-status {
+            font-size: 14px;
+            opacity: 0.8;
+        }
+        
+        #dns-merger {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            width: 400px;
+            padding: 40px;
+            background: rgba(255, 255, 255, 0.1);
+            backdrop-filter: blur(10px);
+            border-radius: 20px;
+            border: 2px solid rgba(255, 255, 255, 0.2);
+            text-align: center;
+            z-index: 10;
+        }
+        
+        .dns-input {
+            width: 100%;
+            padding: 15px;
+            margin: 10px 0;
+            background: rgba(0, 0, 0, 0.5);
+            border: 2px solid rgba(255, 255, 255, 0.3);
+            border-radius: 10px;
+            color: #fff;
+            font-size: 16px;
+        }
+        
+        .merge-button {
+            width: 100%;
+            padding: 20px;
+            margin-top: 20px;
+            background: linear-gradient(135deg, #e66465, #000, #fff);
+            border: none;
+            border-radius: 10px;
+            color: #fff;
+            font-size: 18px;
+            font-weight: bold;
+            cursor: pointer;
+            transition: all 0.3s ease;
+        }
+        
+        .merge-button:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 10px 30px rgba(255, 255, 255, 0.3);
+        }
+        
+        #wormhole-visual {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            pointer-events: none;
+            z-index: 5;
+        }
+        
+        .vanity-urls {
+            margin-top: 30px;
+            padding: 20px;
+            background: rgba(0, 0, 0, 0.5);
+            border-radius: 10px;
+        }
+        
+        .url-item {
+            display: flex;
+            justify-content: space-between;
+            padding: 10px;
+            margin: 5px 0;
+            background: rgba(255, 255, 255, 0.1);
+            border-radius: 5px;
+        }
+        
+        .loading-wormhole {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0, 0, 0, 0.9);
+            z-index: 100;
+            align-items: center;
+            justify-content: center;
+            flex-direction: column;
+        }
+        
+        .wormhole-spinner {
+            width: 200px;
+            height: 200px;
+            border: 10px solid transparent;
+            border-top: 10px solid #e66465;
+            border-right: 10px solid #fff;
+            border-radius: 50%;
+            animation: wormhole-spin 1s linear infinite;
+        }
+        
+        @keyframes wormhole-spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+    </style>
+</head>
+<body>
+    <canvas id="wormhole-visual"></canvas>
+    
+    <div id="wormhole-container">
+        <div id="railway-portal" class="deployment-portal" onclick="activatePortal('railway')">
+            <div class="portal-label">🚂 RAILWAY</div>
+            <div class="portal-status">document-generator.railway.app</div>
+        </div>
+        
+        <div id="vercel-portal" class="deployment-portal" onclick="activatePortal('vercel')">
+            <div class="portal-label">▲ VERCEL</div>
+            <div class="portal-status">document-generator.vercel.app</div>
+        </div>
+        
+        <div id="dns-merger">
+            <h1>🌀 Wormhole DNS Merger</h1>
+            <p style="margin: 20px 0; opacity: 0.8;">
+                Merge Railway + Vercel deployments through quantum DNS routing
+            </p>
+            
+            <input type="text" class="dns-input" id="custom-domain" placeholder="your-domain.com" value="">
+            <input type="text" class="dns-input" id="subdomain" placeholder="app (optional subdomain)" value="">
+            
+            <button class="merge-button" onclick="initiateMerge()">
+                🚀 INITIATE WORMHOLE MERGE
+            </button>
+            
+            <div class="vanity-urls">
+                <h3>Vanity URL Configuration</h3>
+                <div class="url-item">
+                    <span>Primary:</span>
+                    <span id="primary-url">app.your-domain.com</span>
+                </div>
+                <div class="url-item">
+                    <span>Railway:</span>
+                    <span>railway.your-domain.com</span>
+                </div>
+                <div class="url-item">
+                    <span>Vercel:</span>
+                    <span>vercel.your-domain.com</span>
+                </div>
+                <div class="url-item">
+                    <span>API:</span>
+                    <span>api.your-domain.com</span>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <div class="loading-wormhole" id="loading-wormhole">
+        <div class="wormhole-spinner"></div>
+        <h2 style="margin-top: 30px;">MERGING DEPLOYMENTS...</h2>
+        <p id="merge-status" style="margin-top: 20px; opacity: 0.8;">Initializing quantum DNS tunnel...</p>
+    </div>
+
+    <script>
+        // Wormhole visual effect
+        const canvas = document.getElementById('wormhole-visual');
+        const ctx = canvas.getContext('2d');
+        canvas.width = window.innerWidth;
+        canvas.height = window.innerHeight;
+        
+        let particles = [];
+        for (let i = 0; i < 100; i++) {
+            particles.push({
+                x: Math.random() * canvas.width,
+                y: Math.random() * canvas.height,
+                vx: (Math.random() - 0.5) * 2,
+                vy: (Math.random() - 0.5) * 2,
+                size: Math.random() * 3
+            });
+        }
+        
+        function animateWormhole() {
+            ctx.fillStyle = 'rgba(0, 0, 0, 0.05)';
+            ctx.fillRect(0, 0, canvas.width, canvas.height);
+            
+            // Draw connection between portals
+            const gradient = ctx.createLinearGradient(
+                window.innerWidth * 0.2, window.innerHeight / 2,
+                window.innerWidth * 0.8, window.innerHeight / 2
+            );
+            gradient.addColorStop(0, 'rgba(230, 100, 101, 0.3)');
+            gradient.addColorStop(0.5, 'rgba(255, 255, 255, 0.1)');
+            gradient.addColorStop(1, 'rgba(255, 255, 255, 0.3)');
+            
+            ctx.strokeStyle = gradient;
+            ctx.lineWidth = 50;
+            ctx.beginPath();
+            ctx.moveTo(window.innerWidth * 0.2 + 150, window.innerHeight / 2);
+            ctx.lineTo(window.innerWidth * 0.8 - 150, window.innerHeight / 2);
+            ctx.stroke();
+            
+            // Animate particles
+            particles.forEach(p => {
+                p.x += p.vx;
+                p.y += p.vy;
+                
+                if (p.x < 0 || p.x > canvas.width) p.vx *= -1;
+                if (p.y < 0 || p.y > canvas.height) p.vy *= -1;
+                
+                ctx.fillStyle = 'rgba(255, 255, 255, 0.5)';
+                ctx.beginPath();
+                ctx.arc(p.x, p.y, p.size, 0, Math.PI * 2);
+                ctx.fill();
+            });
+            
+            requestAnimationFrame(animateWormhole);
+        }
+        
+        animateWormhole();
+        
+        // Update vanity URLs based on input
+        document.getElementById('custom-domain').addEventListener('input', updateVanityUrls);
+        document.getElementById('subdomain').addEventListener('input', updateVanityUrls);
+        
+        function updateVanityUrls() {
+            const domain = document.getElementById('custom-domain').value || 'your-domain.com';
+            const subdomain = document.getElementById('subdomain').value || 'app';
+            
+            document.getElementById('primary-url').textContent = `${subdomain}.${domain}`;
+            document.querySelectorAll('.url-item span:last-child').forEach((span, index) => {
+                if (index === 1) span.textContent = `railway.${domain}`;
+                if (index === 2) span.textContent = `vercel.${domain}`;
+                if (index === 3) span.textContent = `api.${domain}`;
+            });
+        }
+        
+        function activatePortal(portal) {
+            const element = document.getElementById(`${portal}-portal`);
+            element.style.transform = 'scale(1.2)';
+            setTimeout(() => {
+                element.style.transform = 'scale(1)';
+            }, 300);
+        }
+        
+        async function initiateMerge() {
+            const domain = document.getElementById('custom-domain').value;
+            if (!domain) {
+                alert('Please enter your custom domain!');
+                return;
+            }
+            
+            const loading = document.getElementById('loading-wormhole');
+            const status = document.getElementById('merge-status');
+            loading.style.display = 'flex';
+            
+            // Simulate DNS configuration steps
+            const steps = [
+                'Initializing quantum DNS tunnel...',
+                'Connecting to Railway deployment...',
+                'Connecting to Vercel deployment...',
+                'Configuring edge network routing...',
+                'Setting up SSL certificates...',
+                'Establishing wormhole connection...',
+                'Merging deployment endpoints...',
+                'Optimizing global CDN distribution...',
+                'Finalizing vanity URL configuration...',
+                'Wormhole merge complete!'
+            ];
+            
+            for (let i = 0; i < steps.length; i++) {
+                status.textContent = steps[i];
+                await new Promise(resolve => setTimeout(resolve, 1000));
+            }
+            
+            // Generate DNS configuration
+            const dnsConfig = generateDNSConfig(domain);
+            
+            setTimeout(() => {
+                loading.style.display = 'none';
+                alert(`✅ Wormhole merge complete!\n\nAdd these DNS records to ${domain}:\n\n${dnsConfig}`);
+            }, 500);
+        }
+        
+        function generateDNSConfig(domain) {
+            const subdomain = document.getElementById('subdomain').value || 'app';
+            
+            return `A Record: @ → 76.76.21.21 (Vercel)
+CNAME: ${subdomain} → cname.vercel-dns.com
+CNAME: railway → document-generator.railway.app
+CNAME: vercel → document-generator.vercel.app
+CNAME: api → document-generator.railway.app
+TXT: _vercel → vc-domain-verify=...
+TXT: _railway → railway-verify=...`;
+        }
+        
+        // PWA installation
+        if ('serviceWorker' in navigator) {
+            navigator.serviceWorker.register('/sw.js').catch(e => console.log('SW registration failed'));
+        }
+    </script>
+</body>
+</html>

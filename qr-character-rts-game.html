@@ -1,0 +1,994 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>🎮 QR Character Mining RTS</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            font-family: 'Courier New', monospace;
+            background: linear-gradient(135deg, #2a4d3a 0%, #1a3d2a 100%);
+            color: #ffffff;
+            overflow: hidden;
+        }
+        
+        .game-container {
+            display: grid;
+            grid-template-columns: 250px 1fr 200px;
+            grid-template-rows: 60px 1fr 100px;
+            height: 100vh;
+            gap: 2px;
+        }
+        
+        .top-bar {
+            grid-column: 1 / -1;
+            background: linear-gradient(90deg, #654321 0%, #8B4513 100%);
+            display: flex;
+            align-items: center;
+            padding: 0 20px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.5);
+        }
+        
+        .resource-display {
+            display: flex;
+            gap: 30px;
+            margin-left: auto;
+        }
+        
+        .resource {
+            display: flex;
+            align-items: center;
+            gap: 5px;
+            background: rgba(0,0,0,0.3);
+            padding: 5px 10px;
+            border-radius: 15px;
+        }
+        
+        .left-panel {
+            background: linear-gradient(180deg, #4a4a4a 0%, #2a2a2a 100%);
+            border-right: 2px solid #666;
+            padding: 10px;
+        }
+        
+        .game-world {
+            background: linear-gradient(45deg, #228B22 0%, #32CD32 50%, #228B22 100%);
+            position: relative;
+            overflow: hidden;
+            cursor: crosshair;
+        }
+        
+        .right-panel {
+            background: linear-gradient(180deg, #4a4a4a 0%, #2a2a2a 100%);
+            border-left: 2px solid #666;
+            padding: 10px;
+        }
+        
+        .bottom-panel {
+            grid-column: 1 / -1;
+            background: linear-gradient(90deg, #654321 0%, #8B4513 100%);
+            display: flex;
+            align-items: center;
+            padding: 0 20px;
+            gap: 20px;
+        }
+        
+        .character-slot {
+            width: 60px;
+            height: 60px;
+            border: 2px solid #ffdd44;
+            border-radius: 10px;
+            background: rgba(0,0,0,0.3);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            cursor: pointer;
+            transition: all 0.3s ease;
+        }
+        
+        .character-slot:hover {
+            border-color: #ffff88;
+            background: rgba(255,255,255,0.1);
+        }
+        
+        .character-slot.selected {
+            border-color: #ff4444;
+            box-shadow: 0 0 15px rgba(255,68,68,0.5);
+        }
+        
+        .character {
+            position: absolute;
+            width: 32px;
+            height: 32px;
+            border-radius: 50%;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 20px;
+            border: 2px solid #fff;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.3);
+        }
+        
+        .character.selected {
+            border-color: #ff4444;
+            box-shadow: 0 0 15px rgba(255,68,68,0.8);
+            transform: scale(1.1);
+        }
+        
+        .character.mining {
+            animation: mining-bounce 0.5s infinite alternate;
+        }
+        
+        @keyframes mining-bounce {
+            0% { transform: translateY(0); }
+            100% { transform: translateY(-3px); }
+        }
+        
+        .resource-node {
+            position: absolute;
+            width: 40px;
+            height: 40px;
+            border-radius: 10px;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 24px;
+            border: 2px solid #333;
+            transition: all 0.3s ease;
+        }
+        
+        .resource-node:hover {
+            transform: scale(1.1);
+            box-shadow: 0 0 20px rgba(255,255,255,0.5);
+        }
+        
+        .gold-node {
+            background: linear-gradient(45deg, #FFD700, #FFA500);
+        }
+        
+        .iron-node {
+            background: linear-gradient(45deg, #C0C0C0, #808080);
+        }
+        
+        .wood-node {
+            background: linear-gradient(45deg, #8B4513, #A0522D);
+        }
+        
+        .qr-scanner {
+            background: rgba(0,0,0,0.9);
+            border: 2px solid #00ff00;
+            border-radius: 10px;
+            padding: 15px;
+            margin-bottom: 15px;
+        }
+        
+        .qr-scanner h3 {
+            color: #00ff00;
+            margin-bottom: 10px;
+        }
+        
+        .character-creator {
+            background: rgba(0,0,0,0.7);
+            border: 1px solid #666;
+            border-radius: 10px;
+            padding: 15px;
+            margin-bottom: 15px;
+        }
+        
+        .character-creator h3 {
+            color: #ffdd44;
+            margin-bottom: 10px;
+        }
+        
+        .attribute-slider {
+            margin: 10px 0;
+        }
+        
+        .attribute-slider label {
+            display: block;
+            margin-bottom: 5px;
+            font-size: 12px;
+        }
+        
+        .attribute-slider input {
+            width: 100%;
+            height: 20px;
+        }
+        
+        .btn {
+            background: linear-gradient(45deg, #ff6600, #ff8800);
+            color: white;
+            border: none;
+            padding: 8px 15px;
+            border-radius: 5px;
+            cursor: pointer;
+            font-family: inherit;
+            font-weight: bold;
+            transition: all 0.3s ease;
+            margin: 5px;
+        }
+        
+        .btn:hover {
+            background: linear-gradient(45deg, #ff8800, #ffaa00);
+            transform: translateY(-2px);
+        }
+        
+        .btn:active {
+            transform: translateY(0);
+        }
+        
+        .minimap {
+            width: 100%;
+            height: 150px;
+            background: rgba(0,0,0,0.5);
+            border: 2px solid #666;
+            border-radius: 10px;
+            position: relative;
+            margin-bottom: 15px;
+        }
+        
+        .minimap-character {
+            position: absolute;
+            width: 6px;
+            height: 6px;
+            background: #ff4444;
+            border-radius: 50%;
+        }
+        
+        .minimap-resource {
+            position: absolute;
+            width: 4px;
+            height: 4px;
+            border-radius: 50%;
+        }
+        
+        .action-log {
+            background: rgba(0,0,0,0.7);
+            border: 1px solid #666;
+            border-radius: 10px;
+            padding: 10px;
+            height: 200px;
+            overflow-y: auto;
+            font-size: 11px;
+        }
+        
+        .action-log-entry {
+            margin: 2px 0;
+            padding: 2px 5px;
+            border-radius: 3px;
+        }
+        
+        .action-log-entry.info {
+            background: rgba(0,100,255,0.2);
+        }
+        
+        .action-log-entry.success {
+            background: rgba(0,255,0,0.2);
+        }
+        
+        .action-log-entry.warning {
+            background: rgba(255,200,0,0.2);
+        }
+        
+        .health-bar {
+            position: absolute;
+            top: -8px;
+            left: 0;
+            width: 32px;
+            height: 4px;
+            background: rgba(255,0,0,0.3);
+            border-radius: 2px;
+        }
+        
+        .health-fill {
+            height: 100%;
+            background: linear-gradient(90deg, #ff0000, #00ff00);
+            border-radius: 2px;
+            transition: width 0.3s ease;
+        }
+        
+        .progress-bar {
+            position: absolute;
+            bottom: -8px;
+            left: 0;
+            width: 32px;
+            height: 4px;
+            background: rgba(0,0,255,0.3);
+            border-radius: 2px;
+            display: none;
+        }
+        
+        .progress-fill {
+            height: 100%;
+            background: linear-gradient(90deg, #0066ff, #00aaff);
+            border-radius: 2px;
+            transition: width 0.1s ease;
+        }
+        
+        .character.working .progress-bar {
+            display: block;
+        }
+        
+        #qr-video {
+            width: 100%;
+            max-width: 200px;
+            border-radius: 5px;
+        }
+        
+        .game-title {
+            font-size: 18px;
+            font-weight: bold;
+            color: #ffdd44;
+        }
+    </style>
+</head>
+<body>
+    <div class="game-container">
+        <!-- Top Resource Bar -->
+        <div class="top-bar">
+            <div class="game-title">🎮 QR Mining RTS - Age of Crypto</div>
+            <div class="resource-display">
+                <div class="resource">
+                    <span>🏅</span>
+                    <span id="gold-count">100</span>
+                </div>
+                <div class="resource">
+                    <span>⚡</span>
+                    <span id="iron-count">50</span>
+                </div>
+                <div class="resource">
+                    <span>🌲</span>
+                    <span id="wood-count">75</span>
+                </div>
+                <div class="resource">
+                    <span>👥</span>
+                    <span id="population">3/10</span>
+                </div>
+            </div>
+        </div>
+
+        <!-- Left Panel - Character Creation & QR Scanner -->
+        <div class="left-panel">
+            <!-- QR Code Scanner -->
+            <div class="qr-scanner">
+                <h3>📱 QR Character Scanner</h3>
+                <video id="qr-video" autoplay muted playsinline></video>
+                <button class="btn" onclick="startQRScanner()">Start Scanner</button>
+                <button class="btn" onclick="stopQRScanner()">Stop</button>
+                <div id="qr-result" style="margin-top: 10px; font-size: 10px;"></div>
+            </div>
+
+            <!-- Character Creator -->
+            <div class="character-creator">
+                <h3>⚔️ Character Creator</h3>
+                
+                <div class="attribute-slider">
+                    <label>Strength: <span id="strength-val">50</span></label>
+                    <input type="range" id="strength" min="10" max="100" value="50" 
+                           oninput="updateAttribute('strength', this.value)">
+                </div>
+                
+                <div class="attribute-slider">
+                    <label>Speed: <span id="speed-val">50</span></label>
+                    <input type="range" id="speed" min="10" max="100" value="50"
+                           oninput="updateAttribute('speed', this.value)">
+                </div>
+                
+                <div class="attribute-slider">
+                    <label>Mining: <span id="mining-val">50</span></label>
+                    <input type="range" id="mining" min="10" max="100" value="50"
+                           oninput="updateAttribute('mining', this.value)">
+                </div>
+                
+                <select id="character-skin" onchange="updateCharacterSkin()">
+                    <option value="🧙‍♂️">🧙‍♂️ Wizard</option>
+                    <option value="⚔️">⚔️ Warrior</option>
+                    <option value="🏹">🏹 Archer</option>
+                    <option value="🛡️">🛡️ Knight</option>
+                    <option value="⛏️">⛏️ Miner</option>
+                    <option value="🧝‍♀️">🧝‍♀️ Elf</option>
+                </select>
+                
+                <button class="btn" onclick="createCharacter()">Create Character</button>
+            </div>
+        </div>
+
+        <!-- Main Game World -->
+        <div class="game-world" id="game-world" 
+             onclick="handleWorldClick(event)"
+             oncontextmenu="handleRightClick(event)">
+            <!-- Characters and resources will be spawned here -->
+        </div>
+
+        <!-- Right Panel - Minimap & Actions -->
+        <div class="right-panel">
+            <!-- Minimap -->
+            <div class="minimap" id="minimap" onclick="handleMinimapClick(event)">
+                <div style="text-align: center; color: #888; font-size: 10px; margin-top: 5px;">Minimap</div>
+            </div>
+
+            <!-- Action Log -->
+            <div class="action-log" id="action-log">
+                <div class="action-log-entry info">Game initialized</div>
+                <div class="action-log-entry info">Scan QR code to create character</div>
+                <div class="action-log-entry info">Right-click to give orders</div>
+            </div>
+        </div>
+
+        <!-- Bottom Panel - Character Selection -->
+        <div class="bottom-panel">
+            <div>Selected Characters:</div>
+            <div class="character-slot" id="slot-0" onclick="selectCharacterSlot(0)">
+                <span style="color: #666;">Empty</span>
+            </div>
+            <div class="character-slot" id="slot-1" onclick="selectCharacterSlot(1)">
+                <span style="color: #666;">Empty</span>
+            </div>
+            <div class="character-slot" id="slot-2" onclick="selectCharacterSlot(2)">
+                <span style="color: #666;">Empty</span>
+            </div>
+            <div>
+                <button class="btn" onclick="selectAllCharacters()">Select All</button>
+                <button class="btn" onclick="stopAllCharacters()">Stop All</button>
+                <button class="btn" onclick="mineAllResources()">Mine All</button>
+            </div>
+        </div>
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/jsqr@1.4.0/dist/jsQR.js"></script>
+    <script>
+        // Game State
+        let gameState = {
+            resources: { gold: 100, iron: 50, wood: 75 },
+            population: { current: 0, max: 10 },
+            characters: [],
+            selectedCharacters: [],
+            resourceNodes: [],
+            gameWorld: null,
+            minimap: null,
+            actionLog: null,
+            qrScanner: null,
+            characterCount: 0
+        };
+
+        // Initialize Game
+        function initGame() {
+            gameState.gameWorld = document.getElementById('game-world');
+            gameState.minimap = document.getElementById('minimap');
+            gameState.actionLog = document.getElementById('action-log');
+            
+            // Create initial resource nodes
+            createResourceNodes();
+            
+            // Start game loop
+            setInterval(gameLoop, 100); // 10 FPS
+            
+            log('🎮 Game initialized - Age of Crypto RTS ready!');
+        }
+
+        // Game Loop
+        function gameLoop() {
+            updateCharacters();
+            updateMinimap();
+            updateResourceDisplay();
+        }
+
+        // Resource Node Creation
+        function createResourceNodes() {
+            const worldRect = gameState.gameWorld.getBoundingClientRect();
+            const nodeTypes = [
+                { type: 'gold', emoji: '🏅', class: 'gold-node', count: 8 },
+                { type: 'iron', emoji: '⚡', class: 'iron-node', count: 6 },
+                { type: 'wood', emoji: '🌲', class: 'wood-node', count: 10 }
+            ];
+
+            nodeTypes.forEach(nodeType => {
+                for (let i = 0; i < nodeType.count; i++) {
+                    const x = Math.random() * (worldRect.width - 60) + 20;
+                    const y = Math.random() * (worldRect.height - 60) + 20;
+                    
+                    const node = document.createElement('div');
+                    node.className = `resource-node ${nodeType.class}`;
+                    node.style.left = x + 'px';
+                    node.style.top = y + 'px';
+                    node.innerHTML = nodeType.emoji;
+                    node.dataset.type = nodeType.type;
+                    node.dataset.amount = Math.floor(Math.random() * 100) + 50;
+                    
+                    node.onclick = (e) => {
+                        e.stopPropagation();
+                        orderSelectedCharactersToMine(node);
+                    };
+                    
+                    gameState.gameWorld.appendChild(node);
+                    gameState.resourceNodes.push({
+                        element: node,
+                        type: nodeType.type,
+                        x: x,
+                        y: y,
+                        amount: parseInt(node.dataset.amount)
+                    });
+                }
+            });
+            
+            log(`🌍 Generated ${gameState.resourceNodes.length} resource nodes`);
+        }
+
+        // QR Scanner Functions
+        let qrStream = null;
+
+        async function startQRScanner() {
+            try {
+                const video = document.getElementById('qr-video');
+                qrStream = await navigator.mediaDevices.getUserMedia({ 
+                    video: { facingMode: 'environment' } 
+                });
+                video.srcObject = qrStream;
+                
+                // Start QR detection
+                const canvas = document.createElement('canvas');
+                const ctx = canvas.getContext('2d');
+                
+                function scanQR() {
+                    if (video.readyState === video.HAVE_ENOUGH_DATA) {
+                        canvas.width = video.videoWidth;
+                        canvas.height = video.videoHeight;
+                        ctx.drawImage(video, 0, 0);
+                        
+                        const imageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
+                        const code = jsQR(imageData.data, canvas.width, canvas.height);
+                        
+                        if (code) {
+                            processQRCode(code.data);
+                        }
+                    }
+                    requestAnimationFrame(scanQR);
+                }
+                
+                video.addEventListener('loadedmetadata', () => {
+                    scanQR();
+                });
+                
+                log('📱 QR Scanner started - scan a QR code to customize character');
+            } catch (error) {
+                log('❌ Camera access denied or not available');
+            }
+        }
+
+        function stopQRScanner() {
+            if (qrStream) {
+                qrStream.getTracks().forEach(track => track.stop());
+                qrStream = null;
+                document.getElementById('qr-video').srcObject = null;
+                log('📱 QR Scanner stopped');
+            }
+        }
+
+        function processQRCode(data) {
+            document.getElementById('qr-result').textContent = `Scanned: ${data}`;
+            
+            try {
+                // Try to parse as JSON for character data
+                const characterData = JSON.parse(data);
+                if (characterData.character) {
+                    applyQRCharacterData(characterData.character);
+                    return;
+                }
+            } catch {}
+            
+            // Generate character based on QR data hash
+            const hash = simpleHash(data);
+            const strength = (hash % 90) + 10;
+            const speed = ((hash * 2) % 90) + 10;
+            const mining = ((hash * 3) % 90) + 10;
+            const skins = ['🧙‍♂️', '⚔️', '🏹', '🛡️', '⛏️', '🧝‍♀️'];
+            const skin = skins[hash % skins.length];
+            
+            // Update sliders
+            document.getElementById('strength').value = strength;
+            document.getElementById('speed').value = speed;  
+            document.getElementById('mining').value = mining;
+            document.getElementById('character-skin').value = skin;
+            
+            updateAttribute('strength', strength);
+            updateAttribute('speed', speed);
+            updateAttribute('mining', mining);
+            updateCharacterSkin();
+            
+            log(`🎯 QR Code processed: Generated character from "${data.slice(0, 20)}..."`);
+            log(`⚔️ Stats: STR:${strength} SPD:${speed} MIN:${mining} Skin:${skin}`);
+        }
+
+        function simpleHash(str) {
+            let hash = 0;
+            for (let i = 0; i < str.length; i++) {
+                const char = str.charCodeAt(i);
+                hash = ((hash << 5) - hash) + char;
+                hash = hash & hash; // Convert to 32-bit integer
+            }
+            return Math.abs(hash);
+        }
+
+        function applyQRCharacterData(data) {
+            if (data.strength) document.getElementById('strength').value = data.strength;
+            if (data.speed) document.getElementById('speed').value = data.speed;
+            if (data.mining) document.getElementById('mining').value = data.mining;
+            if (data.skin) document.getElementById('character-skin').value = data.skin;
+            
+            updateAttribute('strength', data.strength || 50);
+            updateAttribute('speed', data.speed || 50);
+            updateAttribute('mining', data.mining || 50);
+            updateCharacterSkin();
+            
+            log('🎯 Applied QR character data directly');
+        }
+
+        // Character Creation
+        function updateAttribute(attr, value) {
+            document.getElementById(`${attr}-val`).textContent = value;
+        }
+
+        function updateCharacterSkin() {
+            // Visual preview could go here
+        }
+
+        function createCharacter() {
+            if (gameState.population.current >= gameState.population.max) {
+                log('❌ Population limit reached!');
+                return;
+            }
+
+            const strength = parseInt(document.getElementById('strength').value);
+            const speed = parseInt(document.getElementById('speed').value);
+            const mining = parseInt(document.getElementById('mining').value);
+            const skin = document.getElementById('character-skin').value;
+            
+            const worldRect = gameState.gameWorld.getBoundingClientRect();
+            const x = Math.random() * (worldRect.width - 100) + 50;
+            const y = Math.random() * (worldRect.height - 100) + 50;
+            
+            const character = {
+                id: gameState.characterCount++,
+                x: x,
+                y: y,
+                targetX: x,
+                targetY: y,
+                attributes: { strength, speed, mining },
+                skin: skin,
+                health: 100,
+                status: 'idle', // idle, moving, mining, fighting
+                target: null,
+                inventory: { gold: 0, iron: 0, wood: 0 },
+                element: null
+            };
+            
+            // Create DOM element
+            const charElement = document.createElement('div');
+            charElement.className = 'character';
+            charElement.style.left = x + 'px';
+            charElement.style.top = y + 'px';
+            charElement.innerHTML = `
+                ${skin}
+                <div class="health-bar">
+                    <div class="health-fill" style="width: 100%"></div>
+                </div>
+                <div class="progress-bar">
+                    <div class="progress-fill" style="width: 0%"></div>
+                </div>
+            `;
+            
+            charElement.onclick = (e) => {
+                e.stopPropagation();
+                selectCharacter(character);
+            };
+            
+            character.element = charElement;
+            gameState.gameWorld.appendChild(charElement);
+            gameState.characters.push(character);
+            gameState.population.current++;
+            
+            // Add to character slot
+            const emptySlot = document.querySelector('.character-slot span:contains("Empty")');
+            if (emptySlot) {
+                const slot = emptySlot.parentElement;
+                slot.innerHTML = skin;
+                slot.dataset.characterId = character.id;
+            }
+            
+            log(`⚔️ Created character ${character.id}: ${skin} (STR:${strength} SPD:${speed} MIN:${mining})`);
+        }
+
+        // Character Control
+        function selectCharacter(character) {
+            // Clear previous selections
+            gameState.selectedCharacters.forEach(char => {
+                char.element.classList.remove('selected');
+            });
+            
+            gameState.selectedCharacters = [character];
+            character.element.classList.add('selected');
+            
+            log(`👆 Selected character ${character.id}: ${character.skin}`);
+        }
+
+        function selectAllCharacters() {
+            gameState.selectedCharacters = [...gameState.characters];
+            gameState.characters.forEach(char => {
+                char.element.classList.add('selected');
+            });
+            log(`👥 Selected all ${gameState.characters.length} characters`);
+        }
+
+        function handleWorldClick(event) {
+            if (gameState.selectedCharacters.length === 0) return;
+            
+            const rect = gameState.gameWorld.getBoundingClientRect();
+            const x = event.clientX - rect.left;
+            const y = event.clientY - rect.top;
+            
+            gameState.selectedCharacters.forEach(character => {
+                orderCharacterToMove(character, x, y);
+            });
+        }
+
+        function handleRightClick(event) {
+            event.preventDefault();
+            
+            if (gameState.selectedCharacters.length === 0) return;
+            
+            const rect = gameState.gameWorld.getBoundingClientRect();
+            const x = event.clientX - rect.left;
+            const y = event.clientY - rect.top;
+            
+            // Check if right-clicking on a resource
+            const clickedResource = gameState.resourceNodes.find(node => {
+                const nodeRect = node.element.getBoundingClientRect();
+                const nodeX = nodeRect.left - rect.left + nodeRect.width / 2;
+                const nodeY = nodeRect.top - rect.top + nodeRect.height / 2;
+                const distance = Math.sqrt((x - nodeX) ** 2 + (y - nodeY) ** 2);
+                return distance < 30;
+            });
+            
+            if (clickedResource) {
+                orderSelectedCharactersToMine(clickedResource.element);
+            } else {
+                // Regular move command
+                gameState.selectedCharacters.forEach(character => {
+                    orderCharacterToMove(character, x, y);
+                });
+            }
+        }
+
+        function orderCharacterToMove(character, x, y) {
+            character.targetX = x;
+            character.targetY = y;
+            character.status = 'moving';
+            character.target = null;
+            character.element.classList.remove('mining', 'working');
+            
+            log(`🚶 Character ${character.id} moving to (${Math.round(x)}, ${Math.round(y)})`);
+        }
+
+        function orderSelectedCharactersToMine(resourceNode) {
+            gameState.selectedCharacters.forEach(character => {
+                const nodeRect = resourceNode.getBoundingClientRect();
+                const worldRect = gameState.gameWorld.getBoundingClientRect();
+                const nodeX = nodeRect.left - worldRect.left + nodeRect.width / 2;
+                const nodeY = nodeRect.top - worldRect.top + nodeRect.height / 2;
+                
+                character.targetX = nodeX;
+                character.targetY = nodeY;
+                character.status = 'moving';
+                character.target = resourceNode;
+                
+                log(`⛏️ Character ${character.id} ordered to mine ${resourceNode.dataset.type}`);
+            });
+        }
+
+        // Character Updates
+        function updateCharacters() {
+            gameState.characters.forEach(character => {
+                updateCharacterMovement(character);
+                updateCharacterActions(character);
+            });
+        }
+
+        function updateCharacterMovement(character) {
+            if (character.status !== 'moving') return;
+            
+            const dx = character.targetX - character.x;
+            const dy = character.targetY - character.y;
+            const distance = Math.sqrt(dx * dx + dy * dy);
+            
+            if (distance < 5) {
+                // Reached target
+                character.x = character.targetX;
+                character.y = character.targetY;
+                
+                if (character.target) {
+                    character.status = 'mining';
+                    character.element.classList.add('mining', 'working');
+                    log(`⛏️ Character ${character.id} started mining`);
+                } else {
+                    character.status = 'idle';
+                }
+            } else {
+                // Move towards target
+                const speed = character.attributes.speed / 1000; // Adjust speed
+                character.x += (dx / distance) * speed * 100;
+                character.y += (dy / distance) * speed * 100;
+            }
+            
+            // Update DOM position
+            character.element.style.left = character.x + 'px';
+            character.element.style.top = character.y + 'px';
+        }
+
+        function updateCharacterActions(character) {
+            if (character.status === 'mining' && character.target) {
+                const resourceType = character.target.dataset.type;
+                const resourceAmount = parseInt(character.target.dataset.amount);
+                
+                if (resourceAmount > 0) {
+                    // Mining progress based on mining attribute
+                    const miningRate = character.attributes.mining / 2000; // Adjust rate
+                    const progress = Math.min(100, (performance.now() % 2000) / 20);
+                    
+                    const progressBar = character.element.querySelector('.progress-fill');
+                    progressBar.style.width = progress + '%';
+                    
+                    // Collect resource periodically
+                    if (Math.random() < miningRate) {
+                        const collected = Math.floor(Math.random() * 3) + 1;
+                        character.inventory[resourceType] += collected;
+                        gameState.resources[resourceType] += collected;
+                        character.target.dataset.amount = resourceAmount - collected;
+                        
+                        log(`💰 Character ${character.id} mined ${collected} ${resourceType}`);
+                        
+                        if (parseInt(character.target.dataset.amount) <= 0) {
+                            character.target.style.opacity = '0.3';
+                            character.status = 'idle';
+                            character.target = null;
+                            character.element.classList.remove('mining', 'working');
+                            log(`🔴 Resource node depleted`);
+                        }
+                    }
+                }
+            }
+        }
+
+        // UI Updates
+        function updateResourceDisplay() {
+            document.getElementById('gold-count').textContent = gameState.resources.gold;
+            document.getElementById('iron-count').textContent = gameState.resources.iron;
+            document.getElementById('wood-count').textContent = gameState.resources.wood;
+            document.getElementById('population').textContent = 
+                `${gameState.population.current}/${gameState.population.max}`;
+        }
+
+        function updateMinimap() {
+            // Clear minimap
+            const minimap = gameState.minimap;
+            const existingDots = minimap.querySelectorAll('.minimap-character, .minimap-resource');
+            existingDots.forEach(dot => dot.remove());
+            
+            const worldRect = gameState.gameWorld.getBoundingClientRect();
+            const minimapRect = minimap.getBoundingClientRect();
+            const scaleX = minimapRect.width / worldRect.width;
+            const scaleY = minimapRect.height / worldRect.height;
+            
+            // Add characters to minimap
+            gameState.characters.forEach(character => {
+                const dot = document.createElement('div');
+                dot.className = 'minimap-character';
+                dot.style.left = (character.x * scaleX) + 'px';
+                dot.style.top = (character.y * scaleY) + 'px';
+                if (gameState.selectedCharacters.includes(character)) {
+                    dot.style.background = '#ffff00';
+                }
+                minimap.appendChild(dot);
+            });
+            
+            // Add resources to minimap
+            gameState.resourceNodes.forEach(node => {
+                if (parseInt(node.element.dataset.amount) > 0) {
+                    const dot = document.createElement('div');
+                    dot.className = 'minimap-resource';
+                    dot.style.left = (node.x * scaleX) + 'px';
+                    dot.style.top = (node.y * scaleY) + 'px';
+                    
+                    if (node.type === 'gold') dot.style.background = '#FFD700';
+                    else if (node.type === 'iron') dot.style.background = '#C0C0C0';
+                    else if (node.type === 'wood') dot.style.background = '#8B4513';
+                    
+                    minimap.appendChild(dot);
+                }
+            });
+        }
+
+        function handleMinimapClick(event) {
+            const rect = gameState.minimap.getBoundingClientRect();
+            const x = event.clientX - rect.left;
+            const y = event.clientY - rect.top;
+            
+            const worldRect = gameState.gameWorld.getBoundingClientRect();
+            const scaleX = worldRect.width / rect.width;
+            const scaleY = worldRect.height / rect.height;
+            
+            const worldX = x * scaleX;
+            const worldY = y * scaleY;
+            
+            gameState.selectedCharacters.forEach(character => {
+                orderCharacterToMove(character, worldX, worldY);
+            });
+        }
+
+        // Utility Functions
+        function log(message) {
+            const logEntry = document.createElement('div');
+            logEntry.className = 'action-log-entry info';
+            logEntry.textContent = `[${new Date().toLocaleTimeString()}] ${message}`;
+            gameState.actionLog.appendChild(logEntry);
+            gameState.actionLog.scrollTop = gameState.actionLog.scrollHeight;
+        }
+
+        function stopAllCharacters() {
+            gameState.characters.forEach(character => {
+                character.status = 'idle';
+                character.target = null;
+                character.element.classList.remove('mining', 'working');
+            });
+            log('🛑 All characters stopped');
+        }
+
+        function mineAllResources() {
+            gameState.characters.forEach(character => {
+                // Find nearest resource
+                let nearestResource = null;
+                let nearestDistance = Infinity;
+                
+                gameState.resourceNodes.forEach(node => {
+                    if (parseInt(node.element.dataset.amount) > 0) {
+                        const distance = Math.sqrt(
+                            (character.x - node.x) ** 2 + (character.y - node.y) ** 2
+                        );
+                        if (distance < nearestDistance) {
+                            nearestDistance = distance;
+                            nearestResource = node.element;
+                        }
+                    }
+                });
+                
+                if (nearestResource) {
+                    orderSelectedCharactersToMine(nearestResource);
+                }
+            });
+            log('⛏️ All characters ordered to mine nearest resources');
+        }
+
+        function selectCharacterSlot(slotIndex) {
+            const slot = document.getElementById(`slot-${slotIndex}`);
+            const characterId = slot.dataset.characterId;
+            
+            if (characterId) {
+                const character = gameState.characters.find(c => c.id == characterId);
+                if (character) {
+                    selectCharacter(character);
+                }
+            }
+        }
+
+        // Initialize game when page loads
+        window.addEventListener('load', initGame);
+    </script>
+</body>
+</html>

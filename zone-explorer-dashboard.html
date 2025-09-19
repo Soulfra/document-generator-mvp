@@ -1,0 +1,646 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>🗺️ Empire Zone Explorer - Simple Navigation</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Monaco', 'Menlo', 'Ubuntu Mono', monospace;
+            background: linear-gradient(135deg, #0a0a0a 0%, #1a1a2e 50%, #16213e 100%);
+            color: #00ff88;
+            min-height: 100vh;
+            overflow-x: hidden;
+        }
+
+        .header {
+            text-align: center;
+            padding: 20px;
+            background: rgba(0, 255, 136, 0.1);
+            border-bottom: 2px solid #00ff88;
+            margin-bottom: 30px;
+        }
+
+        .header h1 {
+            font-size: 2.5em;
+            margin-bottom: 10px;
+            text-shadow: 0 0 20px #00ff88;
+            animation: pulse 2s infinite;
+        }
+
+        .zone-navigator {
+            max-width: 1400px;
+            margin: 0 auto;
+            padding: 20px;
+        }
+
+        .current-zone {
+            background: rgba(0, 255, 136, 0.2);
+            border: 2px solid #00ff88;
+            border-radius: 15px;
+            padding: 25px;
+            margin-bottom: 30px;
+            text-align: center;
+        }
+
+        .current-zone h2 {
+            font-size: 2em;
+            margin-bottom: 10px;
+            color: #88ff00;
+        }
+
+        .zone-actions {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 15px;
+            margin-top: 20px;
+        }
+
+        .zone-action {
+            background: rgba(0, 255, 136, 0.1);
+            border: 1px solid #00ff88;
+            border-radius: 8px;
+            padding: 15px;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            text-align: center;
+        }
+
+        .zone-action:hover {
+            background: rgba(0, 255, 136, 0.3);
+            transform: translateY(-2px);
+        }
+
+        .zones-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+            gap: 20px;
+            margin-bottom: 40px;
+        }
+
+        .zone-card {
+            background: rgba(26, 26, 46, 0.8);
+            border: 2px solid;
+            border-radius: 15px;
+            padding: 20px;
+            transition: all 0.3s ease;
+            cursor: pointer;
+            position: relative;
+        }
+
+        .zone-card:hover {
+            transform: translateY(-5px);
+            box-shadow: 0 10px 30px rgba(0, 255, 136, 0.3);
+        }
+
+        .zone-card.current {
+            border-color: #88ff00;
+            background: rgba(136, 255, 0, 0.1);
+        }
+
+        .zone-header {
+            display: flex;
+            align-items: center;
+            gap: 15px;
+            margin-bottom: 15px;
+        }
+
+        .zone-emoji {
+            font-size: 3em;
+        }
+
+        .zone-info h3 {
+            margin: 0;
+            font-size: 1.3em;
+        }
+
+        .zone-description {
+            opacity: 0.8;
+            margin-bottom: 15px;
+            font-size: 0.9em;
+        }
+
+        .domain-count {
+            background: rgba(0, 255, 136, 0.2);
+            padding: 5px 10px;
+            border-radius: 20px;
+            font-size: 0.8em;
+            display: inline-block;
+            margin-bottom: 15px;
+        }
+
+        .voice-examples {
+            background: rgba(0, 0, 0, 0.5);
+            padding: 10px;
+            border-radius: 8px;
+            border-left: 4px solid #00ff88;
+        }
+
+        .voice-examples h4 {
+            font-size: 0.9em;
+            margin-bottom: 8px;
+            color: #88ff00;
+        }
+
+        .voice-example {
+            font-size: 0.8em;
+            opacity: 0.8;
+            margin: 3px 0;
+        }
+
+        .controls {
+            position: fixed;
+            top: 20px;
+            right: 20px;
+            background: rgba(26, 26, 46, 0.95);
+            border: 2px solid #00ff88;
+            border-radius: 15px;
+            padding: 20px;
+            width: 300px;
+            z-index: 1000;
+        }
+
+        .voice-button {
+            width: 60px;
+            height: 60px;
+            border-radius: 50%;
+            background: linear-gradient(45deg, #00ff88, #88ff00);
+            border: none;
+            color: #000;
+            font-size: 1.5em;
+            cursor: pointer;
+            margin-bottom: 15px;
+            transition: all 0.3s ease;
+        }
+
+        .voice-button:hover {
+            transform: scale(1.1);
+            box-shadow: 0 0 20px #00ff88;
+        }
+
+        .command-input {
+            width: 100%;
+            background: rgba(0, 0, 0, 0.5);
+            border: 1px solid #00ff88;
+            border-radius: 8px;
+            padding: 10px;
+            color: #00ff88;
+            font-family: inherit;
+            font-size: 0.9em;
+            margin-bottom: 10px;
+        }
+
+        .quick-cmd {
+            background: rgba(0, 255, 136, 0.1);
+            border: 1px solid #00ff88;
+            border-radius: 5px;
+            padding: 8px;
+            margin: 5px 0;
+            cursor: pointer;
+            font-size: 0.8em;
+            text-align: center;
+        }
+
+        .quick-cmd:hover {
+            background: rgba(0, 255, 136, 0.2);
+        }
+
+        .status-bar {
+            background: rgba(0, 0, 0, 0.8);
+            border-top: 2px solid #00ff88;
+            padding: 15px;
+            position: fixed;
+            bottom: 0;
+            left: 0;
+            right: 0;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            font-size: 0.9em;
+        }
+
+        .status-item {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .status-dot {
+            width: 8px;
+            height: 8px;
+            border-radius: 50%;
+            background: #00ff88;
+            animation: blink 1.5s infinite;
+        }
+
+        @keyframes pulse {
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0.7; }
+        }
+
+        @keyframes blink {
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0.3; }
+        }
+
+        .warp-button {
+            background: linear-gradient(45deg, #00ff88, #00ccff);
+            color: #0a0a0a;
+            padding: 8px 15px;
+            border: none;
+            border-radius: 6px;
+            cursor: pointer;
+            font-weight: bold;
+            font-size: 0.8em;
+            margin-top: 10px;
+            transition: all 0.3s ease;
+        }
+
+        .warp-button:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 4px 12px rgba(0, 255, 136, 0.3);
+        }
+
+        @media (max-width: 768px) {
+            .controls {
+                position: relative;
+                top: auto;
+                right: auto;
+                margin: 20px auto;
+                width: 90%;
+            }
+            
+            .zones-grid {
+                grid-template-columns: 1fr;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="header">
+        <h1>🗺️ Empire Zone Explorer</h1>
+        <p>Navigate your empire using simple zone-based commands</p>
+    </div>
+
+    <div class="controls">
+        <button class="voice-button" id="voiceButton" onclick="toggleVoice()">🎤</button>
+        <div id="voiceStatus">Click to give voice command</div>
+        <input type="text" class="command-input" id="commandInput" placeholder="Type command or say it..." onkeypress="handleKeyPress(event)">
+        
+        <div class="quick-cmd" onclick="executeCommand('What zone am I in?')">🎯 What zone am I in?</div>
+        <div class="quick-cmd" onclick="executeCommand('Show zone map')">🗺️ Show zone map</div>
+        <div class="quick-cmd" onclick="executeCommand('Warp to spawn zone')">🏠 Warp to spawn</div>
+        <div class="quick-cmd" onclick="executeCommand('Help me navigate')">❓ Help me navigate</div>
+    </div>
+
+    <div class="zone-navigator">
+        <div class="current-zone" id="currentZone">
+            <h2 id="currentZoneName">🏠 Spawn Zone</h2>
+            <p id="currentZoneDescription">Safe starting area - system overview and navigation</p>
+            <div class="zone-actions" id="currentZoneActions">
+                <!-- Actions will be populated by JavaScript -->
+            </div>
+        </div>
+
+        <div class="zones-grid" id="zonesGrid">
+            <!-- Zone cards will be populated by JavaScript -->
+        </div>
+    </div>
+
+    <div class="status-bar">
+        <div class="status-item">
+            <div class="status-dot"></div>
+            <span id="connectionStatus">Connected to Empire</span>
+        </div>
+        <div class="status-item">
+            <span id="currentTime"></span>
+        </div>
+        <div class="status-item">
+            <span id="zoneCount">Loading zones...</span>
+        </div>
+    </div>
+
+    <script>
+        // Global state
+        let currentZoneType = 'spawn';
+        let zones = {};
+        let isListening = false;
+        let recognition = null;
+
+        // Initialize the zone explorer
+        document.addEventListener('DOMContentLoaded', function() {
+            initializeZoneExplorer();
+            initializeVoiceRecognition();
+            setupTimeUpdater();
+            loadZoneData();
+        });
+
+        async function loadZoneData() {
+            try {
+                // Load zone map from the voice processor
+                const response = await fetch('http://localhost:7779/api/zones/map');
+                if (response.ok) {
+                    const data = await response.json();
+                    zones = data.zones || {};
+                    currentZoneType = data.current_zone?.type || 'spawn';
+                    renderZones();
+                    updateCurrentZone();
+                } else {
+                    // Use fallback data
+                    loadFallbackZones();
+                }
+            } catch (error) {
+                console.warn('Could not load zone data from server, using fallback');
+                loadFallbackZones();
+            }
+        }
+
+        function loadFallbackZones() {
+            zones = [
+                {
+                    type: 'spawn',
+                    name: 'Spawn Zone',
+                    emoji: '🏠',
+                    description: 'Safe starting area - system overview and navigation',
+                    color: '#00ff88',
+                    actions: ['show_empire_status', 'list_all_zones', 'navigate_to_zone'],
+                    voice_prompts: ['Where am I?', 'Show me the empire overview', 'Take me to tech zone'],
+                    domains: []
+                },
+                {
+                    type: 'tech_zone',
+                    name: 'Tech Zone',
+                    emoji: '💻',
+                    description: 'APIs, documentation, and developer tools',
+                    color: '#00ccff',
+                    actions: ['show_api_status', 'run_api_tests', 'search_documentation'],
+                    voice_prompts: ['Run API tests', 'Check system health', 'Search docs'],
+                    domains: []
+                },
+                {
+                    type: 'content_forge',
+                    name: 'Content Forge',
+                    emoji: '🎨',
+                    description: 'Content creation and generation',
+                    color: '#ff6600',
+                    actions: ['generate_content', 'run_gacha_generation', 'list_templates'],
+                    voice_prompts: ['Generate content', 'Roll the gacha machine', 'Show me templates'],
+                    domains: []
+                },
+                {
+                    type: 'ai_temple',
+                    name: 'AI Temple',
+                    emoji: '🧠',
+                    description: 'AI services and machine learning',
+                    color: '#ff3366',
+                    actions: ['chat_with_ai', 'run_ai_analysis', 'check_ai_performance'],
+                    voice_prompts: ['Talk to AI assistant', 'Analyze this data', 'What models are available?'],
+                    domains: []
+                }
+            ];
+            renderZones();
+            updateCurrentZone();
+        }
+
+        function renderZones() {
+            const zonesGrid = document.getElementById('zonesGrid');
+            zonesGrid.innerHTML = '';
+
+            zones.forEach(zone => {
+                const zoneCard = document.createElement('div');
+                zoneCard.className = `zone-card ${zone.type === currentZoneType ? 'current' : ''}`;
+                zoneCard.style.borderColor = zone.color || '#00ff88';
+                
+                const domainCount = zone.domains ? zone.domains.length : 0;
+                
+                zoneCard.innerHTML = `
+                    <div class="zone-header">
+                        <div class="zone-emoji">${zone.emoji}</div>
+                        <div class="zone-info">
+                            <h3>${zone.name}</h3>
+                        </div>
+                    </div>
+                    <div class="zone-description">${zone.description}</div>
+                    <div class="domain-count">${domainCount} domains</div>
+                    <button class="warp-button" onclick="warpToZone('${zone.type}')">
+                        Warp to ${zone.name}
+                    </button>
+                    <div class="voice-examples">
+                        <h4>Voice Commands:</h4>
+                        ${(zone.voice_prompts || []).slice(0, 3).map(prompt => 
+                            `<div class="voice-example">"${prompt}"</div>`
+                        ).join('')}
+                    </div>
+                `;
+                
+                zonesGrid.appendChild(zoneCard);
+            });
+
+            document.getElementById('zoneCount').textContent = `${zones.length} zones active`;
+        }
+
+        function updateCurrentZone() {
+            const currentZone = zones.find(z => z.type === currentZoneType) || zones[0];
+            
+            document.getElementById('currentZoneName').textContent = `${currentZone.emoji} ${currentZone.name}`;
+            document.getElementById('currentZoneDescription').textContent = currentZone.description;
+            
+            const actionsContainer = document.getElementById('currentZoneActions');
+            actionsContainer.innerHTML = '';
+            
+            (currentZone.actions || []).forEach(action => {
+                const actionButton = document.createElement('div');
+                actionButton.className = 'zone-action';
+                actionButton.textContent = action.replace(/_/g, ' ').replace(/\b\w/g, l => l.toUpperCase());
+                actionButton.onclick = () => executeZoneAction(action);
+                actionsContainer.appendChild(actionButton);
+            });
+        }
+
+        async function warpToZone(zoneType) {
+            const command = `Warp to ${zoneType.replace('_', ' ')}`;
+            await executeCommand(command);
+            
+            currentZoneType = zoneType;
+            updateCurrentZone();
+            renderZones();
+            
+            showNotification(`🌟 Warped to ${zones.find(z => z.type === zoneType)?.name || zoneType}`);
+        }
+
+        async function executeCommand(command) {
+            console.log('Executing command:', command);
+            
+            try {
+                const response = await fetch('http://localhost:7779/api/voice/text', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ 
+                        command: command,
+                        userId: 'zone_explorer'
+                    })
+                });
+                
+                if (response.ok) {
+                    const result = await response.json();
+                    showNotification(result.result?.response || 'Command executed');
+                    
+                    // Update zone if it changed
+                    if (result.zone && result.zone !== currentZoneType) {
+                        currentZoneType = result.zone;
+                        updateCurrentZone();
+                        renderZones();
+                    }
+                } else {
+                    showNotification('Command failed - check voice processor');
+                }
+            } catch (error) {
+                console.warn('Voice processor not available, simulating locally');
+                simulateCommand(command);
+            }
+        }
+
+        function simulateCommand(command) {
+            const lowerCommand = command.toLowerCase();
+            
+            if (lowerCommand.includes('what zone') || lowerCommand.includes('where am i')) {
+                const currentZone = zones.find(z => z.type === currentZoneType);
+                showNotification(`You are in the ${currentZone?.name || 'Unknown Zone'}`);
+            } else if (lowerCommand.includes('warp to')) {
+                // Extract zone type from command
+                for (const zone of zones) {
+                    if (lowerCommand.includes(zone.type.replace('_', ' ')) || lowerCommand.includes(zone.name.toLowerCase())) {
+                        warpToZone(zone.type);
+                        return;
+                    }
+                }
+                showNotification('Zone not found');
+            } else if (lowerCommand.includes('zone map')) {
+                showNotification(`Zone map: ${zones.length} zones available`);
+            } else {
+                showNotification(`Simulated: "${command}"`);
+            }
+        }
+
+        function executeZoneAction(action) {
+            const command = `Execute ${action.replace(/_/g, ' ')}`;
+            executeCommand(command);
+        }
+
+        function showNotification(message) {
+            // Simple notification system
+            const notification = document.createElement('div');
+            notification.style.cssText = `
+                position: fixed;
+                top: 20px;
+                left: 50%;
+                transform: translateX(-50%);
+                background: rgba(0, 255, 136, 0.9);
+                color: #000;
+                padding: 15px 25px;
+                border-radius: 8px;
+                z-index: 2000;
+                font-weight: bold;
+                animation: slideDown 0.3s ease;
+            `;
+            notification.textContent = message;
+            
+            document.body.appendChild(notification);
+            
+            setTimeout(() => {
+                notification.remove();
+            }, 3000);
+        }
+
+        // Voice recognition
+        function initializeVoiceRecognition() {
+            if ('webkitSpeechRecognition' in window || 'SpeechRecognition' in window) {
+                const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+                recognition = new SpeechRecognition();
+                
+                recognition.continuous = false;
+                recognition.interimResults = false;
+                recognition.lang = 'en-US';
+                
+                recognition.onresult = function(event) {
+                    const transcript = event.results[0][0].transcript;
+                    document.getElementById('commandInput').value = transcript;
+                    executeCommand(transcript);
+                };
+                
+                recognition.onend = function() {
+                    isListening = false;
+                    updateVoiceButton();
+                };
+            }
+        }
+
+        function toggleVoice() {
+            if (!recognition) {
+                showNotification('Voice recognition not supported');
+                return;
+            }
+            
+            if (isListening) {
+                recognition.stop();
+            } else {
+                recognition.start();
+                isListening = true;
+                updateVoiceButton();
+            }
+        }
+
+        function updateVoiceButton() {
+            const button = document.getElementById('voiceButton');
+            const status = document.getElementById('voiceStatus');
+            
+            if (isListening) {
+                button.innerHTML = '🔴';
+                status.textContent = 'Listening...';
+            } else {
+                button.innerHTML = '🎤';
+                status.textContent = 'Click to give voice command';
+            }
+        }
+
+        function handleKeyPress(event) {
+            if (event.key === 'Enter') {
+                const command = document.getElementById('commandInput').value;
+                if (command.trim()) {
+                    executeCommand(command);
+                    document.getElementById('commandInput').value = '';
+                }
+            }
+        }
+
+        function setupTimeUpdater() {
+            function updateTime() {
+                document.getElementById('currentTime').textContent = new Date().toLocaleTimeString();
+            }
+            
+            updateTime();
+            setInterval(updateTime, 1000);
+        }
+
+        function initializeZoneExplorer() {
+            console.log('🗺️ Zone Explorer initialized');
+            
+            // Add some CSS animations
+            const style = document.createElement('style');
+            style.textContent = `
+                @keyframes slideDown {
+                    from { transform: translateX(-50%) translateY(-100%); opacity: 0; }
+                    to { transform: translateX(-50%) translateY(0); opacity: 1; }
+                }
+            `;
+            document.head.appendChild(style);
+        }
+    </script>
+</body>
+</html>

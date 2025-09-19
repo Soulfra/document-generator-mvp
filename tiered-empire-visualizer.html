@@ -1,0 +1,450 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Tiered Empire - All Worlds Connected</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body {
+            font-family: 'Courier New', monospace;
+            background: #000;
+            color: #0f0;
+            overflow: hidden;
+            perspective: 1500px;
+        }
+        
+        #world-container {
+            position: absolute;
+            width: 100%;
+            height: 100%;
+            transform-style: preserve-3d;
+            animation: rotate 60s infinite linear;
+        }
+        
+        @keyframes rotate {
+            0% { transform: rotateY(0deg) rotateX(10deg); }
+            100% { transform: rotateY(360deg) rotateX(10deg); }
+        }
+        
+        .tier-layer {
+            position: absolute;
+            width: 80%;
+            height: 80%;
+            left: 10%;
+            top: 10%;
+            border: 2px solid;
+            border-radius: 20px;
+            transform-style: preserve-3d;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            flex-wrap: wrap;
+            padding: 20px;
+            backdrop-filter: blur(2px);
+        }
+        
+        /* Tier depths with decreasing opacity */
+        .tier-0 { 
+            transform: translateZ(500px); 
+            opacity: 1;
+            border-color: #FFD700;
+            background: rgba(255, 215, 0, 0.1);
+            z-index: 10;
+        }
+        
+        .tier-1 { 
+            transform: translateZ(300px); 
+            opacity: 0.9;
+            border-color: #00FF00;
+            background: rgba(0, 255, 0, 0.08);
+            z-index: 9;
+        }
+        
+        .tier-2 { 
+            transform: translateZ(100px); 
+            opacity: 0.8;
+            border-color: #00FFFF;
+            background: rgba(0, 255, 255, 0.06);
+            z-index: 8;
+        }
+        
+        .tier-3 { 
+            transform: translateZ(-100px); 
+            opacity: 0.7;
+            border-color: #FF00FF;
+            background: rgba(255, 0, 255, 0.05);
+            z-index: 7;
+        }
+        
+        .tier-4 { 
+            transform: translateZ(-300px); 
+            opacity: 0.6;
+            border-color: #FFA500;
+            background: rgba(255, 165, 0, 0.04);
+            z-index: 6;
+        }
+        
+        .tier-5 { 
+            transform: translateZ(-500px); 
+            opacity: 0.5;
+            border-color: #FF0000;
+            background: rgba(255, 0, 0, 0.03);
+            z-index: 5;
+        }
+        
+        .world-node {
+            background: rgba(0, 255, 0, 0.2);
+            border: 2px solid currentColor;
+            padding: 10px 20px;
+            margin: 10px;
+            border-radius: 10px;
+            cursor: pointer;
+            transition: all 0.3s;
+            font-size: 14px;
+            text-align: center;
+            position: relative;
+        }
+        
+        .world-node:hover {
+            transform: scale(1.2);
+            background: rgba(0, 255, 0, 0.4);
+            box-shadow: 0 0 20px currentColor;
+        }
+        
+        .tier-label {
+            position: absolute;
+            top: 10px;
+            left: 20px;
+            font-size: 24px;
+            font-weight: bold;
+            text-transform: uppercase;
+            letter-spacing: 3px;
+        }
+        
+        .connection-line {
+            position: absolute;
+            height: 2px;
+            background: linear-gradient(90deg, transparent, #0f0, transparent);
+            transform-origin: left center;
+            opacity: 0.5;
+            animation: pulse 2s infinite;
+        }
+        
+        @keyframes pulse {
+            0%, 100% { opacity: 0.3; }
+            50% { opacity: 0.8; }
+        }
+        
+        .info-panel {
+            position: fixed;
+            top: 20px;
+            right: 20px;
+            background: rgba(0, 0, 0, 0.9);
+            border: 2px solid #0f0;
+            padding: 20px;
+            border-radius: 10px;
+            max-width: 300px;
+            z-index: 1000;
+        }
+        
+        .control-panel {
+            position: fixed;
+            bottom: 20px;
+            left: 50%;
+            transform: translateX(-50%);
+            background: rgba(0, 0, 0, 0.9);
+            border: 2px solid #0f0;
+            padding: 15px;
+            border-radius: 20px;
+            display: flex;
+            gap: 10px;
+            z-index: 1000;
+        }
+        
+        button {
+            background: #0f0;
+            color: #000;
+            border: none;
+            padding: 10px 20px;
+            border-radius: 5px;
+            cursor: pointer;
+            font-weight: bold;
+            transition: all 0.3s;
+        }
+        
+        button:hover {
+            background: #0a0;
+            transform: scale(1.1);
+        }
+        
+        .sitemap-view {
+            position: fixed;
+            top: 20px;
+            left: 20px;
+            background: rgba(0, 0, 0, 0.9);
+            border: 2px solid #0f0;
+            padding: 20px;
+            border-radius: 10px;
+            max-height: 80vh;
+            overflow-y: auto;
+            z-index: 1000;
+            display: none;
+        }
+        
+        .sitemap-tree {
+            font-family: monospace;
+            white-space: pre;
+            font-size: 12px;
+        }
+        
+        /* Game world specific styles */
+        .runescape { color: #FFD700; }
+        .habbo { color: #FF69B4; }
+        .chronoquest { color: #9370DB; }
+        .shiprekt { color: #1E90FF; }
+        .cokemusic { color: #FF0000; }
+        .docgen { color: #00FF00; }
+    </style>
+</head>
+<body>
+    <div id="world-container">
+        <!-- Tier 0: Active Systems (Frontend) -->
+        <div class="tier-layer tier-0">
+            <div class="tier-label">TIER 0: ACTIVE FRONTEND</div>
+            <div class="world-node shiprekt">🚢 ShipRekt<br>Main Game</div>
+            <div class="world-node docgen">📄 Document Generator<br>Platform OS</div>
+            <div class="world-node">🎮 Unified Dashboard<br>Control Center</div>
+            <div class="world-node">💰 Empire Manager<br>Revenue Tracker</div>
+        </div>
+        
+        <!-- Tier 1: Game Worlds -->
+        <div class="tier-layer tier-1">
+            <div class="tier-label">TIER 1: GAME WORLDS</div>
+            <div class="world-node runescape">⚔️ RuneScape<br>Economy System</div>
+            <div class="world-node habbo">🏨 Habbo Hotel<br>Social Layer</div>
+            <div class="world-node chronoquest">⏰ ChronoQuest<br>Time System</div>
+            <div class="world-node cokemusic">🎵 Coke Music<br>Audio Engine</div>
+            <div class="world-node">🎪 D2JSP<br>Trading Forum</div>
+            <div class="world-node">🏰 Tycoon Games<br>Business Logic</div>
+        </div>
+        
+        <!-- Tier 2: Infrastructure -->
+        <div class="tier-layer tier-2">
+            <div class="tier-label">TIER 2: INFRASTRUCTURE</div>
+            <div class="world-node">🤖 Agent Systems<br>45 AI Agents</div>
+            <div class="world-node">🔗 Blockchain<br>87 Crypto Systems</div>
+            <div class="world-node">💎 Economy Core<br>Dual Economy</div>
+            <div class="world-node">🧠 AI Brains<br>Reasoning Engines</div>
+            <div class="world-node">📡 Routers<br>17 API Routers</div>
+        </div>
+        
+        <!-- Tier 3: Backend Services -->
+        <div class="tier-layer tier-3">
+            <div class="tier-label">TIER 3: BACKEND SERVICES</div>
+            <div class="world-node">🖥️ 48 Servers<br>Processing Power</div>
+            <div class="world-node">💾 Databases<br>Persistence Layer</div>
+            <div class="world-node">🔐 Auth Systems<br>Security Layer</div>
+            <div class="world-node">💳 Payment<br>Stripe Integration</div>
+            <div class="world-node">📊 Analytics<br>Monitoring</div>
+        </div>
+        
+        <!-- Tier 4: Platform Layer -->
+        <div class="tier-layer tier-4">
+            <div class="tier-label">TIER 4: PLATFORM LAYER</div>
+            <div class="world-node">🏗️ 261 Platforms<br>Microservices</div>
+            <div class="world-node">🎯 MCP Brain<br>Master Control</div>
+            <div class="world-node">🌐 API Gateway<br>Load Balancer</div>
+            <div class="world-node">📦 Docker<br>Containers</div>
+        </div>
+        
+        <!-- Tier 5: Foundation -->
+        <div class="tier-layer tier-5">
+            <div class="tier-label">TIER 5: FOUNDATION</div>
+            <div class="world-node">⚡ Node.js<br>Runtime</div>
+            <div class="world-node">🐳 Docker<br>Orchestration</div>
+            <div class="world-node">☁️ Cloud<br>Infrastructure</div>
+            <div class="world-node">🔧 1,156 Files<br>Code Base</div>
+        </div>
+    </div>
+    
+    <div class="info-panel">
+        <h3>🗺️ EMPIRE ARCHITECTURE</h3>
+        <p style="margin: 10px 0;">Total Systems: 1,156</p>
+        <p style="margin: 10px 0;">Active Tiers: 6</p>
+        <p style="margin: 10px 0;">Connected Worlds: 12+</p>
+        <div style="margin-top: 20px;">
+            <h4>Tier Opacity:</h4>
+            <div style="font-size: 12px;">
+                <div>Tier 0: 100% (Active)</div>
+                <div>Tier 1: 90% (Games)</div>
+                <div>Tier 2: 80% (Infra)</div>
+                <div>Tier 3: 70% (Backend)</div>
+                <div>Tier 4: 60% (Platform)</div>
+                <div>Tier 5: 50% (Foundation)</div>
+            </div>
+        </div>
+    </div>
+    
+    <div class="control-panel">
+        <button onclick="toggleRotation()">⏸️ Pause Rotation</button>
+        <button onclick="showSitemap()">🗺️ Show Sitemap</button>
+        <button onclick="connectAll()">🔌 Connect All</button>
+        <button onclick="activateEmpire()">👑 Activate Empire</button>
+    </div>
+    
+    <div class="sitemap-view" id="sitemap">
+        <h3>📋 COMPLETE SITEMAP</h3>
+        <div class="sitemap-tree">
+DOCUMENT-GENERATOR/
+├── TIER-0-FRONTEND/
+│   ├── ShipRekt (Main Game Interface)
+│   ├── Document Generator Platform
+│   ├── Empire Dashboard
+│   └── Revenue Tracker
+│
+├── TIER-1-GAME-WORLDS/
+│   ├── RuneScape Economy System
+│   ├── Habbo Hotel Social Layer
+│   ├── ChronoQuest Time Engine
+│   ├── Coke Music Audio System
+│   ├── D2JSP Trading Forum
+│   └── Tycoon Game Logic
+│
+├── TIER-2-INFRASTRUCTURE/
+│   ├── 45 Agent Systems
+│   ├── 87 Blockchain Components
+│   ├── Dual Economy Core
+│   ├── AI Reasoning Engines
+│   └── 17 API Routers
+│
+├── TIER-3-BACKEND/
+│   ├── 48 Server Instances
+│   ├── Database Layers
+│   ├── Auth Systems
+│   ├── Payment Processing
+│   └── Analytics Engine
+│
+├── TIER-4-PLATFORM/
+│   ├── 261 Platform Services
+│   ├── MCP Brain Control
+│   ├── API Gateway
+│   └── Container Orchestration
+│
+└── TIER-5-FOUNDATION/
+    ├── Node.js Runtime
+    ├── Docker Systems
+    ├── Cloud Infrastructure
+    └── 1,156 JavaScript Files
+        </div>
+        <button onclick="hideSitemap()" style="margin-top: 20px;">✖️ Close</button>
+    </div>
+    
+    <script>
+        let rotating = true;
+        const container = document.getElementById('world-container');
+        
+        // Toggle rotation
+        function toggleRotation() {
+            rotating = !rotating;
+            container.style.animationPlayState = rotating ? 'running' : 'paused';
+            event.target.textContent = rotating ? '⏸️ Pause Rotation' : '▶️ Resume Rotation';
+        }
+        
+        // Show/hide sitemap
+        function showSitemap() {
+            document.getElementById('sitemap').style.display = 'block';
+        }
+        
+        function hideSitemap() {
+            document.getElementById('sitemap').style.display = 'none';
+        }
+        
+        // Connect all systems
+        function connectAll() {
+            // Create connection lines between tiers
+            const tiers = document.querySelectorAll('.tier-layer');
+            const connections = [];
+            
+            for (let i = 0; i < tiers.length - 1; i++) {
+                const currentNodes = tiers[i].querySelectorAll('.world-node');
+                const nextNodes = tiers[i + 1].querySelectorAll('.world-node');
+                
+                currentNodes.forEach(node1 => {
+                    nextNodes.forEach(node2 => {
+                        if (Math.random() > 0.7) {
+                            createConnection(node1, node2);
+                        }
+                    });
+                });
+            }
+            
+            alert('✅ All tiers connected! Watch the data flow between layers.');
+        }
+        
+        // Create visual connection
+        function createConnection(node1, node2) {
+            const line = document.createElement('div');
+            line.className = 'connection-line';
+            
+            const rect1 = node1.getBoundingClientRect();
+            const rect2 = node2.getBoundingClientRect();
+            
+            const x1 = rect1.left + rect1.width / 2;
+            const y1 = rect1.top + rect1.height / 2;
+            const x2 = rect2.left + rect2.width / 2;
+            const y2 = rect2.top + rect2.height / 2;
+            
+            const length = Math.sqrt((x2 - x1) ** 2 + (y2 - y1) ** 2);
+            const angle = Math.atan2(y2 - y1, x2 - x1) * 180 / Math.PI;
+            
+            line.style.width = length + 'px';
+            line.style.left = x1 + 'px';
+            line.style.top = y1 + 'px';
+            line.style.transform = `rotate(${angle}deg)`;
+            
+            document.body.appendChild(line);
+            
+            setTimeout(() => line.remove(), 3000);
+        }
+        
+        // Activate empire
+        function activateEmpire() {
+            const nodes = document.querySelectorAll('.world-node');
+            let delay = 0;
+            
+            nodes.forEach(node => {
+                setTimeout(() => {
+                    node.style.background = 'rgba(0, 255, 0, 0.5)';
+                    node.style.boxShadow = '0 0 30px #0f0';
+                    
+                    setTimeout(() => {
+                        node.style.background = 'rgba(0, 255, 0, 0.2)';
+                        node.style.boxShadow = 'none';
+                    }, 1000);
+                }, delay);
+                
+                delay += 100;
+            });
+            
+            setTimeout(() => {
+                alert('👑 EMPIRE ACTIVATED! All 1,156 systems online!');
+            }, delay + 1000);
+        }
+        
+        // Node interactions
+        document.querySelectorAll('.world-node').forEach(node => {
+            node.addEventListener('click', function() {
+                const text = this.textContent;
+                alert(`System: ${text}\nStatus: Active\nConnections: Multiple\nClick "Connect All" to see data flow!`);
+            });
+        });
+        
+        // Keyboard controls
+        document.addEventListener('keydown', (e) => {
+            if (e.key === ' ') toggleRotation();
+            if (e.key === 'm') showSitemap();
+            if (e.key === 'c') connectAll();
+            if (e.key === 'a') activateEmpire();
+        });
+    </script>
+</body>
+</html>

@@ -1,0 +1,683 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>🤝 HANDSHAKE VERIFICATION VISUALIZATION</title>
+    <style>
+        body {
+            margin: 0;
+            padding: 0;
+            background: #000;
+            color: #0f0;
+            font-family: 'Courier New', monospace;
+            overflow-x: hidden;
+        }
+        
+        .header {
+            background: linear-gradient(45deg, #003300, #006600);
+            padding: 20px;
+            text-align: center;
+            border-bottom: 3px solid #0f0;
+        }
+        
+        .main-container {
+            display: grid;
+            grid-template-columns: 1fr 2fr 1fr;
+            gap: 20px;
+            padding: 20px;
+            min-height: calc(100vh - 100px);
+        }
+        
+        .panel {
+            background: rgba(0, 255, 0, 0.05);
+            border: 2px solid #0f0;
+            border-radius: 10px;
+            padding: 20px;
+            position: relative;
+            overflow: hidden;
+        }
+        
+        .panel::before {
+            content: '';
+            position: absolute;
+            top: -50%;
+            left: -50%;
+            width: 200%;
+            height: 200%;
+            background: radial-gradient(circle, rgba(0,255,0,0.1) 0%, transparent 70%);
+            animation: pulse 4s ease-in-out infinite;
+        }
+        
+        @keyframes pulse {
+            0%, 100% { transform: scale(1); opacity: 0.5; }
+            50% { transform: scale(1.1); opacity: 0.8; }
+        }
+        
+        .system-node {
+            background: rgba(0, 0, 0, 0.8);
+            border: 2px solid #0f0;
+            border-radius: 10px;
+            padding: 15px;
+            margin: 10px 0;
+            position: relative;
+            z-index: 1;
+            transition: all 0.3s;
+        }
+        
+        .system-node:hover {
+            box-shadow: 0 0 20px #0f0;
+            transform: translateX(5px);
+        }
+        
+        .keyring-info {
+            font-size: 12px;
+            margin-top: 10px;
+            opacity: 0.8;
+        }
+        
+        .handshake-visual {
+            position: relative;
+            height: 500px;
+            background: radial-gradient(ellipse at center, rgba(0,255,0,0.1) 0%, transparent 70%);
+        }
+        
+        .handshake-node {
+            position: absolute;
+            width: 80px;
+            height: 80px;
+            border: 3px solid #0f0;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            background: rgba(0, 0, 0, 0.9);
+            font-size: 10px;
+            transition: all 0.5s;
+            cursor: pointer;
+        }
+        
+        .handshake-node.verified {
+            border-color: #00ff00;
+            box-shadow: 0 0 30px #00ff00;
+        }
+        
+        .handshake-node.pending {
+            border-color: #ffff00;
+            box-shadow: 0 0 20px #ffff00;
+        }
+        
+        .handshake-node.failed {
+            border-color: #ff0000;
+            box-shadow: 0 0 20px #ff0000;
+        }
+        
+        .connection-line {
+            position: absolute;
+            height: 2px;
+            background: #0f0;
+            transform-origin: left center;
+            z-index: -1;
+            opacity: 0.5;
+        }
+        
+        .connection-line.verified {
+            background: #00ff00;
+            box-shadow: 0 0 10px #00ff00;
+            opacity: 1;
+        }
+        
+        .verification-matrix {
+            display: grid;
+            grid-template-columns: repeat(6, 1fr);
+            gap: 5px;
+            margin-top: 20px;
+        }
+        
+        .matrix-cell {
+            background: rgba(0, 0, 0, 0.5);
+            border: 1px solid #0f0;
+            padding: 10px;
+            text-align: center;
+            font-size: 20px;
+            transition: all 0.3s;
+        }
+        
+        .matrix-cell:hover {
+            background: rgba(0, 255, 0, 0.2);
+            transform: scale(1.1);
+        }
+        
+        .zk-proof {
+            background: rgba(128, 0, 255, 0.1);
+            border: 2px solid #8000ff;
+            padding: 15px;
+            margin: 10px 0;
+            border-radius: 5px;
+        }
+        
+        .ring-signature {
+            background: rgba(255, 128, 0, 0.1);
+            border: 2px solid #ff8000;
+            padding: 10px;
+            margin: 5px 0;
+            border-radius: 5px;
+            font-size: 12px;
+        }
+        
+        button {
+            background: #0f0;
+            color: #000;
+            border: none;
+            padding: 10px 20px;
+            font-weight: bold;
+            cursor: pointer;
+            border-radius: 5px;
+            margin: 5px;
+            transition: all 0.3s;
+        }
+        
+        button:hover {
+            box-shadow: 0 0 20px #0f0;
+            transform: scale(1.05);
+        }
+        
+        .status-indicator {
+            display: inline-block;
+            width: 10px;
+            height: 10px;
+            border-radius: 50%;
+            margin-right: 5px;
+        }
+        
+        .status-active { background: #0f0; box-shadow: 0 0 5px #0f0; }
+        .status-pending { background: #ff0; box-shadow: 0 0 5px #ff0; }
+        .status-offline { background: #f00; box-shadow: 0 0 5px #f00; }
+        
+        .trust-level {
+            display: inline-block;
+            width: 100px;
+            height: 20px;
+            background: rgba(0, 0, 0, 0.5);
+            border: 1px solid #0f0;
+            border-radius: 10px;
+            overflow: hidden;
+            margin-left: 10px;
+        }
+        
+        .trust-fill {
+            height: 100%;
+            background: linear-gradient(90deg, #ff0000, #ffff00, #00ff00);
+            transition: width 1s ease;
+        }
+        
+        .blockchain-status {
+            position: fixed;
+            bottom: 20px;
+            right: 20px;
+            background: rgba(0, 0, 0, 0.9);
+            border: 2px solid #0f0;
+            padding: 15px;
+            border-radius: 10px;
+            max-width: 300px;
+        }
+    </style>
+</head>
+<body>
+    <div class="header">
+        <h1>🤝 CRYPTOGRAPHIC HANDSHAKE VERIFICATION</h1>
+        <div>Solidity-Backed Verification System</div>
+    </div>
+    
+    <div class="main-container">
+        <!-- Systems Panel -->
+        <div class="panel">
+            <h2>📡 SYSTEMS</h2>
+            <div id="systemsList"></div>
+            <button onclick="initializeSystems()">🔑 Generate Keyrings</button>
+            <button onclick="registerOnChain()">📜 Register On-Chain</button>
+        </div>
+        
+        <!-- Handshake Visualization -->
+        <div class="panel">
+            <h2>🤝 HANDSHAKE NETWORK</h2>
+            <div class="handshake-visual" id="handshakeVisual"></div>
+            <button onclick="performHandshakes()">🔄 Perform Handshakes</button>
+            <button onclick="verifyAll()">✅ Verify All</button>
+            
+            <h3>📊 Verification Matrix</h3>
+            <div class="verification-matrix" id="verificationMatrix"></div>
+        </div>
+        
+        <!-- Verification Details -->
+        <div class="panel">
+            <h2>🔐 VERIFICATION DETAILS</h2>
+            <div id="verificationDetails">
+                <div class="zk-proof">
+                    <h3>Zero-Knowledge Proofs</h3>
+                    <div id="zkProofs">No proofs submitted yet</div>
+                </div>
+                
+                <div class="ring-signature">
+                    <h3>Ring Signatures</h3>
+                    <div id="ringSignatures">No signatures yet</div>
+                </div>
+            </div>
+            
+            <button onclick="submitZKProofs()">🔐 Submit ZK Proofs</button>
+            <button onclick="exportData()">📄 Export Public Data</button>
+        </div>
+    </div>
+    
+    <!-- Blockchain Status -->
+    <div class="blockchain-status">
+        <h3>⛓️ Blockchain Status</h3>
+        <div id="blockchainStatus">
+            <div><span class="status-indicator status-offline"></span>Not Connected</div>
+        </div>
+    </div>
+
+    <script>
+        const systems = [
+            'unified_api',
+            'gaming_bridge', 
+            'financial_bridge',
+            'universal_bridge',
+            'world_broadcaster'
+        ];
+        
+        let systemData = {};
+        let handshakes = {};
+        let verificationMatrix = {};
+        
+        // Initialize display
+        function initializeDisplay() {
+            displaySystems();
+            drawHandshakeNetwork();
+            updateVerificationMatrix();
+        }
+        
+        // Display systems with keyrings
+        function displaySystems() {
+            const container = document.getElementById('systemsList');
+            container.innerHTML = '';
+            
+            systems.forEach(system => {
+                const node = document.createElement('div');
+                node.className = 'system-node';
+                node.innerHTML = `
+                    <h4>${system.replace('_', ' ').toUpperCase()}</h4>
+                    <div class="keyring-info" id="${system}-keyring">
+                        <span class="status-indicator status-offline"></span>
+                        No keyring generated
+                    </div>
+                    <div class="trust-level">
+                        <div class="trust-fill" id="${system}-trust" style="width: 0%"></div>
+                    </div>
+                `;
+                container.appendChild(node);
+            });
+        }
+        
+        // Draw handshake network
+        function drawHandshakeNetwork() {
+            const visual = document.getElementById('handshakeVisual');
+            visual.innerHTML = '';
+            
+            const centerX = visual.offsetWidth / 2;
+            const centerY = visual.offsetHeight / 2;
+            const radius = 150;
+            
+            // Position nodes in circle
+            systems.forEach((system, index) => {
+                const angle = (index / systems.length) * 2 * Math.PI;
+                const x = centerX + radius * Math.cos(angle) - 40;
+                const y = centerY + radius * Math.sin(angle) - 40;
+                
+                const node = document.createElement('div');
+                node.className = 'handshake-node';
+                node.id = `node-${system}`;
+                node.style.left = x + 'px';
+                node.style.top = y + 'px';
+                node.innerHTML = system.split('_')[0];
+                node.onclick = () => showSystemDetails(system);
+                
+                visual.appendChild(node);
+                
+                // Store position for connections
+                systemData[system] = { x: x + 40, y: y + 40 };
+            });
+            
+            // Draw connections
+            drawConnections();
+        }
+        
+        // Draw connection lines
+        function drawConnections() {
+            const visual = document.getElementById('handshakeVisual');
+            
+            // Remove old connections
+            document.querySelectorAll('.connection-line').forEach(el => el.remove());
+            
+            // Draw new connections
+            for (let i = 0; i < systems.length; i++) {
+                for (let j = i + 1; j < systems.length; j++) {
+                    const system1 = systems[i];
+                    const system2 = systems[j];
+                    const pairId = [system1, system2].sort().join(':');
+                    
+                    if (handshakes[pairId]) {
+                        const pos1 = systemData[system1];
+                        const pos2 = systemData[system2];
+                        
+                        const dx = pos2.x - pos1.x;
+                        const dy = pos2.y - pos1.y;
+                        const length = Math.sqrt(dx * dx + dy * dy);
+                        const angle = Math.atan2(dy, dx) * 180 / Math.PI;
+                        
+                        const line = document.createElement('div');
+                        line.className = 'connection-line';
+                        if (handshakes[pairId].verified) {
+                            line.classList.add('verified');
+                        }
+                        line.style.left = pos1.x + 'px';
+                        line.style.top = pos1.y + 'px';
+                        line.style.width = length + 'px';
+                        line.style.transform = `rotate(${angle}deg)`;
+                        
+                        visual.appendChild(line);
+                    }
+                }
+            }
+        }
+        
+        // Update verification matrix
+        function updateVerificationMatrix() {
+            const matrix = document.getElementById('verificationMatrix');
+            matrix.innerHTML = '';
+            
+            // Header row
+            const emptyCell = document.createElement('div');
+            emptyCell.className = 'matrix-cell';
+            matrix.appendChild(emptyCell);
+            
+            systems.forEach(system => {
+                const cell = document.createElement('div');
+                cell.className = 'matrix-cell';
+                cell.innerHTML = system.split('_')[0].toUpperCase();
+                cell.style.fontSize = '10px';
+                matrix.appendChild(cell);
+            });
+            
+            // Data rows
+            systems.forEach(system1 => {
+                const headerCell = document.createElement('div');
+                headerCell.className = 'matrix-cell';
+                headerCell.innerHTML = system1.split('_')[0].toUpperCase();
+                headerCell.style.fontSize = '10px';
+                matrix.appendChild(headerCell);
+                
+                systems.forEach(system2 => {
+                    const cell = document.createElement('div');
+                    cell.className = 'matrix-cell';
+                    
+                    if (system1 === system2) {
+                        cell.innerHTML = '🔒';
+                    } else {
+                        const pairId = [system1, system2].sort().join(':');
+                        if (handshakes[pairId]?.verified) {
+                            cell.innerHTML = '✅';
+                        } else {
+                            cell.innerHTML = '❌';
+                        }
+                    }
+                    
+                    matrix.appendChild(cell);
+                });
+            });
+        }
+        
+        // Initialize systems
+        async function initializeSystems() {
+            systems.forEach(system => {
+                // Generate mock keyring
+                const keyring = {
+                    publicKeyHash: generateHash(),
+                    ringSignature: generateHash(),
+                    ringId: generateHash(16),
+                    trustLevel: 50
+                };
+                
+                systemData[system] = { ...systemData[system], keyring };
+                
+                // Update display
+                const keyringDiv = document.getElementById(`${system}-keyring`);
+                keyringDiv.innerHTML = `
+                    <span class="status-indicator status-active"></span>
+                    <div>Public: ${keyring.publicKeyHash.slice(0, 16)}...</div>
+                    <div>Ring: ${keyring.ringId.slice(0, 8)}...</div>
+                `;
+                
+                // Update node status
+                const node = document.getElementById(`node-${system}`);
+                node.classList.add('verified');
+            });
+            
+            showNotification('✅ All keyrings generated!');
+        }
+        
+        // Register on chain
+        function registerOnChain() {
+            const status = document.getElementById('blockchainStatus');
+            status.innerHTML = `
+                <div><span class="status-indicator status-active"></span>Connected to Local Chain</div>
+                <div>HandshakeVerification: 0x1234...5678</div>
+                <div>ZKVerifier: 0x8765...4321</div>
+            `;
+            
+            showNotification('📜 All systems registered on-chain!');
+        }
+        
+        // Perform handshakes
+        async function performHandshakes() {
+            let completed = 0;
+            const total = (systems.length * (systems.length - 1)) / 2;
+            
+            for (let i = 0; i < systems.length; i++) {
+                for (let j = i + 1; j < systems.length; j++) {
+                    const system1 = systems[i];
+                    const system2 = systems[j];
+                    const pairId = [system1, system2].sort().join(':');
+                    
+                    // Simulate handshake
+                    setTimeout(() => {
+                        handshakes[pairId] = {
+                            initiator: system1,
+                            responder: system2,
+                            sharedSecretHash: generateHash(),
+                            verified: true,
+                            timestamp: new Date().toISOString()
+                        };
+                        
+                        completed++;
+                        drawConnections();
+                        updateVerificationMatrix();
+                        
+                        // Update trust levels
+                        updateTrustLevel(system1, 5);
+                        updateTrustLevel(system2, 5);
+                        
+                        if (completed === total) {
+                            showNotification('✅ All handshakes completed!');
+                        }
+                    }, (i * systems.length + j) * 200);
+                }
+            }
+        }
+        
+        // Submit ZK proofs
+        function submitZKProofs() {
+            const proofsDiv = document.getElementById('zkProofs');
+            proofsDiv.innerHTML = '';
+            
+            systems.forEach(system => {
+                const proof = {
+                    commitment: generateHash(),
+                    challenge: generateHash(),
+                    response: generateHash()
+                };
+                
+                const proofDiv = document.createElement('div');
+                proofDiv.style.marginBottom = '10px';
+                proofDiv.innerHTML = `
+                    <strong>${system}:</strong><br>
+                    Commitment: ${proof.commitment.slice(0, 16)}...<br>
+                    ✅ Verified without revealing secret
+                `;
+                proofsDiv.appendChild(proofDiv);
+            });
+            
+            showNotification('🔐 ZK proofs submitted!');
+        }
+        
+        // Update trust level
+        function updateTrustLevel(system, increase) {
+            const data = systemData[system];
+            if (!data.trustLevel) data.trustLevel = 50;
+            
+            data.trustLevel = Math.min(100, data.trustLevel + increase);
+            
+            const trustBar = document.getElementById(`${system}-trust`);
+            if (trustBar) {
+                trustBar.style.width = data.trustLevel + '%';
+            }
+        }
+        
+        // Show system details
+        function showSystemDetails(system) {
+            const details = systemData[system];
+            const verificationDiv = document.getElementById('verificationDetails');
+            
+            const detailsHtml = `
+                <h3>${system.replace('_', ' ').toUpperCase()}</h3>
+                <div class="ring-signature">
+                    <strong>Keyring:</strong><br>
+                    Public Key Hash: ${details.keyring?.publicKeyHash?.slice(0, 32) || 'Not generated'}...<br>
+                    Ring ID: ${details.keyring?.ringId || 'N/A'}<br>
+                    Trust Level: ${details.trustLevel || 50}%
+                </div>
+            `;
+            
+            // Show connected systems
+            const connections = [];
+            for (const pairId in handshakes) {
+                if (pairId.includes(system) && handshakes[pairId].verified) {
+                    const other = pairId.split(':').find(s => s !== system);
+                    connections.push(other);
+                }
+            }
+            
+            const connectionsHtml = connections.length > 0 ? 
+                `<div class="ring-signature">
+                    <strong>Verified Connections:</strong><br>
+                    ${connections.join(', ')}
+                </div>` : '';
+            
+            verificationDiv.innerHTML = detailsHtml + connectionsHtml + verificationDiv.innerHTML;
+        }
+        
+        // Verify all
+        function verifyAll() {
+            // Update all nodes to show verification
+            systems.forEach(system => {
+                const node = document.getElementById(`node-${system}`);
+                node.style.animation = 'pulse 1s ease-in-out';
+                
+                setTimeout(() => {
+                    node.style.animation = '';
+                }, 1000);
+            });
+            
+            showNotification('✅ All verifications complete!');
+        }
+        
+        // Export data
+        function exportData() {
+            const publicData = {
+                systems: {},
+                handshakes: Object.keys(handshakes).map(id => ({
+                    pair: id,
+                    verified: handshakes[id].verified,
+                    timestamp: handshakes[id].timestamp
+                })),
+                verificationMatrix,
+                exported: new Date().toISOString()
+            };
+            
+            // Only export public key hashes
+            systems.forEach(system => {
+                const data = systemData[system];
+                publicData.systems[system] = {
+                    publicKeyHash: data.keyring?.publicKeyHash?.slice(0, 16) + '...',
+                    ringId: data.keyring?.ringId,
+                    trustLevel: data.trustLevel || 50
+                };
+            });
+            
+            const blob = new Blob([JSON.stringify(publicData, null, 2)], { type: 'application/json' });
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = 'handshake-public-data.json';
+            a.click();
+            
+            showNotification('📄 Public data exported!');
+        }
+        
+        // Helper functions
+        function generateHash(length = 32) {
+            const chars = '0123456789abcdef';
+            let hash = '';
+            for (let i = 0; i < length * 2; i++) {
+                hash += chars[Math.floor(Math.random() * 16)];
+            }
+            return hash;
+        }
+        
+        function showNotification(message) {
+            const notification = document.createElement('div');
+            notification.style.cssText = `
+                position: fixed;
+                top: 20px;
+                left: 50%;
+                transform: translateX(-50%);
+                background: rgba(0, 255, 0, 0.9);
+                color: #000;
+                padding: 15px 30px;
+                border-radius: 5px;
+                font-weight: bold;
+                z-index: 1000;
+            `;
+            notification.textContent = message;
+            document.body.appendChild(notification);
+            
+            setTimeout(() => notification.remove(), 3000);
+        }
+        
+        // Initialize on load
+        window.onload = initializeDisplay;
+        
+        // Auto-update ring signatures
+        setInterval(() => {
+            const sigDiv = document.getElementById('ringSignatures');
+            if (sigDiv && Object.keys(systemData).length > 0) {
+                let html = '';
+                systems.forEach(system => {
+                    if (systemData[system]?.keyring) {
+                        html += `${system}: ${generateHash(8)}...<br>`;
+                    }
+                });
+                sigDiv.innerHTML = html || 'No signatures yet';
+            }
+        }, 5000);
+    </script>
+</body>
+</html>

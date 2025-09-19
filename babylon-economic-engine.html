@@ -1,0 +1,692 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Babylon.js Economic Engine - Professional 3D Visualization</title>
+    <style>
+        html, body {
+            overflow: hidden;
+            width: 100%;
+            height: 100%;
+            margin: 0;
+            padding: 0;
+            background: #000;
+            font-family: 'Courier New', monospace;
+        }
+
+        #renderCanvas {
+            width: 100%;
+            height: 100%;
+            touch-action: none;
+        }
+
+        #ui-overlay {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            pointer-events: none;
+            z-index: 100;
+        }
+
+        .ui-panel {
+            position: absolute;
+            background: rgba(0, 0, 0, 0.8);
+            border: 2px solid #00ff00;
+            border-radius: 10px;
+            padding: 15px;
+            color: #00ff00;
+            font-size: 12px;
+            backdrop-filter: blur(5px);
+            pointer-events: auto;
+        }
+
+        #economy-panel {
+            top: 20px;
+            left: 20px;
+            min-width: 250px;
+        }
+
+        #agent-panel {
+            top: 20px;
+            right: 20px;
+            min-width: 200px;
+        }
+
+        #cost-panel {
+            bottom: 20px;
+            left: 20px;
+            min-width: 300px;
+            border-color: #ff6600;
+            color: #ff6600;
+        }
+
+        #external-panel {
+            bottom: 20px;
+            right: 20px;
+            min-width: 200px;
+            border-color: #6600ff;
+            color: #6600ff;
+        }
+
+        .metric-row {
+            display: flex;
+            justify-content: space-between;
+            margin: 5px 0;
+        }
+
+        .cost-high { color: #ff0000; }
+        .cost-medium { color: #ffff00; }
+        .cost-low { color: #00ff00; }
+
+        .agent-item {
+            margin: 3px 0;
+            padding: 2px 5px;
+            border-left: 3px solid;
+            font-size: 11px;
+        }
+
+        .ralph { border-color: #ff0000; }
+        .docagent { border-color: #0000ff; }
+        .roastagent { border-color: #ffff00; }
+        .hustleagent { border-color: #00ff00; }
+        .spyagent { border-color: #ff00ff; }
+        .battleagent { border-color: #ff9900; }
+        .legalagent { border-color: #00ffff; }
+
+        #loading {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            color: #00ff00;
+            font-size: 24px;
+            z-index: 200;
+        }
+
+        .controls {
+            position: absolute;
+            bottom: 50%;
+            left: 50%;
+            transform: translateX(-50%);
+            color: #ffffff;
+            text-align: center;
+            font-size: 11px;
+            opacity: 0.7;
+            pointer-events: none;
+        }
+    </style>
+</head>
+<body>
+    <canvas id="renderCanvas"></canvas>
+    
+    <div id="loading">
+        🚀 LOADING BABYLON.JS ECONOMIC ENGINE...
+    </div>
+
+    <div id="ui-overlay">
+        <div id="economy-panel" class="ui-panel">
+            <h3>💰 ECONOMIC ENGINE</h3>
+            <div class="metric-row">
+                <span>Market Price:</span>
+                <span id="market-price">$0.00</span>
+            </div>
+            <div class="metric-row">
+                <span>Total Cost:</span>
+                <span id="total-cost">$0.0000</span>
+            </div>
+            <div class="metric-row">
+                <span>Compute Pool:</span>
+                <span id="compute-pool">0</span>
+            </div>
+            <div class="metric-row">
+                <span>Active Trades:</span>
+                <span id="active-trades">0</span>
+            </div>
+            <div class="metric-row">
+                <span>API Rate:</span>
+                <span id="api-rate">0/min</span>
+            </div>
+        </div>
+
+        <div id="agent-panel" class="ui-panel">
+            <h3>🤖 AGENTS</h3>
+            <div id="agent-list">
+                <!-- Populated by JavaScript -->
+            </div>
+        </div>
+
+        <div id="cost-panel" class="ui-panel">
+            <h3>💸 REAL-TIME COSTS</h3>
+            <div class="metric-row">
+                <span>Tokens Used:</span>
+                <span id="tokens-used">0</span>
+            </div>
+            <div class="metric-row">
+                <span>Cost/Hour:</span>
+                <span id="cost-per-hour">$0.0000</span>
+            </div>
+            <div class="metric-row">
+                <span>Most Expensive:</span>
+                <span id="most-expensive">-</span>
+            </div>
+            <div class="metric-row">
+                <span>API Calls:</span>
+                <span id="api-calls">0</span>
+            </div>
+        </div>
+
+        <div id="external-panel" class="ui-panel">
+            <h3>🌍 EXTERNAL ECONOMIES</h3>
+            <div class="metric-row">
+                <span>US Debt:</span>
+                <span id="us-debt">$31.5T</span>
+            </div>
+            <div class="metric-row">
+                <span>BTC Price:</span>
+                <span id="btc-price">$45,000</span>
+            </div>
+            <div class="metric-row">
+                <span>WoW Token:</span>
+                <span id="wow-token">175k gold</span>
+            </div>
+            <div class="metric-row">
+                <span>SPY:</span>
+                <span id="spy-price">$425</span>
+            </div>
+        </div>
+
+        <div class="controls">
+            <div>WASD: Move Camera | Mouse: Look Around | Space: Focus Center | R: Reset View</div>
+            <div>Click agents for details | Scroll: Zoom | C: Toggle chaos mode</div>
+        </div>
+    </div>
+
+    <script src="https://cdn.babylonjs.com/babylon.js"></script>
+    <script src="https://cdn.babylonjs.com/materialsLibrary/babylonjs.materials.min.js"></script>
+    <script src="https://cdn.babylonjs.com/postProcessesLibrary/babylonjs.postProcess.min.js"></script>
+    <script src="https://cdn.babylonjs.com/gui/babylon.gui.min.js"></script>
+    <script src="GAME-CHARACTER-INTEGRATION.js"></script>
+
+    <script>
+        class BabylonEconomicEngine {
+            constructor() {
+                this.canvas = document.getElementById('renderCanvas');
+                this.engine = null;
+                this.scene = null;
+                this.camera = null;
+                this.agents = new Map();
+                this.economyData = null;
+                this.particleSystems = [];
+                this.tradeLines = [];
+                
+                this.init();
+            }
+
+            async init() {
+                // Initialize Babylon.js engine
+                this.engine = new BABYLON.Engine(this.canvas, true, {
+                    preserveDrawingBuffer: true,
+                    stencil: true
+                });
+
+                // Create scene
+                this.scene = new BABYLON.Scene(this.engine);
+                this.scene.clearColor = new BABYLON.Color3(0, 0, 0.1);
+
+                // Setup camera
+                this.setupCamera();
+                
+                // Setup lighting
+                this.setupLighting();
+                
+                // Create environment
+                this.createEnvironment();
+                
+                // Create agents
+                this.createAgents();
+                
+                // Setup post-processing
+                this.setupPostProcessing();
+                
+                // Start render loop
+                this.engine.runRenderLoop(() => {
+                    this.scene.render();
+                });
+
+                // Handle resize
+                window.addEventListener('resize', () => {
+                    this.engine.resize();
+                });
+
+                // Setup controls
+                this.setupControls();
+
+                // Start data fetching
+                this.startDataLoop();
+
+                // Hide loading
+                document.getElementById('loading').style.display = 'none';
+            }
+
+            setupCamera() {
+                this.camera = new BABYLON.UniversalCamera("camera", new BABYLON.Vector3(0, 10, -20), this.scene);
+                this.camera.setTarget(new BABYLON.Vector3(0, 0, 0));
+                this.camera.attachControls(this.canvas, true);
+                
+                // Smooth camera movement
+                this.camera.inertia = 0.5;
+                this.camera.angularSensibility = 1000;
+                this.camera.speed = 0.5;
+            }
+
+            setupLighting() {
+                // Ambient light
+                const ambient = new BABYLON.HemisphericLight("ambient", new BABYLON.Vector3(0, 1, 0), this.scene);
+                ambient.intensity = 0.4;
+                ambient.diffuse = new BABYLON.Color3(0.1, 0.3, 0.6);
+
+                // Main directional light
+                const directional = new BABYLON.DirectionalLight("directional", new BABYLON.Vector3(-1, -1, -1), this.scene);
+                directional.intensity = 1.2;
+                directional.diffuse = new BABYLON.Color3(1, 1, 0.9);
+
+                // Point light for dramatic effect
+                const pointLight = new BABYLON.PointLight("pointLight", new BABYLON.Vector3(0, 15, 0), this.scene);
+                pointLight.intensity = 0.8;
+                pointLight.diffuse = new BABYLON.Color3(0, 1, 0);
+                pointLight.range = 50;
+
+                // Enable shadows
+                const shadowGenerator = new BABYLON.ShadowGenerator(2048, directional);
+                shadowGenerator.useExponentialShadowMap = true;
+                this.shadowGenerator = shadowGenerator;
+            }
+
+            createEnvironment() {
+                // Central compute core
+                const coreGeometry = BABYLON.MeshBuilder.CreateIcoSphere("computeCore", {
+                    radius: 3,
+                    subdivisions: 4
+                }, this.scene);
+
+                const coreMaterial = new BABYLON.PBRMaterial("coreMaterial", this.scene);
+                coreMaterial.baseColor = new BABYLON.Color3(0, 1, 0);
+                coreMaterial.emissiveColor = new BABYLON.Color3(0, 0.2, 0);
+                coreMaterial.metallicFactor = 0.9;
+                coreMaterial.roughnessFactor = 0.1;
+                coreMaterial.alpha = 0.8;
+
+                coreGeometry.material = coreMaterial;
+                this.computeCore = coreGeometry;
+
+                // Ground plane
+                const ground = BABYLON.MeshBuilder.CreateGround("ground", {width: 100, height: 100}, this.scene);
+                const groundMaterial = new BABYLON.PBRMaterial("groundMaterial", this.scene);
+                groundMaterial.baseColor = new BABYLON.Color3(0.02, 0.02, 0.1);
+                groundMaterial.metallicFactor = 0.1;
+                groundMaterial.roughnessFactor = 0.9;
+                ground.material = groundMaterial;
+                ground.receiveShadows = true;
+
+                // Skybox
+                const skybox = BABYLON.MeshBuilder.CreateSphere("skyBox", {diameter: 200}, this.scene);
+                const skyboxMaterial = new BABYLON.StandardMaterial("skyBox", this.scene);
+                skyboxMaterial.backFaceCulling = false;
+                skyboxMaterial.diffuseColor = new BABYLON.Color3(0, 0, 0);
+                skyboxMaterial.emissiveColor = new BABYLON.Color3(0.05, 0.05, 0.2);
+                skybox.material = skyboxMaterial;
+                skybox.infiniteDistance = true;
+            }
+
+            createAgents() {
+                const agentData = [
+                    { name: 'ralph', color: [1, 0, 0], position: [8, 1, 0] },
+                    { name: 'docagent', color: [0, 0, 1], position: [5.66, 1, 5.66] },
+                    { name: 'roastagent', color: [1, 1, 0], position: [0, 1, 8] },
+                    { name: 'hustleagent', color: [0, 1, 0], position: [-5.66, 1, 5.66] },
+                    { name: 'spyagent', color: [1, 0, 1], position: [-8, 1, 0] },
+                    { name: 'battleagent', color: [1, 0.6, 0], position: [-5.66, 1, -5.66] },
+                    { name: 'legalagent', color: [0, 1, 1], position: [0, 1, -8] }
+                ];
+
+                agentData.forEach(agent => {
+                    this.createAgent(agent.name, agent.color, agent.position);
+                });
+            }
+
+            createAgent(name, colorArray, position) {
+                // Main sphere
+                const sphere = BABYLON.MeshBuilder.CreateSphere(name, {
+                    diameter: 2,
+                    segments: 32
+                }, this.scene);
+
+                sphere.position = new BABYLON.Vector3(...position);
+
+                // PBR Material for realistic lighting
+                const material = new BABYLON.PBRMaterial(name + "Material", this.scene);
+                material.baseColor = new BABYLON.Color3(...colorArray);
+                material.emissiveColor = new BABYLON.Color3(...colorArray.map(c => c * 0.1));
+                material.metallicFactor = 0.7;
+                material.roughnessFactor = 0.3;
+                
+                sphere.material = material;
+
+                // Add to shadow casting
+                this.shadowGenerator.addShadowCaster(sphere);
+
+                // Glow effect
+                const glowLayer = new BABYLON.GlowLayer("glow", this.scene);
+                glowLayer.addIncludedOnlyMesh(sphere);
+
+                // Particle system for API calls
+                const particleSystem = new BABYLON.ParticleSystem("particles_" + name, 200, this.scene);
+                particleSystem.particleTexture = new BABYLON.Texture("https://www.babylonjs-playground.com/textures/flare.png", this.scene);
+                particleSystem.emitter = sphere;
+                particleSystem.minEmitBox = new BABYLON.Vector3(-0.5, 0, -0.5);
+                particleSystem.maxEmitBox = new BABYLON.Vector3(0.5, 0, 0.5);
+                
+                particleSystem.color1 = new BABYLON.Color4(...colorArray, 1.0);
+                particleSystem.color2 = new BABYLON.Color4(...colorArray.map(c => c * 0.8), 1.0);
+                particleSystem.colorDead = new BABYLON.Color4(0, 0, 0, 0.0);
+                
+                particleSystem.minSize = 0.1;
+                particleSystem.maxSize = 0.5;
+                particleSystem.minLifeTime = 0.3;
+                particleSystem.maxLifeTime = 1.5;
+                particleSystem.emitRate = 0; // Start with no emission
+                
+                particleSystem.direction1 = new BABYLON.Vector3(-1, 8, -1);
+                particleSystem.direction2 = new BABYLON.Vector3(1, 8, 1);
+                particleSystem.minEmitPower = 1;
+                particleSystem.maxEmitPower = 3;
+                particleSystem.updateSpeed = 0.005;
+
+                particleSystem.start();
+
+                // Store agent data
+                this.agents.set(name, {
+                    mesh: sphere,
+                    material: material,
+                    particles: particleSystem,
+                    balance: 1000,
+                    apiCalls: 0,
+                    totalSpent: 0,
+                    lastActivity: Date.now()
+                });
+
+                // Click interaction
+                sphere.actionManager = new BABYLON.ActionManager(this.scene);
+                sphere.actionManager.registerAction(new BABYLON.ExecuteCodeAction(
+                    BABYLON.ActionManager.OnPickTrigger,
+                    () => this.onAgentClick(name)
+                ));
+            }
+
+            setupPostProcessing() {
+                // Bloom effect
+                const bloomEffect = new BABYLON.BloomPostProcess("bloom", 1.0, this.camera);
+                bloomEffect.threshold = 0.8;
+                bloomEffect.weight = 0.3;
+                bloomEffect.kernel = 64;
+
+                // Screen space reflections for professional look
+                const ssr = new BABYLON.ScreenSpaceReflectionPostProcess("ssr", 1.0, this.camera);
+                ssr.strength = 0.5;
+                ssr.reflectionSpecularFalloffExponent = 3;
+            }
+
+            setupControls() {
+                // Keyboard controls
+                this.scene.onKeyboardObservable.add((kbInfo) => {
+                    switch (kbInfo.type) {
+                        case BABYLON.KeyboardEventTypes.KEYDOWN:
+                            switch (kbInfo.event.key.toLowerCase()) {
+                                case 'r':
+                                    this.resetCamera();
+                                    break;
+                                case ' ':
+                                    this.focusCenter();
+                                    break;
+                                case 'c':
+                                    this.toggleChaosMode();
+                                    break;
+                            }
+                            break;
+                    }
+                });
+
+                // Mouse wheel for zoom
+                this.scene.onPointerObservable.add((pointerInfo) => {
+                    if (pointerInfo.type === BABYLON.PointerEventTypes.POINTERWHEEL) {
+                        const delta = pointerInfo.event.deltaY;
+                        const direction = this.camera.getForwardRay().direction;
+                        this.camera.position.addInPlace(direction.scale(delta * 0.01));
+                    }
+                });
+            }
+
+            resetCamera() {
+                BABYLON.Animation.CreateAndStartAnimation("cameraReset", this.camera, "position", 30, 30,
+                    this.camera.position, new BABYLON.Vector3(0, 10, -20), BABYLON.Animation.ANIMATIONLOOPMODE_CONSTANT);
+                BABYLON.Animation.CreateAndStartAnimation("cameraTargetReset", this.camera, "target", 30, 30,
+                    this.camera.getTarget(), new BABYLON.Vector3(0, 0, 0), BABYLON.Animation.ANIMATIONLOOPMODE_CONSTANT);
+            }
+
+            focusCenter() {
+                BABYLON.Animation.CreateAndStartAnimation("cameraFocus", this.camera, "target", 30, 30,
+                    this.camera.getTarget(), new BABYLON.Vector3(0, 0, 0), BABYLON.Animation.ANIMATIONLOOPMODE_CONSTANT);
+            }
+
+            toggleChaosMode() {
+                this.agents.forEach((agent, name) => {
+                    if (name === 'ralph') {
+                        agent.material.emissiveColor = new BABYLON.Color3(1, 0, 0);
+                        agent.particles.emitRate = 500;
+                    } else {
+                        agent.material.emissiveColor = new BABYLON.Color3(0.5, 0, 0);
+                        agent.particles.emitRate = 100;
+                    }
+                });
+
+                setTimeout(() => {
+                    this.agents.forEach((agent) => {
+                        agent.material.emissiveColor = agent.material.baseColor.scale(0.1);
+                        agent.particles.emitRate = 0;
+                    });
+                }, 3000);
+            }
+
+            onAgentClick(agentName) {
+                const agent = this.agents.get(agentName);
+                if (!agent) return;
+
+                // Zoom to agent
+                const targetPosition = agent.mesh.position.add(new BABYLON.Vector3(0, 5, -10));
+                BABYLON.Animation.CreateAndStartAnimation("zoomToAgent", this.camera, "position", 30, 30,
+                    this.camera.position, targetPosition, BABYLON.Animation.ANIMATIONLOOPMODE_CONSTANT);
+
+                // Show detailed info (could open a modal)
+                console.log(`Agent ${agentName}:`, {
+                    balance: agent.balance,
+                    apiCalls: agent.apiCalls,
+                    totalSpent: agent.totalSpent
+                });
+            }
+
+            createTradeLine(fromAgent, toAgent, cost) {
+                const fromPos = this.agents.get(fromAgent)?.mesh.position;
+                const toPos = this.agents.get(toAgent)?.mesh.position;
+                
+                if (!fromPos || !toPos) return;
+
+                // Create line
+                const points = [fromPos, toPos];
+                const line = BABYLON.MeshBuilder.CreateLines("tradeLine_" + Date.now(), {points: points}, this.scene);
+                
+                // Color based on cost
+                let color = new BABYLON.Color3(0, 1, 0); // Green for low cost
+                if (cost > 0.01) color = new BABYLON.Color3(1, 1, 0); // Yellow for medium
+                if (cost > 0.05) color = new BABYLON.Color3(1, 0, 0); // Red for high cost
+                
+                line.color = color;
+                line.alpha = 0.8;
+
+                // Animate and remove
+                let alpha = 0.8;
+                const fadeInterval = setInterval(() => {
+                    alpha -= 0.05;
+                    line.alpha = alpha;
+                    if (alpha <= 0) {
+                        line.dispose();
+                        clearInterval(fadeInterval);
+                    }
+                }, 100);
+            }
+
+            triggerAPIParticles(agentName, cost, model) {
+                const agent = this.agents.get(agentName);
+                if (!agent) return;
+
+                // Trigger particle burst
+                agent.particles.emitRate = Math.min(cost * 1000, 100);
+                
+                // Color particles based on cost
+                if (cost > 0.1) {
+                    agent.particles.color1 = new BABYLON.Color4(1, 0, 0, 1); // Red for expensive
+                } else if (cost > 0.01) {
+                    agent.particles.color1 = new BABYLON.Color4(1, 1, 0, 1); // Yellow for medium
+                } else {
+                    agent.particles.color1 = new BABYLON.Color4(0, 1, 0, 1); // Green for cheap
+                }
+
+                // Stop particles after burst
+                setTimeout(() => {
+                    agent.particles.emitRate = 0;
+                }, 1000);
+            }
+
+            async startDataLoop() {
+                const fetchData = async () => {
+                    try {
+                        const response = await fetch('/api/economy/status');
+                        const data = await response.json();
+                        this.updateVisualization(data);
+                    } catch (error) {
+                        console.error('Failed to fetch economy data:', error);
+                        this.updateWithMockData();
+                    }
+                };
+
+                fetchData();
+                setInterval(fetchData, 2000);
+            }
+
+            updateWithMockData() {
+                const mockData = {
+                    market_price: 1.05 + Math.sin(Date.now() * 0.001) * 0.1,
+                    total_compute: 10000,
+                    agents: [
+                        { name: 'ralph', balance: 850 + Math.random() * 100, api_calls: 12, total_spent: 0.045 + Math.random() * 0.1 },
+                        { name: 'docagent', balance: 1200 + Math.random() * 100, api_calls: 8, total_spent: 0.234 + Math.random() * 0.1 },
+                        { name: 'roastagent', balance: 950 + Math.random() * 100, api_calls: 15, total_spent: 0.089 + Math.random() * 0.1 },
+                        { name: 'hustleagent', balance: 1100 + Math.random() * 100, api_calls: 6, total_spent: 0.056 + Math.random() * 0.1 },
+                        { name: 'spyagent', balance: 750 + Math.random() * 100, api_calls: 20, total_spent: 0.023 + Math.random() * 0.1 },
+                        { name: 'battleagent', balance: 900 + Math.random() * 100, api_calls: 10, total_spent: 0.034 + Math.random() * 0.1 },
+                        { name: 'legalagent', balance: 1050 + Math.random() * 100, api_calls: 7, total_spent: 0.187 + Math.random() * 0.1 }
+                    ],
+                    cost_tracking: {
+                        total_cost_usd: 0.668 + Math.random() * 0.5,
+                        total_tokens_used: 34562 + Math.floor(Math.random() * 1000),
+                        external_api_calls: 3 + Math.floor(Math.random() * 3),
+                        cost_per_hour: 1.245 + Math.random() * 0.5
+                    },
+                    recent_trades: [
+                        { from: 'docagent', to: 'ralph', cost: Math.random() * 0.1 },
+                        { from: 'spyagent', to: 'hustleagent', cost: Math.random() * 0.05 }
+                    ]
+                };
+                this.updateVisualization(mockData);
+            }
+
+            updateVisualization(data) {
+                // Animate compute core
+                if (this.computeCore) {
+                    this.computeCore.rotation.x += 0.01;
+                    this.computeCore.rotation.y += 0.02;
+                }
+
+                // Update UI panels
+                document.getElementById('market-price').textContent = '$' + (data.market_price || 1.05).toFixed(2);
+                document.getElementById('total-cost').textContent = '$' + (data.cost_tracking?.total_cost_usd || 0.668).toFixed(4);
+                document.getElementById('compute-pool').textContent = (data.total_compute || 10000).toLocaleString();
+                document.getElementById('active-trades').textContent = (data.recent_trades?.length || 0);
+                document.getElementById('tokens-used').textContent = (data.cost_tracking?.total_tokens_used || 34562).toLocaleString();
+                document.getElementById('cost-per-hour').textContent = '$' + (data.cost_tracking?.cost_per_hour || 1.245);
+                document.getElementById('api-calls').textContent = (data.cost_tracking?.external_api_calls || 3);
+
+                // Update external indicators
+                const time = Date.now() * 0.0001;
+                document.getElementById('us-debt').textContent = '$' + (31.5 + Math.sin(time) * 0.5).toFixed(1) + 'T';
+                document.getElementById('btc-price').textContent = '$' + (45000 + Math.sin(time * 3) * 2000).toFixed(0);
+                document.getElementById('wow-token').textContent = (175000 + Math.sin(time * 2) * 15000).toFixed(0) + ' gold';
+                document.getElementById('spy-price').textContent = '$' + (425 + Math.sin(time) * 10).toFixed(0);
+
+                // Update agents
+                if (data.agents) {
+                    const agentListHTML = data.agents.map(agentData => {
+                        const agent = this.agents.get(agentData.name);
+                        if (agent) {
+                            // Update agent properties
+                            agent.balance = agentData.balance;
+                            agent.apiCalls = agentData.api_calls || 0;
+                            agent.totalSpent = agentData.total_spent || 0;
+
+                            // Scale agent based on balance
+                            const scale = 0.5 + (agentData.balance / 2000);
+                            agent.mesh.scaling = new BABYLON.Vector3(scale, scale, scale);
+
+                            // Trigger API particles randomly
+                            if (Math.random() < 0.1 && agentData.total_spent > 0) {
+                                this.triggerAPIParticles(agentData.name, agentData.total_spent, 'mock_model');
+                            }
+                        }
+
+                        return `
+                            <div class="agent-item ${agentData.name}">
+                                ${agentData.name}: $${(agentData.total_spent || 0).toFixed(4)} (${agentData.api_calls || 0} calls)
+                            </div>
+                        `;
+                    }).join('');
+                    
+                    document.getElementById('agent-list').innerHTML = agentListHTML;
+                }
+
+                // Create trade visualizations
+                if (data.recent_trades && Math.random() < 0.3) {
+                    data.recent_trades.forEach(trade => {
+                        this.createTradeLine(trade.from, trade.to, trade.cost || 0);
+                    });
+                }
+
+                // Update most expensive
+                if (data.agents) {
+                    const mostExpensive = data.agents.reduce((max, agent) => 
+                        (agent.total_spent || 0) > (max.total_spent || 0) ? agent : max
+                    );
+                    document.getElementById('most-expensive').textContent = 
+                        `${mostExpensive.name}: $${(mostExpensive.total_spent || 0).toFixed(4)}`;
+                }
+            }
+        }
+
+        // Initialize when page loads
+        window.addEventListener('DOMContentLoaded', () => {
+            new BabylonEconomicEngine();
+        });
+    </script>
+</body>
+</html>

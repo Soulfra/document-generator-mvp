@@ -1,0 +1,1021 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>🧠 Agent Datastream Monitor - Real-Time Reasoning Visualization</title>
+    <style>
+        body {
+            background: #000;
+            color: #0f0;
+            font-family: 'Courier New', monospace;
+            margin: 0;
+            padding: 0;
+            overflow: hidden;
+        }
+        
+        .main-container {
+            display: grid;
+            grid-template-columns: 250px 1fr 300px;
+            height: 100vh;
+            gap: 1px;
+            background: #111;
+        }
+        
+        /* Left Panel - Agent List */
+        .agent-list {
+            background: #0a0a0a;
+            border-right: 1px solid #0f0;
+            overflow-y: auto;
+            padding: 10px;
+        }
+        
+        .agent-item {
+            background: rgba(0, 255, 0, 0.1);
+            border: 1px solid #0f0;
+            padding: 10px;
+            margin: 5px 0;
+            cursor: pointer;
+            transition: all 0.3s;
+            position: relative;
+        }
+        
+        .agent-item:hover {
+            background: rgba(0, 255, 0, 0.2);
+            transform: translateX(5px);
+        }
+        
+        .agent-item.active {
+            background: rgba(0, 255, 0, 0.3);
+            border-color: #0ff;
+        }
+        
+        .agent-status {
+            position: absolute;
+            top: 10px;
+            right: 10px;
+            width: 10px;
+            height: 10px;
+            border-radius: 50%;
+            animation: pulse 2s infinite;
+        }
+        
+        .status-active {
+            background: #0f0;
+        }
+        
+        .status-processing {
+            background: #ff0;
+        }
+        
+        .status-idle {
+            background: #f00;
+        }
+        
+        @keyframes pulse {
+            0%, 100% { opacity: 1; transform: scale(1); }
+            50% { opacity: 0.5; transform: scale(1.2); }
+        }
+        
+        /* Center - Main Visualization */
+        .visualization-area {
+            background: #000;
+            position: relative;
+            overflow: hidden;
+        }
+        
+        .stream-container {
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            display: grid;
+            grid-template-rows: 1fr 200px;
+            gap: 1px;
+        }
+        
+        /* Data Streams Canvas */
+        #dataStreamCanvas {
+            width: 100%;
+            height: 100%;
+            background: #000;
+        }
+        
+        /* Reasoning Chain */
+        .reasoning-chain {
+            background: #0a0a0a;
+            border-top: 1px solid #0f0;
+            overflow-y: auto;
+            padding: 10px;
+            font-size: 11px;
+        }
+        
+        .reasoning-node {
+            background: rgba(0, 255, 0, 0.05);
+            border-left: 3px solid #0f0;
+            padding: 8px;
+            margin: 5px 0;
+            position: relative;
+            animation: slideIn 0.3s ease-out;
+        }
+        
+        @keyframes slideIn {
+            from { transform: translateX(-20px); opacity: 0; }
+            to { transform: translateX(0); opacity: 1; }
+        }
+        
+        .reasoning-type {
+            color: #0ff;
+            font-weight: bold;
+            font-size: 10px;
+        }
+        
+        .reasoning-content {
+            color: #0f0;
+            margin-top: 4px;
+        }
+        
+        .reasoning-confidence {
+            position: absolute;
+            top: 8px;
+            right: 8px;
+            color: #ff0;
+            font-size: 10px;
+        }
+        
+        /* Right Panel - Data Streams */
+        .data-panel {
+            background: #0a0a0a;
+            border-left: 1px solid #0f0;
+            display: grid;
+            grid-template-rows: auto 1fr auto 1fr;
+            gap: 1px;
+        }
+        
+        .panel-header {
+            background: rgba(0, 255, 0, 0.1);
+            padding: 10px;
+            font-weight: bold;
+            border-bottom: 1px solid #0f0;
+        }
+        
+        .stream-list {
+            overflow-y: auto;
+            padding: 10px;
+            font-size: 11px;
+        }
+        
+        .stream-item {
+            background: rgba(0, 255, 0, 0.05);
+            padding: 5px;
+            margin: 3px 0;
+            border-left: 2px solid;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+        
+        .stream-item:hover {
+            background: rgba(0, 255, 0, 0.1);
+            transform: translateX(3px);
+        }
+        
+        .stream-input { border-color: #00f; }
+        .stream-processing { border-color: #ff0; }
+        .stream-output { border-color: #0f0; }
+        .stream-error { border-color: #f00; }
+        
+        /* Decision Boundaries */
+        .boundaries-list {
+            overflow-y: auto;
+            padding: 10px;
+            font-size: 11px;
+        }
+        
+        .boundary-item {
+            background: rgba(255, 0, 0, 0.1);
+            border: 1px solid #f00;
+            padding: 5px;
+            margin: 5px 0;
+            position: relative;
+        }
+        
+        .boundary-threshold {
+            color: #ff0;
+            font-size: 10px;
+        }
+        
+        /* Control Panel */
+        .control-panel {
+            position: absolute;
+            top: 10px;
+            left: 50%;
+            transform: translateX(-50%);
+            background: rgba(0, 0, 0, 0.8);
+            border: 1px solid #0f0;
+            padding: 10px;
+            display: flex;
+            gap: 10px;
+            z-index: 100;
+        }
+        
+        .control-btn {
+            background: rgba(0, 255, 0, 0.2);
+            border: 1px solid #0f0;
+            color: #0f0;
+            padding: 5px 15px;
+            cursor: pointer;
+            font-family: 'Courier New', monospace;
+            transition: all 0.3s;
+        }
+        
+        .control-btn:hover {
+            background: rgba(0, 255, 0, 0.4);
+            box-shadow: 0 0 10px #0f0;
+        }
+        
+        /* Matrix Rain Effect */
+        .matrix-rain {
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            pointer-events: none;
+            opacity: 0.1;
+        }
+        
+        /* Data Flow Visualization */
+        .data-flow-marker {
+            position: absolute;
+            width: 4px;
+            height: 4px;
+            background: #0f0;
+            border-radius: 50%;
+            box-shadow: 0 0 10px #0f0;
+            pointer-events: none;
+        }
+        
+        /* Tooltip */
+        .tooltip {
+            position: absolute;
+            background: rgba(0, 0, 0, 0.9);
+            border: 1px solid #0f0;
+            padding: 5px 10px;
+            font-size: 10px;
+            pointer-events: none;
+            z-index: 1000;
+            display: none;
+        }
+        
+        /* Stats Overlay */
+        .stats-overlay {
+            position: absolute;
+            bottom: 10px;
+            right: 10px;
+            background: rgba(0, 0, 0, 0.8);
+            border: 1px solid #0f0;
+            padding: 10px;
+            font-size: 10px;
+            min-width: 200px;
+        }
+        
+        .stat-item {
+            display: flex;
+            justify-content: space-between;
+            margin: 2px 0;
+        }
+        
+        .stat-label {
+            color: #0f0;
+        }
+        
+        .stat-value {
+            color: #0ff;
+            font-weight: bold;
+        }
+    </style>
+</head>
+<body>
+    <div class="main-container">
+        <!-- Left Panel - Agent List -->
+        <div class="agent-list">
+            <h3 style="color: #0ff; margin: 0 0 10px 0;">🤖 Active Agents</h3>
+            <div id="agentList"></div>
+        </div>
+        
+        <!-- Center - Visualization Area -->
+        <div class="visualization-area">
+            <div class="control-panel">
+                <button class="control-btn" onclick="startMonitoring()">▶️ Start</button>
+                <button class="control-btn" onclick="pauseMonitoring()">⏸️ Pause</button>
+                <button class="control-btn" onclick="increaseSpeed()">⏩ Faster</button>
+                <button class="control-btn" onclick="decreaseSpeed()">⏪ Slower</button>
+                <button class="control-btn" onclick="toggleView()">👁️ View</button>
+            </div>
+            
+            <div class="stream-container">
+                <canvas id="dataStreamCanvas"></canvas>
+                
+                <div class="reasoning-chain" id="reasoningChain">
+                    <div style="text-align: center; color: #666; padding: 20px;">
+                        Select an agent to view reasoning chain...
+                    </div>
+                </div>
+            </div>
+            
+            <div class="stats-overlay">
+                <div class="stat-item">
+                    <span class="stat-label">Data Rate:</span>
+                    <span class="stat-value" id="dataRate">0 KB/s</span>
+                </div>
+                <div class="stat-item">
+                    <span class="stat-label">Decisions/min:</span>
+                    <span class="stat-value" id="decisionRate">0</span>
+                </div>
+                <div class="stat-item">
+                    <span class="stat-label">Active Streams:</span>
+                    <span class="stat-value" id="activeStreams">0</span>
+                </div>
+                <div class="stat-item">
+                    <span class="stat-label">Reasoning Depth:</span>
+                    <span class="stat-value" id="reasoningDepth">0</span>
+                </div>
+            </div>
+        </div>
+        
+        <!-- Right Panel - Data Streams -->
+        <div class="data-panel">
+            <div class="panel-header">📊 Data Streams</div>
+            <div class="stream-list" id="streamList">
+                <div style="text-align: center; color: #666;">
+                    No active streams...
+                </div>
+            </div>
+            
+            <div class="panel-header">🚧 Decision Boundaries</div>
+            <div class="boundaries-list" id="boundariesList">
+                <div style="text-align: center; color: #666;">
+                    No boundaries defined...
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <div class="tooltip" id="tooltip"></div>
+    
+    <script>
+        // Agent Datastream Monitor System
+        class AgentDatastreamMonitor {
+            constructor() {
+                this.canvas = document.getElementById('dataStreamCanvas');
+                this.ctx = this.canvas.getContext('2d');
+                this.isRunning = false;
+                this.speed = 1;
+                this.currentView = 'flow'; // flow, network, matrix
+                
+                // Resize canvas
+                this.resizeCanvas();
+                window.addEventListener('resize', () => this.resizeCanvas());
+                
+                // Agent system
+                this.agents = [];
+                this.selectedAgent = null;
+                this.dataStreams = new Map();
+                this.reasoningChains = new Map();
+                this.boundaries = new Map();
+                
+                // Visual elements
+                this.particles = [];
+                this.connections = [];
+                this.matrixColumns = [];
+                
+                // Stats
+                this.stats = {
+                    dataRate: 0,
+                    decisionRate: 0,
+                    activeStreams: 0,
+                    reasoningDepth: 0
+                };
+                
+                // Initialize agents
+                this.initializeAgents();
+                
+                // Start animation
+                this.animate();
+            }
+            
+            initializeAgents() {
+                // Create diverse agent types
+                const agentTypes = [
+                    { id: 'vision-001', name: 'Vision Analyzer', type: 'perception', status: 'active' },
+                    { id: 'reason-001', name: 'Reasoning Engine', type: 'cognitive', status: 'processing' },
+                    { id: 'decide-001', name: 'Decision Maker', type: 'executive', status: 'active' },
+                    { id: 'learn-001', name: 'Learning Module', type: 'adaptive', status: 'idle' },
+                    { id: 'predict-001', name: 'Predictor Agent', type: 'anticipatory', status: 'active' },
+                    { id: 'memory-001', name: 'Memory Manager', type: 'storage', status: 'processing' },
+                    { id: 'pattern-001', name: 'Pattern Recognizer', type: 'analytical', status: 'active' },
+                    { id: 'coord-001', name: 'Coordinator', type: 'orchestration', status: 'active' }
+                ];
+                
+                agentTypes.forEach(agent => {
+                    this.agents.push({
+                        ...agent,
+                        dataStreams: [],
+                        reasoning: [],
+                        boundaries: [],
+                        position: {
+                            x: Math.random() * this.canvas.width,
+                            y: Math.random() * this.canvas.height
+                        },
+                        velocity: {
+                            x: (Math.random() - 0.5) * 2,
+                            y: (Math.random() - 0.5) * 2
+                        }
+                    });
+                    
+                    // Initialize data streams for each agent
+                    this.initializeAgentStreams(agent.id);
+                    
+                    // Create reasoning chains
+                    this.reasoningChains.set(agent.id, []);
+                    
+                    // Set boundaries
+                    this.boundaries.set(agent.id, this.generateBoundaries(agent.type));
+                });
+                
+                // Render agent list
+                this.renderAgentList();
+                
+                // Select first agent
+                this.selectAgent(this.agents[0]);
+            }
+            
+            initializeAgentStreams(agentId) {
+                const streamTypes = [
+                    { type: 'input', name: 'Sensor Data', rate: Math.random() * 100 + 50 },
+                    { type: 'input', name: 'Environment State', rate: Math.random() * 50 + 20 },
+                    { type: 'processing', name: 'Feature Extraction', rate: Math.random() * 80 + 40 },
+                    { type: 'processing', name: 'Pattern Analysis', rate: Math.random() * 60 + 30 },
+                    { type: 'output', name: 'Action Commands', rate: Math.random() * 40 + 10 },
+                    { type: 'output', name: 'State Updates', rate: Math.random() * 30 + 15 }
+                ];
+                
+                const streams = streamTypes.map(stream => ({
+                    id: `${agentId}-${stream.name.toLowerCase().replace(' ', '-')}`,
+                    ...stream,
+                    data: [],
+                    active: Math.random() > 0.3
+                }));
+                
+                this.dataStreams.set(agentId, streams);
+            }
+            
+            generateBoundaries(agentType) {
+                const boundaries = [];
+                const boundaryTypes = {
+                    perception: ['Detection Threshold', 'Noise Filter', 'Signal Strength'],
+                    cognitive: ['Confidence Level', 'Certainty Threshold', 'Logic Gate'],
+                    executive: ['Risk Tolerance', 'Action Threshold', 'Priority Cutoff'],
+                    adaptive: ['Learning Rate', 'Error Margin', 'Update Frequency'],
+                    anticipatory: ['Prediction Horizon', 'Probability Threshold', 'Time Window'],
+                    storage: ['Memory Limit', 'Retention Period', 'Access Priority'],
+                    analytical: ['Pattern Confidence', 'Match Threshold', 'Complexity Limit'],
+                    orchestration: ['Resource Allocation', 'Task Priority', 'Sync Tolerance']
+                };
+                
+                const typesBoundaries = boundaryTypes[agentType] || ['Default Threshold'];
+                
+                typesBoundaries.forEach(boundary => {
+                    boundaries.push({
+                        name: boundary,
+                        value: Math.random() * 0.8 + 0.2,
+                        min: 0,
+                        max: 1,
+                        critical: Math.random() > 0.7
+                    });
+                });
+                
+                return boundaries;
+            }
+            
+            renderAgentList() {
+                const listContainer = document.getElementById('agentList');
+                listContainer.innerHTML = '';
+                
+                this.agents.forEach(agent => {
+                    const item = document.createElement('div');
+                    item.className = 'agent-item';
+                    item.onclick = () => this.selectAgent(agent);
+                    
+                    item.innerHTML = `
+                        <div class="agent-status status-${agent.status}"></div>
+                        <div style="font-size: 14px; font-weight: bold;">${agent.name}</div>
+                        <div style="font-size: 10px; color: #666;">${agent.id}</div>
+                        <div style="font-size: 10px; color: #0ff; margin-top: 5px;">Type: ${agent.type}</div>
+                    `;
+                    
+                    listContainer.appendChild(item);
+                });
+            }
+            
+            selectAgent(agent) {
+                this.selectedAgent = agent;
+                
+                // Update UI
+                document.querySelectorAll('.agent-item').forEach((item, index) => {
+                    item.classList.toggle('active', this.agents[index] === agent);
+                });
+                
+                // Update streams panel
+                this.updateStreamsPanel();
+                
+                // Update boundaries panel
+                this.updateBoundariesPanel();
+                
+                // Clear reasoning chain
+                document.getElementById('reasoningChain').innerHTML = '';
+            }
+            
+            updateStreamsPanel() {
+                const streamList = document.getElementById('streamList');
+                streamList.innerHTML = '';
+                
+                if (!this.selectedAgent) return;
+                
+                const streams = this.dataStreams.get(this.selectedAgent.id) || [];
+                
+                streams.forEach(stream => {
+                    const item = document.createElement('div');
+                    item.className = `stream-item stream-${stream.type}`;
+                    item.innerHTML = `
+                        <div style="font-weight: bold;">${stream.name}</div>
+                        <div style="font-size: 9px; color: #666;">Rate: ${stream.rate.toFixed(1)} KB/s</div>
+                        <div style="font-size: 9px; color: ${stream.active ? '#0f0' : '#f00'}">
+                            ${stream.active ? '● ACTIVE' : '○ INACTIVE'}
+                        </div>
+                    `;
+                    streamList.appendChild(item);
+                });
+            }
+            
+            updateBoundariesPanel() {
+                const boundariesList = document.getElementById('boundariesList');
+                boundariesList.innerHTML = '';
+                
+                if (!this.selectedAgent) return;
+                
+                const boundaries = this.boundaries.get(this.selectedAgent.id) || [];
+                
+                boundaries.forEach(boundary => {
+                    const item = document.createElement('div');
+                    item.className = 'boundary-item';
+                    if (boundary.critical) {
+                        item.style.borderColor = '#ff0';
+                    }
+                    
+                    const percentage = (boundary.value * 100).toFixed(0);
+                    item.innerHTML = `
+                        <div style="font-weight: bold;">${boundary.name}</div>
+                        <div class="boundary-threshold">Threshold: ${percentage}%</div>
+                        <div style="margin-top: 5px;">
+                            <div style="background: rgba(255,0,0,0.2); height: 4px; position: relative;">
+                                <div style="background: #f00; height: 100%; width: ${percentage}%;"></div>
+                            </div>
+                        </div>
+                    `;
+                    boundariesList.appendChild(item);
+                });
+            }
+            
+            startMonitoring() {
+                this.isRunning = true;
+                
+                // Start generating data
+                this.dataGenerationInterval = setInterval(() => {
+                    this.generateData();
+                    this.simulateReasoning();
+                    this.updateStats();
+                }, 1000 / this.speed);
+            }
+            
+            pauseMonitoring() {
+                this.isRunning = false;
+                if (this.dataGenerationInterval) {
+                    clearInterval(this.dataGenerationInterval);
+                }
+            }
+            
+            generateData() {
+                // Generate data for each agent
+                this.agents.forEach(agent => {
+                    const streams = this.dataStreams.get(agent.id) || [];
+                    
+                    streams.forEach(stream => {
+                        if (stream.active && Math.random() > 0.3) {
+                            // Generate data packet
+                            const packet = {
+                                timestamp: Date.now(),
+                                value: Math.random() * 100,
+                                type: stream.type,
+                                streamId: stream.id
+                            };
+                            
+                            stream.data.push(packet);
+                            
+                            // Keep only recent data
+                            if (stream.data.length > 100) {
+                                stream.data.shift();
+                            }
+                            
+                            // Create visual particle
+                            if (agent === this.selectedAgent) {
+                                this.createDataParticle(agent, stream.type);
+                            }
+                        }
+                    });
+                });
+            }
+            
+            simulateReasoning() {
+                if (!this.selectedAgent || !this.isRunning) return;
+                
+                const reasoningTypes = [
+                    { type: 'PERCEPTION', content: 'Analyzing visual input stream' },
+                    { type: 'PATTERN', content: 'Detected recurring pattern in data' },
+                    { type: 'INFERENCE', content: 'Drawing conclusion from evidence' },
+                    { type: 'DECISION', content: 'Evaluating action alternatives' },
+                    { type: 'PREDICTION', content: 'Forecasting future state' },
+                    { type: 'LEARNING', content: 'Updating model parameters' },
+                    { type: 'MEMORY', content: 'Storing relevant information' },
+                    { type: 'BOUNDARY', content: 'Threshold exceeded, adjusting' }
+                ];
+                
+                if (Math.random() > 0.5) {
+                    const reasoning = reasoningTypes[Math.floor(Math.random() * reasoningTypes.length)];
+                    const confidence = Math.random() * 40 + 60;
+                    
+                    this.addReasoningNode({
+                        ...reasoning,
+                        confidence: confidence,
+                        timestamp: Date.now(),
+                        agentId: this.selectedAgent.id
+                    });
+                }
+            }
+            
+            addReasoningNode(node) {
+                const chainContainer = document.getElementById('reasoningChain');
+                
+                const nodeElement = document.createElement('div');
+                nodeElement.className = 'reasoning-node';
+                nodeElement.innerHTML = `
+                    <div class="reasoning-type">${node.type}</div>
+                    <div class="reasoning-content">${node.content}</div>
+                    <div class="reasoning-confidence">${node.confidence.toFixed(0)}%</div>
+                `;
+                
+                chainContainer.insertBefore(nodeElement, chainContainer.firstChild);
+                
+                // Keep only recent nodes
+                while (chainContainer.children.length > 20) {
+                    chainContainer.removeChild(chainContainer.lastChild);
+                }
+                
+                // Update reasoning depth
+                this.stats.reasoningDepth = Math.min(20, chainContainer.children.length);
+            }
+            
+            createDataParticle(agent, type) {
+                const colors = {
+                    input: '#00f',
+                    processing: '#ff0',
+                    output: '#0f0'
+                };
+                
+                this.particles.push({
+                    x: agent.position.x,
+                    y: agent.position.y,
+                    vx: (Math.random() - 0.5) * 4,
+                    vy: (Math.random() - 0.5) * 4,
+                    color: colors[type] || '#fff',
+                    life: 100,
+                    size: Math.random() * 3 + 2
+                });
+            }
+            
+            updateStats() {
+                // Calculate data rate
+                let totalData = 0;
+                this.dataStreams.forEach(streams => {
+                    streams.forEach(stream => {
+                        if (stream.active) {
+                            totalData += stream.rate;
+                        }
+                    });
+                });
+                this.stats.dataRate = totalData;
+                
+                // Decision rate
+                this.stats.decisionRate = Math.floor(Math.random() * 20 + 10);
+                
+                // Active streams
+                let activeCount = 0;
+                this.dataStreams.forEach(streams => {
+                    streams.forEach(stream => {
+                        if (stream.active) activeCount++;
+                    });
+                });
+                this.stats.activeStreams = activeCount;
+                
+                // Update UI
+                document.getElementById('dataRate').textContent = this.stats.dataRate.toFixed(0) + ' KB/s';
+                document.getElementById('decisionRate').textContent = this.stats.decisionRate;
+                document.getElementById('activeStreams').textContent = this.stats.activeStreams;
+                document.getElementById('reasoningDepth').textContent = this.stats.reasoningDepth;
+            }
+            
+            animate() {
+                this.ctx.fillStyle = 'rgba(0, 0, 0, 0.05)';
+                this.ctx.fillRect(0, 0, this.canvas.width, this.canvas.height);
+                
+                if (this.currentView === 'flow') {
+                    this.drawDataFlow();
+                } else if (this.currentView === 'network') {
+                    this.drawNetworkView();
+                } else if (this.currentView === 'matrix') {
+                    this.drawMatrixView();
+                }
+                
+                // Draw particles
+                this.drawParticles();
+                
+                // Draw agent connections
+                this.drawConnections();
+                
+                requestAnimationFrame(() => this.animate());
+            }
+            
+            drawDataFlow() {
+                if (!this.selectedAgent) return;
+                
+                const centerX = this.canvas.width / 2;
+                const centerY = this.canvas.height / 2;
+                
+                // Draw agent at center
+                this.ctx.strokeStyle = '#0f0';
+                this.ctx.lineWidth = 2;
+                this.ctx.beginPath();
+                this.ctx.arc(centerX, centerY, 30, 0, Math.PI * 2);
+                this.ctx.stroke();
+                
+                // Draw data streams
+                const streams = this.dataStreams.get(this.selectedAgent.id) || [];
+                const angleStep = (Math.PI * 2) / streams.length;
+                
+                streams.forEach((stream, index) => {
+                    const angle = index * angleStep;
+                    const distance = 150;
+                    const x = centerX + Math.cos(angle) * distance;
+                    const y = centerY + Math.sin(angle) * distance;
+                    
+                    // Stream connection
+                    this.ctx.strokeStyle = stream.active ? '#0f0' : '#333';
+                    this.ctx.lineWidth = stream.active ? 2 : 1;
+                    this.ctx.beginPath();
+                    this.ctx.moveTo(centerX, centerY);
+                    this.ctx.lineTo(x, y);
+                    this.ctx.stroke();
+                    
+                    // Stream node
+                    this.ctx.fillStyle = this.getStreamColor(stream.type);
+                    this.ctx.beginPath();
+                    this.ctx.arc(x, y, 10, 0, Math.PI * 2);
+                    this.ctx.fill();
+                    
+                    // Stream label
+                    this.ctx.fillStyle = '#0f0';
+                    this.ctx.font = '10px Courier New';
+                    this.ctx.textAlign = 'center';
+                    this.ctx.fillText(stream.name, x, y + 25);
+                });
+            }
+            
+            drawNetworkView() {
+                // Draw all agents and their connections
+                this.agents.forEach(agent => {
+                    // Update position
+                    agent.position.x += agent.velocity.x;
+                    agent.position.y += agent.velocity.y;
+                    
+                    // Bounce off walls
+                    if (agent.position.x < 50 || agent.position.x > this.canvas.width - 50) {
+                        agent.velocity.x *= -1;
+                    }
+                    if (agent.position.y < 50 || agent.position.y > this.canvas.height - 50) {
+                        agent.velocity.y *= -1;
+                    }
+                    
+                    // Draw agent
+                    this.ctx.strokeStyle = agent === this.selectedAgent ? '#0ff' : '#0f0';
+                    this.ctx.lineWidth = agent === this.selectedAgent ? 3 : 1;
+                    this.ctx.beginPath();
+                    this.ctx.arc(agent.position.x, agent.position.y, 20, 0, Math.PI * 2);
+                    this.ctx.stroke();
+                    
+                    // Agent label
+                    this.ctx.fillStyle = '#0f0';
+                    this.ctx.font = '10px Courier New';
+                    this.ctx.textAlign = 'center';
+                    this.ctx.fillText(agent.name, agent.position.x, agent.position.y + 35);
+                });
+                
+                // Draw connections between agents
+                for (let i = 0; i < this.agents.length; i++) {
+                    for (let j = i + 1; j < this.agents.length; j++) {
+                        const a = this.agents[i];
+                        const b = this.agents[j];
+                        const distance = Math.sqrt(
+                            Math.pow(a.position.x - b.position.x, 2) +
+                            Math.pow(a.position.y - b.position.y, 2)
+                        );
+                        
+                        if (distance < 200) {
+                            const opacity = 1 - (distance / 200);
+                            this.ctx.strokeStyle = `rgba(0, 255, 0, ${opacity * 0.3})`;
+                            this.ctx.lineWidth = 1;
+                            this.ctx.beginPath();
+                            this.ctx.moveTo(a.position.x, a.position.y);
+                            this.ctx.lineTo(b.position.x, b.position.y);
+                            this.ctx.stroke();
+                        }
+                    }
+                }
+            }
+            
+            drawMatrixView() {
+                // Initialize matrix columns if needed
+                if (this.matrixColumns.length === 0) {
+                    const columnCount = Math.floor(this.canvas.width / 20);
+                    for (let i = 0; i < columnCount; i++) {
+                        this.matrixColumns.push({
+                            x: i * 20 + 10,
+                            y: Math.random() * -500,
+                            speed: Math.random() * 2 + 1,
+                            chars: []
+                        });
+                    }
+                }
+                
+                // Update and draw matrix rain
+                this.ctx.fillStyle = '#0f0';
+                this.ctx.font = '14px Courier New';
+                
+                this.matrixColumns.forEach(column => {
+                    column.y += column.speed;
+                    
+                    if (column.y > this.canvas.height) {
+                        column.y = Math.random() * -500;
+                        column.speed = Math.random() * 2 + 1;
+                    }
+                    
+                    // Draw characters
+                    const charCount = 20;
+                    for (let i = 0; i < charCount; i++) {
+                        const y = column.y - i * 20;
+                        if (y > 0 && y < this.canvas.height) {
+                            const opacity = 1 - (i / charCount);
+                            this.ctx.fillStyle = `rgba(0, 255, 0, ${opacity})`;
+                            const char = String.fromCharCode(33 + Math.floor(Math.random() * 94));
+                            this.ctx.fillText(char, column.x, y);
+                        }
+                    }
+                });
+                
+                // Overlay agent data
+                if (this.selectedAgent) {
+                    this.ctx.fillStyle = 'rgba(0, 0, 0, 0.7)';
+                    this.ctx.fillRect(50, 50, 300, 100);
+                    
+                    this.ctx.fillStyle = '#0f0';
+                    this.ctx.font = '16px Courier New';
+                    this.ctx.fillText(`AGENT: ${this.selectedAgent.name}`, 60, 80);
+                    this.ctx.font = '12px Courier New';
+                    this.ctx.fillText(`STATUS: ${this.selectedAgent.status.toUpperCase()}`, 60, 100);
+                    this.ctx.fillText(`TYPE: ${this.selectedAgent.type.toUpperCase()}`, 60, 120);
+                }
+            }
+            
+            drawParticles() {
+                this.particles = this.particles.filter(particle => {
+                    particle.x += particle.vx;
+                    particle.y += particle.vy;
+                    particle.life--;
+                    
+                    if (particle.life > 0) {
+                        const opacity = particle.life / 100;
+                        this.ctx.fillStyle = particle.color.replace('rgb', 'rgba').replace(')', `, ${opacity})`);
+                        this.ctx.beginPath();
+                        this.ctx.arc(particle.x, particle.y, particle.size, 0, Math.PI * 2);
+                        this.ctx.fill();
+                        return true;
+                    }
+                    return false;
+                });
+            }
+            
+            drawConnections() {
+                // Draw data flow connections
+                if (this.isRunning && this.selectedAgent) {
+                    const streams = this.dataStreams.get(this.selectedAgent.id) || [];
+                    
+                    streams.forEach(stream => {
+                        if (stream.active && stream.data.length > 0) {
+                            // Visualize recent data
+                            const recentData = stream.data.slice(-10);
+                            recentData.forEach((data, index) => {
+                                const age = Date.now() - data.timestamp;
+                                if (age < 2000) {
+                                    const opacity = 1 - (age / 2000);
+                                    this.ctx.strokeStyle = `rgba(0, 255, 0, ${opacity * 0.5})`;
+                                    this.ctx.lineWidth = 1;
+                                    
+                                    // Draw data flow line
+                                    // Implementation depends on current view
+                                }
+                            });
+                        }
+                    });
+                }
+            }
+            
+            getStreamColor(type) {
+                const colors = {
+                    input: '#00f',
+                    processing: '#ff0',
+                    output: '#0f0',
+                    error: '#f00'
+                };
+                return colors[type] || '#fff';
+            }
+            
+            resizeCanvas() {
+                const container = this.canvas.parentElement;
+                this.canvas.width = container.clientWidth;
+                this.canvas.height = container.clientHeight - 200; // Account for reasoning chain
+            }
+            
+            increaseSpeed() {
+                this.speed = Math.min(this.speed * 2, 8);
+                if (this.isRunning) {
+                    this.pauseMonitoring();
+                    this.startMonitoring();
+                }
+            }
+            
+            decreaseSpeed() {
+                this.speed = Math.max(this.speed / 2, 0.25);
+                if (this.isRunning) {
+                    this.pauseMonitoring();
+                    this.startMonitoring();
+                }
+            }
+            
+            toggleView() {
+                const views = ['flow', 'network', 'matrix'];
+                const currentIndex = views.indexOf(this.currentView);
+                this.currentView = views[(currentIndex + 1) % views.length];
+            }
+        }
+        
+        // Global instance
+        let monitor;
+        
+        // Control functions
+        function startMonitoring() {
+            monitor.startMonitoring();
+        }
+        
+        function pauseMonitoring() {
+            monitor.pauseMonitoring();
+        }
+        
+        function increaseSpeed() {
+            monitor.increaseSpeed();
+        }
+        
+        function decreaseSpeed() {
+            monitor.decreaseSpeed();
+        }
+        
+        function toggleView() {
+            monitor.toggleView();
+        }
+        
+        // Initialize on load
+        window.onload = () => {
+            monitor = new AgentDatastreamMonitor();
+            console.log('🧠 Agent Datastream Monitor initialized');
+            console.log('Click on agents to view their data streams and reasoning chains');
+        };
+    </script>
+</body>
+</html>

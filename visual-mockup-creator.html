@@ -1,0 +1,943 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>🎨 Visual Mockup Creator - Component Archive Spawner</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Courier New', monospace;
+            background: #0a0a0a;
+            color: #00ff41;
+            overflow-x: hidden;
+        }
+
+        .creator-container {
+            display: flex;
+            height: 100vh;
+        }
+
+        /* Left Panel - Tools & Color Schemes */
+        .tools-panel {
+            width: 300px;
+            background: linear-gradient(135deg, #1a1a2e, #16213e);
+            border-right: 2px solid #00ff41;
+            padding: 20px;
+            overflow-y: auto;
+        }
+
+        .tools-section {
+            margin-bottom: 30px;
+            border: 1px solid #333;
+            border-radius: 8px;
+            padding: 15px;
+            background: rgba(0, 255, 65, 0.05);
+        }
+
+        .tools-section h3 {
+            color: #00ff88;
+            margin-bottom: 10px;
+            text-align: center;
+            border-bottom: 1px solid #333;
+            padding-bottom: 5px;
+        }
+
+        /* Color Scheme Selector */
+        .color-schemes {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 10px;
+            margin-bottom: 15px;
+        }
+
+        .color-scheme {
+            padding: 10px;
+            border: 2px solid transparent;
+            border-radius: 5px;
+            cursor: pointer;
+            text-align: center;
+            font-size: 12px;
+            transition: all 0.3s;
+            position: relative;
+        }
+
+        .color-scheme.active {
+            border-color: #00ff41;
+            box-shadow: 0 0 10px rgba(0, 255, 65, 0.5);
+        }
+
+        .scheme-redblack {
+            background: linear-gradient(45deg, #ff0000, #000000);
+            color: #fff;
+        }
+
+        .scheme-whiteblack {
+            background: linear-gradient(45deg, #ffffff, #000000);
+            color: #333;
+        }
+
+        .scheme-grey {
+            background: linear-gradient(45deg, #666666, #333333);
+            color: #ccc;
+        }
+
+        .scheme-hacker {
+            background: linear-gradient(45deg, #000000, #00ff41);
+            color: #00ff41;
+        }
+
+        .scheme-patriotic {
+            background: linear-gradient(45deg, #ff0000, #ffffff, #0000ff);
+            color: #000;
+        }
+
+        .scheme-bitcoin {
+            background: linear-gradient(45deg, #f7931a, #000000);
+            color: #f7931a;
+        }
+
+        /* Component Tools */
+        .component-tools {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 8px;
+        }
+
+        .tool-btn {
+            padding: 8px;
+            background: #1a1a2e;
+            border: 1px solid #00ff41;
+            color: #00ff41;
+            border-radius: 3px;
+            cursor: pointer;
+            font-size: 11px;
+            transition: all 0.3s;
+        }
+
+        .tool-btn:hover {
+            background: #00ff41;
+            color: #000;
+        }
+
+        /* Main Canvas Area */
+        .canvas-area {
+            flex: 1;
+            position: relative;
+            background: #000;
+            overflow: hidden;
+        }
+
+        .canvas-grid {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            opacity: 0.1;
+            background-image: 
+                linear-gradient(rgba(0, 255, 65, 0.1) 1px, transparent 1px),
+                linear-gradient(90deg, rgba(0, 255, 65, 0.1) 1px, transparent 1px);
+            background-size: 20px 20px;
+        }
+
+        .mockup-canvas {
+            position: relative;
+            width: 100%;
+            height: 100%;
+            z-index: 10;
+        }
+
+        /* Draggable Components */
+        .draggable-component {
+            position: absolute;
+            border: 2px dashed #00ff41;
+            background: rgba(0, 255, 65, 0.1);
+            cursor: move;
+            min-width: 100px;
+            min-height: 60px;
+            padding: 10px;
+            border-radius: 5px;
+            font-size: 12px;
+            text-align: center;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            transition: all 0.3s;
+            user-select: none;
+        }
+
+        .draggable-component:hover {
+            box-shadow: 0 0 15px rgba(0, 255, 65, 0.7);
+            border-style: solid;
+        }
+
+        .draggable-component.selected {
+            border-color: #ff0088;
+            box-shadow: 0 0 20px rgba(255, 0, 136, 0.8);
+        }
+
+        /* Right Panel - Properties & Export */
+        .properties-panel {
+            width: 280px;
+            background: linear-gradient(135deg, #2e1a1a, #3e1621);
+            border-left: 2px solid #ff0088;
+            padding: 20px;
+            overflow-y: auto;
+        }
+
+        .export-section {
+            margin-bottom: 20px;
+            border: 1px solid #ff0088;
+            border-radius: 8px;
+            padding: 15px;
+            background: rgba(255, 0, 136, 0.05);
+        }
+
+        .export-section h3 {
+            color: #ff88aa;
+            margin-bottom: 10px;
+            text-align: center;
+        }
+
+        .export-btn {
+            width: 100%;
+            padding: 12px;
+            background: #ff0088;
+            color: #fff;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+            margin-bottom: 10px;
+            font-family: inherit;
+            font-weight: bold;
+            transition: all 0.3s;
+        }
+
+        .export-btn:hover {
+            background: #ff44aa;
+            transform: scale(1.05);
+        }
+
+        /* Billing Tier Selector */
+        .billing-tiers {
+            display: grid;
+            grid-template-columns: 1fr;
+            gap: 8px;
+        }
+
+        .billing-tier {
+            padding: 10px;
+            border: 1px solid #ff0088;
+            border-radius: 3px;
+            cursor: pointer;
+            text-align: center;
+            font-size: 11px;
+            transition: all 0.3s;
+        }
+
+        .billing-tier.active {
+            background: #ff0088;
+            color: #fff;
+        }
+
+        .tier-free { border-color: #888; }
+        .tier-premium { border-color: #ffaa00; }
+        .tier-enterprise { border-color: #ff0088; }
+
+        /* Archive Search */
+        .archive-search {
+            margin-bottom: 15px;
+        }
+
+        .archive-search input {
+            width: 100%;
+            padding: 8px;
+            background: #1a1a2e;
+            border: 1px solid #00ff41;
+            color: #00ff41;
+            border-radius: 3px;
+            font-family: inherit;
+        }
+
+        .archive-results {
+            max-height: 200px;
+            overflow-y: auto;
+            border: 1px solid #333;
+            border-radius: 3px;
+            margin-top: 10px;
+        }
+
+        .archive-result {
+            padding: 8px;
+            border-bottom: 1px solid #222;
+            cursor: pointer;
+            font-size: 11px;
+            transition: all 0.3s;
+        }
+
+        .archive-result:hover {
+            background: rgba(0, 255, 65, 0.1);
+        }
+
+        /* Component Library */
+        .component-library {
+            display: grid;
+            grid-template-columns: 1fr;
+            gap: 5px;
+            max-height: 300px;
+            overflow-y: auto;
+        }
+
+        .library-component {
+            padding: 8px;
+            background: #1a1a2e;
+            border: 1px solid #333;
+            border-radius: 3px;
+            cursor: pointer;
+            font-size: 11px;
+            text-align: center;
+            transition: all 0.3s;
+        }
+
+        .library-component:hover {
+            border-color: #00ff41;
+            background: rgba(0, 255, 65, 0.1);
+        }
+
+        /* Status Bar */
+        .status-bar {
+            position: fixed;
+            bottom: 0;
+            left: 0;
+            right: 0;
+            height: 30px;
+            background: #1a1a2e;
+            border-top: 1px solid #00ff41;
+            display: flex;
+            align-items: center;
+            padding: 0 20px;
+            font-size: 12px;
+            z-index: 1000;
+        }
+
+        .status-info {
+            margin-right: 20px;
+        }
+
+        /* Animations */
+        @keyframes componentSpawn {
+            0% { transform: scale(0) rotate(180deg); opacity: 0; }
+            50% { transform: scale(1.2) rotate(90deg); opacity: 0.7; }
+            100% { transform: scale(1) rotate(0deg); opacity: 1; }
+        }
+
+        .component-spawning {
+            animation: componentSpawn 0.8s ease-out;
+        }
+
+        /* Archive Discovery Indicator */
+        .archive-indicator {
+            position: fixed;
+            top: 20px;
+            right: 20px;
+            background: rgba(0, 255, 65, 0.9);
+            color: #000;
+            padding: 10px 15px;
+            border-radius: 20px;
+            font-weight: bold;
+            z-index: 1001;
+            animation: pulse 2s infinite;
+        }
+
+        @keyframes pulse {
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0.6; }
+        }
+    </style>
+</head>
+<body>
+    <div class="creator-container">
+        <!-- Left Panel - Tools & Color Schemes -->
+        <div class="tools-panel">
+            <div class="tools-section">
+                <h3>🎨 Color Schemes</h3>
+                <div class="color-schemes">
+                    <div class="color-scheme scheme-redblack active" data-scheme="redblack">
+                        Red/Black<br>Forward
+                    </div>
+                    <div class="color-scheme scheme-whiteblack" data-scheme="whiteblack">
+                        White/Black<br>Classic
+                    </div>
+                    <div class="color-scheme scheme-grey" data-scheme="grey">
+                        Grey Scale<br>Minimal
+                    </div>
+                    <div class="color-scheme scheme-hacker" data-scheme="hacker">
+                        Hacker<br>Matrix
+                    </div>
+                    <div class="color-scheme scheme-patriotic" data-scheme="patriotic">
+                        USA 250th<br>Patriotic
+                    </div>
+                    <div class="color-scheme scheme-bitcoin" data-scheme="bitcoin">
+                        Bitcoin<br>Orange
+                    </div>
+                </div>
+                <div style="font-size: 10px; text-align: center; opacity: 0.7;">
+                    AI reads forward → Components spawn based on visual mockup
+                </div>
+            </div>
+
+            <div class="tools-section">
+                <h3>🔧 Component Tools</h3>
+                <div class="component-tools">
+                    <div class="tool-btn" data-tool="header">Header</div>
+                    <div class="tool-btn" data-tool="nav">Navigation</div>
+                    <div class="tool-btn" data-tool="hero">Hero Section</div>
+                    <div class="tool-btn" data-tool="content">Content</div>
+                    <div class="tool-btn" data-tool="sidebar">Sidebar</div>
+                    <div class="tool-btn" data-tool="footer">Footer</div>
+                    <div class="tool-btn" data-tool="auth">Auth Form</div>
+                    <div class="tool-btn" data-tool="billing">Billing</div>
+                    <div class="tool-btn" data-tool="dashboard">Dashboard</div>
+                    <div class="tool-btn" data-tool="api">API Panel</div>
+                    <div class="tool-btn" data-tool="gaming">Gaming UI</div>
+                    <div class="tool-btn" data-tool="blockchain">Blockchain</div>
+                </div>
+            </div>
+
+            <div class="tools-section">
+                <h3>🗄️ Archive Search</h3>
+                <div class="archive-search">
+                    <input type="text" id="archiveSearch" placeholder="Search 5299+ components...">
+                    <div class="archive-results" id="archiveResults"></div>
+                </div>
+            </div>
+
+            <div class="tools-section">
+                <h3>📚 Component Library</h3>
+                <div class="component-library" id="componentLibrary">
+                    <div class="library-component" data-component="tip-jar-ark">🏺 Tip Jar Ark Game Master</div>
+                    <div class="library-component" data-component="unix-color">🎨 Unix Color System</div>
+                    <div class="library-component" data-component="constitutional-ai">🏛️ Constitutional AI Routes</div>
+                    <div class="library-component" data-component="credit-tracker">💳 Unified Credit Tracker</div>
+                    <div class="library-component" data-component="guardian-machine">🛡️ Guardian Machine</div>
+                    <div class="library-component" data-component="pirate-economy">🏴‍☠️ Pirate Economy</div>
+                    <div class="library-component" data-component="multimedia-system">🎵 Multimedia Processing</div>
+                    <div class="library-component" data-component="pricing-oracle">💰 Commodity Price Oracle</div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Main Canvas Area -->
+        <div class="canvas-area">
+            <div class="canvas-grid"></div>
+            <div class="mockup-canvas" id="mockupCanvas">
+                <!-- Draggable components will be added here -->
+            </div>
+        </div>
+
+        <!-- Right Panel - Properties & Export -->
+        <div class="properties-panel">
+            <div class="export-section">
+                <h3>💾 Export Mockup</h3>
+                <button class="export-btn" onclick="exportAsSVG()">📄 Export as SVG</button>
+                <button class="export-btn" onclick="exportAsPNG()">🖼️ Export as PNG</button>
+                <button class="export-btn" onclick="exportAsJSON()">📋 Export as JSON</button>
+                <button class="export-btn" onclick="spawnComponents()">🚀 Spawn Components</button>
+            </div>
+
+            <div class="export-section">
+                <h3>💰 Billing Tiers</h3>
+                <div class="billing-tiers">
+                    <div class="billing-tier tier-free active" data-tier="free">
+                        Free Tier<br>
+                        <small>Basic components</small>
+                    </div>
+                    <div class="billing-tier tier-premium" data-tier="premium">
+                        Premium Tier<br>
+                        <small>Advanced features</small>
+                    </div>
+                    <div class="billing-tier tier-enterprise" data-tier="enterprise">
+                        Enterprise Tier<br>
+                        <small>Full component access</small>
+                    </div>
+                </div>
+            </div>
+
+            <div class="export-section">
+                <h3>📊 Mockup Stats</h3>
+                <div id="mockupStats">
+                    <div class="status-info">Components: <span id="componentCount">0</span></div>
+                    <div class="status-info">Scheme: <span id="currentScheme">redblack</span></div>
+                    <div class="status-info">Tier: <span id="currentTier">free</span></div>
+                    <div class="status-info">Archive matches: <span id="archiveMatches">0</span></div>
+                </div>
+            </div>
+
+            <div class="export-section">
+                <h3>🔍 Component Properties</h3>
+                <div id="componentProperties">
+                    <div style="opacity: 0.6; text-align: center;">
+                        Select a component to view properties
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Archive Discovery Indicator -->
+    <div class="archive-indicator" id="archiveIndicator">
+        📦 5299 Components Ready
+    </div>
+
+    <!-- Status Bar -->
+    <div class="status-bar">
+        <div class="status-info">Visual Mockup Creator v1.0</div>
+        <div class="status-info">Ready to spawn components from archive</div>
+        <div class="status-info" id="mousePosition">Mouse: 0, 0</div>
+    </div>
+
+    <script>
+        // Global state
+        let currentScheme = 'redblack';
+        let currentTier = 'free';
+        let selectedComponent = null;
+        let components = [];
+        let componentIdCounter = 1;
+        let isDragging = false;
+
+        // Mock archive data (representing the 5299 components)
+        const archiveComponents = [
+            { name: 'tip-jar-ark-game-master.js', tags: ['gaming', 'ark', 'unix'], tier: 'enterprise' },
+            { name: 'constitutional-ai.js', tags: ['ai', 'governance'], tier: 'premium' },
+            { name: 'unix-color-system.js', tags: ['visual', 'status'], tier: 'free' },
+            { name: 'unified-credit-tracker.js', tags: ['billing', 'finance'], tier: 'premium' },
+            { name: 'multimedia-processing.js', tags: ['media', 'audio'], tier: 'enterprise' },
+            { name: 'pricing-oracle.js', tags: ['pricing', 'commodities'], tier: 'premium' },
+            { name: 'american-hacker-boot.html', tags: ['patriotic', 'usa'], tier: 'free' },
+            { name: 'dual-mirror-origami.js', tags: ['folding', 'mirror'], tier: 'enterprise' }
+        ];
+
+        // Initialize
+        document.addEventListener('DOMContentLoaded', function() {
+            setupEventListeners();
+            updateStats();
+            populateArchiveSearch();
+        });
+
+        function setupEventListeners() {
+            // Color scheme selection
+            document.querySelectorAll('.color-scheme').forEach(scheme => {
+                scheme.addEventListener('click', function() {
+                    document.querySelectorAll('.color-scheme').forEach(s => s.classList.remove('active'));
+                    this.classList.add('active');
+                    currentScheme = this.dataset.scheme;
+                    updateScheme();
+                    updateStats();
+                });
+            });
+
+            // Billing tier selection
+            document.querySelectorAll('.billing-tier').forEach(tier => {
+                tier.addEventListener('click', function() {
+                    document.querySelectorAll('.billing-tier').forEach(t => t.classList.remove('active'));
+                    this.classList.add('active');
+                    currentTier = this.dataset.tier;
+                    updateStats();
+                });
+            });
+
+            // Tool buttons
+            document.querySelectorAll('.tool-btn').forEach(tool => {
+                tool.addEventListener('click', function() {
+                    addComponent(this.dataset.tool);
+                });
+            });
+
+            // Component library
+            document.querySelectorAll('.library-component').forEach(comp => {
+                comp.addEventListener('click', function() {
+                    addLibraryComponent(this.dataset.component, this.textContent);
+                });
+            });
+
+            // Canvas click (deselect)
+            document.getElementById('mockupCanvas').addEventListener('click', function(e) {
+                if (e.target === this) {
+                    deselectAllComponents();
+                }
+            });
+
+            // Archive search
+            document.getElementById('archiveSearch').addEventListener('input', function() {
+                searchArchive(this.value);
+            });
+
+            // Mouse tracking
+            document.addEventListener('mousemove', function(e) {
+                document.getElementById('mousePosition').textContent = `Mouse: ${e.clientX}, ${e.clientY}`;
+            });
+        }
+
+        function updateScheme() {
+            const canvas = document.getElementById('mockupCanvas');
+            canvas.className = `mockup-canvas scheme-${currentScheme}`;
+            
+            // Update canvas background based on scheme
+            const schemes = {
+                redblack: 'linear-gradient(135deg, #330000, #000000)',
+                whiteblack: 'linear-gradient(135deg, #ffffff, #333333)',
+                grey: 'linear-gradient(135deg, #666666, #333333)',
+                hacker: 'linear-gradient(135deg, #000000, #001100)',
+                patriotic: 'linear-gradient(135deg, #001166, #660000)',
+                bitcoin: 'linear-gradient(135deg, #331100, #000000)'
+            };
+            
+            canvas.style.background = schemes[currentScheme];
+        }
+
+        function addComponent(type) {
+            const canvas = document.getElementById('mockupCanvas');
+            const component = document.createElement('div');
+            component.className = 'draggable-component component-spawning';
+            component.dataset.type = type;
+            component.dataset.id = componentIdCounter++;
+            component.textContent = `${type.charAt(0).toUpperCase() + type.slice(1)} Component`;
+            
+            // Random position
+            component.style.left = Math.random() * (canvas.offsetWidth - 200) + 'px';
+            component.style.top = Math.random() * (canvas.offsetHeight - 100) + 'px';
+            
+            canvas.appendChild(component);
+            components.push(component);
+            
+            // Make draggable
+            makeDraggable(component);
+            
+            // Remove spawning animation
+            setTimeout(() => {
+                component.classList.remove('component-spawning');
+            }, 800);
+            
+            updateStats();
+        }
+
+        function addLibraryComponent(componentId, displayName) {
+            const canvas = document.getElementById('mockupCanvas');
+            const component = document.createElement('div');
+            component.className = 'draggable-component component-spawning';
+            component.dataset.type = 'library';
+            component.dataset.componentId = componentId;
+            component.dataset.id = componentIdCounter++;
+            component.textContent = displayName;
+            
+            // Random position
+            component.style.left = Math.random() * (canvas.offsetWidth - 200) + 'px';
+            component.style.top = Math.random() * (canvas.offsetHeight - 100) + 'px';
+            
+            canvas.appendChild(component);
+            components.push(component);
+            
+            // Make draggable
+            makeDraggable(component);
+            
+            // Remove spawning animation
+            setTimeout(() => {
+                component.classList.remove('component-spawning');
+            }, 800);
+            
+            updateStats();
+        }
+
+        function makeDraggable(element) {
+            let isDragging = false;
+            let startX, startY, startLeft, startTop;
+
+            element.addEventListener('mousedown', function(e) {
+                isDragging = true;
+                startX = e.clientX;
+                startY = e.clientY;
+                startLeft = parseInt(element.style.left);
+                startTop = parseInt(element.style.top);
+                
+                // Select component
+                selectComponent(element);
+                
+                e.preventDefault();
+            });
+
+            document.addEventListener('mousemove', function(e) {
+                if (!isDragging) return;
+                
+                const newLeft = startLeft + (e.clientX - startX);
+                const newTop = startTop + (e.clientY - startY);
+                
+                element.style.left = newLeft + 'px';
+                element.style.top = newTop + 'px';
+            });
+
+            document.addEventListener('mouseup', function() {
+                isDragging = false;
+            });
+        }
+
+        function selectComponent(component) {
+            // Deselect all
+            document.querySelectorAll('.draggable-component').forEach(c => {
+                c.classList.remove('selected');
+            });
+            
+            // Select this one
+            component.classList.add('selected');
+            selectedComponent = component;
+            
+            // Update properties panel
+            updatePropertiesPanel(component);
+        }
+
+        function deselectAllComponents() {
+            document.querySelectorAll('.draggable-component').forEach(c => {
+                c.classList.remove('selected');
+            });
+            selectedComponent = null;
+            updatePropertiesPanel(null);
+        }
+
+        function updatePropertiesPanel(component) {
+            const panel = document.getElementById('componentProperties');
+            
+            if (!component) {
+                panel.innerHTML = '<div style="opacity: 0.6; text-align: center;">Select a component to view properties</div>';
+                return;
+            }
+            
+            panel.innerHTML = `
+                <div><strong>Type:</strong> ${component.dataset.type}</div>
+                <div><strong>ID:</strong> ${component.dataset.id}</div>
+                <div><strong>Position:</strong> ${component.style.left}, ${component.style.top}</div>
+                <div><strong>Scheme:</strong> ${currentScheme}</div>
+                <div><strong>Tier:</strong> ${currentTier}</div>
+                ${component.dataset.componentId ? `<div><strong>Library ID:</strong> ${component.dataset.componentId}</div>` : ''}
+                <button style="margin-top: 10px; padding: 5px; background: #ff0044; color: white; border: none; border-radius: 3px; cursor: pointer;" onclick="deleteSelectedComponent()">Delete Component</button>
+            `;
+        }
+
+        function deleteSelectedComponent() {
+            if (selectedComponent) {
+                selectedComponent.remove();
+                components = components.filter(c => c !== selectedComponent);
+                selectedComponent = null;
+                updatePropertiesPanel(null);
+                updateStats();
+            }
+        }
+
+        function updateStats() {
+            document.getElementById('componentCount').textContent = components.length;
+            document.getElementById('currentScheme').textContent = currentScheme;
+            document.getElementById('currentTier').textContent = currentTier;
+            
+            // Calculate archive matches (mock)
+            const matches = Math.floor(Math.random() * 50) + components.length * 10;
+            document.getElementById('archiveMatches').textContent = matches;
+        }
+
+        function searchArchive(query) {
+            const results = document.getElementById('archiveResults');
+            
+            if (!query) {
+                results.innerHTML = '';
+                return;
+            }
+            
+            const matches = archiveComponents.filter(comp => 
+                comp.name.toLowerCase().includes(query.toLowerCase()) ||
+                comp.tags.some(tag => tag.toLowerCase().includes(query.toLowerCase()))
+            );
+            
+            results.innerHTML = matches.map(comp => `
+                <div class="archive-result" onclick="addArchiveComponent('${comp.name}')">
+                    <strong>${comp.name}</strong><br>
+                    <small>Tags: ${comp.tags.join(', ')} | Tier: ${comp.tier}</small>
+                </div>
+            `).join('');
+        }
+
+        function addArchiveComponent(componentName) {
+            const canvas = document.getElementById('mockupCanvas');
+            const component = document.createElement('div');
+            component.className = 'draggable-component component-spawning';
+            component.dataset.type = 'archive';
+            component.dataset.archiveName = componentName;
+            component.dataset.id = componentIdCounter++;
+            component.textContent = `📦 ${componentName}`;
+            
+            // Random position
+            component.style.left = Math.random() * (canvas.offsetWidth - 200) + 'px';
+            component.style.top = Math.random() * (canvas.offsetHeight - 100) + 'px';
+            
+            canvas.appendChild(component);
+            components.push(component);
+            
+            // Make draggable
+            makeDraggable(component);
+            
+            // Remove spawning animation
+            setTimeout(() => {
+                component.classList.remove('component-spawning');
+            }, 800);
+            
+            updateStats();
+            
+            // Clear search
+            document.getElementById('archiveSearch').value = '';
+            document.getElementById('archiveResults').innerHTML = '';
+        }
+
+        function populateArchiveSearch() {
+            // This would connect to your actual 5299 component archive
+            console.log('Archive search ready - 5299 components available');
+        }
+
+        // Export functions
+        function exportAsSVG() {
+            const mockupData = generateMockupData();
+            const svg = generateSVG(mockupData);
+            downloadFile('mockup.svg', svg, 'image/svg+xml');
+        }
+
+        function exportAsPNG() {
+            // Create canvas and convert to PNG
+            const canvas = document.createElement('canvas');
+            const ctx = canvas.getContext('2d');
+            canvas.width = 1200;
+            canvas.height = 800;
+            
+            // Draw background
+            ctx.fillStyle = getSchemeColor(currentScheme);
+            ctx.fillRect(0, 0, canvas.width, canvas.height);
+            
+            // Draw components
+            components.forEach(comp => {
+                const rect = comp.getBoundingClientRect();
+                ctx.fillStyle = '#00ff41';
+                ctx.fillRect(
+                    parseInt(comp.style.left),
+                    parseInt(comp.style.top),
+                    200, 100
+                );
+                ctx.fillStyle = '#000';
+                ctx.font = '14px Courier New';
+                ctx.fillText(comp.textContent, parseInt(comp.style.left) + 10, parseInt(comp.style.top) + 50);
+            });
+            
+            canvas.toBlob(function(blob) {
+                const url = URL.createObjectURL(blob);
+                const a = document.createElement('a');
+                a.href = url;
+                a.download = 'mockup.png';
+                a.click();
+                URL.revokeObjectURL(url);
+            });
+        }
+
+        function exportAsJSON() {
+            const mockupData = generateMockupData();
+            const json = JSON.stringify(mockupData, null, 2);
+            downloadFile('mockup.json', json, 'application/json');
+        }
+
+        function spawnComponents() {
+            const mockupData = generateMockupData();
+            
+            // This would trigger the mockup-to-component spawner
+            console.log('Spawning components from archive based on mockup:', mockupData);
+            
+            // Mock spawning notification
+            const indicator = document.getElementById('archiveIndicator');
+            indicator.textContent = '🚀 Spawning Components...';
+            indicator.style.background = '#ff0088';
+            
+            setTimeout(() => {
+                indicator.textContent = '✅ Components Spawned!';
+                indicator.style.background = '#00ff88';
+            }, 2000);
+            
+            setTimeout(() => {
+                indicator.textContent = '📦 5299 Components Ready';
+                indicator.style.background = 'rgba(0, 255, 65, 0.9)';
+            }, 5000);
+        }
+
+        function generateMockupData() {
+            return {
+                version: '1.0',
+                scheme: currentScheme,
+                tier: currentTier,
+                timestamp: new Date().toISOString(),
+                components: components.map(comp => ({
+                    id: comp.dataset.id,
+                    type: comp.dataset.type,
+                    archiveName: comp.dataset.archiveName,
+                    componentId: comp.dataset.componentId,
+                    position: {
+                        x: parseInt(comp.style.left),
+                        y: parseInt(comp.style.top)
+                    },
+                    text: comp.textContent
+                })),
+                metadata: {
+                    totalComponents: components.length,
+                    archiveMatches: document.getElementById('archiveMatches').textContent
+                }
+            };
+        }
+
+        function generateSVG(data) {
+            const width = 1200;
+            const height = 800;
+            
+            let svg = `<svg width="${width}" height="${height}" xmlns="http://www.w3.org/2000/svg">`;
+            svg += `<rect width="100%" height="100%" fill="${getSchemeColor(data.scheme)}"/>`;
+            
+            data.components.forEach(comp => {
+                svg += `<rect x="${comp.position.x}" y="${comp.position.y}" width="200" height="100" fill="none" stroke="#00ff41" stroke-width="2" stroke-dasharray="5,5"/>`;
+                svg += `<text x="${comp.position.x + 10}" y="${comp.position.y + 50}" fill="#00ff41" font-family="Courier New" font-size="12">${comp.text}</text>`;
+            });
+            
+            svg += '</svg>';
+            return svg;
+        }
+
+        function getSchemeColor(scheme) {
+            const colors = {
+                redblack: '#330000',
+                whiteblack: '#ffffff',
+                grey: '#666666',
+                hacker: '#000000',
+                patriotic: '#001166',
+                bitcoin: '#331100'
+            };
+            return colors[scheme] || '#000000';
+        }
+
+        function downloadFile(filename, content, mimeType) {
+            const blob = new Blob([content], { type: mimeType });
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = filename;
+            a.click();
+            URL.revokeObjectURL(url);
+        }
+
+        // Initialize the mockup creator
+        updateScheme();
+    </script>
+</body>
+</html>

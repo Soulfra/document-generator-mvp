@@ -1,0 +1,759 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>👤 Human-in-the-Loop Game Approval System</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        
+        body {
+            font-family: 'Courier New', monospace;
+            background: linear-gradient(135deg, #0a0a0a, #1a0f1f, #0f1a1a);
+            color: #00ffaa;
+            min-height: 100vh;
+            display: flex;
+            flex-direction: column;
+        }
+        
+        .header {
+            background: rgba(0, 255, 170, 0.1);
+            border-bottom: 2px solid #00ffaa;
+            padding: 20px;
+            text-align: center;
+        }
+        
+        .header h1 {
+            font-size: 2.5em;
+            text-shadow: 0 0 20px #00ffaa;
+            margin-bottom: 10px;
+        }
+        
+        .container {
+            display: flex;
+            flex: 1;
+            padding: 20px;
+            gap: 20px;
+            max-width: 1600px;
+            margin: 0 auto;
+            width: 100%;
+        }
+        
+        /* Left Panel - Pending Approvals */
+        .pending-panel {
+            flex: 1;
+            background: rgba(0, 0, 0, 0.7);
+            border: 2px solid #00ffaa;
+            border-radius: 10px;
+            padding: 20px;
+            overflow-y: auto;
+            max-height: calc(100vh - 150px);
+        }
+        
+        .panel-title {
+            font-size: 1.5em;
+            margin-bottom: 20px;
+            color: #00ffaa;
+            text-shadow: 0 0 10px #00ffaa;
+        }
+        
+        .approval-card {
+            background: rgba(0, 255, 170, 0.05);
+            border: 1px solid #00ffaa;
+            border-radius: 8px;
+            padding: 15px;
+            margin-bottom: 15px;
+            transition: all 0.3s;
+        }
+        
+        .approval-card:hover {
+            background: rgba(0, 255, 170, 0.1);
+            box-shadow: 0 0 20px rgba(0, 255, 170, 0.3);
+        }
+        
+        .approval-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 10px;
+        }
+        
+        .game-tag {
+            background: #00ffaa;
+            color: #000;
+            padding: 3px 10px;
+            border-radius: 15px;
+            font-size: 0.8em;
+            font-weight: bold;
+        }
+        
+        .action-name {
+            font-size: 1.2em;
+            color: #ffaa00;
+            margin-bottom: 5px;
+        }
+        
+        .reasoning-box {
+            background: rgba(0, 0, 0, 0.5);
+            border: 1px solid #666;
+            padding: 10px;
+            border-radius: 5px;
+            margin: 10px 0;
+            font-size: 0.9em;
+        }
+        
+        .confidence-meter {
+            width: 100%;
+            height: 20px;
+            background: rgba(0, 0, 0, 0.5);
+            border: 1px solid #00ffaa;
+            border-radius: 10px;
+            overflow: hidden;
+            margin: 10px 0;
+        }
+        
+        .confidence-fill {
+            height: 100%;
+            background: linear-gradient(to right, #ff0000, #ffaa00, #00ff00);
+            transition: width 0.3s;
+        }
+        
+        .ai-recommendations {
+            margin: 15px 0;
+        }
+        
+        .ai-layer {
+            background: rgba(0, 0, 0, 0.3);
+            padding: 10px;
+            margin: 5px 0;
+            border-radius: 5px;
+            border-left: 3px solid #00ffaa;
+        }
+        
+        .ai-layer-title {
+            font-weight: bold;
+            color: #00ffaa;
+            margin-bottom: 5px;
+        }
+        
+        .approval-buttons {
+            display: flex;
+            gap: 10px;
+            margin-top: 15px;
+        }
+        
+        .btn {
+            flex: 1;
+            padding: 10px 20px;
+            border: 2px solid #00ffaa;
+            background: rgba(0, 255, 170, 0.1);
+            color: #00ffaa;
+            cursor: pointer;
+            border-radius: 5px;
+            font-family: inherit;
+            font-weight: bold;
+            transition: all 0.3s;
+        }
+        
+        .btn:hover {
+            background: rgba(0, 255, 170, 0.3);
+            box-shadow: 0 0 15px rgba(0, 255, 170, 0.5);
+        }
+        
+        .btn.approve {
+            border-color: #00ff00;
+            color: #00ff00;
+        }
+        
+        .btn.reject {
+            border-color: #ff0000;
+            color: #ff0000;
+        }
+        
+        /* Middle Panel - Live Game View */
+        .game-view-panel {
+            flex: 1.5;
+            background: rgba(0, 0, 0, 0.7);
+            border: 2px solid #00ffaa;
+            border-radius: 10px;
+            padding: 20px;
+            position: relative;
+        }
+        
+        .game-preview {
+            width: 100%;
+            height: 400px;
+            background: #000;
+            border: 1px solid #00ffaa;
+            border-radius: 5px;
+            position: relative;
+            overflow: hidden;
+        }
+        
+        .game-character {
+            position: absolute;
+            width: 40px;
+            height: 60px;
+            bottom: 30%;
+            left: 50%;
+            transform: translateX(-50%);
+            transition: all 0.5s;
+        }
+        
+        .character-sprite {
+            width: 100%;
+            height: 100%;
+            background: #ff9966;
+            border: 2px solid #000;
+        }
+        
+        .action-preview {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            font-size: 2em;
+            color: #ffff00;
+            text-shadow: 2px 2px 0 #000;
+            animation: pulse 2s infinite;
+        }
+        
+        @keyframes pulse {
+            0%, 100% { opacity: 0.5; transform: translate(-50%, -50%) scale(1); }
+            50% { opacity: 1; transform: translate(-50%, -50%) scale(1.2); }
+        }
+        
+        /* Right Panel - Decision History */
+        .history-panel {
+            flex: 1;
+            background: rgba(0, 0, 0, 0.7);
+            border: 2px solid #00ffaa;
+            border-radius: 10px;
+            padding: 20px;
+            overflow-y: auto;
+            max-height: calc(100vh - 150px);
+        }
+        
+        .history-entry {
+            background: rgba(0, 255, 170, 0.05);
+            border: 1px solid #666;
+            padding: 10px;
+            margin-bottom: 10px;
+            border-radius: 5px;
+            font-size: 0.9em;
+        }
+        
+        .history-entry.approved {
+            border-left: 3px solid #00ff00;
+        }
+        
+        .history-entry.rejected {
+            border-left: 3px solid #ff0000;
+        }
+        
+        .history-entry.auto-approved {
+            border-left: 3px solid #ffaa00;
+        }
+        
+        .timestamp {
+            color: #666;
+            font-size: 0.8em;
+        }
+        
+        /* Symlink Visualization */
+        .symlink-view {
+            margin-top: 20px;
+            padding: 15px;
+            background: rgba(0, 0, 0, 0.5);
+            border: 1px solid #00ffaa;
+            border-radius: 5px;
+        }
+        
+        .symlink-item {
+            display: flex;
+            align-items: center;
+            margin: 5px 0;
+            font-size: 0.8em;
+        }
+        
+        .symlink-arrow {
+            color: #00ffaa;
+            margin: 0 10px;
+        }
+        
+        /* Feedback Modal */
+        .feedback-modal {
+            display: none;
+            position: fixed;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            background: rgba(0, 0, 0, 0.9);
+            border: 2px solid #00ffaa;
+            padding: 30px;
+            border-radius: 10px;
+            z-index: 1000;
+            min-width: 400px;
+        }
+        
+        .feedback-textarea {
+            width: 100%;
+            min-height: 100px;
+            background: rgba(0, 255, 170, 0.05);
+            border: 1px solid #00ffaa;
+            color: #00ffaa;
+            padding: 10px;
+            font-family: inherit;
+            margin: 10px 0;
+        }
+        
+        /* Stats Dashboard */
+        .stats-bar {
+            display: flex;
+            justify-content: space-around;
+            padding: 15px;
+            background: rgba(0, 0, 0, 0.5);
+            border-radius: 5px;
+            margin-bottom: 20px;
+        }
+        
+        .stat-item {
+            text-align: center;
+        }
+        
+        .stat-value {
+            font-size: 2em;
+            color: #ffaa00;
+            font-weight: bold;
+        }
+        
+        .stat-label {
+            font-size: 0.8em;
+            color: #666;
+        }
+    </style>
+</head>
+<body>
+    <div class="header">
+        <h1>👤 Human-in-the-Loop Game Approval System</h1>
+        <p>Review and approve AI-recommended game actions with full reasoning transparency</p>
+    </div>
+    
+    <div class="container">
+        <!-- Left Panel - Pending Approvals -->
+        <div class="pending-panel">
+            <h2 class="panel-title">🔔 Pending Approvals</h2>
+            <div id="pending-approvals">
+                <!-- Approval cards will be dynamically added here -->
+            </div>
+        </div>
+        
+        <!-- Middle Panel - Live Game View -->
+        <div class="game-view-panel">
+            <h2 class="panel-title">🎮 Action Preview</h2>
+            
+            <div class="stats-bar">
+                <div class="stat-item">
+                    <div class="stat-value" id="total-decisions">0</div>
+                    <div class="stat-label">Total Decisions</div>
+                </div>
+                <div class="stat-item">
+                    <div class="stat-value" id="approval-rate">0%</div>
+                    <div class="stat-label">Approval Rate</div>
+                </div>
+                <div class="stat-item">
+                    <div class="stat-value" id="auto-approve-rate">0%</div>
+                    <div class="stat-label">Auto-Approved</div>
+                </div>
+            </div>
+            
+            <div class="game-preview" id="game-preview">
+                <div class="game-character" id="preview-character">
+                    <div class="character-sprite"></div>
+                </div>
+                <div class="action-preview" id="action-preview"></div>
+            </div>
+            
+            <div class="symlink-view">
+                <h3 style="color: #00ffaa; margin-bottom: 10px;">🔗 Decision Symlinks</h3>
+                <div id="symlink-list">
+                    <!-- Symlinks will be shown here -->
+                </div>
+            </div>
+        </div>
+        
+        <!-- Right Panel - Decision History -->
+        <div class="history-panel">
+            <h2 class="panel-title">📜 Decision History</h2>
+            <div id="decision-history">
+                <!-- History entries will be added here -->
+            </div>
+        </div>
+    </div>
+    
+    <!-- Feedback Modal -->
+    <div class="feedback-modal" id="feedback-modal">
+        <h3 style="color: #00ffaa; margin-bottom: 15px;">💭 Provide Feedback</h3>
+        <p>Help the AI learn from your decision:</p>
+        <textarea class="feedback-textarea" id="feedback-text" placeholder="Why did you make this decision?"></textarea>
+        <div class="approval-buttons">
+            <button class="btn" onclick="submitFeedback()">Submit</button>
+            <button class="btn" onclick="closeFeedback()">Skip</button>
+        </div>
+    </div>
+    
+    <script>
+        let ws = null;
+        let pendingApprovals = new Map();
+        let currentApproval = null;
+        let stats = {
+            total: 0,
+            approved: 0,
+            rejected: 0,
+            autoApproved: 0
+        };
+        
+        // Connect to reasoning engine
+        function connectWebSocket() {
+            ws = new WebSocket('ws://localhost:5500');
+            
+            ws.onopen = () => {
+                console.log('Connected to reasoning engine');
+                ws.send(JSON.stringify({ type: 'subscribe', game: 'all' }));
+            };
+            
+            ws.onmessage = (event) => {
+                const data = JSON.parse(event.data);
+                handleWebSocketMessage(data);
+            };
+            
+            ws.onerror = (error) => {
+                console.error('WebSocket error:', error);
+            };
+            
+            ws.onclose = () => {
+                console.log('Disconnected from reasoning engine');
+                setTimeout(connectWebSocket, 5000); // Reconnect
+            };
+        }
+        
+        function handleWebSocketMessage(data) {
+            switch (data.type) {
+                case 'approval_request':
+                    addApprovalRequest(data.request);
+                    break;
+                
+                case 'reasoning_update':
+                    updateGamePreview(data.data);
+                    break;
+                
+                case 'guidance':
+                    displayGuidance(data.guidance);
+                    break;
+            }
+        }
+        
+        async function loadPendingApprovals() {
+            try {
+                const response = await fetch('http://localhost:5500/reasoning/pending');
+                const data = await response.json();
+                
+                data.approvals?.forEach(approval => {
+                    addApprovalRequest(approval);
+                });
+            } catch (error) {
+                console.error('Failed to load pending approvals:', error);
+            }
+        }
+        
+        function addApprovalRequest(request) {
+            pendingApprovals.set(request.id, request);
+            
+            const container = document.getElementById('pending-approvals');
+            const card = createApprovalCard(request);
+            container.insertBefore(card, container.firstChild);
+            
+            // Animate entrance
+            setTimeout(() => {
+                card.style.opacity = '1';
+                card.style.transform = 'translateY(0)';
+            }, 10);
+        }
+        
+        function createApprovalCard(request) {
+            const card = document.createElement('div');
+            card.className = 'approval-card';
+            card.id = `approval-${request.id}`;
+            card.style.opacity = '0';
+            card.style.transform = 'translateY(-20px)';
+            card.style.transition = 'all 0.3s';
+            
+            const reasoning = request.reasoning;
+            
+            card.innerHTML = `
+                <div class="approval-header">
+                    <span class="game-tag">${reasoning.game.toUpperCase()}</span>
+                    <span class="timestamp">${new Date(request.requestTime).toLocaleTimeString()}</span>
+                </div>
+                
+                <div class="action-name">${reasoning.action.toUpperCase()}</div>
+                
+                <div class="reasoning-box">
+                    <strong>Reasoning:</strong><br>
+                    ${reasoning.analysis.reasoning || 'Analyzing...'}
+                </div>
+                
+                <div class="confidence-meter">
+                    <div class="confidence-fill" style="width: ${(reasoning.confidence || 0) * 100}%"></div>
+                </div>
+                <div style="text-align: center; font-size: 0.9em; color: #666;">
+                    Confidence: ${Math.round((reasoning.confidence || 0) * 100)}%
+                </div>
+                
+                <div class="ai-recommendations">
+                    ${createAIRecommendations(request.aiRecommendations)}
+                </div>
+                
+                <div class="approval-buttons">
+                    <button class="btn approve" onclick="approveAction('${request.id}')">✅ Approve</button>
+                    <button class="btn reject" onclick="rejectAction('${request.id}')">❌ Reject</button>
+                </div>
+            `;
+            
+            card.onclick = () => previewAction(request);
+            
+            return card;
+        }
+        
+        function createAIRecommendations(recommendations) {
+            if (!recommendations) return '';
+            
+            let html = '<h4 style="color: #00ffaa; margin-bottom: 10px;">AI Recommendations:</h4>';
+            
+            // Teacher AI
+            if (recommendations.teacher) {
+                html += `
+                    <div class="ai-layer">
+                        <div class="ai-layer-title">🎓 Teacher AI</div>
+                        ${recommendations.teacher.explanation || ''}
+                        ${recommendations.teacher.tips ? '<br>Tips: ' + recommendations.teacher.tips.join(', ') : ''}
+                    </div>
+                `;
+            }
+            
+            // Guardian AI
+            if (recommendations.guardian) {
+                html += `
+                    <div class="ai-layer">
+                        <div class="ai-layer-title">🛡️ Guardian AI</div>
+                        Safety: ${recommendations.guardian.safety?.level || 'Unknown'}
+                        ${recommendations.guardian.protections ? '<br>Protections: ' + recommendations.guardian.protections.join(', ') : ''}
+                    </div>
+                `;
+            }
+            
+            // Companion AI
+            if (recommendations.companion) {
+                html += `
+                    <div class="ai-layer">
+                        <div class="ai-layer-title">🤝 Companion AI</div>
+                        ${recommendations.companion.companionComment || ''}
+                        ${recommendations.companion.funFact ? '<br>Fun fact: ' + recommendations.companion.funFact : ''}
+                    </div>
+                `;
+            }
+            
+            return html;
+        }
+        
+        function previewAction(request) {
+            currentApproval = request;
+            const preview = document.getElementById('action-preview');
+            preview.textContent = `${request.reasoning.action.toUpperCase()} ${request.reasoning.context.oreType || ''}`;
+            
+            // Animate character
+            const character = document.getElementById('preview-character');
+            character.style.animation = 'bounce 0.5s';
+            setTimeout(() => {
+                character.style.animation = '';
+            }, 500);
+        }
+        
+        async function approveAction(approvalId) {
+            const approval = pendingApprovals.get(approvalId);
+            if (!approval) return;
+            
+            currentApproval = approval;
+            showFeedbackModal();
+        }
+        
+        async function rejectAction(approvalId) {
+            const approval = pendingApprovals.get(approvalId);
+            if (!approval) return;
+            
+            currentApproval = approval;
+            currentApproval.rejected = true;
+            showFeedbackModal();
+        }
+        
+        function showFeedbackModal() {
+            document.getElementById('feedback-modal').style.display = 'block';
+            document.getElementById('feedback-text').focus();
+        }
+        
+        function closeFeedback() {
+            document.getElementById('feedback-modal').style.display = 'none';
+            document.getElementById('feedback-text').value = '';
+        }
+        
+        async function submitFeedback() {
+            const feedback = document.getElementById('feedback-text').value;
+            const approved = !currentApproval.rejected;
+            
+            try {
+                const response = await fetch('http://localhost:5500/reasoning/approve', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        actionId: currentApproval.id,
+                        approved: approved,
+                        feedback: feedback
+                    })
+                });
+                
+                if (response.ok) {
+                    // Remove from pending
+                    pendingApprovals.delete(currentApproval.id);
+                    const card = document.getElementById(`approval-${currentApproval.id}`);
+                    if (card) {
+                        card.style.opacity = '0';
+                        card.style.transform = 'translateY(20px)';
+                        setTimeout(() => card.remove(), 300);
+                    }
+                    
+                    // Update stats
+                    stats.total++;
+                    if (approved) stats.approved++;
+                    else stats.rejected++;
+                    updateStats();
+                    
+                    // Add to history
+                    addToHistory(currentApproval, approved, feedback);
+                }
+            } catch (error) {
+                console.error('Failed to submit approval:', error);
+            }
+            
+            closeFeedback();
+        }
+        
+        function addToHistory(approval, approved, feedback) {
+            const history = document.getElementById('decision-history');
+            const entry = document.createElement('div');
+            entry.className = `history-entry ${approved ? 'approved' : 'rejected'}`;
+            
+            entry.innerHTML = `
+                <div style="display: flex; justify-content: space-between; margin-bottom: 5px;">
+                    <strong>${approval.reasoning.game} - ${approval.reasoning.action}</strong>
+                    <span class="timestamp">${new Date().toLocaleTimeString()}</span>
+                </div>
+                <div style="color: ${approved ? '#00ff00' : '#ff0000'}">
+                    ${approved ? '✅ Approved' : '❌ Rejected'}
+                </div>
+                ${feedback ? `<div style="margin-top: 5px; font-style: italic; color: #999;">"${feedback}"</div>` : ''}
+            `;
+            
+            history.insertBefore(entry, history.firstChild);
+            
+            // Keep only last 20 entries
+            while (history.children.length > 20) {
+                history.removeChild(history.lastChild);
+            }
+        }
+        
+        function updateStats() {
+            document.getElementById('total-decisions').textContent = stats.total;
+            
+            const approvalRate = stats.total > 0 ? Math.round((stats.approved / stats.total) * 100) : 0;
+            document.getElementById('approval-rate').textContent = approvalRate + '%';
+            
+            const autoRate = stats.total > 0 ? Math.round((stats.autoApproved / stats.total) * 100) : 0;
+            document.getElementById('auto-approve-rate').textContent = autoRate + '%';
+        }
+        
+        async function loadSymlinks() {
+            try {
+                const response = await fetch('http://localhost:5500/reasoning/symlinks');
+                const data = await response.json();
+                
+                const symlinkList = document.getElementById('symlink-list');
+                symlinkList.innerHTML = '';
+                
+                data.symlinks?.slice(0, 5).forEach(symlink => {
+                    const item = document.createElement('div');
+                    item.className = 'symlink-item';
+                    item.innerHTML = `
+                        <span style="color: #00ffaa;">📁 ${symlink.name}</span>
+                        <span class="symlink-arrow">→</span>
+                        <span style="color: #666;">game-states/${symlink.approval?.game || 'unknown'}/</span>
+                    `;
+                    symlinkList.appendChild(item);
+                });
+            } catch (error) {
+                console.error('Failed to load symlinks:', error);
+            }
+        }
+        
+        // Animation styles
+        const style = document.createElement('style');
+        style.textContent = `
+            @keyframes bounce {
+                0%, 100% { transform: translateX(-50%) translateY(0); }
+                50% { transform: translateX(-50%) translateY(-20px); }
+            }
+        `;
+        document.head.appendChild(style);
+        
+        // Initialize
+        document.addEventListener('DOMContentLoaded', () => {
+            connectWebSocket();
+            loadPendingApprovals();
+            loadSymlinks();
+            setInterval(loadSymlinks, 10000); // Refresh symlinks every 10 seconds
+            
+            // Demo: Add sample approval request after 3 seconds
+            setTimeout(() => {
+                const demoRequest = {
+                    id: 'demo_' + Date.now(),
+                    reasoning: {
+                        game: 'runescape',
+                        action: 'mine',
+                        context: { oreType: 'gold', playerStats: { mining: 55 } },
+                        confidence: 0.85,
+                        analysis: {
+                            reasoning: 'Mining gold ore at level 55 will yield approximately 20 ore per hour with 85% success rate.'
+                        }
+                    },
+                    aiRecommendations: {
+                        teacher: {
+                            explanation: 'Gold mining is profitable at your level',
+                            tips: ['Use rune pickaxe', 'Mine at less crowded times']
+                        },
+                        guardian: {
+                            safety: { level: 'safe' },
+                            protections: ['Stay in safe zones', 'Bank frequently']
+                        },
+                        companion: {
+                            companionComment: "You're doing great! Gold mining is exciting!",
+                            funFact: 'Gold ore can be smelted into gold bars at level 40 Smithing'
+                        }
+                    },
+                    requestTime: Date.now()
+                };
+                
+                addApprovalRequest(demoRequest);
+            }, 3000);
+        });
+    </script>
+</body>
+</html>

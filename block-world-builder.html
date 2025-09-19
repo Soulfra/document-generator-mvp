@@ -1,0 +1,1359 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>🧱🌍 Block-by-Block World Builder</title>
+    <style>
+        body {
+            margin: 0;
+            padding: 0;
+            font-family: 'Courier New', monospace;
+            background: #001122;
+            color: #00ff88;
+            overflow: hidden;
+        }
+        
+        .world-container {
+            width: 100vw;
+            height: 100vh;
+            position: relative;
+            background: linear-gradient(to bottom, #001122 0%, #002244 50%, #003366 100%);
+        }
+        
+        .construction-layer {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            perspective: 1000px;
+            transform-style: preserve-3d;
+        }
+        
+        .block {
+            position: absolute;
+            border: 1px solid #00ff88;
+            border-radius: 2px;
+            transition: all 0.5s cubic-bezier(0.25, 0.46, 0.45, 0.94);
+            cursor: pointer;
+            transform-style: preserve-3d;
+            opacity: 0;
+            animation: blockAppear 0.8s ease forwards;
+        }
+        
+        @keyframes blockAppear {
+            0% {
+                opacity: 0;
+                transform: scale(0) rotateY(180deg);
+            }
+            50% {
+                opacity: 0.7;
+                transform: scale(1.2) rotateY(90deg);
+            }
+            100% {
+                opacity: 1;
+                transform: scale(1) rotateY(0deg);
+            }
+        }
+        
+        .block:hover {
+            transform: scale(1.1) rotateY(5deg);
+            box-shadow: 0 0 20px currentColor;
+            z-index: 100;
+        }
+        
+        .block.foundation { background: #8B4513; border-color: #A0522D; }
+        .block.wall { background: #696969; border-color: #808080; }
+        .block.structure { background: #2F4F4F; border-color: #708090; }
+        .block.decoration { background: #FF6347; border-color: #FF7F50; }
+        .block.nature { background: #228B22; border-color: #32CD32; }
+        .block.water { background: #4682B4; border-color: #87CEEB; }
+        .block.energy { background: #FFD700; border-color: #FFA500; }
+        .block.tech { background: #9370DB; border-color: #BA55D3; }
+        
+        .agent-indicator {
+            position: absolute;
+            width: 8px;
+            height: 8px;
+            border-radius: 50%;
+            z-index: 1000;
+            animation: agentWork 2s ease infinite;
+        }
+        
+        @keyframes agentWork {
+            0%, 100% { transform: scale(1); opacity: 0.8; }
+            50% { transform: scale(1.5); opacity: 1; }
+        }
+        
+        .agent-indicator.builder { background: #ff6600; box-shadow: 0 0 10px #ff6600; }
+        .agent-indicator.designer { background: #0066ff; box-shadow: 0 0 10px #0066ff; }
+        .agent-indicator.planner { background: #66ff00; box-shadow: 0 0 10px #66ff00; }
+        
+        .construction-info {
+            position: fixed;
+            top: 20px;
+            left: 20px;
+            background: rgba(0, 0, 0, 0.8);
+            border: 2px solid #00ff88;
+            border-radius: 8px;
+            padding: 15px;
+            max-width: 350px;
+            z-index: 1000;
+        }
+        
+        .world-command {
+            position: fixed;
+            bottom: 20px;
+            left: 20px;
+            right: 20px;
+            background: rgba(0, 0, 0, 0.9);
+            border: 2px solid #00ff88;
+            border-radius: 10px;
+            padding: 15px;
+            z-index: 1000;
+        }
+        
+        .command-input {
+            width: 100%;
+            background: transparent;
+            border: 1px solid #00ff88;
+            color: #00ff88;
+            padding: 10px;
+            font-family: 'Courier New', monospace;
+            border-radius: 5px;
+            outline: none;
+        }
+        
+        .build-controls {
+            position: fixed;
+            top: 20px;
+            right: 20px;
+            background: rgba(0, 0, 0, 0.8);
+            border: 2px solid #00ff88;
+            border-radius: 8px;
+            padding: 15px;
+            z-index: 1000;
+        }
+        
+        .build-btn {
+            display: block;
+            width: 100%;
+            margin: 5px 0;
+            padding: 8px 12px;
+            background: transparent;
+            border: 1px solid #00ff88;
+            color: #00ff88;
+            cursor: pointer;
+            font-family: 'Courier New', monospace;
+            border-radius: 3px;
+            transition: all 0.3s ease;
+        }
+        
+        .build-btn:hover {
+            background: rgba(0, 255, 136, 0.2);
+            transform: translateX(5px);
+        }
+        
+        .progress-display {
+            position: fixed;
+            bottom: 120px;
+            right: 20px;
+            background: rgba(0, 0, 0, 0.8);
+            border: 2px solid #00ff88;
+            border-radius: 8px;
+            padding: 15px;
+            min-width: 250px;
+            z-index: 1000;
+        }
+        
+        .progress-bar {
+            width: 100%;
+            height: 20px;
+            background: rgba(0, 255, 136, 0.1);
+            border: 1px solid #00ff88;
+            border-radius: 10px;
+            overflow: hidden;
+            margin: 5px 0;
+        }
+        
+        .progress-fill {
+            height: 100%;
+            background: linear-gradient(90deg, #00ff88, #66ff00, #ffff00);
+            width: 0%;
+            transition: width 0.3s ease;
+        }
+        
+        .layer-indicator {
+            position: fixed;
+            bottom: 220px;
+            right: 20px;
+            background: rgba(0, 0, 0, 0.8);
+            border: 2px solid #00ff88;
+            border-radius: 8px;
+            padding: 10px;
+            z-index: 1000;
+        }
+        
+        .construction-grid {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            opacity: 0.1;
+            pointer-events: none;
+            background-image: 
+                linear-gradient(rgba(0, 255, 136, 0.1) 1px, transparent 1px),
+                linear-gradient(90deg, rgba(0, 255, 136, 0.1) 1px, transparent 1px);
+            background-size: 40px 40px;
+        }
+        
+        .ai-narrator {
+            position: fixed;
+            top: 50%;
+            left: 20px;
+            transform: translateY(-50%);
+            background: rgba(0, 0, 0, 0.9);
+            border: 2px solid #00ff88;
+            border-radius: 8px;
+            padding: 15px;
+            max-width: 300px;
+            max-height: 400px;
+            overflow-y: auto;
+            z-index: 1000;
+        }
+        
+        .narration {
+            margin: 5px 0;
+            padding: 5px;
+            background: rgba(0, 255, 136, 0.05);
+            border-left: 2px solid #00ff88;
+            font-size: 12px;
+            border-radius: 2px;
+            animation: narrateIn 0.5s ease;
+        }
+        
+        @keyframes narrateIn {
+            from { opacity: 0; transform: translateX(-20px); }
+            to { opacity: 1; transform: translateX(0); }
+        }
+        
+        .construction-phase {
+            color: #ffff00;
+            font-weight: bold;
+        }
+        
+        .particle-effect {
+            position: absolute;
+            width: 4px;
+            height: 4px;
+            background: #00ff88;
+            border-radius: 50%;
+            pointer-events: none;
+            animation: particleFloat 2s ease forwards;
+        }
+        
+        @keyframes particleFloat {
+            0% {
+                opacity: 1;
+                transform: translate(0, 0) scale(1);
+            }
+            100% {
+                opacity: 0;
+                transform: translate(var(--dx, 0), var(--dy, -50px)) scale(0);
+            }
+        }
+        
+        .world-stats {
+            position: fixed;
+            top: 200px;
+            left: 20px;
+            background: rgba(0, 0, 0, 0.8);
+            border: 2px solid #00ff88;
+            border-radius: 8px;
+            padding: 10px;
+            font-size: 11px;
+            z-index: 1000;
+        }
+    </style>
+</head>
+<body>
+    <div class="world-container" id="world">
+        <div class="construction-grid"></div>
+        <div class="construction-layer" id="construction-layer"></div>
+        
+        <!-- Construction Info Panel -->
+        <div class="construction-info">
+            <h3>🧱 Block Construction System</h3>
+            <div><strong>Current Project:</strong> <span id="current-project">Awaiting Command</span></div>
+            <div><strong>Blocks Placed:</strong> <span id="blocks-placed">0</span></div>
+            <div><strong>Active Agents:</strong> <span id="active-agents">0</span></div>
+            <div><strong>Build Phase:</strong> <span id="build-phase">Ready</span></div>
+        </div>
+        
+        <!-- Build Controls -->
+        <div class="build-controls">
+            <h4>🏗️ Quick Build</h4>
+            <button class="build-btn" onclick="buildStructure('house')">🏠 House</button>
+            <button class="build-btn" onclick="buildStructure('tower')">🗼 Tower</button>
+            <button class="build-btn" onclick="buildStructure('city')">🏙️ City Block</button>
+            <button class="build-btn" onclick="buildStructure('castle')">🏰 Castle</button>
+            <button class="build-btn" onclick="buildStructure('bridge')">🌉 Bridge</button>
+            <button class="build-btn" onclick="buildStructure('garden')">🌸 Garden</button>
+            <button class="build-btn" onclick="buildStructure('factory')">🏭 Factory</button>
+            <button class="build-btn" onclick="clearWorld()">🗑️ Clear All</button>
+        </div>
+        
+        <!-- Progress Display -->
+        <div class="progress-display">
+            <h4>📊 Construction Progress</h4>
+            <div>Foundation: <div class="progress-bar"><div class="progress-fill" id="foundation-progress"></div></div></div>
+            <div>Structure: <div class="progress-bar"><div class="progress-fill" id="structure-progress"></div></div></div>
+            <div>Details: <div class="progress-bar"><div class="progress-fill" id="details-progress"></div></div></div>
+            <div>Completion: <span id="completion-percent">0%</span></div>
+        </div>
+        
+        <!-- Layer Indicator -->
+        <div class="layer-indicator">
+            <h4>🏗️ Build Layer</h4>
+            <div><strong>Current:</strong> <span id="current-layer">Ground</span></div>
+            <div><strong>Height:</strong> <span id="current-height">0</span></div>
+        </div>
+        
+        <!-- AI Narrator -->
+        <div class="ai-narrator">
+            <h4>🤖 AI Construction Narrator</h4>
+            <div id="narration-log">
+                <div class="narration">🎯 Block-by-block construction system online</div>
+                <div class="narration">🤖 AI construction crews standing by</div>
+                <div class="narration">🏗️ Ready to build worlds piece by piece</div>
+            </div>
+        </div>
+        
+        <!-- World Stats -->
+        <div class="world-stats">
+            <h4>🌍 World Statistics</h4>
+            <div>Total Blocks: <span id="total-blocks">0</span></div>
+            <div>Foundation Blocks: <span id="foundation-count">0</span></div>
+            <div>Wall Blocks: <span id="wall-count">0</span></div>
+            <div>Decoration Blocks: <span id="decoration-count">0</span></div>
+            <div>Build Time: <span id="build-time">0s</span></div>
+        </div>
+        
+        <!-- Command Interface -->
+        <div class="world-command">
+            <input type="text" 
+                   class="command-input" 
+                   id="world-command-input" 
+                   placeholder="Describe what you want built... (e.g., 'Build a medieval castle with towers and walls')"
+                   onkeypress="handleWorldCommand(event)">
+            <div style="margin-top: 10px; font-size: 12px; color: #888;">
+                🎤 <strong>Voice Commands:</strong> "Build a house", "Create a tower", "Make a garden", "Construct a bridge"
+            </div>
+        </div>
+    </div>
+
+    <script>
+        class BlockWorldBuilder {
+            constructor() {
+                this.constructionLayer = document.getElementById('construction-layer');
+                this.blocks = [];
+                this.agents = [];
+                this.currentProject = null;
+                this.buildProgress = {
+                    foundation: 0,
+                    structure: 0,
+                    details: 0
+                };
+                this.worldStats = {
+                    totalBlocks: 0,
+                    foundationBlocks: 0,
+                    wallBlocks: 0,
+                    decorationBlocks: 0,
+                    buildStartTime: null
+                };
+                this.currentLayer = 0;
+                this.blockSize = 20;
+                this.narrationLog = document.getElementById('narration-log');
+                
+                this.init();
+            }
+            
+            init() {
+                this.setupVoiceRecognition();
+                this.startBuildTimer();
+                this.addNarration('🌍 Block World Builder initialized');
+                this.addNarration('🧱 Ready to construct worlds block by block');
+                
+                // Add some initial ambient agents
+                this.spawnAgent('planner', window.innerWidth/2, window.innerHeight/2);
+                this.spawnAgent('designer', window.innerWidth/3, window.innerHeight/3);
+                
+                console.log('🧱 Block World Builder ready');
+            }
+            
+            setupVoiceRecognition() {
+                if ('webkitSpeechRecognition' in window || 'SpeechRecognition' in window) {
+                    const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+                    this.recognition = new SpeechRecognition();
+                    this.recognition.continuous = false;
+                    this.recognition.interimResults = false;
+                    
+                    this.recognition.onresult = (event) => {
+                        const command = event.results[0][0].transcript;
+                        document.getElementById('world-command-input').value = command;
+                        this.executeWorldCommand(command);
+                    };
+                }
+            }
+            
+            executeWorldCommand(command) {
+                this.addNarration(`📥 Received build command: "${command}"`);
+                this.updateCurrentProject(command);
+                
+                const cmd = command.toLowerCase();
+                
+                if (cmd.includes('house') || cmd.includes('home')) {
+                    this.buildStructure('house');
+                } else if (cmd.includes('tower') || cmd.includes('tall')) {
+                    this.buildStructure('tower');
+                } else if (cmd.includes('city') || cmd.includes('urban')) {
+                    this.buildStructure('city');
+                } else if (cmd.includes('castle') || cmd.includes('fortress')) {
+                    this.buildStructure('castle');
+                } else if (cmd.includes('bridge')) {
+                    this.buildStructure('bridge');
+                } else if (cmd.includes('garden') || cmd.includes('park')) {
+                    this.buildStructure('garden');
+                } else if (cmd.includes('factory') || cmd.includes('industrial')) {
+                    this.buildStructure('factory');
+                } else {
+                    this.buildCustomStructure(command);
+                }
+            }
+            
+            buildStructure(type) {
+                this.clearProgress();
+                this.worldStats.buildStartTime = Date.now();
+                this.updateCurrentProject(`Building ${type}`);
+                this.addNarration(`🏗️ Starting ${type} construction`);
+                this.addNarration(`👥 Deploying specialized construction agents`);
+                
+                const structures = {
+                    house: () => this.buildHouse(),
+                    tower: () => this.buildTower(),
+                    city: () => this.buildCityBlock(),
+                    castle: () => this.buildCastle(),
+                    bridge: () => this.buildBridge(),
+                    garden: () => this.buildGarden(),
+                    factory: () => this.buildFactory()
+                };
+                
+                const buildFunction = structures[type];
+                if (buildFunction) {
+                    buildFunction();
+                } else {
+                    this.addNarration(`❌ Unknown structure type: ${type}`);
+                }
+            }
+            
+            buildHouse() {
+                this.addNarration('🏠 House construction sequence initiated');
+                this.addNarration('📐 Calculating foundation dimensions...');
+                
+                const centerX = window.innerWidth / 2;
+                const centerY = window.innerHeight / 2;
+                const width = 8;
+                const height = 6;
+                const stories = 2;
+                
+                // Phase 1: Foundation
+                setTimeout(() => {
+                    this.addNarration('⛏️ Phase 1: Laying foundation blocks');
+                    this.updateBuildPhase('Foundation');
+                    this.spawnAgent('builder', centerX - 50, centerY + 50);
+                    
+                    this.buildFoundation(centerX - width*this.blockSize/2, centerY - height*this.blockSize/2, width, height, 0, () => {
+                        this.updateProgress('foundation', 100);
+                        
+                        // Phase 2: Walls
+                        setTimeout(() => {
+                            this.addNarration('🧱 Phase 2: Building exterior walls');
+                            this.updateBuildPhase('Walls');
+                            this.spawnAgent('builder', centerX + 50, centerY + 50);
+                            
+                            this.buildWalls(centerX - width*this.blockSize/2, centerY - height*this.blockSize/2, width, height, stories, () => {
+                                this.updateProgress('structure', 100);
+                                
+                                // Phase 3: Roof and Details
+                                setTimeout(() => {
+                                    this.addNarration('🏠 Phase 3: Adding roof and details');
+                                    this.updateBuildPhase('Details');
+                                    this.spawnAgent('designer', centerX, centerY - 50);
+                                    
+                                    this.buildRoof(centerX - width*this.blockSize/2, centerY - height*this.blockSize/2, width, height, stories);
+                                    this.addDoor(centerX, centerY + height*this.blockSize/2 - this.blockSize);
+                                    this.addWindows(centerX - width*this.blockSize/2, centerY - height*this.blockSize/2, width, height, stories);
+                                    
+                                    setTimeout(() => {
+                                        this.updateProgress('details', 100);
+                                        this.updateBuildPhase('Complete');
+                                        this.addNarration('✅ House construction completed!');
+                                        this.addNarration(`📊 Total blocks used: ${this.blocks.length}`);
+                                    }, 2000);
+                                }, 1000);
+                            });
+                        }, 1000);
+                    });
+                }, 500);
+            }
+            
+            buildTower() {
+                this.addNarration('🗼 Tower construction sequence initiated');
+                this.addNarration('📏 Calculating vertical structural requirements...');
+                
+                const centerX = window.innerWidth / 2;
+                const centerY = window.innerHeight / 2;
+                const width = 4;
+                const height = 4;
+                const floors = 8;
+                
+                this.spawnAgent('builder', centerX - 30, centerY + 30);
+                this.spawnAgent('builder', centerX + 30, centerY + 30);
+                
+                this.updateBuildPhase('Tower Foundation');
+                
+                // Build tower floor by floor
+                for (let floor = 0; floor < floors; floor++) {
+                    setTimeout(() => {
+                        this.addNarration(`🏗️ Building floor ${floor + 1} of ${floors}`);
+                        this.updateCurrentLayer(`Floor ${floor + 1}`);
+                        this.updateCurrentHeight(floor * this.blockSize);
+                        
+                        const y = centerY + height*this.blockSize/2 - floor*this.blockSize;
+                        
+                        // Build floor
+                        for (let x = 0; x < width; x++) {
+                            for (let z = 0; z < height; z++) {
+                                if (floor === 0 || x === 0 || x === width-1 || z === 0 || z === height-1) {
+                                    setTimeout(() => {
+                                        const blockX = centerX - width*this.blockSize/2 + x*this.blockSize;
+                                        const blockZ = y - z*this.blockSize;
+                                        
+                                        const blockType = floor === 0 ? 'foundation' : 'wall';
+                                        this.placeBlock(blockX, blockZ, blockType, floor);
+                                        this.createParticleEffect(blockX, blockZ);
+                                        
+                                    }, (x * height + z) * 100);
+                                }
+                            }
+                        }
+                        
+                        this.updateProgress('structure', (floor + 1) / floors * 100);
+                        
+                    }, floor * 2000);
+                }
+                
+                // Add tower details
+                setTimeout(() => {
+                    this.addNarration('👑 Adding tower crown and details');
+                    this.updateBuildPhase('Tower Details');
+                    this.spawnAgent('designer', centerX, centerY - 100);
+                    
+                    // Add windows at intervals
+                    for (let floor = 1; floor < floors - 1; floor += 2) {
+                        const y = centerY + height*this.blockSize/2 - floor*this.blockSize;
+                        this.placeBlock(centerX + width*this.blockSize/2, y, 'tech', floor + 10);
+                        this.placeBlock(centerX - width*this.blockSize/2, y, 'tech', floor + 10);
+                    }
+                    
+                    this.updateProgress('details', 100);
+                    this.updateBuildPhase('Complete');
+                    this.addNarration(`🗼 Tower construction completed! Height: ${floors * this.blockSize}px`);
+                    
+                }, floors * 2000 + 1000);
+            }
+            
+            buildCityBlock() {
+                this.addNarration('🏙️ City block construction initiated');
+                this.addNarration('🗺️ Planning urban grid layout...');
+                
+                this.spawnAgent('planner', window.innerWidth/4, window.innerHeight/4);
+                this.spawnAgent('builder', window.innerWidth*3/4, window.innerHeight/4);
+                this.spawnAgent('builder', window.innerWidth/4, window.innerHeight*3/4);
+                this.spawnAgent('designer', window.innerWidth*3/4, window.innerHeight*3/4);
+                
+                const buildings = [
+                    { x: 200, y: 200, width: 6, height: 4, stories: 3, type: 'residential' },
+                    { x: 400, y: 200, width: 4, height: 6, stories: 5, type: 'commercial' },
+                    { x: 600, y: 200, width: 8, height: 6, stories: 2, type: 'industrial' },
+                    { x: 200, y: 400, width: 5, height: 5, stories: 4, type: 'office' },
+                    { x: 500, y: 400, width: 6, height: 8, stories: 1, type: 'warehouse' }
+                ];
+                
+                buildings.forEach((building, index) => {
+                    setTimeout(() => {
+                        this.addNarration(`🏢 Building structure ${index + 1}: ${building.type}`);
+                        this.buildGenericBuilding(building.x, building.y, building.width, building.height, building.stories, building.type);
+                        
+                        this.updateProgress('structure', (index + 1) / buildings.length * 100);
+                        
+                        if (index === buildings.length - 1) {
+                            setTimeout(() => {
+                                this.addNarration('🌳 Adding city landscaping and details');
+                                this.addCityDetails();
+                                this.updateProgress('details', 100);
+                                this.updateBuildPhase('Complete');
+                                this.addNarration('🏙️ City block construction completed!');
+                            }, 1000);
+                        }
+                    }, index * 3000);
+                });
+            }
+            
+            buildCastle() {
+                this.addNarration('🏰 Medieval castle construction initiated');
+                this.addNarration('⚔️ Deploying fortress construction specialists...');
+                
+                const centerX = window.innerWidth / 2;
+                const centerY = window.innerHeight / 2;
+                
+                this.spawnAgent('builder', centerX - 100, centerY + 100);
+                this.spawnAgent('builder', centerX + 100, centerY + 100);
+                this.spawnAgent('builder', centerX - 100, centerY - 100);
+                this.spawnAgent('builder', centerX + 100, centerY - 100);
+                
+                // Phase 1: Outer walls
+                setTimeout(() => {
+                    this.addNarration('🧱 Phase 1: Building outer defensive walls');
+                    this.updateBuildPhase('Defensive Walls');
+                    
+                    this.buildCastleWalls(centerX, centerY, 12, 8, 3);
+                    
+                    setTimeout(() => {
+                        this.updateProgress('foundation', 100);
+                        
+                        // Phase 2: Corner towers
+                        this.addNarration('🗼 Phase 2: Constructing corner towers');
+                        this.updateBuildPhase('Corner Towers');
+                        
+                        this.buildCastleTowers(centerX, centerY, 12, 8);
+                        
+                        setTimeout(() => {
+                            this.updateProgress('structure', 100);
+                            
+                            // Phase 3: Keep and details
+                            this.addNarration('👑 Phase 3: Building central keep and battlements');
+                            this.updateBuildPhase('Central Keep');
+                            
+                            this.buildCastleKeep(centerX, centerY);
+                            this.addCastleDetails(centerX, centerY, 12, 8);
+                            
+                            setTimeout(() => {
+                                this.updateProgress('details', 100);
+                                this.updateBuildPhase('Complete');
+                                this.addNarration('🏰 Castle construction completed!');
+                                this.addNarration('⚔️ Fortress ready for defense!');
+                            }, 2000);
+                        }, 3000);
+                    }, 2000);
+                }, 500);
+            }
+            
+            buildBridge() {
+                this.addNarration('🌉 Bridge construction initiated');
+                this.addNarration('🌊 Calculating span and structural load...');
+                
+                const startX = 100;
+                const endX = window.innerWidth - 100;
+                const bridgeY = window.innerHeight / 2;
+                const segments = 20;
+                
+                this.spawnAgent('builder', startX + 50, bridgeY + 50);
+                this.spawnAgent('builder', endX - 50, bridgeY + 50);
+                
+                // Build water first
+                this.addNarration('🌊 Phase 1: Placing water blocks');
+                for (let x = startX; x < endX; x += this.blockSize) {
+                    setTimeout(() => {
+                        this.placeBlock(x, bridgeY + this.blockSize, 'water', 0);
+                    }, (x - startX) / this.blockSize * 50);
+                }
+                
+                setTimeout(() => {
+                    this.addNarration('🔨 Phase 2: Building bridge foundation pillars');
+                    
+                    // Build pillars
+                    const pillarPositions = [startX + 100, centerX = window.innerWidth/2, endX - 100];
+                    pillarPositions.forEach((pillarX, index) => {
+                        setTimeout(() => {
+                            for (let height = 0; height < 4; height++) {
+                                setTimeout(() => {
+                                    this.placeBlock(pillarX, bridgeY + this.blockSize - height*this.blockSize, 'foundation', height + 1);
+                                }, height * 200);
+                            }
+                        }, index * 1000);
+                    });
+                    
+                    setTimeout(() => {
+                        this.addNarration('🌉 Phase 3: Laying bridge deck');
+                        this.updateProgress('structure', 50);
+                        
+                        // Build bridge deck
+                        for (let x = startX; x < endX; x += this.blockSize) {
+                            setTimeout(() => {
+                                this.placeBlock(x, bridgeY - this.blockSize*2, 'structure', 5);
+                                if (x % (this.blockSize * 4) === 0) {
+                                    // Add railings
+                                    this.placeBlock(x, bridgeY - this.blockSize*3, 'wall', 6);
+                                }
+                            }, (x - startX) / this.blockSize * 100);
+                        }
+                        
+                        setTimeout(() => {
+                            this.updateProgress('details', 100);
+                            this.updateBuildPhase('Complete');
+                            this.addNarration('🌉 Bridge construction completed!');
+                            this.addNarration(`📏 Bridge length: ${endX - startX}px`);
+                        }, segments * 100 + 1000);
+                        
+                    }, 4000);
+                }, 2000);
+            }
+            
+            buildGarden() {
+                this.addNarration('🌸 Garden construction initiated');
+                this.addNarration('🌱 Planning botanical layout and pathways...');
+                
+                const centerX = window.innerWidth / 2;
+                const centerY = window.innerHeight / 2;
+                
+                this.spawnAgent('designer', centerX, centerY - 50);
+                this.spawnAgent('builder', centerX - 50, centerY + 50);
+                
+                // Create garden paths
+                this.addNarration('🛤️ Phase 1: Laying garden pathways');
+                const pathPattern = [
+                    { x: centerX - 100, y: centerY - 100, width: 200, height: 20 },
+                    { x: centerX - 100, y: centerY + 80, width: 200, height: 20 },
+                    { x: centerX - 10, y: centerY - 100, width: 20, height: 200 }
+                ];
+                
+                pathPattern.forEach((path, index) => {
+                    setTimeout(() => {
+                        for (let x = path.x; x < path.x + path.width; x += this.blockSize) {
+                            for (let y = path.y; y < path.y + path.height; y += this.blockSize) {
+                                setTimeout(() => {
+                                    this.placeBlock(x, y, 'structure', 0);
+                                }, Math.random() * 500);
+                            }
+                        }
+                    }, index * 1000);
+                });
+                
+                setTimeout(() => {
+                    this.addNarration('🌿 Phase 2: Planting garden sections');
+                    this.updateProgress('structure', 60);
+                    
+                    // Plant garden sections
+                    const gardenSections = [
+                        { x: centerX - 90, y: centerY - 90, size: 60, type: 'flowers' },
+                        { x: centerX + 30, y: centerY - 90, size: 60, type: 'trees' },
+                        { x: centerX - 90, y: centerY + 30, size: 60, type: 'herbs' },
+                        { x: centerX + 30, y: centerY + 30, size: 60, type: 'vegetables' }
+                    ];
+                    
+                    gardenSections.forEach((section, index) => {
+                        setTimeout(() => {
+                            this.addNarration(`🌱 Planting ${section.type} section`);
+                            
+                            for (let x = section.x; x < section.x + section.size; x += this.blockSize) {
+                                for (let y = section.y; y < section.y + section.size; y += this.blockSize) {
+                                    if (Math.random() > 0.3) {
+                                        setTimeout(() => {
+                                            this.placeBlock(x, y, 'nature', 1);
+                                            if (Math.random() > 0.7) {
+                                                // Add decorative elements
+                                                this.placeBlock(x, y - this.blockSize, 'decoration', 2);
+                                            }
+                                        }, Math.random() * 1000);
+                                    }
+                                }
+                            }
+                        }, index * 1500);
+                    });
+                    
+                    setTimeout(() => {
+                        this.addNarration('⛲ Phase 3: Adding garden features');
+                        
+                        // Add fountain in center
+                        this.placeBlock(centerX, centerY, 'water', 3);
+                        this.placeBlock(centerX, centerY - this.blockSize, 'decoration', 4);
+                        
+                        // Add benches
+                        this.placeBlock(centerX - 60, centerY - 60, 'structure', 1);
+                        this.placeBlock(centerX + 60, centerY + 60, 'structure', 1);
+                        
+                        this.updateProgress('details', 100);
+                        this.updateBuildPhase('Complete');
+                        this.addNarration('🌸 Garden construction completed!');
+                        this.addNarration('🦋 Ready for visitors and wildlife!');
+                    }, 6000);
+                }, 3000);
+            }
+            
+            buildFactory() {
+                this.addNarration('🏭 Industrial factory construction initiated');
+                this.addNarration('⚙️ Planning production facility layout...');
+                
+                const factoryX = 200;
+                const factoryY = 200;
+                const width = 16;
+                const height = 10;
+                
+                this.spawnAgent('builder', factoryX - 50, factoryY + 50);
+                this.spawnAgent('builder', factoryX + width*this.blockSize + 50, factoryY + 50);
+                this.spawnAgent('designer', factoryX + width*this.blockSize/2, factoryY - 50);
+                
+                // Phase 1: Industrial foundation
+                this.addNarration('🏗️ Phase 1: Laying industrial foundation');
+                this.buildFoundation(factoryX, factoryY, width, height, 0, () => {
+                    this.updateProgress('foundation', 100);
+                    
+                    // Phase 2: Factory walls
+                    setTimeout(() => {
+                        this.addNarration('🧱 Phase 2: Building factory walls and structure');
+                        this.updateBuildPhase('Factory Structure');
+                        
+                        this.buildWalls(factoryX, factoryY, width, height, 2, () => {
+                            this.updateProgress('structure', 70);
+                            
+                            // Phase 3: Industrial equipment
+                            setTimeout(() => {
+                                this.addNarration('⚙️ Phase 3: Installing industrial equipment');
+                                this.updateBuildPhase('Equipment Installation');
+                                
+                                // Add machinery blocks
+                                for (let x = 2; x < width-2; x += 3) {
+                                    for (let y = 2; y < height-2; y += 3) {
+                                        setTimeout(() => {
+                                            this.placeBlock(factoryX + x*this.blockSize, factoryY + y*this.blockSize, 'tech', 3);
+                                            
+                                            // Add energy connections
+                                            if (Math.random() > 0.5) {
+                                                this.placeBlock(factoryX + x*this.blockSize, factoryY + y*this.blockSize - this.blockSize, 'energy', 4);
+                                            }
+                                        }, x * y * 200);
+                                    }
+                                }
+                                
+                                // Add smokestacks
+                                for (let stack = 0; stack < 3; stack++) {
+                                    const stackX = factoryX + (2 + stack * 5) * this.blockSize;
+                                    for (let stackHeight = 0; stackHeight < 6; stackHeight++) {
+                                        setTimeout(() => {
+                                            this.placeBlock(stackX, factoryY - stackHeight*this.blockSize, 'structure', 10 + stackHeight);
+                                            
+                                            // Add smoke effect (visual only)
+                                            if (stackHeight === 5) {
+                                                this.createParticleEffect(stackX, factoryY - stackHeight*this.blockSize);
+                                            }
+                                        }, stack * 1000 + stackHeight * 200);
+                                    }
+                                }
+                                
+                                setTimeout(() => {
+                                    this.updateProgress('details', 100);
+                                    this.updateBuildPhase('Complete');
+                                    this.addNarration('🏭 Factory construction completed!');
+                                    this.addNarration('⚡ Production facility ready for operation!');
+                                }, 3000);
+                            }, 1000);
+                        });
+                    }, 1000);
+                });
+            }
+            
+            // Helper methods for construction
+            buildFoundation(x, y, width, height, layer, callback) {
+                let blocksPlaced = 0;
+                const totalBlocks = width * height;
+                
+                for (let i = 0; i < width; i++) {
+                    for (let j = 0; j < height; j++) {
+                        setTimeout(() => {
+                            this.placeBlock(x + i*this.blockSize, y + j*this.blockSize, 'foundation', layer);
+                            this.createParticleEffect(x + i*this.blockSize, y + j*this.blockSize);
+                            
+                            blocksPlaced++;
+                            this.updateProgress('foundation', (blocksPlaced / totalBlocks) * 100);
+                            
+                            if (blocksPlaced === totalBlocks && callback) {
+                                callback();
+                            }
+                        }, (i * height + j) * 150);
+                    }
+                }
+            }
+            
+            buildWalls(x, y, width, height, stories, callback) {
+                let blocksPlaced = 0;
+                let totalBlocks = 0;
+                
+                // Calculate total wall blocks
+                for (let story = 1; story <= stories; story++) {
+                    totalBlocks += (width * 2 + (height - 2) * 2);
+                }
+                
+                for (let story = 1; story <= stories; story++) {
+                    setTimeout(() => {
+                        // Build perimeter walls for this story
+                        for (let i = 0; i < width; i++) {
+                            for (let j = 0; j < height; j++) {
+                                if (i === 0 || i === width-1 || j === 0 || j === height-1) {
+                                    setTimeout(() => {
+                                        this.placeBlock(
+                                            x + i*this.blockSize, 
+                                            y + j*this.blockSize - story*this.blockSize, 
+                                            'wall', 
+                                            story
+                                        );
+                                        this.createParticleEffect(x + i*this.blockSize, y + j*this.blockSize);
+                                        
+                                        blocksPlaced++;
+                                        this.updateProgress('structure', (blocksPlaced / totalBlocks) * 100);
+                                        
+                                        if (blocksPlaced === totalBlocks && callback) {
+                                            callback();
+                                        }
+                                    }, (i * height + j) * 100);
+                                }
+                            }
+                        }
+                    }, (story - 1) * 2000);
+                }
+            }
+            
+            buildRoof(x, y, width, height, stories) {
+                const roofY = y - stories*this.blockSize;
+                
+                for (let i = 0; i < width; i++) {
+                    for (let j = 0; j < height; j++) {
+                        setTimeout(() => {
+                            this.placeBlock(x + i*this.blockSize, roofY + j*this.blockSize, 'structure', stories + 1);
+                        }, (i * height + j) * 100);
+                    }
+                }
+            }
+            
+            addDoor(x, y) {
+                setTimeout(() => {
+                    this.placeBlock(x, y, 'decoration', 100);
+                }, 500);
+            }
+            
+            addWindows(x, y, width, height, stories) {
+                for (let story = 1; story <= stories; story++) {
+                    setTimeout(() => {
+                        // Add windows on sides
+                        this.placeBlock(x + this.blockSize, y - story*this.blockSize + this.blockSize, 'tech', story + 50);
+                        this.placeBlock(x + (width-2)*this.blockSize, y - story*this.blockSize + this.blockSize, 'tech', story + 50);
+                    }, story * 500);
+                }
+            }
+            
+            buildGenericBuilding(x, y, width, height, stories, type) {
+                const typeColors = {
+                    residential: 'wall',
+                    commercial: 'structure',
+                    industrial: 'tech',
+                    office: 'decoration',
+                    warehouse: 'foundation'
+                };
+                
+                const blockType = typeColors[type] || 'wall';
+                
+                // Foundation
+                this.buildFoundation(x, y, width, height, 0);
+                
+                // Walls
+                setTimeout(() => {
+                    this.buildWalls(x, y, width, height, stories);
+                }, 1000);
+                
+                // Roof
+                setTimeout(() => {
+                    this.buildRoof(x, y, width, height, stories);
+                }, 2000 + stories * 1000);
+            }
+            
+            buildCastleWalls(centerX, centerY, width, height, wallHeight) {
+                const corners = [
+                    { x: centerX - width*this.blockSize/2, y: centerY - height*this.blockSize/2 },
+                    { x: centerX + width*this.blockSize/2, y: centerY - height*this.blockSize/2 },
+                    { x: centerX + width*this.blockSize/2, y: centerY + height*this.blockSize/2 },
+                    { x: centerX - width*this.blockSize/2, y: centerY + height*this.blockSize/2 }
+                ];
+                
+                // Build perimeter walls
+                for (let wall = 0; wall < wallHeight; wall++) {
+                    setTimeout(() => {
+                        // Top and bottom walls
+                        for (let x = corners[0].x; x <= corners[1].x; x += this.blockSize) {
+                            this.placeBlock(x, corners[0].y - wall*this.blockSize, 'structure', wall + 1);
+                            this.placeBlock(x, corners[3].y - wall*this.blockSize, 'structure', wall + 1);
+                        }
+                        
+                        // Left and right walls
+                        for (let y = corners[0].y; y <= corners[3].y; y += this.blockSize) {
+                            this.placeBlock(corners[0].x, y - wall*this.blockSize, 'structure', wall + 1);
+                            this.placeBlock(corners[1].x, y - wall*this.blockSize, 'structure', wall + 1);
+                        }
+                    }, wall * 1000);
+                }
+            }
+            
+            buildCastleTowers(centerX, centerY, width, height) {
+                const towerPositions = [
+                    { x: centerX - width*this.blockSize/2, y: centerY - height*this.blockSize/2 },
+                    { x: centerX + width*this.blockSize/2, y: centerY - height*this.blockSize/2 },
+                    { x: centerX + width*this.blockSize/2, y: centerY + height*this.blockSize/2 },
+                    { x: centerX - width*this.blockSize/2, y: centerY + height*this.blockSize/2 }
+                ];
+                
+                towerPositions.forEach((pos, index) => {
+                    setTimeout(() => {
+                        // Build tower (3x3 base, 6 stories high)
+                        for (let story = 0; story < 6; story++) {
+                            setTimeout(() => {
+                                for (let x = -1; x <= 1; x++) {
+                                    for (let y = -1; y <= 1; y++) {
+                                        if (story === 0 || x === -1 || x === 1 || y === -1 || y === 1) {
+                                            this.placeBlock(
+                                                pos.x + x*this.blockSize,
+                                                pos.y + y*this.blockSize - story*this.blockSize,
+                                                'structure',
+                                                story + 10
+                                            );
+                                        }
+                                    }
+                                }
+                            }, story * 500);
+                        }
+                    }, index * 1000);
+                });
+            }
+            
+            buildCastleKeep(centerX, centerY) {
+                // Central keep (5x5, 4 stories)
+                for (let story = 0; story < 4; story++) {
+                    setTimeout(() => {
+                        for (let x = -2; x <= 2; x++) {
+                            for (let y = -2; y <= 2; y++) {
+                                if (story === 0 || x === -2 || x === 2 || y === -2 || y === 2) {
+                                    this.placeBlock(
+                                        centerX + x*this.blockSize,
+                                        centerY + y*this.blockSize - story*this.blockSize,
+                                        'decoration',
+                                        story + 20
+                                    );
+                                }
+                            }
+                        }
+                    }, story * 800);
+                }
+            }
+            
+            addCastleDetails(centerX, centerY, width, height) {
+                // Add battlements
+                setTimeout(() => {
+                    const battlementPositions = [
+                        { x: centerX - width*this.blockSize/2, y: centerY - height*this.blockSize/2 },
+                        { x: centerX + width*this.blockSize/2, y: centerY - height*this.blockSize/2 },
+                        { x: centerX + width*this.blockSize/2, y: centerY + height*this.blockSize/2 },
+                        { x: centerX - width*this.blockSize/2, y: centerY + height*this.blockSize/2 }
+                    ];
+                    
+                    battlementPositions.forEach(pos => {
+                        this.placeBlock(pos.x, pos.y - 4*this.blockSize, 'decoration', 30);
+                    });
+                    
+                    // Add gate
+                    this.placeBlock(centerX, centerY + height*this.blockSize/2, 'tech', 25);
+                }, 2000);
+            }
+            
+            addCityDetails() {
+                // Add trees and streetlights
+                const detailPositions = [
+                    { x: 300, y: 150, type: 'nature' },
+                    { x: 500, y: 150, type: 'energy' },
+                    { x: 700, y: 150, type: 'nature' },
+                    { x: 150, y: 350, type: 'energy' },
+                    { x: 350, y: 350, type: 'nature' },
+                    { x: 650, y: 350, type: 'energy' }
+                ];
+                
+                detailPositions.forEach((detail, index) => {
+                    setTimeout(() => {
+                        this.placeBlock(detail.x, detail.y, detail.type, 50);
+                        if (detail.type === 'nature') {
+                            // Add tree top
+                            this.placeBlock(detail.x, detail.y - this.blockSize, 'nature', 51);
+                        }
+                    }, index * 300);
+                });
+            }
+            
+            placeBlock(x, y, type, layer) {
+                const block = document.createElement('div');
+                block.className = `block ${type}`;
+                block.style.left = x + 'px';
+                block.style.top = y + 'px';
+                block.style.width = this.blockSize + 'px';
+                block.style.height = this.blockSize + 'px';
+                block.style.zIndex = layer;
+                block.title = `${type} block (Layer ${layer})`;
+                
+                // Add click handler for block inspection
+                block.onclick = () => {
+                    this.addNarration(`🔍 Inspected ${type} block at (${x}, ${y}) - Layer ${layer}`);
+                };
+                
+                this.constructionLayer.appendChild(block);
+                this.blocks.push({ element: block, x, y, type, layer });
+                
+                // Update statistics
+                this.worldStats.totalBlocks++;
+                this.worldStats[type + 'Blocks'] = (this.worldStats[type + 'Blocks'] || 0) + 1;
+                this.updateWorldStats();
+            }
+            
+            spawnAgent(type, x, y) {
+                const agent = document.createElement('div');
+                agent.className = `agent-indicator ${type}`;
+                agent.style.left = x + 'px';
+                agent.style.top = y + 'px';
+                agent.title = `${type} Agent`;
+                
+                this.constructionLayer.appendChild(agent);
+                this.agents.push({ element: agent, type, x, y });
+                
+                // Remove agent after 10 seconds
+                setTimeout(() => {
+                    if (agent.parentNode) {
+                        agent.parentNode.removeChild(agent);
+                    }
+                    this.agents = this.agents.filter(a => a.element !== agent);
+                }, 10000);
+                
+                this.updateActiveAgents();
+            }
+            
+            createParticleEffect(x, y) {
+                const particle = document.createElement('div');
+                particle.className = 'particle-effect';
+                particle.style.left = x + 'px';
+                particle.style.top = y + 'px';
+                particle.style.setProperty('--dx', (Math.random() - 0.5) * 100 + 'px');
+                particle.style.setProperty('--dy', -(Math.random() * 100 + 50) + 'px');
+                
+                this.constructionLayer.appendChild(particle);
+                
+                // Remove particle after animation
+                setTimeout(() => {
+                    if (particle.parentNode) {
+                        particle.parentNode.removeChild(particle);
+                    }
+                }, 2000);
+            }
+            
+            buildCustomStructure(command) {
+                this.addNarration(`🎨 Custom build request: "${command}"`);
+                this.addNarration('🤖 Analyzing command and generating construction plan...');
+                
+                // Generate random structure based on command keywords
+                const keywords = command.toLowerCase().split(' ');
+                const centerX = window.innerWidth / 2;
+                const centerY = window.innerHeight / 2;
+                
+                this.spawnAgent('designer', centerX, centerY - 50);
+                this.spawnAgent('builder', centerX - 50, centerY + 50);
+                this.spawnAgent('builder', centerX + 50, centerY + 50);
+                
+                const elementCount = Math.min(keywords.length * 5, 50);
+                
+                for (let i = 0; i < elementCount; i++) {
+                    setTimeout(() => {
+                        const keyword = keywords[i % keywords.length];
+                        const blockType = this.getBlockTypeFromKeyword(keyword);
+                        
+                        const x = centerX + (Math.random() - 0.5) * 400;
+                        const y = centerY + (Math.random() - 0.5) * 300;
+                        
+                        this.placeBlock(x, y, blockType, i);
+                        this.addNarration(`🔨 Placed ${blockType} block inspired by "${keyword}"`);
+                        
+                        this.updateProgress('structure', (i + 1) / elementCount * 100);
+                        
+                        if (i === elementCount - 1) {
+                            setTimeout(() => {
+                                this.updateProgress('details', 100);
+                                this.updateBuildPhase('Complete');
+                                this.addNarration(`✅ Custom structure completed with ${elementCount} blocks!`);
+                            }, 500);
+                        }
+                    }, i * 200);
+                }
+            }
+            
+            getBlockTypeFromKeyword(keyword) {
+                const keywordMappings = {
+                    'house': 'wall', 'home': 'wall', 'building': 'wall',
+                    'tower': 'structure', 'tall': 'structure', 'high': 'structure',
+                    'garden': 'nature', 'plant': 'nature', 'tree': 'nature', 'flower': 'nature',
+                    'water': 'water', 'river': 'water', 'lake': 'water', 'sea': 'water',
+                    'tech': 'tech', 'machine': 'tech', 'robot': 'tech', 'computer': 'tech',
+                    'energy': 'energy', 'power': 'energy', 'electric': 'energy',
+                    'decoration': 'decoration', 'art': 'decoration', 'beautiful': 'decoration',
+                    'foundation': 'foundation', 'base': 'foundation', 'ground': 'foundation'
+                };
+                
+                return keywordMappings[keyword] || 'structure';
+            }
+            
+            clearWorld() {
+                this.addNarration('🗑️ Clearing world - demolishing all structures');
+                
+                this.blocks.forEach(block => {
+                    if (block.element.parentNode) {
+                        block.element.parentNode.removeChild(block.element);
+                    }
+                });
+                
+                this.agents.forEach(agent => {
+                    if (agent.element.parentNode) {
+                        agent.element.parentNode.removeChild(agent.element);
+                    }
+                });
+                
+                this.blocks = [];
+                this.agents = [];
+                this.clearProgress();
+                this.worldStats = {
+                    totalBlocks: 0,
+                    foundationBlocks: 0,
+                    wallBlocks: 0,
+                    decorationBlocks: 0,
+                    buildStartTime: null
+                };
+                
+                this.updateCurrentProject('World Cleared');
+                this.updateBuildPhase('Ready');
+                this.updateWorldStats();
+                this.addNarration('✅ World cleared - ready for new construction');
+            }
+            
+            // UI Update Methods
+            updateCurrentProject(project) {
+                this.currentProject = project;
+                document.getElementById('current-project').textContent = project;
+            }
+            
+            updateBuildPhase(phase) {
+                document.getElementById('build-phase').textContent = phase;
+            }
+            
+            updateCurrentLayer(layer) {
+                document.getElementById('current-layer').textContent = layer;
+            }
+            
+            updateCurrentHeight(height) {
+                document.getElementById('current-height').textContent = height + 'px';
+            }
+            
+            updateProgress(type, percent) {
+                const element = document.getElementById(`${type}-progress`);
+                if (element) {
+                    element.style.width = percent + '%';
+                }
+                
+                // Calculate overall completion
+                const overall = (this.buildProgress.foundation + this.buildProgress.structure + this.buildProgress.details) / 3;
+                document.getElementById('completion-percent').textContent = Math.round(overall) + '%';
+            }
+            
+            clearProgress() {
+                this.buildProgress = { foundation: 0, structure: 0, details: 0 };
+                this.updateProgress('foundation', 0);
+                this.updateProgress('structure', 0);
+                this.updateProgress('details', 0);
+            }
+            
+            updateWorldStats() {
+                document.getElementById('total-blocks').textContent = this.worldStats.totalBlocks;
+                document.getElementById('foundation-count').textContent = this.worldStats.foundationBlocks || 0;
+                document.getElementById('wall-count').textContent = this.worldStats.wallBlocks || 0;
+                document.getElementById('decoration-count').textContent = this.worldStats.decorationBlocks || 0;
+                document.getElementById('blocks-placed').textContent = this.worldStats.totalBlocks;
+            }
+            
+            updateActiveAgents() {
+                document.getElementById('active-agents').textContent = this.agents.length;
+            }
+            
+            addNarration(message) {
+                const narration = document.createElement('div');
+                narration.className = 'narration';
+                narration.textContent = message;
+                
+                this.narrationLog.appendChild(narration);
+                this.narrationLog.scrollTop = this.narrationLog.scrollHeight;
+                
+                // Keep only last 15 narrations
+                while (this.narrationLog.children.length > 15) {
+                    this.narrationLog.removeChild(this.narrationLog.firstChild);
+                }
+            }
+            
+            startBuildTimer() {
+                setInterval(() => {
+                    if (this.worldStats.buildStartTime) {
+                        const elapsed = Math.floor((Date.now() - this.worldStats.buildStartTime) / 1000);
+                        document.getElementById('build-time').textContent = elapsed + 's';
+                    }
+                }, 1000);
+            }
+        }
+        
+        // Global functions
+        let worldBuilder;
+        
+        function initializeWorldBuilder() {
+            worldBuilder = new BlockWorldBuilder();
+        }
+        
+        function handleWorldCommand(event) {
+            if (event.key === 'Enter') {
+                const command = event.target.value.trim();
+                if (command) {
+                    worldBuilder.executeWorldCommand(command);
+                    event.target.value = '';
+                }
+            }
+        }
+        
+        function buildStructure(type) {
+            worldBuilder.buildStructure(type);
+        }
+        
+        function clearWorld() {
+            worldBuilder.clearWorld();
+        }
+        
+        // Initialize when page loads
+        window.addEventListener('load', initializeWorldBuilder);
+    </script>
+</body>
+</html>

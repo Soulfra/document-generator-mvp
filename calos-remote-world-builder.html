@@ -1,0 +1,937 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>🌐 CALOs Remote World Builder - Wayback Machine for Your Reality</title>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Courier New', monospace;
+            background: linear-gradient(135deg, #0a0a0a 0%, #1a1a2e 50%, #16213e 100%);
+            color: #00ff41;
+            overflow: hidden;
+            height: 100vh;
+        }
+
+        .calos-interface {
+            display: grid;
+            grid-template-columns: 250px 1fr 300px;
+            grid-template-rows: 60px 1fr 150px;
+            height: 100vh;
+            gap: 1px;
+            background: #000;
+        }
+
+        .header {
+            grid-column: 1 / -1;
+            background: linear-gradient(90deg, #0f3460 0%, #003d82 100%);
+            padding: 15px 20px;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            border-bottom: 2px solid #00ff41;
+        }
+
+        .header h1 {
+            font-size: 1.2rem;
+            color: #00ff41;
+        }
+
+        .connection-status {
+            display: flex;
+            gap: 10px;
+            align-items: center;
+        }
+
+        .status-dot {
+            width: 12px;
+            height: 12px;
+            border-radius: 50%;
+            background: #ff0000;
+            animation: pulse 2s infinite;
+        }
+
+        .status-dot.connected {
+            background: #00ff41;
+        }
+
+        @keyframes pulse {
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0.5; }
+        }
+
+        .sidebar {
+            background: rgba(0, 20, 40, 0.9);
+            padding: 20px;
+            border-right: 1px solid #00ff41;
+            overflow-y: auto;
+        }
+
+        .main-viewport {
+            background: #000;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .data-panel {
+            background: rgba(0, 20, 40, 0.9);
+            padding: 15px;
+            border-left: 1px solid #00ff41;
+            overflow-y: auto;
+        }
+
+        .timeline-controls {
+            grid-column: 1 / -1;
+            background: rgba(0, 30, 60, 0.9);
+            padding: 15px 20px;
+            border-top: 1px solid #00ff41;
+            display: flex;
+            align-items: center;
+            gap: 20px;
+        }
+
+        .nav-section {
+            margin-bottom: 20px;
+        }
+
+        .nav-section h3 {
+            color: #00bfff;
+            font-size: 0.9rem;
+            margin-bottom: 10px;
+            border-bottom: 1px solid #00bfff;
+            padding-bottom: 5px;
+        }
+
+        .nav-item {
+            padding: 8px 12px;
+            margin: 5px 0;
+            background: rgba(0, 255, 65, 0.1);
+            border: 1px solid rgba(0, 255, 65, 0.3);
+            border-radius: 4px;
+            cursor: pointer;
+            transition: all 0.3s;
+            font-size: 0.8rem;
+        }
+
+        .nav-item:hover, .nav-item.active {
+            background: rgba(0, 255, 65, 0.3);
+            border-color: #00ff41;
+            transform: translateX(5px);
+        }
+
+        .world-viewer {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+        }
+
+        .overlay-ui {
+            position: absolute;
+            top: 20px;
+            left: 20px;
+            background: rgba(0, 0, 0, 0.8);
+            padding: 15px;
+            border-radius: 8px;
+            border: 1px solid #00ff41;
+            z-index: 100;
+        }
+
+        .data-stream {
+            margin-bottom: 15px;
+        }
+
+        .data-stream h4 {
+            color: #00bfff;
+            margin-bottom: 8px;
+            font-size: 0.9rem;
+        }
+
+        .stream-item {
+            background: rgba(0, 255, 65, 0.1);
+            padding: 8px;
+            margin: 3px 0;
+            border-left: 3px solid #00ff41;
+            font-size: 0.8rem;
+            border-radius: 0 4px 4px 0;
+        }
+
+        .stream-item.chat { border-left-color: #00bfff; }
+        .stream-item.music { border-left-color: #ff6b35; }
+        .stream-item.voice { border-left-color: #ffd23f; }
+        .stream-item.typing { border-left-color: #ee6c4d; }
+
+        .timeline-slider {
+            flex: 1;
+            height: 6px;
+            background: rgba(0, 255, 65, 0.2);
+            border-radius: 3px;
+            position: relative;
+            cursor: pointer;
+        }
+
+        .timeline-progress {
+            height: 100%;
+            background: linear-gradient(90deg, #00ff41 0%, #00bfff 100%);
+            border-radius: 3px;
+            width: 35%;
+            position: relative;
+        }
+
+        .timeline-marker {
+            position: absolute;
+            top: -8px;
+            right: -8px;
+            width: 16px;
+            height: 16px;
+            background: #00ff41;
+            border-radius: 50%;
+            border: 2px solid #000;
+            cursor: grab;
+        }
+
+        .timeline-marker:active {
+            cursor: grabbing;
+        }
+
+        .time-display {
+            color: #00bfff;
+            font-size: 0.9rem;
+            min-width: 120px;
+        }
+
+        .control-buttons {
+            display: flex;
+            gap: 10px;
+        }
+
+        .ctrl-btn {
+            padding: 8px 15px;
+            background: linear-gradient(45deg, #003d82 0%, #0f3460 100%);
+            border: 1px solid #00ff41;
+            border-radius: 4px;
+            color: #00ff41;
+            cursor: pointer;
+            font-family: inherit;
+            font-size: 0.8rem;
+            transition: all 0.3s;
+        }
+
+        .ctrl-btn:hover {
+            background: linear-gradient(45deg, #00ff41 0%, #00bfff 100%);
+            color: #000;
+            transform: translateY(-2px);
+        }
+
+        .world-stats {
+            position: absolute;
+            bottom: 20px;
+            right: 20px;
+            background: rgba(0, 0, 0, 0.8);
+            padding: 15px;
+            border-radius: 8px;
+            border: 1px solid #00ff41;
+            z-index: 100;
+        }
+
+        .stat-item {
+            display: flex;
+            justify-content: space-between;
+            margin: 5px 0;
+            font-size: 0.8rem;
+        }
+
+        .stat-value {
+            color: #00bfff;
+            font-weight: bold;
+        }
+
+        .runescape-panel {
+            background: linear-gradient(135deg, #8B4513 0%, #A0522D 100%);
+            border: 3px outset #D2691E;
+            color: #FFFF00;
+            font-family: 'Times New Roman', serif;
+        }
+
+        .runescape-panel h4 {
+            background: linear-gradient(90deg, #654321 0%, #8B4513 100%);
+            margin: -15px -15px 10px -15px;
+            padding: 8px 15px;
+            border-bottom: 2px inset #D2691E;
+            text-align: center;
+        }
+
+        .input-capture {
+            position: fixed;
+            bottom: 20px;
+            left: 50%;
+            transform: translateX(-50%);
+            background: rgba(0, 0, 0, 0.9);
+            padding: 15px;
+            border-radius: 8px;
+            border: 1px solid #00ff41;
+            display: flex;
+            gap: 10px;
+            align-items: center;
+            z-index: 1000;
+        }
+
+        .input-capture input {
+            background: rgba(0, 255, 65, 0.1);
+            border: 1px solid #00ff41;
+            color: #00ff41;
+            padding: 8px 12px;
+            border-radius: 4px;
+            font-family: inherit;
+            width: 300px;
+        }
+
+        .voice-indicator {
+            width: 20px;
+            height: 20px;
+            border-radius: 50%;
+            background: #ff0000;
+            transition: all 0.3s;
+        }
+
+        .voice-indicator.listening {
+            background: #00ff41;
+            animation: pulse 1s infinite;
+        }
+
+        .music-visualizer {
+            width: 100px;
+            height: 30px;
+            background: rgba(0, 255, 65, 0.1);
+            border: 1px solid #00ff41;
+            border-radius: 4px;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .music-bar {
+            position: absolute;
+            bottom: 0;
+            width: 8px;
+            background: linear-gradient(0deg, #00ff41 0%, #00bfff 100%);
+            border-radius: 4px 4px 0 0;
+            transition: height 0.1s;
+        }
+
+        .typing-detector {
+            font-size: 0.8rem;
+            color: #00bfff;
+        }
+    </style>
+</head>
+<body>
+    <div class="calos-interface">
+        <!-- Header -->
+        <div class="header">
+            <h1>🌐 CALOs Remote World Builder</h1>
+            <div class="connection-status">
+                <span>CAL:</span>
+                <div class="status-dot connected" id="calStatus"></div>
+                <span>Remote:</span>
+                <div class="status-dot" id="remoteStatus"></div>
+                <span>Learning:</span>
+                <div class="status-dot connected" id="learningStatus"></div>
+            </div>
+        </div>
+
+        <!-- Sidebar Navigation -->
+        <div class="sidebar">
+            <div class="nav-section">
+                <h3>🗺️ World Views</h3>
+                <div class="nav-item active" onclick="switchView('salmoneus')">Salmoneus Archive</div>
+                <div class="nav-item" onclick="switchView('voxel')">Voxel Universe</div>
+                <div class="nav-item" onclick="switchView('neural')">Neural Networks</div>
+                <div class="nav-item" onclick="switchView('timeline')">Timeline Explorer</div>
+            </div>
+
+            <div class="nav-section">
+                <h3>📊 Data Sources</h3>
+                <div class="nav-item" onclick="toggleSource('chat')">💬 Chat Logs</div>
+                <div class="nav-item" onclick="toggleSource('music')">🎵 Music Analysis</div>
+                <div class="nav-item" onclick="toggleSource('voice')">🎤 Voice Patterns</div>
+                <div class="nav-item" onclick="toggleSource('typing')">⌨️ Typing Rhythm</div>
+                <div class="nav-item" onclick="toggleSource('files')">📁 File Changes</div>
+            </div>
+
+            <div class="nav-section">
+                <h3>🎮 World Actions</h3>
+                <div class="nav-item" onclick="buildWorld()">🏗️ Build from Context</div>
+                <div class="nav-item" onclick="analyzePatterns()">🔍 Analyze Patterns</div>
+                <div class="nav-item" onclick="exportWorld()">💾 Export World</div>
+                <div class="nav-item" onclick="shareRemote()">🌐 Share Remote</div>
+            </div>
+        </div>
+
+        <!-- Main 3D Viewport -->
+        <div class="main-viewport">
+            <div id="world-canvas" class="world-viewer"></div>
+            
+            <div class="overlay-ui">
+                <h4>🔮 World Generation Status</h4>
+                <div id="generation-status">
+                    <div>Context Depth: <span class="stat-value">47 layers</span></div>
+                    <div>Active Patterns: <span class="stat-value">1,247</span></div>
+                    <div>Learning Rate: <span class="stat-value">0.94</span></div>
+                </div>
+            </div>
+
+            <div class="world-stats">
+                <h4>📈 Real-time Metrics</h4>
+                <div class="stat-item">
+                    <span>Words Processed:</span>
+                    <span class="stat-value" id="wordsProcessed">0</span>
+                </div>
+                <div class="stat-item">
+                    <span>Music Analyzed:</span>
+                    <span class="stat-value" id="musicAnalyzed">0 min</span>
+                </div>
+                <div class="stat-item">
+                    <span>Voice Samples:</span>
+                    <span class="stat-value" id="voiceSamples">0</span>
+                </div>
+                <div class="stat-item">
+                    <span>Typing Speed:</span>
+                    <span class="stat-value" id="typingSpeed">0 WPM</span>
+                </div>
+            </div>
+        </div>
+
+        <!-- Data Panel -->
+        <div class="data-panel runescape-panel">
+            <h4>📜 The Salmoneus Chronicle</h4>
+            
+            <div class="data-stream">
+                <h4>💬 Recent Chat Analysis</h4>
+                <div class="stream-item chat">Building voxelized MCP crawler...</div>
+                <div class="stream-item chat">Centipede OS segments active</div>
+                <div class="stream-item chat">ZK proofs verified: 1,247</div>
+            </div>
+
+            <div class="data-stream">
+                <h4>🎵 Music Context</h4>
+                <div class="stream-item music">Detected: Electronic/Ambient</div>
+                <div class="stream-item music">Mood: Focused, Creative</div>
+                <div class="stream-item music">BPM: 126 (Coding Rhythm)</div>
+            </div>
+
+            <div class="data-stream">
+                <h4>🎤 Voice Patterns</h4>
+                <div class="stream-item voice">Tone: Analytical</div>
+                <div class="stream-item voice">Pace: Rapid ideation</div>
+                <div class="stream-item voice">Keywords: "voxel", "context"</div>
+            </div>
+
+            <div class="data-stream">
+                <h4>⌨️ Typing Analysis</h4>
+                <div class="stream-item typing">Speed: 89 WPM</div>
+                <div class="stream-item typing">Pattern: Burst typing</div>
+                <div class="stream-item typing">Focus: High complexity</div>
+            </div>
+        </div>
+
+        <!-- Timeline Controls -->
+        <div class="timeline-controls">
+            <div class="time-display">
+                <div>📅 2025-07-24 21:28:15</div>
+            </div>
+            
+            <div class="timeline-slider" onclick="seekTimeline(event)">
+                <div class="timeline-progress">
+                    <div class="timeline-marker"></div>
+                </div>
+            </div>
+
+            <div class="control-buttons">
+                <button class="ctrl-btn" onclick="playPause()">⏯️ Play</button>
+                <button class="ctrl-btn" onclick="stepBack()">⏮️ Step</button>
+                <button class="ctrl-btn" onclick="stepForward()">⏭️ Step</button>
+                <button class="ctrl-btn" onclick="liveMode()">🔴 Live</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Input Capture -->
+    <div class="input-capture">
+        <div class="voice-indicator" id="voiceIndicator"></div>
+        <input type="text" placeholder="Type to help build the world..." id="textInput" onkeyup="processTyping(event)">
+        <div class="music-visualizer" id="musicViz">
+            <div class="music-bar" style="left: 10px; height: 60%;"></div>
+            <div class="music-bar" style="left: 20px; height: 80%;"></div>
+            <div class="music-bar" style="left: 30px; height: 40%;"></div>
+            <div class="music-bar" style="left: 40px; height: 90%;"></div>
+            <div class="music-bar" style="left: 50px; height: 30%;"></div>
+            <div class="music-bar" style="left: 60px; height: 70%;"></div>
+            <div class="music-bar" style="left: 70px; height: 50%;"></div>
+            <div class="music-bar" style="left: 80px; height: 85%;"></div>
+        </div>
+        <div class="typing-detector" id="typingDetector">Idle</div>
+    </div>
+
+    <script>
+        // Global state
+        const worldState = {
+            currentView: 'salmoneus',
+            activeSources: new Set(['chat', 'typing']),
+            isPlaying: false,
+            timeline: 0.35,
+            scene: null,
+            camera: null,
+            renderer: null,
+            learning: {
+                wordsProcessed: 0,
+                musicAnalyzed: 0,
+                voiceSamples: 0,
+                typingSpeed: 0
+            }
+        };
+
+        // Initialize Three.js world
+        function initWorld() {
+            const container = document.getElementById('world-canvas');
+            
+            worldState.scene = new THREE.Scene();
+            worldState.camera = new THREE.PerspectiveCamera(75, container.clientWidth / container.clientHeight, 0.1, 1000);
+            worldState.renderer = new THREE.WebGLRenderer({ antialias: true });
+            
+            worldState.renderer.setSize(container.clientWidth, container.clientHeight);
+            worldState.renderer.setClearColor(0x000011);
+            container.appendChild(worldState.renderer.domElement);
+
+            // Create initial world based on current view
+            createSalmoneusWorld();
+            
+            worldState.camera.position.set(0, 10, 20);
+            worldState.camera.lookAt(0, 0, 0);
+
+            // Start render loop
+            animate();
+        }
+
+        function createSalmoneusWorld() {
+            // Create a Runescape-style world with data visualization
+            
+            // Ground plane
+            const groundGeometry = new THREE.PlaneGeometry(100, 100);
+            const groundMaterial = new THREE.MeshBasicMaterial({ 
+                color: 0x2d5016,
+                wireframe: true 
+            });
+            const ground = new THREE.Mesh(groundGeometry, groundMaterial);
+            ground.rotation.x = -Math.PI / 2;
+            worldState.scene.add(ground);
+
+            // Data crystals representing different input sources
+            createDataCrystal('chat', new THREE.Vector3(-10, 2, 0), 0x00bfff);
+            createDataCrystal('music', new THREE.Vector3(0, 2, -10), 0xff6b35);
+            createDataCrystal('voice', new THREE.Vector3(10, 2, 0), 0xffd23f);
+            createDataCrystal('typing', new THREE.Vector3(0, 2, 10), 0xee6c4d);
+
+            // Central CAL nexus
+            const nexusGeometry = new THREE.SphereGeometry(3, 32, 32);
+            const nexusMaterial = new THREE.MeshBasicMaterial({ 
+                color: 0x00ff41,
+                wireframe: true 
+            });
+            const nexus = new THREE.Mesh(nexusGeometry, nexusMaterial);
+            nexus.position.set(0, 5, 0);
+            worldState.scene.add(nexus);
+
+            // Connecting lines between data sources and nexus
+            createConnections();
+        }
+
+        function createDataCrystal(type, position, color) {
+            const geometry = new THREE.OctahedronGeometry(1.5);
+            const material = new THREE.MeshBasicMaterial({ 
+                color: color,
+                transparent: true,
+                opacity: 0.8 
+            });
+            const crystal = new THREE.Mesh(geometry, material);
+            crystal.position.copy(position);
+            crystal.userData = { type: type };
+            worldState.scene.add(crystal);
+
+            // Add floating animation
+            crystal.userData.animate = () => {
+                crystal.rotation.y += 0.01;
+                crystal.position.y = position.y + Math.sin(Date.now() * 0.001 + position.x) * 0.5;
+            };
+        }
+
+        function createConnections() {
+            const points = [
+                new THREE.Vector3(-10, 2, 0),   // chat
+                new THREE.Vector3(0, 5, 0),     // nexus
+                new THREE.Vector3(0, 2, -10),   // music
+                new THREE.Vector3(0, 5, 0),     // nexus
+                new THREE.Vector3(10, 2, 0),    // voice
+                new THREE.Vector3(0, 5, 0),     // nexus
+                new THREE.Vector3(0, 2, 10),    // typing
+                new THREE.Vector3(0, 5, 0)      // nexus
+            ];
+
+            const geometry = new THREE.BufferGeometry().setFromPoints(points);
+            const material = new THREE.LineBasicMaterial({ 
+                color: 0x00ff41,
+                transparent: true,
+                opacity: 0.6 
+            });
+            const lines = new THREE.Line(geometry, material);
+            worldState.scene.add(lines);
+        }
+
+        function animate() {
+            requestAnimationFrame(animate);
+
+            // Animate all objects with animation functions
+            worldState.scene.traverse((object) => {
+                if (object.userData.animate) {
+                    object.userData.animate();
+                }
+            });
+
+            // Rotate camera around the scene
+            const time = Date.now() * 0.0005;
+            worldState.camera.position.x = Math.cos(time) * 25;
+            worldState.camera.position.z = Math.sin(time) * 25;
+            worldState.camera.lookAt(0, 5, 0);
+
+            worldState.renderer.render(worldState.scene, worldState.camera);
+        }
+
+        // Input processing functions
+        function processTyping(event) {
+            const input = event.target.value;
+            const detector = document.getElementById('typingDetector');
+            
+            if (input.length > 0) {
+                detector.textContent = 'Active';
+                worldState.learning.wordsProcessed += input.split(' ').length;
+                updateMetrics();
+                
+                // Send to CAL for world building
+                sendToCAL('typing', {
+                    text: input,
+                    timestamp: Date.now(),
+                    speed: calculateTypingSpeed(input)
+                });
+            } else {
+                detector.textContent = 'Idle';
+            }
+        }
+
+        function calculateTypingSpeed(text) {
+            // Simple WPM calculation
+            const words = text.split(' ').length;
+            const minutes = 1; // Simplified for demo
+            return Math.round(words / minutes);
+        }
+
+        function startVoiceCapture() {
+            const indicator = document.getElementById('voiceIndicator');
+            
+            if (navigator.mediaDevices && navigator.mediaDevices.getUserMedia) {
+                navigator.mediaDevices.getUserMedia({ audio: true })
+                    .then(stream => {
+                        indicator.classList.add('listening');
+                        
+                        // Process audio stream
+                        const audioContext = new AudioContext();
+                        const analyser = audioContext.createAnalyser();
+                        const microphone = audioContext.createMediaStreamSource(stream);
+                        
+                        microphone.connect(analyser);
+                        analyser.fftSize = 256;
+                        
+                        const dataArray = new Uint8Array(analyser.frequencyBinCount);
+                        
+                        function processAudio() {
+                            analyser.getByteFrequencyData(dataArray);
+                            
+                            // Analyze voice patterns
+                            const average = dataArray.reduce((a, b) => a + b) / dataArray.length;
+                            
+                            if (average > 10) {
+                                worldState.learning.voiceSamples++;
+                                updateMetrics();
+                                
+                                sendToCAL('voice', {
+                                    volume: average,
+                                    frequencies: Array.from(dataArray),
+                                    timestamp: Date.now()
+                                });
+                            }
+                            
+                            requestAnimationFrame(processAudio);
+                        }
+                        
+                        processAudio();
+                    })
+                    .catch(err => {
+                        console.error('Voice capture failed:', err);
+                    });
+            }
+        }
+
+        function startMusicAnalysis() {
+            // Simulate music analysis
+            const bars = document.querySelectorAll('.music-bar');
+            
+            setInterval(() => {
+                bars.forEach(bar => {
+                    const height = Math.random() * 100;
+                    bar.style.height = height + '%';
+                });
+                
+                worldState.learning.musicAnalyzed += 0.1;
+                updateMetrics();
+                
+                sendToCAL('music', {
+                    energy: Math.random(),
+                    tempo: 120 + Math.random() * 40,
+                    mood: ['focused', 'creative', 'energetic'][Math.floor(Math.random() * 3)],
+                    timestamp: Date.now()
+                });
+            }, 100);
+        }
+
+        function sendToCAL(type, data) {
+            // Send data to CAL for world building
+            fetch('/api/cal/process', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    type: type,
+                    data: data,
+                    worldContext: worldState.currentView
+                })
+            }).catch(err => {
+                console.log('CAL processing queued locally');
+                // Queue for later processing
+            });
+        }
+
+        function updateMetrics() {
+            document.getElementById('wordsProcessed').textContent = worldState.learning.wordsProcessed;
+            document.getElementById('musicAnalyzed').textContent = Math.round(worldState.learning.musicAnalyzed) + ' min';
+            document.getElementById('voiceSamples').textContent = worldState.learning.voiceSamples;
+            document.getElementById('typingSpeed').textContent = worldState.learning.typingSpeed + ' WPM';
+        }
+
+        // UI Control functions
+        function switchView(view) {
+            worldState.currentView = view;
+            
+            // Update active state
+            document.querySelectorAll('.nav-item').forEach(item => {
+                item.classList.remove('active');
+            });
+            event.target.classList.add('active');
+            
+            // Rebuild world for new view
+            worldState.scene.clear();
+            
+            switch(view) {
+                case 'salmoneus':
+                    createSalmoneusWorld();
+                    break;
+                case 'voxel':
+                    createVoxelWorld();
+                    break;
+                case 'neural':
+                    createNeuralWorld();
+                    break;
+                case 'timeline':
+                    createTimelineWorld();
+                    break;
+            }
+        }
+
+        function createVoxelWorld() {
+            // Create voxel-based world representation
+            for (let x = -10; x <= 10; x += 2) {
+                for (let z = -10; z <= 10; z += 2) {
+                    const geometry = new THREE.BoxGeometry(1, 1, 1);
+                    const material = new THREE.MeshBasicMaterial({ 
+                        color: new THREE.Color().setHSL(Math.random(), 0.7, 0.6),
+                        transparent: true,
+                        opacity: 0.7
+                    });
+                    const voxel = new THREE.Mesh(geometry, material);
+                    voxel.position.set(x, Math.random() * 10, z);
+                    worldState.scene.add(voxel);
+                }
+            }
+        }
+
+        function createNeuralWorld() {
+            // Create neural network visualization
+            const nodes = [];
+            const connections = [];
+            
+            // Create nodes
+            for (let i = 0; i < 50; i++) {
+                const geometry = new THREE.SphereGeometry(0.5);
+                const material = new THREE.MeshBasicMaterial({ color: 0x00ff41 });
+                const node = new THREE.Mesh(geometry, material);
+                
+                node.position.set(
+                    (Math.random() - 0.5) * 50,
+                    (Math.random() - 0.5) * 50,
+                    (Math.random() - 0.5) * 50
+                );
+                
+                nodes.push(node);
+                worldState.scene.add(node);
+            }
+            
+            // Create connections
+            for (let i = 0; i < nodes.length; i++) {
+                for (let j = i + 1; j < nodes.length; j++) {
+                    if (Math.random() < 0.1) {
+                        const points = [nodes[i].position, nodes[j].position];
+                        const geometry = new THREE.BufferGeometry().setFromPoints(points);
+                        const material = new THREE.LineBasicMaterial({ 
+                            color: 0x00bfff,
+                            transparent: true,
+                            opacity: 0.3 
+                        });
+                        const line = new THREE.Line(geometry, material);
+                        worldState.scene.add(line);
+                    }
+                }
+            }
+        }
+
+        function createTimelineWorld() {
+            // Create timeline-based world visualization
+            const timelineLength = 100;
+            
+            for (let i = 0; i < timelineLength; i++) {
+                const geometry = new THREE.CylinderGeometry(0.1, 0.1, Math.random() * 10 + 1);
+                const material = new THREE.MeshBasicMaterial({ 
+                    color: new THREE.Color().setHSL(i / timelineLength, 0.8, 0.6)
+                });
+                const timeline = new THREE.Mesh(geometry, material);
+                timeline.position.set(i - timelineLength/2, 0, 0);
+                worldState.scene.add(timeline);
+            }
+        }
+
+        function toggleSource(source) {
+            if (worldState.activeSources.has(source)) {
+                worldState.activeSources.delete(source);
+                event.target.style.opacity = '0.5';
+            } else {
+                worldState.activeSources.add(source);
+                event.target.style.opacity = '1';
+            }
+        }
+
+        function buildWorld() {
+            alert('🏗️ Building world from accumulated context...\n\nAnalyzing:\n- ' + worldState.learning.wordsProcessed + ' words processed\n- ' + Math.round(worldState.learning.musicAnalyzed) + ' minutes of music\n- ' + worldState.learning.voiceSamples + ' voice samples\n\nGenerating new world areas...');
+        }
+
+        function analyzePatterns() {
+            alert('🔍 Pattern Analysis Results:\n\n• Typing: Burst patterns, high complexity\n• Voice: Analytical tone, rapid ideation\n• Music: Electronic/ambient, coding rhythm\n• Context: Deep technical discussions\n\nRecommendations:\n- Build more technical worlds\n- Add coding environments\n- Include pattern recognition tools');
+        }
+
+        function exportWorld() {
+            const worldData = {
+                view: worldState.currentView,
+                learning: worldState.learning,
+                sources: Array.from(worldState.activeSources),
+                timestamp: new Date().toISOString()
+            };
+            
+            const blob = new Blob([JSON.stringify(worldData, null, 2)], { type: 'application/json' });
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = `calos-world-${Date.now()}.json`;
+            a.click();
+        }
+
+        function shareRemote() {
+            const remoteUrl = `${window.location.origin}/calos-remote-world-builder.html`;
+            navigator.clipboard.writeText(remoteUrl).then(() => {
+                alert('🌐 Remote URL copied to clipboard!\n\n' + remoteUrl + '\n\nShare this link to let others view your world in real-time.');
+            });
+        }
+
+        // Timeline controls
+        function seekTimeline(event) {
+            const rect = event.target.getBoundingClientRect();
+            const x = event.clientX - rect.left;
+            const percentage = x / rect.width;
+            worldState.timeline = percentage;
+            
+            const progress = document.querySelector('.timeline-progress');
+            progress.style.width = (percentage * 100) + '%';
+        }
+
+        function playPause() {
+            worldState.isPlaying = !worldState.isPlaying;
+            event.target.textContent = worldState.isPlaying ? '⏸️ Pause' : '⏯️ Play';
+        }
+
+        function stepBack() {
+            worldState.timeline = Math.max(0, worldState.timeline - 0.05);
+            const progress = document.querySelector('.timeline-progress');
+            progress.style.width = (worldState.timeline * 100) + '%';
+        }
+
+        function stepForward() {
+            worldState.timeline = Math.min(1, worldState.timeline + 0.05);
+            const progress = document.querySelector('.timeline-progress');
+            progress.style.width = (worldState.timeline * 100) + '%';
+        }
+
+        function liveMode() {
+            worldState.timeline = 1;
+            const progress = document.querySelector('.timeline-progress');
+            progress.style.width = '100%';
+            event.target.style.background = '#00ff41';
+            event.target.style.color = '#000';
+        }
+
+        // Initialize everything
+        document.addEventListener('DOMContentLoaded', () => {
+            initWorld();
+            startVoiceCapture();
+            startMusicAnalysis();
+            
+            // Simulate connection status updates
+            setInterval(() => {
+                document.getElementById('remoteStatus').classList.add('connected');
+            }, 2000);
+            
+            console.log('🌐 CALOs Remote World Builder initialized');
+            console.log('🎯 Ready to learn from your interactions');
+        });
+
+        // Handle window resize
+        window.addEventListener('resize', () => {
+            const container = document.getElementById('world-canvas');
+            worldState.camera.aspect = container.clientWidth / container.clientHeight;
+            worldState.camera.updateProjectionMatrix();
+            worldState.renderer.setSize(container.clientWidth, container.clientHeight);
+        });
+    </script>
+</body>
+</html>

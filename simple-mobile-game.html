@@ -1,0 +1,699 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+    <title>ShipRekt Empire</title>
+    <style>
+        * { 
+            margin: 0; 
+            padding: 0; 
+            box-sizing: border-box; 
+            touch-action: manipulation;
+        }
+        
+        body {
+            background: #000;
+            color: #00ff00;
+            font-family: monospace;
+            overflow: hidden;
+            height: 100vh;
+            position: fixed;
+            width: 100vw;
+        }
+        
+        .game-area {
+            width: 100%;
+            height: 100%;
+            position: relative;
+            background: linear-gradient(180deg, #001122, #000);
+        }
+        
+        .ship {
+            position: absolute;
+            width: 60px;
+            height: 30px;
+            background: #00ff00;
+            border: 2px solid #0a0;
+            border-radius: 15px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 20px;
+            cursor: pointer;
+            transition: all 0.1s;
+        }
+        
+        .player-ship {
+            background: #FFD700;
+            border-color: #FFA500;
+            bottom: 100px;
+            left: 50%;
+            transform: translateX(-50%);
+            z-index: 10;
+        }
+        
+        .enemy-ship {
+            background: #ff0000;
+            border-color: #cc0000;
+            animation: float 3s ease-in-out infinite;
+        }
+        
+        @keyframes float {
+            0%, 100% { transform: translateY(0px); }
+            50% { transform: translateY(-20px); }
+        }
+        
+        .controls {
+            position: fixed;
+            bottom: 20px;
+            left: 50%;
+            transform: translateX(-50%);
+            display: flex;
+            gap: 20px;
+            z-index: 100;
+        }
+        
+        .btn {
+            width: 60px;
+            height: 60px;
+            background: rgba(0,255,0,0.3);
+            border: 2px solid #00ff00;
+            border-radius: 50%;
+            color: #00ff00;
+            font-size: 24px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            cursor: pointer;
+            user-select: none;
+        }
+        
+        .btn:active {
+            background: rgba(0,255,0,0.6);
+            transform: scale(0.9);
+        }
+        
+        .hud {
+            position: fixed;
+            top: 20px;
+            left: 20px;
+            right: 20px;
+            z-index: 100;
+        }
+        
+        .score {
+            background: rgba(0,0,0,0.8);
+            padding: 10px 20px;
+            border: 1px solid #00ff00;
+            border-radius: 10px;
+            display: inline-block;
+        }
+        
+        .notification {
+            position: fixed;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            background: rgba(0,255,0,0.9);
+            color: #000;
+            padding: 20px 40px;
+            border-radius: 10px;
+            font-weight: bold;
+            z-index: 200;
+            display: none;
+        }
+        
+        .qr-btn {
+            position: fixed;
+            bottom: 20px;
+            right: 20px;
+            width: 60px;
+            height: 60px;
+            background: rgba(255,255,255,0.9);
+            color: #000;
+            border: 2px solid #00ff00;
+            border-radius: 50%;
+            font-size: 20px;
+            cursor: pointer;
+            z-index: 100;
+        }
+        
+        .location-btn {
+            position: fixed;
+            bottom: 90px;
+            right: 20px;
+            width: 60px;
+            height: 60px;
+            background: rgba(255,100,100,0.9);
+            color: #fff;
+            border: 2px solid #ff0000;
+            border-radius: 50%;
+            font-size: 20px;
+            cursor: pointer;
+            z-index: 100;
+        }
+        
+        .share-panel {
+            position: fixed;
+            top: 20px;
+            right: 20px;
+            background: rgba(0,0,0,0.9);
+            border: 2px solid #00ff00;
+            padding: 15px;
+            border-radius: 10px;
+            z-index: 100;
+        }
+        
+        .friend {
+            display: flex;
+            align-items: center;
+            margin: 10px 0;
+            padding: 10px;
+            background: rgba(0,255,0,0.1);
+            border-radius: 5px;
+            cursor: pointer;
+        }
+        
+        .friend:active {
+            background: rgba(0,255,0,0.3);
+        }
+    </style>
+</head>
+<body>
+    <div class="game-area" id="gameArea">
+        <!-- Player Ship -->
+        <div class="ship player-ship" id="playerShip">👑</div>
+        
+        <!-- Enemy Ships -->
+        <div class="ship enemy-ship" style="top: 20%; left: 20%;" onclick="attackShip(this)">🤖</div>
+        <div class="ship enemy-ship" style="top: 30%; left: 70%;" onclick="attackShip(this)">💎</div>
+        <div class="ship enemy-ship" style="top: 50%; left: 40%;" onclick="attackShip(this)">🎮</div>
+    </div>
+    
+    <!-- HUD -->
+    <div class="hud">
+        <div class="score">
+            Empire Value: $<span id="empireValue">0</span>
+        </div>
+    </div>
+    
+    <!-- Controls -->
+    <div class="controls">
+        <div class="btn" ontouchstart="moveShip('left')" ontouchend="stopMove()">⬅️</div>
+        <div class="btn" ontouchstart="attack()" ontouchend="stopAttack()">⚔️</div>
+        <div class="btn" ontouchstart="moveShip('right')" ontouchend="stopMove()">➡️</div>
+    </div>
+    
+    <!-- QR Scanner Button -->
+    <div class="qr-btn" onclick="scanQR()">📱</div>
+    
+    <!-- Location Button -->
+    <div class="location-btn" onclick="shareLocation()">📍</div>
+    
+    <!-- Social Panel -->
+    <div class="share-panel">
+        <h4>🎮 Friends</h4>
+        <div class="friend" onclick="inviteFriend('bro')">
+            👤 Your Bro
+        </div>
+        <div class="friend" onclick="shareGame()">
+            📤 Share Game
+        </div>
+        <div class="friend" onclick="shareLocation()">
+            📍 Share Location
+        </div>
+        <div class="friend" onclick="findNearbyPlayers()">
+            🗺️ Find Nearby
+        </div>
+    </div>
+    
+    <!-- Notification -->
+    <div class="notification" id="notification"></div>
+    
+    <script>
+        let gameState = {
+            empireValue: 0,
+            playerX: 50, // percentage
+            isMoving: false,
+            worldTheme: 'default',
+            isConnectedToSovereign: false
+        };
+        
+        // Sovereign Economy Integration
+        function loadSovereignState() {
+            const sovereignData = localStorage.getItem('sovereignEconomy');
+            if (sovereignData) {
+                const data = JSON.parse(sovereignData);
+                gameState.empireValue = data.gameValue || 0;
+                gameState.isConnectedToSovereign = true;
+                
+                // Update display
+                updateScore();
+                showNotification('🌍 Connected to Sovereign Economy!');
+            }
+        }
+        
+        function saveSovereignState() {
+            if (gameState.isConnectedToSovereign) {
+                const sovereignData = JSON.parse(localStorage.getItem('sovereignEconomy') || '{}');
+                sovereignData.gameValue = gameState.empireValue;
+                localStorage.setItem('sovereignEconomy', JSON.stringify(sovereignData));
+            }
+        }
+        
+        function moveShip(direction) {
+            gameState.isMoving = true;
+            const playerShip = document.getElementById('playerShip');
+            
+            function animate() {
+                if (!gameState.isMoving) return;
+                
+                if (direction === 'left' && gameState.playerX > 5) {
+                    gameState.playerX -= 2;
+                } else if (direction === 'right' && gameState.playerX < 95) {
+                    gameState.playerX += 2;
+                }
+                
+                playerShip.style.left = gameState.playerX + '%';
+                requestAnimationFrame(animate);
+            }
+            
+            animate();
+            
+            // Vibrate if supported
+            if (navigator.vibrate) {
+                navigator.vibrate(50);
+            }
+        }
+        
+        function stopMove() {
+            gameState.isMoving = false;
+        }
+        
+        function attack() {
+            showNotification('💥 Attacking!');
+            
+            // Visual effect
+            const playerShip = document.getElementById('playerShip');
+            playerShip.style.background = '#ff0000';
+            
+            setTimeout(() => {
+                playerShip.style.background = '#FFD700';
+            }, 200);
+            
+            // Vibrate
+            if (navigator.vibrate) {
+                navigator.vibrate([100, 50, 100]);
+            }
+        }
+        
+        function stopAttack() {
+            // Stop attack
+        }
+        
+        function attackShip(ship) {
+            const rewards = {
+                '🤖': 2000,
+                '💎': 5000,
+                '🎮': 3000
+            };
+            
+            const emoji = ship.textContent;
+            const reward = rewards[emoji] || 1000;
+            
+            gameState.empireValue += reward;
+            updateScore();
+            
+            showNotification(`${emoji} Captured! +$${reward.toLocaleString()}`);
+            
+            // Hide ship temporarily
+            ship.style.opacity = '0.3';
+            setTimeout(() => {
+                ship.style.opacity = '1';
+                // Move to random position
+                ship.style.left = Math.random() * 80 + 10 + '%';
+                ship.style.top = Math.random() * 50 + 20 + '%';
+            }, 3000);
+            
+            // Vibrate
+            if (navigator.vibrate) {
+                navigator.vibrate([200, 100, 200]);
+            }
+        }
+        
+        function scanQR() {
+            showNotification('📱 Scanning for empire codes...');
+            
+            // Simulate finding QR rewards
+            setTimeout(() => {
+                const bonuses = [
+                    { emoji: '🤖', reward: 5000, name: 'Agent System' },
+                    { emoji: '💎', reward: 10000, name: 'Crypto Wallet' },
+                    { emoji: '🎮', reward: 7500, name: 'Gaming Platform' }
+                ];
+                
+                const bonus = bonuses[Math.floor(Math.random() * bonuses.length)];
+                gameState.empireValue += bonus.reward;
+                updateScore();
+                
+                showNotification(`🎉 Found ${bonus.emoji} ${bonus.name}! +$${bonus.reward.toLocaleString()}`);
+            }, 2000);
+        }
+        
+        function inviteFriend(friendId) {
+            if (friendId === 'bro') {
+                showNotification('📱 Inviting your bro to join!');
+                
+                // Try to share
+                const shareData = {
+                    title: 'Join My ShipRekt Empire!',
+                    text: `I have $${gameState.empireValue.toLocaleString()} in my empire. Join me!`,
+                    url: window.location.href
+                };
+                
+                if (navigator.share) {
+                    navigator.share(shareData).catch(() => {
+                        // Fallback to clipboard
+                        copyToClipboard(shareData.url);
+                    });
+                } else {
+                    copyToClipboard(window.location.href);
+                }
+            }
+        }
+        
+        function shareGame() {
+            showNotification('📤 Sharing game...');
+            
+            const gameUrl = window.location.href;
+            const message = `🚢 ShipRekt Empire! Current value: $${gameState.empireValue.toLocaleString()}`;
+            
+            if (navigator.share) {
+                navigator.share({
+                    title: 'ShipRekt Empire',
+                    text: message,
+                    url: gameUrl
+                });
+            } else {
+                copyToClipboard(gameUrl);
+                showNotification('📋 Game link copied!');
+            }
+        }
+        
+        function copyToClipboard(text) {
+            if (navigator.clipboard) {
+                navigator.clipboard.writeText(text);
+            } else {
+                // Fallback
+                const textArea = document.createElement('textarea');
+                textArea.value = text;
+                document.body.appendChild(textArea);
+                textArea.select();
+                document.execCommand('copy');
+                document.body.removeChild(textArea);
+            }
+        }
+        
+        // Location and Maps Integration
+        let playerLocation = null;
+        
+        function shareLocation() {
+            showNotification('📍 Getting your location...');
+            
+            if (navigator.geolocation) {
+                navigator.geolocation.getCurrentPosition(
+                    position => {
+                        playerLocation = {
+                            lat: position.coords.latitude,
+                            lng: position.coords.longitude,
+                            accuracy: position.coords.accuracy
+                        };
+                        
+                        const locationData = {
+                            lat: playerLocation.lat,
+                            lng: playerLocation.lng,
+                            empire: gameState.empireValue,
+                            player: 'ShipRekt Captain',
+                            timestamp: Date.now()
+                        };
+                        
+                        // Create shareable location URL
+                        const locationUrl = `https://maps.google.com/maps?q=${playerLocation.lat},${playerLocation.lng}&z=15`;
+                        const shareText = `🚢 Join my ShipRekt Empire! I'm at this location with $${gameState.empireValue.toLocaleString()} empire value!`;
+                        
+                        if (navigator.share) {
+                            navigator.share({
+                                title: '📍 ShipRekt Empire Location',
+                                text: shareText,
+                                url: locationUrl
+                            }).catch(() => {
+                                copyToClipboard(locationUrl);
+                                showNotification('📋 Location copied! Share with your bro!');
+                            });
+                        } else {
+                            copyToClipboard(locationUrl);
+                            showNotification('📋 Location copied! Share with your bro!');
+                        }
+                        
+                        // Store location for empire battles
+                        localStorage.setItem('shiprektLocation', JSON.stringify(locationData));
+                        showNotification('📍 Location shared! Your bro can find you now!');
+                    },
+                    error => {
+                        showNotification('❌ Location access denied. Enable GPS for empire battles!');
+                        console.error('Location error:', error);
+                    },
+                    {
+                        enableHighAccuracy: true,
+                        timeout: 10000,
+                        maximumAge: 300000 // 5 minutes
+                    }
+                );
+            } else {
+                showNotification('❌ GPS not supported on this device');
+            }
+        }
+        
+        function findNearbyPlayers() {
+            showNotification('🗺️ Scanning for nearby empires...');
+            
+            if (!playerLocation) {
+                shareLocation();
+                return;
+            }
+            
+            // Simulate finding nearby players
+            setTimeout(() => {
+                const nearbyPlayers = [
+                    { name: 'Your Bro', distance: 0.2, empire: 15000, emoji: '👑' },
+                    { name: 'Friend Mike', distance: 0.8, empire: 8500, emoji: '🤖' },
+                    { name: 'Player123', distance: 1.5, empire: 12000, emoji: '💎' }
+                ];
+                
+                const foundPlayer = nearbyPlayers[Math.floor(Math.random() * nearbyPlayers.length)];
+                
+                // Add bonus for finding nearby player
+                const proximityBonus = Math.floor(2000 / foundPlayer.distance);
+                gameState.empireValue += proximityBonus;
+                updateScore();
+                
+                showNotification(`${foundPlayer.emoji} Found ${foundPlayer.name}! ${foundPlayer.distance}km away. Empire: $${foundPlayer.empire.toLocaleString()}. Proximity bonus: +$${proximityBonus.toLocaleString()}`);
+                
+                // Vibrate for discovery
+                if (navigator.vibrate) {
+                    navigator.vibrate([300, 100, 300, 100, 300]);
+                }
+            }, 2000);
+        }
+        
+        function createLocationQR() {
+            if (!playerLocation) {
+                showNotification('📍 Get location first!');
+                shareLocation();
+                return;
+            }
+            
+            // Create QR code with location and empire data
+            const qrData = {
+                type: 'empire-location',
+                lat: playerLocation.lat,
+                lng: playerLocation.lng,
+                empire: gameState.empireValue,
+                player: 'ShipRekt Captain',
+                timestamp: Date.now(),
+                challenge: 'Battle for territory!'
+            };
+            
+            const qrUrl = `${window.location.origin}/join-empire?data=${encodeURIComponent(JSON.stringify(qrData))}`;
+            
+            showNotification('📱 Location QR created! Share with friends to battle here!');
+            
+            // Try to open QR generator with location data
+            window.open(`simple-qr-generator.html?location=${encodeURIComponent(JSON.stringify(qrData))}`, '_blank');
+        }
+        
+        function updateScore() {
+            document.getElementById('empireValue').textContent = gameState.empireValue.toLocaleString();
+            
+            // Save to sovereign economy if connected
+            saveSovereignState();
+            
+            // Check if player hits verification threshold
+            if (gameState.empireValue >= 10000 && gameState.isConnectedToSovereign) {
+                showNotification('🚨 Empire threshold reached! Return to Sovereign Hub for verification!');
+                
+                // Add prominent button to return to sovereign hub
+                setTimeout(() => {
+                    const returnBtn = document.createElement('button');
+                    returnBtn.textContent = '🌍 Return to Sovereign Hub';
+                    returnBtn.style.cssText = `
+                        position: fixed;
+                        top: 100px;
+                        left: 50%;
+                        transform: translateX(-50%);
+                        background: #ffd700;
+                        color: #000;
+                        border: none;
+                        padding: 15px 30px;
+                        font-size: 16px;
+                        font-weight: bold;
+                        border-radius: 25px;
+                        cursor: pointer;
+                        z-index: 1000;
+                        animation: pulse 2s infinite;
+                    `;
+                    returnBtn.onclick = () => {
+                        window.location.href = 'sovereign-game-economy.html';
+                    };
+                    document.body.appendChild(returnBtn);
+                }, 3000);
+            }
+        }
+        
+        function showNotification(message) {
+            const notification = document.getElementById('notification');
+            notification.textContent = message;
+            notification.style.display = 'block';
+            
+            setTimeout(() => {
+                notification.style.display = 'none';
+            }, 3000);
+        }
+        
+        // Auto-generate passive income
+        setInterval(() => {
+            gameState.empireValue += Math.floor(Math.random() * 100) + 50;
+            updateScore();
+        }, 5000);
+        
+        // Prevent zoom on double tap
+        let lastTouchEnd = 0;
+        document.addEventListener('touchend', function (event) {
+            const now = (new Date()).getTime();
+            if (now - lastTouchEnd <= 300) {
+                event.preventDefault();
+            }
+            lastTouchEnd = now;
+        }, false);
+        
+        // Handle location-based invites
+        function handleLocationInvite() {
+            const urlParams = new URLSearchParams(window.location.search);
+            const locationParam = urlParams.get('location');
+            
+            if (locationParam) {
+                try {
+                    const locationData = JSON.parse(decodeURIComponent(locationParam));
+                    showNotification(`📍 Joining ${locationData.player}'s empire battle! Empire: $${locationData.empire.toLocaleString()}`);
+                    
+                    // Give bonus for joining a location battle
+                    const joinBonus = Math.floor(locationData.empire * 0.1); // 10% of their empire
+                    gameState.empireValue += joinBonus;
+                    updateScore();
+                    
+                    // Show location info
+                    setTimeout(() => {
+                        showNotification(`🗺️ Battle location: ${locationData.lat.toFixed(4)}, ${locationData.lng.toFixed(4)} - Join bonus: +$${joinBonus.toLocaleString()}`);
+                    }, 3000);
+                    
+                    // Store enemy location for battles
+                    localStorage.setItem('enemyLocation', JSON.stringify(locationData));
+                    
+                    // Vibrate to show successful join
+                    if (navigator.vibrate) {
+                        navigator.vibrate([300, 100, 300, 100, 300]);
+                    }
+                    
+                } catch (e) {
+                    console.error('Invalid location data:', e);
+                }
+            }
+            
+            // Check for other URL parameters
+            const action = urlParams.get('action');
+            if (action === 'scan') {
+                setTimeout(() => scanQR(), 1000);
+            } else if (action === 'invite') {
+                setTimeout(() => shareGame(), 1000);
+            } else if (action === 'share') {
+                setTimeout(() => shareGame(), 1000);
+            }
+        }
+        
+        // Handle world themes
+        function applyWorldTheme() {
+            const urlParams = new URLSearchParams(window.location.search);
+            const world = urlParams.get('world');
+            const theme = urlParams.get('theme');
+            const bg = urlParams.get('bg');
+            
+            if (world && theme) {
+                gameState.worldTheme = world;
+                
+                // Apply theme-specific changes
+                if (bg) {
+                    document.body.style.background = decodeURIComponent(bg);
+                }
+                
+                // Update ship icons based on world
+                const playerShip = document.getElementById('playerShip');
+                const enemyShips = document.querySelectorAll('.enemy-ship');
+                
+                const worldIcons = {
+                    underwater: { player: '🐙', enemies: ['🦈', '🐠', '🐳'] },
+                    space: { player: '🚀', enemies: ['🛸', '🌌', '⭐'] },
+                    medieval: { player: '👑', enemies: ['⚔️', '🏰', '🛡️'] },
+                    cyber: { player: '🤖', enemies: ['💻', '📡', '🔮'] }
+                };
+                
+                if (worldIcons[world]) {
+                    playerShip.textContent = worldIcons[world].player;
+                    enemyShips.forEach((ship, index) => {
+                        ship.textContent = worldIcons[world].enemies[index % worldIcons[world].enemies.length];
+                    });
+                }
+                
+                showNotification(`🌍 Welcome to ${world.toUpperCase()} world! All systems themed as ${theme}!`);
+                
+                // Update HUD text
+                document.querySelector('.score').innerHTML = `
+                    ${world.charAt(0).toUpperCase() + world.slice(1)} Empire Value: $<span id="empireValue">${gameState.empireValue.toLocaleString()}</span>
+                `;
+            }
+        }
+        
+        // Initialize
+        loadSovereignState(); // Load sovereign state first
+        updateScore();
+        handleLocationInvite();
+        applyWorldTheme(); // Apply world theme
+        
+        console.log('🚢 ShipRekt Mobile Game Ready!');
+        console.log('Touch controls: Left/Right to move, Sword to attack');
+        console.log('Tap ships to capture them, scan QR for bonuses!');
+        console.log('📍 Location battles supported!');
+        console.log('🌍 Sovereign Economy Integration: ' + (gameState.isConnectedToSovereign ? 'ACTIVE' : 'INACTIVE'));
+    </script>
+</body>
+</html>

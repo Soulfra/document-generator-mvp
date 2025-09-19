@@ -1,0 +1,1040 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>🎥 Domingo Virtual Streamer - AI Programmer at Work</title>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        
+        body {
+            background: #000;
+            color: #00ff00;
+            font-family: 'Courier New', monospace;
+            overflow: hidden;
+            height: 100vh;
+        }
+        
+        /* Main streaming layout */
+        .streamer-container {
+            display: grid;
+            grid-template-columns: 1fr 300px;
+            height: 100vh;
+        }
+        
+        /* Character scene */
+        .character-scene {
+            position: relative;
+            background: linear-gradient(135deg, #1a1a2e 0%, #16213e 50%, #0f3460 100%);
+        }
+        
+        #character-canvas {
+            width: 100%;
+            height: 100%;
+            display: block;
+        }
+        
+        /* Scene overlays */
+        .scene-overlay {
+            position: absolute;
+            pointer-events: none;
+        }
+        
+        .activity-indicator {
+            top: 20px;
+            left: 20px;
+            background: rgba(0, 0, 0, 0.8);
+            padding: 10px 15px;
+            border-radius: 20px;
+            border: 2px solid #333;
+        }
+        
+        .activity-indicator.active {
+            border-color: #8a2be2;
+            box-shadow: 0 0 20px rgba(138, 43, 226, 0.6);
+            animation: purple-glow 2s ease-in-out infinite alternate;
+        }
+        
+        @keyframes purple-glow {
+            from { box-shadow: 0 0 20px rgba(138, 43, 226, 0.6); }
+            to { box-shadow: 0 0 40px rgba(138, 43, 226, 0.9), 0 0 60px rgba(138, 43, 226, 0.4); }
+        }
+        
+        .current-task {
+            top: 20px;
+            right: 20px;
+            background: rgba(0, 0, 0, 0.8);
+            padding: 10px 15px;
+            border-radius: 10px;
+            border: 1px solid #00ff00;
+            min-width: 250px;
+        }
+        
+        .task-title {
+            color: #00ff00;
+            font-weight: bold;
+            margin-bottom: 5px;
+        }
+        
+        .task-details {
+            color: #888;
+            font-size: 12px;
+        }
+        
+        /* Frame timeline */
+        .timeline-controls {
+            bottom: 20px;
+            left: 20px;
+            right: 20px;
+            background: rgba(0, 0, 0, 0.9);
+            padding: 15px;
+            border-radius: 10px;
+            border: 1px solid #333;
+            display: flex;
+            align-items: center;
+            gap: 15px;
+        }
+        
+        .timeline-slider {
+            flex: 1;
+            height: 4px;
+            background: #333;
+            border-radius: 2px;
+            position: relative;
+            cursor: pointer;
+        }
+        
+        .timeline-progress {
+            height: 100%;
+            background: linear-gradient(90deg, #00ff00, #ff6600);
+            border-radius: 2px;
+            width: 45%;
+            position: relative;
+        }
+        
+        .timeline-marker {
+            position: absolute;
+            top: -3px;
+            right: -5px;
+            width: 10px;
+            height: 10px;
+            background: #ff6600;
+            border-radius: 50%;
+            border: 2px solid #000;
+        }
+        
+        .timeline-btn {
+            background: #333;
+            border: 1px solid #555;
+            color: #888;
+            padding: 5px 10px;
+            cursor: pointer;
+            border-radius: 3px;
+            font-size: 12px;
+            transition: all 0.2s;
+        }
+        
+        .timeline-btn:hover { border-color: #00ff00; color: #00ff00; }
+        .timeline-btn.active { background: #00ff00; color: #000; }
+        
+        /* Chat panel */
+        .chat-panel {
+            background: #111;
+            border-left: 2px solid #333;
+            display: flex;
+            flex-direction: column;
+        }
+        
+        .chat-header {
+            padding: 15px;
+            border-bottom: 1px solid #333;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+        
+        .chat-header h3 {
+            color: #9146ff; /* Twitch purple */
+        }
+        
+        .viewer-count {
+            color: #ff6600;
+            font-size: 12px;
+        }
+        
+        .chat-messages {
+            flex: 1;
+            overflow-y: auto;
+            padding: 10px;
+        }
+        
+        .chat-message {
+            margin-bottom: 8px;
+            padding: 5px;
+            border-radius: 4px;
+            font-size: 12px;
+            word-wrap: break-word;
+        }
+        
+        .chat-username {
+            color: #ff6600;
+            font-weight: bold;
+        }
+        
+        .chat-text {
+            color: #ccc;
+            margin-left: 5px;
+        }
+        
+        .chat-ai-response {
+            background: rgba(0, 255, 0, 0.1);
+            border-left: 2px solid #00ff00;
+            padding-left: 8px;
+            margin-top: 3px;
+        }
+        
+        .chat-input-area {
+            padding: 15px;
+            border-top: 1px solid #333;
+        }
+        
+        .chat-input {
+            width: 100%;
+            background: #222;
+            border: 1px solid #444;
+            color: #ccc;
+            padding: 8px;
+            border-radius: 4px;
+            font-family: inherit;
+            font-size: 12px;
+        }
+        
+        /* Token collection display */
+        .token-collection {
+            position: absolute;
+            bottom: 100px;
+            right: 20px;
+            background: rgba(0, 0, 0, 0.9);
+            padding: 10px;
+            border-radius: 8px;
+            border: 1px solid #ff6600;
+            min-width: 150px;
+        }
+        
+        .token-header {
+            color: #ff6600;
+            font-weight: bold;
+            margin-bottom: 8px;
+            text-align: center;
+        }
+        
+        .token-grid {
+            display: grid;
+            grid-template-columns: repeat(5, 1fr);
+            gap: 3px;
+        }
+        
+        .token-cube {
+            width: 20px;
+            height: 20px;
+            background: linear-gradient(45deg, #00ff00, #ff6600);
+            border-radius: 2px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 10px;
+            cursor: pointer;
+            animation: token-pulse 2s ease-in-out infinite;
+        }
+        
+        @keyframes token-pulse {
+            0%, 100% { transform: scale(1); }
+            50% { transform: scale(1.1); }
+        }
+        
+        /* Mirror loop warning */
+        .mirror-warning {
+            position: fixed;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            background: rgba(255, 0, 0, 0.9);
+            color: white;
+            padding: 20px;
+            border-radius: 10px;
+            font-weight: bold;
+            z-index: 1000;
+            display: none;
+            animation: urgent-blink 0.5s infinite;
+        }
+        
+        @keyframes urgent-blink {
+            0%, 50% { opacity: 1; }
+            51%, 100% { opacity: 0.7; }
+        }
+    </style>
+</head>
+<body>
+    <!-- Mirror loop detection warning -->
+    <div class="mirror-warning" id="mirrorWarning">
+        🚨 MIRROR LOOP DETECTED - CHILLING OUT 🚨
+    </div>
+    
+    <div class="streamer-container">
+        <!-- Character scene -->
+        <div class="character-scene">
+            <canvas id="character-canvas"></canvas>
+            
+            <!-- Activity indicator -->
+            <div class="scene-overlay activity-indicator" id="activityIndicator">
+                <span id="activityStatus">👁️ DOMINGO ONLINE</span>
+                <div style="font-size: 10px; margin-top: 3px;">
+                    <span id="systemActivity">Idle</span>
+                </div>
+            </div>
+            
+            <!-- Current task display -->
+            <div class="scene-overlay current-task">
+                <div class="task-title" id="currentTaskTitle">Working on: Unity Scene Setup</div>
+                <div class="task-details" id="currentTaskDetails">
+                    Setting up 3D environment for character interaction
+                </div>
+                <div style="margin-top: 8px; font-size: 10px; color: #666;">
+                    Progress: <span id="taskProgress">67%</span>
+                </div>
+            </div>
+            
+            <!-- Token collection -->
+            <div class="scene-overlay token-collection">
+                <div class="token-header">🎁 COLLECTED</div>
+                <div class="token-grid" id="tokenGrid">
+                    <!-- Tokens will be added dynamically -->
+                </div>
+                <div style="text-align: center; margin-top: 5px; font-size: 10px; color: #888;">
+                    <span id="tokenCount">0</span> tokens
+                </div>
+            </div>
+            
+            <!-- Frame timeline controls -->
+            <div class="scene-overlay timeline-controls">
+                <button class="timeline-btn" onclick="rewindSession()">⏪</button>
+                <button class="timeline-btn" onclick="previousFrame()">◀️</button>
+                <button class="timeline-btn active" onclick="togglePlayback()">⏸️</button>
+                <button class="timeline-btn" onclick="nextFrame()">▶️</button>
+                <button class="timeline-btn" onclick="fastForward()">⏩</button>
+                
+                <div class="timeline-slider" onclick="seekToPosition(event)">
+                    <div class="timeline-progress">
+                        <div class="timeline-marker"></div>
+                    </div>
+                </div>
+                
+                <span style="font-size: 11px; color: #888;">
+                    <span id="currentTime">14:32</span> / <span id="totalTime">45:17</span>
+                </span>
+            </div>
+        </div>
+        
+        <!-- Live chat panel -->
+        <div class="chat-panel">
+            <div class="chat-header">
+                <h3>💬 Live Chat</h3>
+                <div class="viewer-count">
+                    👀 <span id="viewerCount">47</span> watching
+                </div>
+            </div>
+            
+            <div class="chat-messages" id="chatMessages">
+                <div class="chat-message">
+                    <span class="chat-username">CodeWatcher23:</span>
+                    <span class="chat-text">What's Domingo working on now?</span>
+                    <div class="chat-ai-response">
+                        🤖 Domingo is setting up a 3D Unity scene with character interactions!
+                    </div>
+                </div>
+                
+                <div class="chat-message">
+                    <span class="chat-username">UnityFan88:</span>
+                    <span class="chat-text">That purple eye glow is so cool! 💜</span>
+                </div>
+                
+                <div class="chat-message">
+                    <span class="chat-username">DevStreamer:</span>
+                    <span class="chat-text">Can you show the code he's writing?</span>
+                    <div class="chat-ai-response">
+                        🤖 Switching to code view! Domingo is working on WebRTC integration.
+                    </div>
+                </div>
+            </div>
+            
+            <div class="chat-input-area">
+                <input type="text" class="chat-input" id="chatInput" 
+                       placeholder="Chat with Domingo..." 
+                       onkeypress="handleChatInput(event)">
+            </div>
+        </div>
+    </div>
+    
+    <script>
+        // Character scene setup
+        let scene, camera, renderer, domingo, desk, monitors;
+        let activityLevel = 0;
+        let isTyping = false;
+        let mouseMoveTime = 0;
+        let currentFrame = 0;
+        let totalFrames = 2717; // Total work session frames
+        let isPlaying = true;
+        let tokens = [];
+        let mirrorLoopDetection = { count: 0, threshold: 10 };
+        
+        // Chat system
+        let chatWS = null;
+        let viewerCount = 47;
+        let chatHistory = [];
+        
+        function initCharacterScene() {
+            const canvas = document.getElementById('character-canvas');
+            
+            // Three.js setup
+            scene = new THREE.Scene();
+            camera = new THREE.PerspectiveCamera(75, canvas.clientWidth / canvas.clientHeight, 0.1, 1000);
+            renderer = new THREE.WebGLRenderer({ canvas, antialias: true });
+            renderer.setSize(canvas.clientWidth, canvas.clientHeight);
+            renderer.setClearColor(0x1a1a2e);
+            renderer.shadowMap.enabled = true;
+            renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+            
+            // Lighting
+            const ambientLight = new THREE.AmbientLight(0x404040, 0.3);
+            scene.add(ambientLight);
+            
+            const keyLight = new THREE.DirectionalLight(0xffffff, 0.8);
+            keyLight.position.set(5, 10, 5);
+            keyLight.castShadow = true;
+            scene.add(keyLight);
+            
+            // Purple accent light (for the "eye glow")
+            const purpleLight = new THREE.PointLight(0x8a2be2, 0.5, 10);
+            purpleLight.position.set(0, 2, 2);
+            scene.add(purpleLight);
+            
+            createDomingoCharacter();
+            createDesk();
+            createMonitors();
+            createRoom();
+            
+            // Camera position
+            camera.position.set(4, 3, 6);
+            camera.lookAt(0, 1, 0);
+            
+            // Start animation loop
+            animate();
+            
+            console.log('🎬 Domingo character scene initialized');
+        }
+        
+        function createDomingoCharacter() {
+            const group = new THREE.Group();
+            
+            // Head
+            const headGeometry = new THREE.SphereGeometry(0.3, 16, 16);
+            const headMaterial = new THREE.MeshLambertMaterial({ color: 0xffdbac });
+            const head = new THREE.Mesh(headGeometry, headMaterial);
+            head.position.y = 1.7;
+            head.castShadow = true;
+            group.add(head);
+            
+            // Purple glowing eye
+            const eyeGeometry = new THREE.SphereGeometry(0.05, 8, 8);
+            const eyeMaterial = new THREE.MeshBasicMaterial({ 
+                color: 0x8a2be2,
+                emissive: 0x8a2be2,
+                emissiveIntensity: 0.5 
+            });
+            const leftEye = new THREE.Mesh(eyeGeometry, eyeMaterial);
+            leftEye.position.set(-0.1, 1.75, 0.25);
+            group.add(leftEye);
+            
+            const rightEye = leftEye.clone();
+            rightEye.position.x = 0.1;
+            group.add(rightEye);
+            
+            // Store reference to eyes for animation
+            domingo.eyes = [leftEye, rightEye];
+            
+            // Body
+            const bodyGeometry = new THREE.CylinderGeometry(0.2, 0.3, 0.8, 8);
+            const bodyMaterial = new THREE.MeshLambertMaterial({ color: 0x333333 });
+            const body = new THREE.Mesh(bodyGeometry, bodyMaterial);
+            body.position.y = 1.0;
+            body.castShadow = true;
+            group.add(body);
+            
+            // Arms
+            const armGeometry = new THREE.CylinderGeometry(0.05, 0.08, 0.6, 6);
+            const armMaterial = new THREE.MeshLambertMaterial({ color: 0xffdbac });
+            
+            const leftArm = new THREE.Mesh(armGeometry, armMaterial);
+            leftArm.position.set(-0.35, 1.1, 0);
+            leftArm.rotation.z = 0.3;
+            leftArm.castShadow = true;
+            group.add(leftArm);
+            
+            const rightArm = new THREE.Mesh(armGeometry, armMaterial);
+            rightArm.position.set(0.35, 1.1, 0);
+            rightArm.rotation.z = -0.3;
+            rightArm.castShadow = true;
+            group.add(rightArm);
+            
+            // Hands
+            const handGeometry = new THREE.SphereGeometry(0.08, 8, 8);
+            const leftHand = new THREE.Mesh(handGeometry, armMaterial);
+            leftHand.position.set(-0.6, 0.8, 0.3);
+            leftHand.castShadow = true;
+            group.add(leftHand);
+            
+            const rightHand = new THREE.Mesh(handGeometry, armMaterial);
+            rightHand.position.set(0.6, 0.8, 0.3);
+            rightHand.castShadow = true;
+            group.add(rightHand);
+            
+            // Store references for animation
+            domingo.leftHand = leftHand;
+            domingo.rightHand = rightHand;
+            domingo.head = head;
+            
+            domingo = group;
+            scene.add(domingo);
+        }
+        
+        function createDesk() {
+            // Desk surface
+            const deskGeometry = new THREE.BoxGeometry(3, 0.1, 1.5);
+            const deskMaterial = new THREE.MeshLambertMaterial({ color: 0x8B4513 });
+            desk = new THREE.Mesh(deskGeometry, deskMaterial);
+            desk.position.y = 0.6;
+            desk.receiveShadow = true;
+            scene.add(desk);
+            
+            // Laptop
+            const laptopGeometry = new THREE.BoxGeometry(0.6, 0.02, 0.4);
+            const laptopMaterial = new THREE.MeshLambertMaterial({ color: 0x333333 });
+            const laptop = new THREE.Mesh(laptopGeometry, laptopMaterial);
+            laptop.position.set(0, 0.66, 0.2);
+            laptop.castShadow = true;
+            scene.add(laptop);
+            
+            // Laptop screen
+            const screenGeometry = new THREE.PlaneGeometry(0.55, 0.35);
+            const screenMaterial = new THREE.MeshBasicMaterial({ 
+                color: 0x000000,
+                emissive: 0x001100,
+                emissiveIntensity: 0.3
+            });
+            const screen = new THREE.Mesh(screenGeometry, screenMaterial);
+            screen.position.set(0, 0.85, 0.2);
+            screen.rotation.x = -0.3;
+            scene.add(screen);
+            
+            // Store reference for screen updates
+            domingo.laptopScreen = screen;
+        }
+        
+        function createMonitors() {
+            // External monitors showing Unity/code
+            const monitorPositions = [
+                { x: -1.2, y: 1.2, z: -0.5 },
+                { x: 1.2, y: 1.2, z: -0.5 }
+            ];
+            
+            monitors = [];
+            
+            monitorPositions.forEach((pos, index) => {
+                // Monitor frame
+                const frameGeometry = new THREE.BoxGeometry(0.8, 0.5, 0.05);
+                const frameMaterial = new THREE.MeshLambertMaterial({ color: 0x222222 });
+                const frame = new THREE.Mesh(frameGeometry, frameMaterial);
+                frame.position.set(pos.x, pos.y, pos.z);
+                scene.add(frame);
+                
+                // Monitor screen
+                const screenGeometry = new THREE.PlaneGeometry(0.75, 0.45);
+                const screenMaterial = new THREE.MeshBasicMaterial({ 
+                    color: index === 0 ? 0x000044 : 0x004400, // Blue for Unity, Green for code
+                    emissive: index === 0 ? 0x000033 : 0x002200,
+                    emissiveIntensity: 0.4
+                });
+                const screen = new THREE.Mesh(screenGeometry, screenMaterial);
+                screen.position.set(pos.x, pos.y, pos.z + 0.03);
+                scene.add(screen);
+                
+                monitors.push({ frame, screen, type: index === 0 ? 'unity' : 'code' });
+            });
+        }
+        
+        function createRoom() {
+            // Floor
+            const floorGeometry = new THREE.PlaneGeometry(10, 10);
+            const floorMaterial = new THREE.MeshLambertMaterial({ color: 0x444444 });
+            const floor = new THREE.Mesh(floorGeometry, floorMaterial);
+            floor.rotation.x = -Math.PI / 2;
+            floor.receiveShadow = true;
+            scene.add(floor);
+            
+            // Back wall
+            const wallGeometry = new THREE.PlaneGeometry(10, 6);
+            const wallMaterial = new THREE.MeshLambertMaterial({ color: 0x2a2a2a });
+            const wall = new THREE.Mesh(wallGeometry, wallMaterial);
+            wall.position.set(0, 3, -2);
+            scene.add(wall);
+        }
+        
+        function animate() {
+            requestAnimationFrame(animate);
+            
+            const time = Date.now() * 0.001;
+            
+            // Animate character based on activity
+            animateCharacter(time);
+            
+            // Update monitors with live content
+            updateMonitors(time);
+            
+            // Handle mirror loop detection
+            checkMirrorLoops();
+            
+            // Render scene
+            renderer.render(scene, camera);
+            
+            // Update frame counter
+            currentFrame++;
+            updateTimeline();
+        }
+        
+        function animateCharacter(time) {
+            if (!domingo) return;
+            
+            // Purple eye glow based on system activity
+            if (domingo.eyes) {
+                const glowIntensity = activityLevel > 0.5 ? 0.8 : 0.3;
+                domingo.eyes.forEach(eye => {
+                    eye.material.emissiveIntensity = glowIntensity + Math.sin(time * 3) * 0.2;
+                });
+            }
+            
+            // Head movement (looking between monitors and laptop)
+            if (domingo.head) {
+                const lookTarget = Math.sin(time * 0.3) > 0 ? 0.2 : -0.2;
+                domingo.head.rotation.y = THREE.MathUtils.lerp(domingo.head.rotation.y, lookTarget, 0.02);
+            }
+            
+            // Typing animation
+            if (isTyping && domingo.leftHand && domingo.rightHand) {
+                const typingOffset = Math.sin(time * 8) * 0.05;
+                domingo.leftHand.position.y = 0.8 + typingOffset;
+                domingo.rightHand.position.y = 0.8 - typingOffset;
+            }
+            
+            // Mouse movement animation
+            if (mouseMoveTime > 0) {
+                mouseMoveTime -= 0.016;
+                const mouseOffset = Math.sin(time * 12) * 0.02;
+                if (domingo.rightHand) {
+                    domingo.rightHand.position.x = 0.6 + mouseOffset;
+                }
+            }
+        }
+        
+        function updateMonitors(time) {
+            if (!monitors) return;
+            
+            monitors.forEach((monitor, index) => {
+                // Simulate screen content updates
+                const intensity = 0.3 + Math.sin(time + index) * 0.1;
+                monitor.screen.material.emissiveIntensity = intensity;
+                
+                // Slight screen flicker for realism
+                if (Math.random() > 0.98) {
+                    monitor.screen.material.emissiveIntensity = 0.6;
+                }
+            });
+        }
+        
+        // Activity detection
+        function updateSystemActivity(activity) {
+            activityLevel = activity;
+            
+            const indicator = document.getElementById('activityIndicator');
+            const status = document.getElementById('systemActivity');
+            
+            if (activity > 0.7) {
+                indicator.classList.add('active');
+                status.textContent = 'High Activity - Coding';
+                isTyping = true;
+            } else if (activity > 0.3) {
+                indicator.classList.add('active');
+                status.textContent = 'Medium Activity - Thinking';
+                isTyping = false;
+            } else {
+                indicator.classList.remove('active');
+                status.textContent = 'Low Activity - Idle';
+                isTyping = false;
+            }
+        }
+        
+        // Timeline controls
+        function rewindSession() {
+            currentFrame = Math.max(0, currentFrame - 300); // 10 seconds back
+            updateTimeline();
+        }
+        
+        function previousFrame() {
+            currentFrame = Math.max(0, currentFrame - 1);
+            updateTimeline();
+        }
+        
+        function togglePlayback() {
+            isPlaying = !isPlaying;
+            const btn = event.target;
+            btn.textContent = isPlaying ? '⏸️' : '▶️';
+        }
+        
+        function nextFrame() {
+            currentFrame = Math.min(totalFrames, currentFrame + 1);
+            updateTimeline();
+        }
+        
+        function fastForward() {
+            currentFrame = Math.min(totalFrames, currentFrame + 300); // 10 seconds forward
+            updateTimeline();
+        }
+        
+        function seekToPosition(event) {
+            const timeline = event.currentTarget;
+            const rect = timeline.getBoundingClientRect();
+            const x = event.clientX - rect.left;
+            const percentage = x / rect.width;
+            
+            currentFrame = Math.floor(percentage * totalFrames);
+            updateTimeline();
+            
+            // Ledge bounce-back detection
+            if (percentage > 0.95) {
+                console.log('🏔️ Hit the ledge! Bouncing back...');
+                setTimeout(() => {
+                    currentFrame = Math.floor(0.9 * totalFrames);
+                    updateTimeline();
+                }, 500);
+            }
+        }
+        
+        function updateTimeline() {
+            const progress = (currentFrame / totalFrames) * 100;
+            document.querySelector('.timeline-progress').style.width = `${progress}%`;
+            
+            const currentMinutes = Math.floor(currentFrame / 1800); // 30 fps
+            const currentSeconds = Math.floor((currentFrame % 1800) / 30);
+            document.getElementById('currentTime').textContent = 
+                `${currentMinutes}:${currentSeconds.toString().padStart(2, '0')}`;
+        }
+        
+        // Chat system
+        function initChatSystem() {
+            try {
+                chatWS = new WebSocket('ws://localhost:8999');
+                
+                chatWS.onopen = () => {
+                    console.log('💬 Chat system connected');
+                    
+                    // Register as streaming dashboard
+                    chatWS.send(JSON.stringify({
+                        type: 'register_streaming_dashboard',
+                        streamerId: 'domingo',
+                        features: ['chat', 'token_collection', 'llm_interaction']
+                    }));
+                };
+                
+                chatWS.onmessage = (event) => {
+                    const data = JSON.parse(event.data);
+                    handleChatMessage(data);
+                };
+                
+            } catch (error) {
+                console.log('⚠️ Chat WebSocket not available - using simulation');
+                startChatSimulation();
+            }
+        }
+        
+        function handleChatMessage(data) {
+            switch(data.type) {
+                case 'twitch_chat':
+                    addChatMessage(data.username, data.message);
+                    
+                    // Generate AI response
+                    generateAIResponse(data.message, data.username);
+                    break;
+                    
+                case 'system_event':
+                    updateCurrentTask(data.task, data.progress);
+                    break;
+                    
+                case 'token_reward':
+                    addToken(data.token);
+                    break;
+                    
+                case 'activity_update':
+                    updateSystemActivity(data.activity);
+                    break;
+            }
+        }
+        
+        function addChatMessage(username, message) {
+            const chatMessages = document.getElementById('chatMessages');
+            const messageEl = document.createElement('div');
+            messageEl.className = 'chat-message';
+            messageEl.innerHTML = `
+                <span class="chat-username">${username}:</span>
+                <span class="chat-text">${message}</span>
+            `;
+            
+            chatMessages.appendChild(messageEl);
+            chatMessages.scrollTop = chatMessages.scrollHeight;
+            
+            // Store in database
+            chatHistory.push({
+                username,
+                message,
+                timestamp: Date.now(),
+                responded: false
+            });
+            
+            // Trigger mouse movement
+            mouseMoveTime = 2.0;
+        }
+        
+        function generateAIResponse(message, username) {
+            // Simulate AI thinking time
+            setTimeout(() => {
+                const responses = [
+                    `🤖 Great question ${username}! Domingo is working on ${getCurrentTask()}.`,
+                    `🤖 Interesting idea! Let me show you what Domingo thinks about that...`,
+                    `🤖 That's exactly what we're building! Watch Domingo's screen for the implementation.`,
+                    `🤖 Domingo nods in agreement! He's implementing that feature right now.`,
+                    `🤖 Good eye ${username}! Domingo just collected a token for that insight.`
+                ];
+                
+                const response = responses[Math.floor(Math.random() * responses.length)];
+                
+                // Add AI response to chat
+                const lastMessage = document.querySelector('.chat-message:last-child');
+                if (lastMessage) {
+                    const aiResponse = document.createElement('div');
+                    aiResponse.className = 'chat-ai-response';
+                    aiResponse.textContent = response;
+                    lastMessage.appendChild(aiResponse);
+                }
+                
+                // Trigger head turn toward chat
+                if (domingo.head) {
+                    const originalY = domingo.head.rotation.y;
+                    domingo.head.rotation.y = 0.5; // Look at chat
+                    
+                    setTimeout(() => {
+                        domingo.head.rotation.y = originalY; // Look back
+                    }, 2000);
+                }
+                
+            }, 1000 + Math.random() * 2000);
+        }
+        
+        function handleChatInput(event) {
+            if (event.key === 'Enter') {
+                const input = event.target;
+                const message = input.value.trim();
+                
+                if (message) {
+                    addChatMessage('You', message);
+                    input.value = '';
+                    
+                    // Generate AI response
+                    generateAIResponse(message, 'You');
+                }
+            }
+        }
+        
+        // Token collection system
+        function addToken(tokenData) {
+            const token = {
+                id: Date.now(),
+                type: tokenData.type || 'code',
+                value: tokenData.value || 'Generic Token',
+                color: tokenData.color || '#00ff00',
+                timestamp: Date.now()
+            };
+            
+            tokens.push(token);
+            
+            // Add to visual grid
+            const grid = document.getElementById('tokenGrid');
+            const cube = document.createElement('div');
+            cube.className = 'token-cube';
+            cube.style.background = `linear-gradient(45deg, ${token.color}, #ff6600)`;
+            cube.textContent = tokens.length;
+            cube.title = token.value;
+            cube.onclick = () => showTokenDetails(token);
+            
+            grid.appendChild(cube);
+            
+            // Update counter
+            document.getElementById('tokenCount').textContent = tokens.length;
+            
+            console.log('🎁 Token collected:', token.value);
+        }
+        
+        function showTokenDetails(token) {
+            alert(`Token #${token.id}\\nType: ${token.type}\\nValue: ${token.value}\\nCollected: ${new Date(token.timestamp).toLocaleString()}`);
+        }
+        
+        // Mirror loop prevention
+        function checkMirrorLoops() {
+            // Detect if we're in a reflection loop
+            const currentActivity = activityLevel;
+            
+            if (currentActivity > 0.9 && isTyping) {
+                mirrorLoopDetection.count++;
+                
+                if (mirrorLoopDetection.count > mirrorLoopDetection.threshold) {
+                    // Show warning and chill out
+                    document.getElementById('mirrorWarning').style.display = 'block';
+                    updateSystemActivity(0.2); // Reduce activity
+                    
+                    setTimeout(() => {
+                        document.getElementById('mirrorWarning').style.display = 'none';
+                        mirrorLoopDetection.count = 0;
+                    }, 3000);
+                    
+                    console.log('🔄 Mirror loop detected - chilling out');
+                }
+            } else {
+                mirrorLoopDetection.count = Math.max(0, mirrorLoopDetection.count - 1);
+            }
+        }
+        
+        // Task management
+        function updateCurrentTask(task, progress) {
+            document.getElementById('currentTaskTitle').textContent = `Working on: ${task}`;
+            document.getElementById('taskProgress').textContent = `${progress}%`;
+            
+            // Update activity based on task complexity
+            const complexity = task.length / 50; // Simple heuristic
+            updateSystemActivity(Math.min(1.0, complexity));
+        }
+        
+        function getCurrentTask() {
+            return document.getElementById('currentTaskTitle').textContent.replace('Working on: ', '');
+        }
+        
+        // Simulation for demo
+        function startChatSimulation() {
+            const simulatedChats = [
+                { user: 'TechViewer42', msg: 'What is Domingo coding right now?' },
+                { user: 'StreamFan', msg: 'Love the purple eye glow effect!' },
+                { user: 'CodeReviewer', msg: 'Can you explain that function?' },
+                { user: 'GameDev101', msg: 'Is he using Unity for this?' },
+                { user: 'AIEnthusiast', msg: 'How does the LLM integration work?' }
+            ];
+            
+            let chatIndex = 0;
+            setInterval(() => {
+                if (chatIndex < simulatedChats.length) {
+                    const chat = simulatedChats[chatIndex];
+                    addChatMessage(chat.user, chat.msg);
+                    chatIndex++;
+                }
+                
+                // Add random token
+                if (Math.random() > 0.7) {
+                    addToken({
+                        type: 'code',
+                        value: `Function Block ${tokens.length + 1}`,
+                        color: `hsl(${Math.random() * 360}, 70%, 50%)`
+                    });
+                }
+                
+            }, 5000 + Math.random() * 10000);
+        }
+        
+        // Initialize everything
+        function initStreamer() {
+            initCharacterScene();
+            initChatSystem();
+            
+            // Start with some activity
+            updateSystemActivity(0.6);
+            updateCurrentTask('Setting up Virtual Streamer Scene', 75);
+            
+            // Simulate system activity changes
+            setInterval(() => {
+                const newActivity = 0.2 + Math.random() * 0.8;
+                updateSystemActivity(newActivity);
+                
+                // Random task updates
+                if (Math.random() > 0.9) {
+                    const tasks = [
+                        'Unity 3D Scene Optimization',
+                        'WebRTC Stream Configuration', 
+                        'AI Chat Response Generation',
+                        'Token Collection System',
+                        'Mirror Loop Prevention'
+                    ];
+                    const task = tasks[Math.floor(Math.random() * tasks.length)];
+                    const progress = 20 + Math.floor(Math.random() * 60);
+                    updateCurrentTask(task, progress);
+                }
+            }, 3000);
+            
+            console.log('🎬 Domingo Virtual Streamer initialized');
+            console.log('🔴 Ready for OBS streaming!');
+        }
+        
+        // Window resize handling
+        window.addEventListener('resize', () => {
+            const canvas = document.getElementById('character-canvas');
+            camera.aspect = canvas.clientWidth / canvas.clientHeight;
+            camera.updateProjectionMatrix();
+            renderer.setSize(canvas.clientWidth, canvas.clientHeight);
+        });
+        
+        // Initialize when page loads
+        window.addEventListener('load', initStreamer);
+        
+        // Keyboard shortcuts for streaming
+        window.addEventListener('keydown', (e) => {
+            switch(e.key) {
+                case ' ': // Spacebar
+                    e.preventDefault();
+                    togglePlayback();
+                    break;
+                case 'ArrowLeft':
+                    previousFrame();
+                    break;
+                case 'ArrowRight':
+                    nextFrame();
+                    break;
+                case 't': // Add token
+                    addToken({
+                        type: 'manual',
+                        value: 'Manual Token',
+                        color: '#ff6600'
+                    });
+                    break;
+                case 'r': // Reset mirror loop
+                    mirrorLoopDetection.count = 0;
+                    document.getElementById('mirrorWarning').style.display = 'none';
+                    break;
+            }
+        });
+    </script>
+</body>
+</html>

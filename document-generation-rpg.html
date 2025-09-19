@@ -1,0 +1,1920 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Document Generation RPG - Component Guild System</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        
+        body {
+            font-family: 'Courier New', monospace;
+            background: linear-gradient(135deg, #0f0f23 0%, #1a1a3e 50%, #2d1b69 100%);
+            color: #fff;
+            min-height: 100vh;
+            overflow-x: hidden;
+        }
+        
+        .header {
+            text-align: center;
+            padding: 20px;
+            background: rgba(0, 0, 0, 0.7);
+            border-bottom: 3px solid #ff6600;
+            position: relative;
+        }
+        
+        .header::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: url('data:image/svg+xml,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 20"><polygon points="0,0 100,0 100,15 50,20 0,15" fill="%23ff6600" opacity="0.3"/></svg>');
+            background-size: 100% 100%;
+        }
+        
+        .header h1 {
+            font-size: 32px;
+            text-shadow: 0 0 20px #ff6600;
+            animation: titleGlow 3s ease-in-out infinite alternate;
+            position: relative;
+            z-index: 1;
+        }
+        
+        @keyframes titleGlow {
+            from { text-shadow: 0 0 20px #ff6600; }
+            to { text-shadow: 0 0 40px #ff6600, 0 0 60px #ff9900; }
+        }
+        
+        .subtitle {
+            font-size: 16px;
+            color: #00ff88;
+            margin-top: 10px;
+            position: relative;
+            z-index: 1;
+        }
+        
+        .main-container {
+            display: grid;
+            grid-template-columns: 1fr 2fr 1fr;
+            gap: 20px;
+            padding: 20px;
+            min-height: calc(100vh - 120px);
+        }
+        
+        /* Guild Panels */
+        .guild-panel {
+            background: rgba(0, 0, 0, 0.8);
+            border-radius: 15px;
+            padding: 20px;
+            border: 3px solid;
+            box-shadow: 0 0 30px rgba(255, 255, 255, 0.1);
+            position: relative;
+            overflow: hidden;
+        }
+        
+        .guild-panel::before {
+            content: '';
+            position: absolute;
+            top: -50%;
+            left: -50%;
+            width: 200%;
+            height: 200%;
+            background: radial-gradient(circle, rgba(255, 255, 255, 0.05) 0%, transparent 70%);
+            animation: shimmer 6s linear infinite;
+            pointer-events: none;
+        }
+        
+        @keyframes shimmer {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+        
+        .content-guild {
+            border-color: #00ff88;
+            box-shadow: 0 0 30px rgba(0, 255, 136, 0.3);
+        }
+        
+        .technical-guild {
+            border-color: #0066ff;
+            box-shadow: 0 0 30px rgba(0, 102, 255, 0.3);
+        }
+        
+        .creative-guild {
+            border-color: #ff6600;
+            box-shadow: 0 0 30px rgba(255, 102, 0, 0.3);
+        }
+        
+        .guild-header {
+            text-align: center;
+            margin-bottom: 20px;
+            position: relative;
+            z-index: 1;
+        }
+        
+        .guild-title {
+            font-size: 20px;
+            font-weight: bold;
+            margin-bottom: 5px;
+        }
+        
+        .content-guild .guild-title { color: #00ff88; }
+        .technical-guild .guild-title { color: #0066ff; }
+        .creative-guild .guild-title { color: #ff6600; }
+        
+        .guild-description {
+            font-size: 12px;
+            opacity: 0.8;
+            line-height: 1.4;
+        }
+        
+        /* NPC Cards */
+        .npc-grid {
+            display: flex;
+            flex-direction: column;
+            gap: 15px;
+        }
+        
+        .npc-card {
+            background: rgba(255, 255, 255, 0.05);
+            border: 2px solid;
+            border-radius: 10px;
+            padding: 15px;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            position: relative;
+            overflow: hidden;
+        }
+        
+        .npc-card:hover {
+            transform: translateY(-3px);
+            box-shadow: 0 5px 20px rgba(255, 255, 255, 0.2);
+        }
+        
+        .content-guild .npc-card { border-color: #00ff88; }
+        .technical-guild .npc-card { border-color: #0066ff; }
+        .creative-guild .npc-card { border-color: #ff6600; }
+        
+        .npc-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 10px;
+        }
+        
+        .npc-name {
+            font-size: 16px;
+            font-weight: bold;
+        }
+        
+        .npc-level {
+            font-size: 12px;
+            padding: 2px 8px;
+            border-radius: 12px;
+            background: rgba(255, 255, 255, 0.2);
+        }
+        
+        .npc-specialty {
+            font-size: 12px;
+            margin-bottom: 8px;
+            opacity: 0.8;
+        }
+        
+        .npc-status {
+            display: flex;
+            align-items: center;
+            gap: 5px;
+            font-size: 11px;
+        }
+        
+        .status-dot {
+            width: 8px;
+            height: 8px;
+            border-radius: 50%;
+            background: #00ff00;
+            animation: pulse 2s infinite;
+        }
+        
+        @keyframes pulse {
+            0% { opacity: 1; }
+            50% { opacity: 0.5; }
+            100% { opacity: 1; }
+        }
+        
+        .offline { background: #ff0000; }
+        .busy { background: #ffaa00; }
+        
+        /* Center Battle Log */
+        .battle-log-container {
+            display: flex;
+            flex-direction: column;
+        }
+        
+        .quest-panel {
+            background: rgba(0, 0, 0, 0.9);
+            border: 3px solid #ff6600;
+            border-radius: 15px;
+            padding: 20px;
+            margin-bottom: 20px;
+            box-shadow: 0 0 30px rgba(255, 102, 0, 0.3);
+        }
+        
+        .quest-input {
+            display: flex;
+            gap: 10px;
+            margin-bottom: 15px;
+        }
+        
+        #questInput {
+            flex: 1;
+            background: rgba(0, 0, 0, 0.8);
+            border: 2px solid #333;
+            color: #fff;
+            padding: 12px;
+            border-radius: 8px;
+            font-family: 'Courier New', monospace;
+            font-size: 14px;
+        }
+        
+        #questInput:focus {
+            outline: none;
+            border-color: #ff6600;
+            box-shadow: 0 0 10px rgba(255, 102, 0, 0.5);
+        }
+        
+        .quest-button {
+            background: linear-gradient(45deg, #ff6600, #ff9900);
+            border: none;
+            color: #000;
+            padding: 12px 20px;
+            border-radius: 8px;
+            cursor: pointer;
+            font-family: 'Courier New', monospace;
+            font-weight: bold;
+            transition: all 0.3s;
+        }
+        
+        .quest-button:hover {
+            background: linear-gradient(45deg, #ff9900, #ffcc00);
+            box-shadow: 0 0 20px rgba(255, 153, 0, 0.5);
+            transform: scale(1.05);
+        }
+        
+        .party-recommendation {
+            background: rgba(0, 255, 136, 0.1);
+            border: 1px solid #00ff88;
+            border-radius: 8px;
+            padding: 10px;
+            margin-bottom: 15px;
+            font-size: 12px;
+        }
+        
+        .battle-log {
+            background: rgba(0, 0, 0, 0.9);
+            border: 3px solid #00ff88;
+            border-radius: 15px;
+            padding: 20px;
+            height: 400px;
+            overflow-y: auto;
+            position: relative;
+            box-shadow: 0 0 30px rgba(0, 255, 136, 0.3);
+        }
+        
+        .battle-log h3 {
+            color: #00ff88;
+            margin-bottom: 15px;
+            text-align: center;
+        }
+        
+        .log-entry {
+            margin: 8px 0;
+            padding: 8px 12px;
+            border-radius: 6px;
+            font-size: 13px;
+            line-height: 1.4;
+            animation: fadeIn 0.5s ease-in;
+        }
+        
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(10px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+        
+        .log-quest {
+            background: rgba(255, 102, 0, 0.2);
+            border-left: 4px solid #ff6600;
+        }
+        
+        .log-npc {
+            background: rgba(0, 102, 255, 0.2);
+            border-left: 4px solid #0066ff;
+        }
+        
+        .log-success {
+            background: rgba(0, 255, 136, 0.2);
+            border-left: 4px solid #00ff88;
+        }
+        
+        .log-loot {
+            background: rgba(255, 215, 0, 0.2);
+            border-left: 4px solid #ffd700;
+            position: relative;
+        }
+        
+        .log-loot::before {
+            content: '💰';
+            position: absolute;
+            left: -15px;
+            top: 50%;
+            transform: translateY(-50%);
+        }
+        
+        /* Loot Panel */
+        .loot-panel {
+            background: rgba(0, 0, 0, 0.9);
+            border: 3px solid #ffd700;
+            border-radius: 15px;
+            padding: 20px;
+            box-shadow: 0 0 30px rgba(255, 215, 0, 0.3);
+        }
+        
+        .loot-panel h3 {
+            color: #ffd700;
+            text-align: center;
+            margin-bottom: 15px;
+        }
+        
+        .loot-grid {
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+        }
+        
+        .loot-item {
+            background: rgba(255, 215, 0, 0.1);
+            border: 1px solid #ffd700;
+            border-radius: 6px;
+            padding: 10px;
+            font-size: 12px;
+            cursor: pointer;
+            transition: all 0.3s;
+        }
+        
+        .loot-item:hover {
+            background: rgba(255, 215, 0, 0.2);
+            transform: scale(1.02);
+        }
+        
+        .loot-name {
+            font-weight: bold;
+            color: #ffd700;
+        }
+        
+        .loot-description {
+            font-size: 11px;
+            opacity: 0.8;
+            margin-top: 5px;
+        }
+        
+        /* Rarity Colors */
+        .rarity-common { color: #888; border-color: #888; }
+        .rarity-uncommon { color: #00ff00; border-color: #00ff00; }
+        .rarity-rare { color: #0099ff; border-color: #0099ff; }
+        .rarity-epic { color: #9966ff; border-color: #9966ff; }
+        .rarity-legendary { color: #ff9900; border-color: #ff9900; }
+        
+        .loot-item.rarity-common { border-color: #888; }
+        .loot-item.rarity-uncommon { border-color: #00ff00; box-shadow: 0 0 10px rgba(0, 255, 0, 0.3); }
+        .loot-item.rarity-rare { border-color: #0099ff; box-shadow: 0 0 10px rgba(0, 153, 255, 0.3); }
+        .loot-item.rarity-epic { border-color: #9966ff; box-shadow: 0 0 15px rgba(153, 102, 255, 0.4); }
+        .loot-item.rarity-legendary { border-color: #ff9900; box-shadow: 0 0 20px rgba(255, 153, 0, 0.5); }
+        
+        .loot-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 8px;
+        }
+        
+        .loot-rarity {
+            font-size: 10px;
+            padding: 2px 6px;
+            border-radius: 3px;
+            font-weight: bold;
+            border: 1px solid;
+        }
+        
+        .loot-category {
+            font-size: 10px;
+            color: #aaa;
+            margin-bottom: 5px;
+        }
+        
+        .loot-meta {
+            display: flex;
+            justify-content: space-between;
+            margin: 8px 0;
+            font-size: 11px;
+        }
+        
+        .loot-value {
+            color: #ffd700;
+            font-weight: bold;
+        }
+        
+        .loot-version {
+            color: #00ff88;
+        }
+        
+        .loot-generated-by {
+            font-size: 9px;
+            color: #666;
+            margin-top: 5px;
+        }
+        
+        /* Responsive */
+        @media (max-width: 1200px) {
+            .main-container {
+                grid-template-columns: 1fr;
+                gap: 15px;
+            }
+            
+            .guild-panel {
+                padding: 15px;
+            }
+            
+            .npc-grid {
+                flex-direction: row;
+                flex-wrap: wrap;
+            }
+            
+            .npc-card {
+                flex: 1;
+                min-width: 200px;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="header">
+        <h1>⚔️ Document Generation RPG ⚔️</h1>
+        <div class="subtitle">Recruit Component NPCs • Complete Quests • Generate Epic Loot</div>
+    </div>
+    
+    <div class="main-container">
+        <!-- Content Guild -->
+        <div class="guild-panel content-guild">
+            <div class="guild-header">
+                <div class="guild-title">📝 Content Guild</div>
+                <div class="guild-description">Masters of words, structure, and optimization</div>
+            </div>
+            <div class="npc-grid">
+                <div class="npc-card" onclick="selectNPC('seo-specialist')">
+                    <div class="npc-header">
+                        <span class="npc-name">SEO Specialist</span>
+                        <span class="npc-level">Lvl 15</span>
+                    </div>
+                    <div class="npc-specialty">Meta tags, keywords, search optimization</div>
+                    <div class="npc-status">
+                        <span class="status-dot"></span>
+                        <span>Ready for Quest</span>
+                    </div>
+                </div>
+                
+                <div class="npc-card" onclick="selectNPC('copywriter')">
+                    <div class="npc-header">
+                        <span class="npc-name">Master Copywriter</span>
+                        <span class="npc-level">Lvl 18</span>
+                    </div>
+                    <div class="npc-specialty">Headlines, descriptions, call-to-actions</div>
+                    <div class="npc-status">
+                        <span class="status-dot"></span>
+                        <span>Ready for Quest</span>
+                    </div>
+                </div>
+                
+                <div class="npc-card" onclick="selectNPC('structure-architect')">
+                    <div class="npc-header">
+                        <span class="npc-name">Structure Architect</span>
+                        <span class="npc-level">Lvl 12</span>
+                    </div>
+                    <div class="npc-specialty">Headers, footers, navigation, layout</div>
+                    <div class="npc-status">
+                        <span class="status-dot"></span>
+                        <span>Ready for Quest</span>
+                    </div>
+                </div>
+                
+                <div class="npc-card" onclick="selectNPC('content-strategist')">
+                    <div class="npc-header">
+                        <span class="npc-name">Content Strategist</span>
+                        <span class="npc-level">Lvl 16</span>
+                    </div>
+                    <div class="npc-specialty">User journeys, content flow, messaging</div>
+                    <div class="npc-status">
+                        <span class="status-dot busy"></span>
+                        <span>In Another Quest</span>
+                    </div>
+                </div>
+            </div>
+        </div>
+        
+        <!-- Battle Log Center -->
+        <div class="battle-log-container">
+            <div class="quest-panel">
+                <div class="quest-input">
+                    <input type="text" id="questInput" placeholder="Describe your quest (e.g., 'I need a landing page for my AI startup')">
+                    <button class="quest-button" onclick="startQuest()">Start Quest</button>
+                    <button class="quest-button" onclick="openInventory()" style="background: linear-gradient(45deg, #ffd700, #ffed4e); color: #000;">🎒 Inventory</button>
+                </div>
+                <div id="partyRecommendation" class="party-recommendation" style="display: none;">
+                    <strong>🎯 Recommended Party:</strong> <span id="recommendedNPCs"></span>
+                </div>
+                <div id="inventoryStats" class="party-recommendation" style="display: block; background: rgba(255, 215, 0, 0.1); border-color: #ffd700;">
+                    <strong>📦 Inventory:</strong> 
+                    <span id="inventoryCount">0 items</span> • 
+                    <span id="inventoryValue">💰 0</span> • 
+                    <span id="questsCompletedCount">0 quests</span>
+                </div>
+            </div>
+            
+            <div class="battle-log">
+                <h3>⚔️ Battle Log & Quest Progress</h3>
+                <div id="battleLog">
+                    <div class="log-entry log-quest">
+                        🏰 Welcome to the Document Generation RPG! Recruit NPCs from the guilds and start your first quest.
+                    </div>
+                    <div class="log-entry log-npc">
+                        🎰 AI Casino NPC: "I'm already active on port 9706! I can help with reasoning and gambling mechanics."
+                    </div>
+                </div>
+            </div>
+        </div>
+        
+        <!-- Technical Guild -->
+        <div class="guild-panel technical-guild">
+            <div class="guild-header">
+                <div class="guild-title">⚙️ Technical Guild</div>
+                <div class="guild-description">Builders of security, data, and integration</div>
+            </div>
+            <div class="npc-grid">
+                <div class="npc-card" onclick="selectNPC('encryption-guardian')">
+                    <div class="npc-header">
+                        <span class="npc-name">Encryption Guardian</span>
+                        <span class="npc-level">Lvl 20</span>
+                    </div>
+                    <div class="npc-specialty">Security, encryption, secure forms</div>
+                    <div class="npc-status">
+                        <span class="status-dot"></span>
+                        <span>Ready for Quest</span>
+                    </div>
+                </div>
+                
+                <div class="npc-card" onclick="selectNPC('database-keeper')">
+                    <div class="npc-header">
+                        <span class="npc-name">Database Keeper</span>
+                        <span class="npc-level">Lvl 17</span>
+                    </div>
+                    <div class="npc-specialty">Data storage, schemas, queries</div>
+                    <div class="npc-status">
+                        <span class="status-dot"></span>
+                        <span>Connected to PostgreSQL</span>
+                    </div>
+                </div>
+                
+                <div class="npc-card" onclick="selectNPC('api-integrator')">
+                    <div class="npc-header">
+                        <span class="npc-name">API Integrator</span>
+                        <span class="npc-level">Lvl 14</span>
+                    </div>
+                    <div class="npc-specialty">External services, webhooks, APIs</div>
+                    <div class="npc-status">
+                        <span class="status-dot"></span>
+                        <span>Ready for Quest</span>
+                    </div>
+                </div>
+                
+                <div class="npc-card" onclick="selectNPC('ai-casino')">
+                    <div class="npc-header">
+                        <span class="npc-name">AI Casino Master</span>
+                        <span class="npc-level">Lvl 25</span>
+                    </div>
+                    <div class="npc-specialty">Reasoning, gambling, AI logic</div>
+                    <div class="npc-status">
+                        <span class="status-dot"></span>
+                        <span>Online - Port 9706</span>
+                    </div>
+                </div>
+            </div>
+        </div>
+        
+        <!-- Creative Guild -->
+        <div class="guild-panel creative-guild">
+            <div class="guild-header">
+                <div class="guild-title">🎨 Creative Guild</div>
+                <div class="guild-description">Artists of visuals, design, and experience</div>
+            </div>
+            <div class="npc-grid">
+                <div class="npc-card" onclick="selectNPC('image-generator')">
+                    <div class="npc-header">
+                        <span class="npc-name">Image Generator</span>
+                        <span class="npc-level">Lvl 13</span>
+                    </div>
+                    <div class="npc-specialty">Logos, graphics, visual assets</div>
+                    <div class="npc-status">
+                        <span class="status-dot offline"></span>
+                        <span>Offline - Needs AI</span>
+                    </div>
+                </div>
+                
+                <div class="npc-card" onclick="selectNPC('ui-designer')">
+                    <div class="npc-header">
+                        <span class="npc-name">UI Designer</span>
+                        <span class="npc-level">Lvl 19</span>
+                    </div>
+                    <div class="npc-specialty">Layouts, CSS, responsive design</div>
+                    <div class="npc-status">
+                        <span class="status-dot"></span>
+                        <span>Ready for Quest</span>
+                    </div>
+                </div>
+                
+                <div class="npc-card" onclick="selectNPC('brand-specialist')">
+                    <div class="npc-header">
+                        <span class="npc-name">Brand Specialist</span>
+                        <span class="npc-level">Lvl 16</span>
+                    </div>
+                    <div class="npc-specialty">Colors, fonts, brand identity</div>
+                    <div class="npc-status">
+                        <span class="status-dot"></span>
+                        <span>Ready for Quest</span>
+                    </div>
+                </div>
+                
+                <div class="npc-card" onclick="selectNPC('ux-researcher')">
+                    <div class="npc-header">
+                        <span class="npc-name">UX Researcher</span>
+                        <span class="npc-level">Lvl 11</span>
+                    </div>
+                    <div class="npc-specialty">User experience, flow optimization</div>
+                    <div class="npc-status">
+                        <span class="status-dot busy"></span>
+                        <span>Analyzing User Data</span>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <!-- Loot Panel (appears when quest completes) -->
+    <div id="lootPanel" class="loot-panel" style="display: none; position: fixed; top: 50%; left: 50%; transform: translate(-50%, -50%); z-index: 1000; width: 400px;">
+        <h3>🎉 Quest Complete! Loot Acquired!</h3>
+        <div class="loot-grid" id="lootGrid">
+            <!-- Dynamic loot items will appear here -->
+        </div>
+        <button class="quest-button" style="width: 100%; margin-top: 15px;" onclick="closeLootPanel()">Collect All Loot</button>
+    </div>
+    
+    <script>
+        // NPC Registry
+        const npcs = {
+            'seo-specialist': {
+                name: 'SEO Specialist',
+                guild: 'content',
+                level: 15,
+                specialty: 'Meta tags, keywords, search optimization',
+                available: true,
+                responses: [
+                    "🔍 Analyzing target keywords and search intent...",
+                    "📊 Optimizing meta descriptions for click-through rates...",
+                    "🎯 Building semantic keyword clusters...",
+                    "📈 Implementing schema markup for rich snippets..."
+                ]
+            },
+            'copywriter': {
+                name: 'Master Copywriter',
+                guild: 'content',
+                level: 18,
+                specialty: 'Headlines, descriptions, call-to-actions',
+                available: true,
+                responses: [
+                    "✍️ Crafting compelling headlines that convert...",
+                    "🎯 Writing persuasive call-to-action copy...",
+                    "📝 Developing value propositions that resonate...",
+                    "💫 Creating emotional hooks for user engagement..."
+                ]
+            },
+            'ai-casino': {
+                name: 'AI Casino Master',
+                guild: 'technical',
+                level: 25,
+                specialty: 'Reasoning, gambling, AI logic',
+                available: true,
+                port: 9706,
+                responses: [
+                    "🎰 Running probability calculations for user engagement...",
+                    "🧠 Applying reasoning algorithms to content strategy...",
+                    "🎲 Implementing gamification mechanics...",
+                    "💰 Calculating conversion optimization odds..."
+                ]
+            }
+            // Add more NPCs as needed
+        };
+        
+        let selectedNPCs = [];
+        let currentQuest = null;
+        
+        function selectNPC(npcId) {
+            const npc = npcs[npcId];
+            if (!npc || !npc.available) {
+                addBattleLog(`❌ ${npc ? npc.name : 'NPC'} is not available for quests.`, 'log-npc');
+                return;
+            }
+            
+            if (selectedNPCs.includes(npcId)) {
+                addBattleLog(`⚠️ ${npc.name} is already in your party.`, 'log-npc');
+                return;
+            }
+            
+            selectedNPCs.push(npcId);
+            addBattleLog(`✅ ${npc.name} (Lvl ${npc.level}) has joined your party!`, 'log-success');
+            
+            // NPC introduction
+            const intro = npc.responses[Math.floor(Math.random() * npc.responses.length)];
+            setTimeout(() => {
+                addBattleLog(`${npc.name}: "${intro}"`, 'log-npc');
+            }, 1000);
+        }
+        
+        function startQuest() {
+            const questInput = document.getElementById('questInput');
+            const questDescription = questInput.value.trim();
+            
+            if (!questDescription) {
+                addBattleLog('❌ Please describe your quest first!', 'log-quest');
+                return;
+            }
+            
+            if (selectedNPCs.length === 0) {
+                addBattleLog('❌ You need to recruit at least one NPC for your party!', 'log-quest');
+                return;
+            }
+            
+            currentQuest = {
+                description: questDescription,
+                party: [...selectedNPCs],
+                startTime: Date.now(),
+                progress: 0
+            };
+            
+            addBattleLog(`🚀 Quest Started: "${questDescription}"`, 'log-quest');
+            addBattleLog(`👥 Party: ${selectedNPCs.map(id => npcs[id].name).join(', ')}`, 'log-quest');
+            
+            // Show recommended party based on quest
+            showPartyRecommendation(questDescription);
+            
+            // Suggest enhancements
+            suggestEnhancements(questDescription);
+            
+            // Simulate quest progress
+            simulateQuestProgress();
+            
+            // Clear input
+            questInput.value = '';
+        }
+        
+        async function showPartyRecommendation(questDescription) {
+            const panel = document.getElementById('partyRecommendation');
+            const npcsText = document.getElementById('recommendedNPCs');
+            
+            // Show loading state
+            npcsText.textContent = '🔍 Analyzing quest with AI...';
+            panel.style.display = 'block';
+            
+            try {
+                const recommendations = await analyzeQuestNeeds(questDescription);
+                npcsText.textContent = recommendations.join(', ');
+                
+                // Add detailed analysis to battle log
+                addBattleLog(`🎯 Recommended party composition: ${recommendations.join(', ')}`, 'log-success');
+                
+                setTimeout(() => {
+                    panel.style.display = 'none';
+                }, 8000); // Longer display time for AI recommendations
+                
+            } catch (error) {
+                npcsText.textContent = 'Analysis failed - using basic recommendations';
+                console.error('Party recommendation error:', error);
+                
+                setTimeout(() => {
+                    panel.style.display = 'none';
+                }, 3000);
+            }
+        }
+        
+        // Component Knowledge Base for RAG
+        const componentKnowledge = {
+            // Content Guild Knowledge
+            'seo-specialist': {
+                keywords: ['seo', 'search', 'ranking', 'keywords', 'meta', 'optimization', 'google', 'traffic'],
+                capabilities: ['meta tags', 'schema markup', 'keyword research', 'search optimization', 'content structure'],
+                works_with: ['copywriter', 'structure-architect'],
+                domains: ['marketing', 'content', 'web development']
+            },
+            'copywriter': {
+                keywords: ['copy', 'writing', 'headlines', 'content', 'persuasive', 'cta', 'conversion', 'messaging'],
+                capabilities: ['headline creation', 'call-to-action', 'value propositions', 'email copy', 'landing page copy'],
+                works_with: ['seo-specialist', 'brand-specialist'],
+                domains: ['marketing', 'sales', 'content creation']
+            },
+            'structure-architect': {
+                keywords: ['layout', 'structure', 'navigation', 'header', 'footer', 'wireframe', 'architecture'],
+                capabilities: ['site structure', 'navigation design', 'information architecture', 'layout planning'],
+                works_with: ['ui-designer', 'ux-researcher'],
+                domains: ['web development', 'user experience']
+            },
+            'content-strategist': {
+                keywords: ['strategy', 'content plan', 'user journey', 'editorial', 'content marketing'],
+                capabilities: ['content planning', 'user journey mapping', 'editorial calendars', 'content audits'],
+                works_with: ['copywriter', 'seo-specialist'],
+                domains: ['marketing', 'strategy', 'content management']
+            },
+            
+            // Technical Guild Knowledge
+            'encryption-guardian': {
+                keywords: ['security', 'encryption', 'ssl', 'secure', 'privacy', 'auth', 'login', 'password'],
+                capabilities: ['data encryption', 'secure authentication', 'SSL implementation', 'security audits'],
+                works_with: ['database-keeper', 'api-integrator'],
+                domains: ['security', 'backend', 'compliance']
+            },
+            'database-keeper': {
+                keywords: ['database', 'data', 'storage', 'sql', 'queries', 'schema', 'backup'],
+                capabilities: ['database design', 'data modeling', 'query optimization', 'backup strategies'],
+                works_with: ['api-integrator', 'ai-casino'],
+                domains: ['backend', 'data management', 'analytics']
+            },
+            'api-integrator': {
+                keywords: ['api', 'integration', 'webhooks', 'external', 'third-party', 'rest', 'graphql'],
+                capabilities: ['API integration', 'webhook setup', 'third-party services', 'data synchronization'],
+                works_with: ['database-keeper', 'encryption-guardian'],
+                domains: ['backend', 'integration', 'automation']
+            },
+            'ai-casino': {
+                keywords: ['ai', 'reasoning', 'gambling', 'logic', 'probability', 'smart', 'algorithm'],
+                capabilities: ['AI reasoning', 'probability calculations', 'decision making', 'pattern recognition'],
+                works_with: ['database-keeper', 'api-integrator'],
+                domains: ['artificial intelligence', 'analytics', 'automation']
+            },
+            
+            // Creative Guild Knowledge
+            'image-generator': {
+                keywords: ['image', 'graphic', 'logo', 'visual', 'design', 'artwork', 'illustration'],
+                capabilities: ['logo creation', 'graphic design', 'visual assets', 'brand imagery'],
+                works_with: ['brand-specialist', 'ui-designer'],
+                domains: ['design', 'branding', 'visual content']
+            },
+            'ui-designer': {
+                keywords: ['ui', 'interface', 'design', 'layout', 'css', 'responsive', 'mobile'],
+                capabilities: ['interface design', 'responsive layouts', 'CSS styling', 'design systems'],
+                works_with: ['ux-researcher', 'brand-specialist'],
+                domains: ['design', 'frontend', 'user experience']
+            },
+            'brand-specialist': {
+                keywords: ['brand', 'identity', 'colors', 'fonts', 'style', 'guidelines', 'consistency'],
+                capabilities: ['brand identity', 'color schemes', 'typography', 'brand guidelines'],
+                works_with: ['ui-designer', 'image-generator'],
+                domains: ['branding', 'design', 'marketing']
+            },
+            'ux-researcher': {
+                keywords: ['ux', 'user', 'research', 'testing', 'experience', 'usability', 'behavior'],
+                capabilities: ['user research', 'usability testing', 'user journey analysis', 'conversion optimization'],
+                works_with: ['ui-designer', 'structure-architect'],
+                domains: ['user experience', 'research', 'optimization']
+            }
+        };
+
+        // Enhanced RAG-based quest analysis
+        async function analyzeQuestNeeds(questDescription) {
+            // First, get basic keyword analysis
+            const basicRecommendations = analyzeQuestKeywords(questDescription);
+            
+            // Then, enhance with AI Casino reasoning if available
+            try {
+                const aiRecommendations = await getAIRecommendations(questDescription);
+                return combineRecommendations(basicRecommendations, aiRecommendations);
+            } catch (error) {
+                console.log('AI recommendations unavailable, using keyword analysis');
+                return basicRecommendations;
+            }
+        }
+
+        function analyzeQuestKeywords(questDescription) {
+            const lower = questDescription.toLowerCase();
+            const words = lower.split(/\s+/);
+            
+            // Score each NPC based on keyword matches
+            const npcScores = {};
+            
+            for (const [npcId, knowledge] of Object.entries(componentKnowledge)) {
+                let score = 0;
+                
+                // Check keyword matches
+                for (const keyword of knowledge.keywords) {
+                    if (lower.includes(keyword)) {
+                        score += 3; // High weight for exact matches
+                    }
+                }
+                
+                // Check capability matches
+                for (const capability of knowledge.capabilities) {
+                    if (lower.includes(capability.toLowerCase())) {
+                        score += 2;
+                    }
+                }
+                
+                // Check domain matches
+                for (const domain of knowledge.domains) {
+                    if (lower.includes(domain.toLowerCase())) {
+                        score += 1;
+                    }
+                }
+                
+                if (score > 0) {
+                    npcScores[npcId] = score;
+                }
+            }
+            
+            // Get top NPCs and include their synergistic partners
+            const topNPCs = Object.entries(npcScores)
+                .sort(([,a], [,b]) => b - a)
+                .slice(0, 3)
+                .map(([npcId]) => npcId);
+            
+            // Add synergistic NPCs
+            const synergisticNPCs = new Set(topNPCs);
+            for (const npcId of topNPCs) {
+                const knowledge = componentKnowledge[npcId];
+                if (knowledge.works_with) {
+                    for (const partner of knowledge.works_with) {
+                        const partnerId = Object.keys(componentKnowledge).find(id => 
+                            componentKnowledge[id] && npcs[id] && npcs[id].name.toLowerCase().includes(partner.toLowerCase())
+                        );
+                        if (partnerId) {
+                            synergisticNPCs.add(partnerId);
+                        }
+                    }
+                }
+            }
+            
+            // Convert back to names
+            return Array.from(synergisticNPCs)
+                .map(npcId => npcs[npcId]?.name)
+                .filter(name => name)
+                .slice(0, 4); // Limit to 4 recommendations
+        }
+
+        async function getAIRecommendations(questDescription) {
+            // Use AI Casino for smart recommendations
+            const response = await fetch('http://localhost:9706/api/ai-casino/reasoning', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    prompt: `Analyze this quest and recommend the best component NPCs:
+                    
+Quest: "${questDescription}"
+
+Available NPCs:
+${Object.entries(npcs).map(([id, npc]) => 
+    `- ${npc.name} (${npc.specialty})`
+).join('\n')}
+
+Component Knowledge:
+${Object.entries(componentKnowledge).map(([id, knowledge]) => 
+    `${npcs[id]?.name}: ${knowledge.capabilities.join(', ')}`
+).join('\n')}
+
+Recommend 3-4 NPCs that would work best together for this quest. Consider:
+1. Direct capability matches
+2. Synergistic combinations
+3. Complete workflow coverage
+
+Return as JSON: {"npcs": ["NPC Name 1", "NPC Name 2"], "reasoning": "why these work together"}`
+                })
+            });
+            
+            if (response.ok) {
+                const result = await response.json();
+                if (result.recommendation) {
+                    try {
+                        const parsed = JSON.parse(result.recommendation);
+                        return {
+                            npcs: parsed.npcs || [],
+                            reasoning: parsed.reasoning || 'AI recommendation'
+                        };
+                    } catch (e) {
+                        // Fallback if JSON parsing fails
+                        return {
+                            npcs: [],
+                            reasoning: 'AI analysis completed'
+                        };
+                    }
+                }
+            }
+            
+            throw new Error('AI recommendations unavailable');
+        }
+
+        function combineRecommendations(basic, ai) {
+            if (ai && ai.npcs && ai.npcs.length > 0) {
+                // Use AI recommendations if available
+                addBattleLog(`🧠 AI Analysis: ${ai.reasoning}`, 'log-npc');
+                return ai.npcs.slice(0, 4);
+            }
+            return basic;
+        }
+        
+        function simulateQuestProgress() {
+            let progressSteps = [
+                () => addBattleLog('🔍 Party is analyzing the quest requirements...', 'log-npc'),
+                () => addBattleLog('⚙️ NPCs are coordinating their strategies...', 'log-npc'),
+                () => addBattleLog('🛠️ Beginning component generation...', 'log-npc'),
+                () => {
+                    selectedNPCs.forEach((npcId, index) => {
+                        setTimeout(() => {
+                            const npc = npcs[npcId];
+                            const response = npc.responses[Math.floor(Math.random() * npc.responses.length)];
+                            addBattleLog(`${npc.name}: ${response}`, 'log-npc');
+                        }, index * 1500);
+                    });
+                },
+                () => addBattleLog('✨ Components are coming together...', 'log-success'),
+                () => addBattleLog('🎉 Quest completed successfully!', 'log-success'),
+                () => generateLoot()
+            ];
+            
+            progressSteps.forEach((step, index) => {
+                setTimeout(step, index * 2500);
+            });
+        }
+        
+        function generateLoot() {
+            const questType = analyzeQuestType(currentQuest.description);
+            const loot = generateLootItems(questType, selectedNPCs);
+            
+            showLootPanel(loot);
+            
+            // Add loot to battle log
+            loot.forEach(item => {
+                addBattleLog(`💰 Loot Drop: ${item.name} - ${item.description}`, 'log-loot');
+            });
+        }
+        
+        function analyzeQuestType(description) {
+            const lower = description.toLowerCase();
+            if (lower.includes('landing page')) return 'landing-page';
+            if (lower.includes('website')) return 'website';
+            if (lower.includes('form')) return 'form';
+            if (lower.includes('blog')) return 'blog';
+            return 'general';
+        }
+        
+        // Treasure Chest Inventory System
+        let playerInventory = {
+            items: [],
+            totalValue: 0,
+            questsCompleted: 0,
+            rareItems: 0
+        };
+
+        // File versioning and treasure system
+        function generateLootItems(questType, party) {
+            const timestamp = new Date().toISOString();
+            const questId = 'quest_' + Date.now();
+            
+            const lootTemplates = {
+                'landing-page': [
+                    { 
+                        name: 'hero-section.html', 
+                        description: 'Compelling hero section with CTA',
+                        rarity: 'common',
+                        category: 'component',
+                        value: 100,
+                        preview: '<section class="hero">\n  <h1>Your Amazing Product</h1>\n  <p>Transform your business today</p>\n  <button>Get Started</button>\n</section>'
+                    },
+                    { 
+                        name: 'optimized-meta.json', 
+                        description: 'SEO-optimized meta tags and schema',
+                        rarity: 'uncommon',
+                        category: 'config',
+                        value: 150,
+                        preview: '{\n  "title": "Landing Page | Your Brand",\n  "description": "Convert visitors with...",\n  "keywords": ["startup", "landing", "conversion"]\n}'
+                    },
+                    { 
+                        name: 'conversion-styles.css', 
+                        description: 'High-converting design styles',
+                        rarity: 'rare',
+                        category: 'style',
+                        value: 200,
+                        preview: '.hero-cta {\n  background: linear-gradient(45deg, #ff6600, #ff9900);\n  box-shadow: 0 4px 15px rgba(255, 102, 0, 0.4);\n  transform: scale(1.05);\n}'
+                    },
+                    { 
+                        name: 'landing-page-complete.zip', 
+                        description: 'Complete deployable landing page',
+                        rarity: 'epic',
+                        category: 'package',
+                        value: 500,
+                        preview: 'Complete package with HTML, CSS, JS, and deployment config'
+                    }
+                ],
+                'website': [
+                    { 
+                        name: 'site-structure.html', 
+                        description: 'Full website structure and navigation',
+                        rarity: 'common',
+                        category: 'component',
+                        value: 120,
+                        preview: '<nav class="main-nav">\n  <ul>\n    <li><a href="/">Home</a></li>\n    <li><a href="/about">About</a></li>\n  </ul>\n</nav>'
+                    },
+                    { 
+                        name: 'responsive-styles.css', 
+                        description: 'Mobile-first responsive design',
+                        rarity: 'uncommon',
+                        category: 'style',
+                        value: 180,
+                        preview: '@media (max-width: 768px) {\n  .container { padding: 1rem; }\n  .grid { grid-template-columns: 1fr; }\n}'
+                    },
+                    { 
+                        name: 'content-strategy.md', 
+                        description: 'Content plan and user journey map',
+                        rarity: 'rare',
+                        category: 'documentation',
+                        value: 250,
+                        preview: '# Content Strategy\n\n## User Journey\n1. Awareness\n2. Consideration\n3. Decision\n4. Retention'
+                    }
+                ],
+                'form': [
+                    { 
+                        name: 'secure-form.html', 
+                        description: 'Encrypted contact form with validation',
+                        rarity: 'uncommon',
+                        category: 'component',
+                        value: 160,
+                        preview: '<form class="secure-form" method="POST" action="/submit">\n  <input type="email" required>\n  <textarea required></textarea>\n  <button type="submit">Send Securely</button>\n</form>'
+                    },
+                    { 
+                        name: 'form-handler.js', 
+                        description: 'Secure backend form processing',
+                        rarity: 'rare',
+                        category: 'script',
+                        value: 220,
+                        preview: 'const crypto = require("crypto");\n\nfunction processForm(data) {\n  const encrypted = encrypt(data);\n  return saveToDatabase(encrypted);\n}'
+                    },
+                    { 
+                        name: 'spam-protection.json', 
+                        description: 'Anti-spam configuration',
+                        rarity: 'common',
+                        category: 'config',
+                        value: 90,
+                        preview: '{\n  "rateLimit": "5/min",\n  "honeypot": true,\n  "captcha": "recaptcha-v3"\n}'
+                    }
+                ]
+            };
+            
+            let baseLoot = [...(lootTemplates[questType] || lootTemplates['landing-page'])];
+            
+            // Add NPC-specific bonus loot
+            party.forEach(npcId => {
+                const npc = npcs[npcId];
+                if (npc && npc.guild === 'technical') {
+                    baseLoot.push({ 
+                        name: 'security-audit.json', 
+                        description: 'Security configuration and audit report',
+                        rarity: 'rare',
+                        category: 'security',
+                        value: 300,
+                        preview: '{\n  "vulnerabilities": 0,\n  "securityScore": 95,\n  "recommendations": ["Enable HTTPS", "Add CSP headers"]\n}'
+                    });
+                }
+                if (npc && npc.guild === 'creative') {
+                    baseLoot.push({ 
+                        name: 'brand-system.zip', 
+                        description: 'Complete brand identity system',
+                        rarity: 'epic',
+                        category: 'branding',
+                        value: 400,
+                        preview: 'Brand guidelines, logo variations, color palette, typography system'
+                    });
+                }
+                if (npc && npc.guild === 'content') {
+                    baseLoot.push({ 
+                        name: 'content-library.md', 
+                        description: 'Optimized content templates',
+                        rarity: 'uncommon',
+                        category: 'content',
+                        value: 170,
+                        preview: '# Headlines\n\n## High-Converting Templates\n- "How [Target] Can [Benefit] in [Timeframe]"\n- "[Number] [Adjective] Ways to [Achieve Goal]"'
+                    });
+                }
+            });
+            
+            // Add metadata to each item
+            baseLoot = baseLoot.map(item => ({
+                ...item,
+                id: `${item.name}_${questId}`,
+                questId,
+                timestamp,
+                version: '1.0.0',
+                questType,
+                generatedBy: party.map(id => npcs[id]?.name).filter(Boolean),
+                fileSize: Math.floor(Math.random() * 50 + 10) + 'KB'
+            }));
+            
+            return baseLoot.slice(0, 5); // Limit to 5 items
+        }
+        
+        function showLootPanel(loot) {
+            const panel = document.getElementById('lootPanel');
+            const grid = document.getElementById('lootGrid');
+            
+            grid.innerHTML = '';
+            
+            loot.forEach(item => {
+                const lootDiv = document.createElement('div');
+                lootDiv.className = `loot-item rarity-${item.rarity}`;
+                lootDiv.onclick = () => showItemPreview(item);
+                lootDiv.innerHTML = `
+                    <div class="loot-header">
+                        <div class="loot-name">${item.name}</div>
+                        <div class="loot-rarity ${item.rarity}">${item.rarity.toUpperCase()}</div>
+                    </div>
+                    <div class="loot-category">${item.category} • ${item.fileSize}</div>
+                    <div class="loot-description">${item.description}</div>
+                    <div class="loot-meta">
+                        <div class="loot-value">💰 ${item.value}</div>
+                        <div class="loot-version">v${item.version}</div>
+                    </div>
+                    <div class="loot-generated-by">Generated by: ${item.generatedBy.join(', ')}</div>
+                `;
+                grid.appendChild(lootDiv);
+            });
+            
+            panel.style.display = 'block';
+        }
+        
+        function showItemPreview(item) {
+            // Create modal for file preview
+            const modal = document.createElement('div');
+            modal.className = 'item-preview-modal';
+            modal.innerHTML = `
+                <div class="modal-content">
+                    <div class="modal-header">
+                        <h3>${item.name}</h3>
+                        <span class="close-modal" onclick="closeItemPreview()">&times;</span>
+                    </div>
+                    <div class="modal-body">
+                        <div class="item-details">
+                            <div class="detail-row">
+                                <span class="label">Rarity:</span>
+                                <span class="value rarity-${item.rarity}">${item.rarity.toUpperCase()}</span>
+                            </div>
+                            <div class="detail-row">
+                                <span class="label">Category:</span>
+                                <span class="value">${item.category}</span>
+                            </div>
+                            <div class="detail-row">
+                                <span class="label">Value:</span>
+                                <span class="value">💰 ${item.value}</span>
+                            </div>
+                            <div class="detail-row">
+                                <span class="label">Size:</span>
+                                <span class="value">${item.fileSize}</span>
+                            </div>
+                            <div class="detail-row">
+                                <span class="label">Generated:</span>
+                                <span class="value">${new Date(item.timestamp).toLocaleString()}</span>
+                            </div>
+                            <div class="detail-row">
+                                <span class="label">Created by:</span>
+                                <span class="value">${item.generatedBy.join(', ')}</span>
+                            </div>
+                        </div>
+                        <div class="file-preview">
+                            <h4>File Preview:</h4>
+                            <pre class="code-preview">${item.preview}</pre>
+                        </div>
+                        <div class="item-actions">
+                            <button class="action-btn download-btn" onclick="downloadItem('${item.id}')">📥 Download</button>
+                            <button class="action-btn edit-btn" onclick="editItem('${item.id}')">✏️ Edit</button>
+                            <button class="action-btn version-btn" onclick="createVersion('${item.id}')">🔄 New Version</button>
+                        </div>
+                    </div>
+                </div>
+            `;
+            
+            document.body.appendChild(modal);
+            
+            // Add styles for the modal
+            const modalStyles = `
+                .item-preview-modal {
+                    position: fixed;
+                    top: 0;
+                    left: 0;
+                    width: 100%;
+                    height: 100%;
+                    background: rgba(0, 0, 0, 0.8);
+                    display: flex;
+                    justify-content: center;
+                    align-items: center;
+                    z-index: 10000;
+                }
+                .modal-content {
+                    background: #1a1a2e;
+                    border: 2px solid #00ff88;
+                    border-radius: 10px;
+                    padding: 20px;
+                    max-width: 600px;
+                    max-height: 80vh;
+                    overflow-y: auto;
+                    color: #fff;
+                }
+                .modal-header {
+                    display: flex;
+                    justify-content: space-between;
+                    align-items: center;
+                    margin-bottom: 20px;
+                    border-bottom: 1px solid #333;
+                    padding-bottom: 10px;
+                }
+                .close-modal {
+                    cursor: pointer;
+                    font-size: 24px;
+                    color: #ff6600;
+                }
+                .item-details {
+                    margin-bottom: 20px;
+                }
+                .detail-row {
+                    display: flex;
+                    justify-content: space-between;
+                    margin: 5px 0;
+                    padding: 5px 0;
+                }
+                .label {
+                    font-weight: bold;
+                    color: #00ff88;
+                }
+                .file-preview {
+                    margin: 20px 0;
+                }
+                .code-preview {
+                    background: #000;
+                    border: 1px solid #333;
+                    padding: 15px;
+                    border-radius: 5px;
+                    font-size: 12px;
+                    color: #00ff00;
+                    max-height: 200px;
+                    overflow: auto;
+                }
+                .item-actions {
+                    display: flex;
+                    gap: 10px;
+                    margin-top: 20px;
+                }
+                .action-btn {
+                    padding: 8px 15px;
+                    border: 1px solid #00ff88;
+                    background: transparent;
+                    color: #00ff88;
+                    border-radius: 5px;
+                    cursor: pointer;
+                    font-family: 'Courier New', monospace;
+                }
+                .action-btn:hover {
+                    background: #00ff88;
+                    color: #000;
+                }
+            `;
+            
+            if (!document.getElementById('modal-styles')) {
+                const styleSheet = document.createElement('style');
+                styleSheet.id = 'modal-styles';
+                styleSheet.textContent = modalStyles;
+                document.head.appendChild(styleSheet);
+            }
+        }
+        
+        function closeItemPreview() {
+            const modal = document.querySelector('.item-preview-modal');
+            if (modal) {
+                modal.remove();
+            }
+        }
+        
+        function addToInventory(items) {
+            items.forEach(item => {
+                playerInventory.items.push(item);
+                playerInventory.totalValue += item.value;
+                if (['rare', 'epic', 'legendary'].includes(item.rarity)) {
+                    playerInventory.rareItems++;
+                }
+            });
+            
+            playerInventory.questsCompleted++;
+            
+            // Save to localStorage for persistence
+            localStorage.setItem('rpg_inventory', JSON.stringify(playerInventory));
+            
+            addBattleLog(`📦 Added ${items.length} items to inventory! Total value: ${playerInventory.totalValue}`, 'log-loot');
+        }
+        
+        function downloadItem(itemId) {
+            const item = playerInventory.items.find(i => i.id === itemId);
+            if (!item) return;
+            
+            const blob = new Blob([item.preview], { type: 'text/plain' });
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = item.name;
+            a.click();
+            URL.revokeObjectURL(url);
+            
+            addBattleLog(`📥 Downloaded ${item.name}`, 'log-success');
+        }
+        
+        function editItem(itemId) {
+            addBattleLog(`✏️ Edit mode for ${itemId} - Opening in code editor...`, 'log-npc');
+            // This would integrate with a code editor
+        }
+        
+        function createVersion(itemId) {
+            const item = playerInventory.items.find(i => i.id === itemId);
+            if (!item) return;
+            
+            const currentVersion = item.version;
+            const versionParts = currentVersion.split('.');
+            versionParts[2] = (parseInt(versionParts[2]) + 1).toString();
+            const newVersion = versionParts.join('.');
+            
+            const newItem = {
+                ...item,
+                id: `${item.name}_v${newVersion}_${Date.now()}`,
+                version: newVersion,
+                timestamp: new Date().toISOString(),
+                preview: item.preview + '\n/* Version ' + newVersion + ' - Updated */\n'
+            };
+            
+            playerInventory.items.push(newItem);
+            localStorage.setItem('rpg_inventory', JSON.stringify(playerInventory));
+            
+            addBattleLog(`🔄 Created ${item.name} v${newVersion}`, 'log-success');
+            closeItemPreview();
+        }
+        
+        function closeLootPanel() {
+            const lootPanel = document.getElementById('lootPanel');
+            const lootItems = Array.from(document.querySelectorAll('.loot-item')).map(item => {
+                // Extract loot data from the displayed items
+                const nameEl = item.querySelector('.loot-name');
+                const rarityEl = item.querySelector('.loot-rarity');
+                const categoryEl = item.querySelector('.loot-category');
+                const descEl = item.querySelector('.loot-description');
+                const valueEl = item.querySelector('.loot-value');
+                const versionEl = item.querySelector('.loot-version');
+                const generatedByEl = item.querySelector('.loot-generated-by');
+                
+                if (!nameEl) return null;
+                
+                const rarity = rarityEl ? rarityEl.textContent.toLowerCase() : 'common';
+                const categoryText = categoryEl ? categoryEl.textContent : '';
+                const [category, fileSize] = categoryText.split(' • ');
+                
+                return {
+                    id: `${nameEl.textContent}_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
+                    name: nameEl.textContent,
+                    description: descEl ? descEl.textContent : '',
+                    rarity: rarity,
+                    category: category || 'component',
+                    value: valueEl ? parseInt(valueEl.textContent.replace('💰 ', '')) : 100,
+                    version: versionEl ? versionEl.textContent.replace('v', '') : '1.0.0',
+                    fileSize: fileSize || '25KB',
+                    timestamp: new Date().toISOString(),
+                    questId: currentQuest?.questId || `quest_${Date.now()}`,
+                    questType: currentQuest?.questType || 'general',
+                    generatedBy: generatedByEl ? generatedByEl.textContent.replace('Generated by: ', '').split(', ') : [],
+                    preview: `// ${nameEl.textContent}\n// Generated by: ${generatedByEl ? generatedByEl.textContent.replace('Generated by: ', '') : 'Unknown'}\n\n// This is a ${rarity} ${category} file\n// Add your content here...`
+                };
+            }).filter(item => item !== null);
+            
+            if (lootItems.length > 0) {
+                addToInventory(lootItems);
+            }
+            
+            lootPanel.style.display = 'none';
+            selectedNPCs = []; // Reset party for next quest
+            addBattleLog('🎒 All loot collected! Ready for next quest.', 'log-success');
+        }
+        
+        function addBattleLog(message, type) {
+            const battleLog = document.getElementById('battleLog');
+            const entry = document.createElement('div');
+            entry.className = `log-entry ${type}`;
+            entry.textContent = message;
+            
+            battleLog.appendChild(entry);
+            battleLog.scrollTop = battleLog.scrollHeight;
+        }
+        
+        // Enter key support for quest input
+        document.getElementById('questInput').addEventListener('keypress', function(e) {
+            if (e.key === 'Enter') {
+                startQuest();
+            }
+        });
+        
+        // Component Discovery for Enhanced RAG
+        async function discoverSystemComponents() {
+            addBattleLog('🔍 Discovering available system components...', 'log-system');
+            
+            try {
+                // Discover what's actually running in the system
+                const services = await Promise.allSettled([
+                    fetch('http://localhost:3000/health').catch(() => ({ ok: false })), // MCP Template Processor
+                    fetch('http://localhost:3001/health').catch(() => ({ ok: false })), // AI API Service
+                    fetch('http://localhost:3002/health').catch(() => ({ ok: false })), // Analytics Service
+                    fetch('http://localhost:8080/health').catch(() => ({ ok: false })), // Platform Hub
+                    fetch('http://localhost:9706/health').catch(() => ({ ok: false })), // AI Casino
+                ]);
+                
+                const availableServices = [];
+                if (services[0].status === 'fulfilled' && services[0].value.ok) availableServices.push('Template Processor');
+                if (services[1].status === 'fulfilled' && services[1].value.ok) availableServices.push('AI API Service');
+                if (services[2].status === 'fulfilled' && services[2].value.ok) availableServices.push('Analytics Service');
+                if (services[3].status === 'fulfilled' && services[3].value.ok) availableServices.push('Platform Hub');
+                if (services[4].status === 'fulfilled' && services[4].value.ok) availableServices.push('AI Casino');
+                
+                if (availableServices.length > 0) {
+                    addBattleLog(`✅ Active services detected: ${availableServices.join(', ')}`, 'log-success');
+                    
+                    // Update NPC availability based on discovered services
+                    updateNPCAvailability(availableServices);
+                } else {
+                    addBattleLog('⚠️ No services currently running - some NPCs may have limited capabilities', 'log-npc');
+                }
+                
+            } catch (error) {
+                addBattleLog('🔍 Component discovery completed with basic configuration', 'log-system');
+            }
+        }
+        
+        function updateNPCAvailability(services) {
+            // Update AI Casino NPC status if service is running
+            if (services.includes('AI Casino')) {
+                const aiCasinoCard = document.querySelector('[onclick="selectNPC(\'ai-casino\')"]');
+                if (aiCasinoCard) {
+                    const statusSpan = aiCasinoCard.querySelector('.npc-status span:last-child');
+                    if (statusSpan) statusSpan.textContent = 'Online - Enhanced AI Available';
+                }
+            }
+            
+            // Enable image generator if AI services are available
+            if (services.includes('AI API Service')) {
+                const imageGenCard = document.querySelector('[onclick="selectNPC(\'image-generator\')"]');
+                if (imageGenCard) {
+                    const statusDot = imageGenCard.querySelector('.status-dot');
+                    const statusText = imageGenCard.querySelector('.npc-status span:last-child');
+                    if (statusDot) statusDot.className = 'status-dot';
+                    if (statusText) statusText.textContent = 'Ready for Quest';
+                }
+                
+                // Update knowledge base with discovered capabilities
+                if (componentKnowledge['image-generator']) {
+                    componentKnowledge['image-generator'].capabilities.push('AI-powered image generation');
+                }
+            }
+        }
+        
+        // Enhanced quest input with suggestions
+        function enhanceQuestInput() {
+            const questInput = document.getElementById('questInput');
+            
+            // Add example suggestions
+            const suggestions = [
+                "I need a landing page for my AI startup",
+                "Create a secure contact form with encryption",
+                "Build a responsive portfolio website with dark mode",
+                "Design a crypto trading dashboard with real-time data",
+                "Develop a blog with SEO optimization",
+                "Make a SaaS pricing page with Stripe integration"
+            ];
+            
+            questInput.addEventListener('focus', () => {
+                if (!questInput.value) {
+                    const randomSuggestion = suggestions[Math.floor(Math.random() * suggestions.length)];
+                    questInput.placeholder = `e.g., "${randomSuggestion}"`;
+                }
+            });
+            
+            questInput.addEventListener('blur', () => {
+                questInput.placeholder = "Describe your quest (e.g., 'I need a landing page for my AI startup')";
+            });
+        }
+        
+        // Domain-specific enhancement suggestions
+        function suggestEnhancements(questDescription) {
+            const lower = questDescription.toLowerCase();
+            const suggestions = [];
+            
+            if (lower.includes('landing page') || lower.includes('website')) {
+                suggestions.push('🚀 Consider adding: Analytics tracking, Contact forms, SEO optimization');
+            }
+            
+            if (lower.includes('form') && !lower.includes('secure')) {
+                suggestions.push('🔒 Security recommendation: Add encryption and spam protection');
+            }
+            
+            if (lower.includes('dashboard') || lower.includes('data')) {
+                suggestions.push('📊 Enhancement: Real-time data feeds and interactive charts');
+            }
+            
+            if (lower.includes('startup') || lower.includes('business')) {
+                suggestions.push('💼 Business features: Payment integration, user analytics, conversion tracking');
+            }
+            
+            if (suggestions.length > 0) {
+                setTimeout(() => {
+                    suggestions.forEach(suggestion => {
+                        addBattleLog(suggestion, 'log-quest');
+                    });
+                }, 2000);
+            }
+        }
+        
+        // Inventory Management Functions
+        function openInventory() {
+            const modal = document.createElement('div');
+            modal.className = 'inventory-modal';
+            modal.innerHTML = `
+                <div class="inventory-content">
+                    <div class="inventory-header">
+                        <h2>🎒 Treasure Chest Inventory</h2>
+                        <span class="close-inventory" onclick="closeInventory()">&times;</span>
+                    </div>
+                    <div class="inventory-stats">
+                        <div class="stat">
+                            <span class="stat-label">Items:</span>
+                            <span class="stat-value">${playerInventory.items.length}</span>
+                        </div>
+                        <div class="stat">
+                            <span class="stat-label">Total Value:</span>
+                            <span class="stat-value">💰 ${playerInventory.totalValue}</span>
+                        </div>
+                        <div class="stat">
+                            <span class="stat-label">Quests:</span>
+                            <span class="stat-value">${playerInventory.questsCompleted}</span>
+                        </div>
+                        <div class="stat">
+                            <span class="stat-label">Rare Items:</span>
+                            <span class="stat-value">${playerInventory.rareItems}</span>
+                        </div>
+                    </div>
+                    <div class="inventory-filters">
+                        <button class="filter-btn active" onclick="filterInventory('all')">All</button>
+                        <button class="filter-btn" onclick="filterInventory('component')">Components</button>
+                        <button class="filter-btn" onclick="filterInventory('style')">Styles</button>
+                        <button class="filter-btn" onclick="filterInventory('config')">Config</button>
+                        <button class="filter-btn" onclick="filterInventory('rare')">Rare+</button>
+                    </div>
+                    <div class="inventory-grid" id="inventoryGrid">
+                        ${renderInventoryItems(playerInventory.items)}
+                    </div>
+                </div>
+            `;
+            
+            document.body.appendChild(modal);
+            
+            // Add inventory modal styles
+            if (!document.getElementById('inventory-styles')) {
+                const inventoryStyles = `
+                    .inventory-modal {
+                        position: fixed;
+                        top: 0;
+                        left: 0;
+                        width: 100%;
+                        height: 100%;
+                        background: rgba(0, 0, 0, 0.9);
+                        display: flex;
+                        justify-content: center;
+                        align-items: center;
+                        z-index: 10001;
+                    }
+                    .inventory-content {
+                        background: #0f0f23;
+                        border: 3px solid #ffd700;
+                        border-radius: 15px;
+                        padding: 20px;
+                        max-width: 800px;
+                        max-height: 90vh;
+                        overflow-y: auto;
+                        color: #fff;
+                        box-shadow: 0 0 30px rgba(255, 215, 0, 0.5);
+                    }
+                    .inventory-header {
+                        display: flex;
+                        justify-content: space-between;
+                        align-items: center;
+                        margin-bottom: 20px;
+                        border-bottom: 2px solid #ffd700;
+                        padding-bottom: 10px;
+                    }
+                    .inventory-header h2 {
+                        color: #ffd700;
+                        margin: 0;
+                    }
+                    .close-inventory {
+                        cursor: pointer;
+                        font-size: 28px;
+                        color: #ff6600;
+                    }
+                    .inventory-stats {
+                        display: grid;
+                        grid-template-columns: repeat(4, 1fr);
+                        gap: 15px;
+                        margin: 20px 0;
+                    }
+                    .stat {
+                        text-align: center;
+                        padding: 10px;
+                        background: rgba(255, 215, 0, 0.1);
+                        border: 1px solid #ffd700;
+                        border-radius: 8px;
+                    }
+                    .stat-label {
+                        display: block;
+                        font-size: 12px;
+                        color: #ffd700;
+                    }
+                    .stat-value {
+                        display: block;
+                        font-size: 18px;
+                        font-weight: bold;
+                        margin-top: 5px;
+                    }
+                    .inventory-filters {
+                        display: flex;
+                        gap: 10px;
+                        margin: 20px 0;
+                        flex-wrap: wrap;
+                    }
+                    .filter-btn {
+                        padding: 6px 12px;
+                        border: 1px solid #666;
+                        background: transparent;
+                        color: #ccc;
+                        border-radius: 5px;
+                        cursor: pointer;
+                        font-family: 'Courier New', monospace;
+                        font-size: 12px;
+                    }
+                    .filter-btn.active {
+                        border-color: #ffd700;
+                        color: #ffd700;
+                        background: rgba(255, 215, 0, 0.1);
+                    }
+                    .inventory-grid {
+                        display: grid;
+                        grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+                        gap: 15px;
+                    }
+                    .inventory-item {
+                        background: rgba(26, 26, 62, 0.8);
+                        border: 2px solid;
+                        border-radius: 8px;
+                        padding: 12px;
+                        cursor: pointer;
+                        transition: all 0.3s;
+                    }
+                    .inventory-item:hover {
+                        transform: translateY(-2px);
+                        box-shadow: 0 4px 15px rgba(255, 255, 255, 0.2);
+                    }
+                `;
+                
+                const styleSheet = document.createElement('style');
+                styleSheet.id = 'inventory-styles';
+                styleSheet.textContent = inventoryStyles;
+                document.head.appendChild(styleSheet);
+            }
+        }
+        
+        function renderInventoryItems(items) {
+            if (items.length === 0) {
+                return '<div style="text-align: center; padding: 40px; color: #666;">No items in inventory yet. Complete quests to earn loot!</div>';
+            }
+            
+            return items.map(item => `
+                <div class="inventory-item rarity-${item.rarity}" onclick="showItemPreview(${JSON.stringify(item).replace(/"/g, '&quot;')})">
+                    <div class="loot-header">
+                        <div class="loot-name">${item.name}</div>
+                        <div class="loot-rarity ${item.rarity}">${item.rarity.toUpperCase()}</div>
+                    </div>
+                    <div class="loot-category">${item.category} • ${item.fileSize}</div>
+                    <div class="loot-description">${item.description}</div>
+                    <div class="loot-meta">
+                        <div class="loot-value">💰 ${item.value}</div>
+                        <div class="loot-version">v${item.version}</div>
+                    </div>
+                </div>
+            `).join('');
+        }
+        
+        function filterInventory(filterType) {
+            const buttons = document.querySelectorAll('.filter-btn');
+            buttons.forEach(btn => btn.classList.remove('active'));
+            event.target.classList.add('active');
+            
+            let filteredItems = playerInventory.items;
+            
+            switch (filterType) {
+                case 'component':
+                    filteredItems = playerInventory.items.filter(item => item.category === 'component');
+                    break;
+                case 'style':
+                    filteredItems = playerInventory.items.filter(item => item.category === 'style');
+                    break;
+                case 'config':
+                    filteredItems = playerInventory.items.filter(item => item.category === 'config');
+                    break;
+                case 'rare':
+                    filteredItems = playerInventory.items.filter(item => 
+                        ['rare', 'epic', 'legendary'].includes(item.rarity));
+                    break;
+                default:
+                    filteredItems = playerInventory.items;
+            }
+            
+            const grid = document.getElementById('inventoryGrid');
+            if (grid) {
+                grid.innerHTML = renderInventoryItems(filteredItems);
+            }
+        }
+        
+        function closeInventory() {
+            const modal = document.querySelector('.inventory-modal');
+            if (modal) {
+                modal.remove();
+            }
+        }
+        
+        function updateInventoryStats() {
+            document.getElementById('inventoryCount').textContent = `${playerInventory.items.length} items`;
+            document.getElementById('inventoryValue').textContent = `💰 ${playerInventory.totalValue}`;
+            document.getElementById('questsCompletedCount').textContent = `${playerInventory.questsCompleted} quests`;
+        }
+        
+        function loadInventoryFromStorage() {
+            const saved = localStorage.getItem('rpg_inventory');
+            if (saved) {
+                try {
+                    playerInventory = JSON.parse(saved);
+                    updateInventoryStats();
+                    addBattleLog(`📦 Loaded ${playerInventory.items.length} items from previous sessions`, 'log-success');
+                } catch (error) {
+                    console.error('Failed to load inventory:', error);
+                }
+            }
+        }
+        
+        // Initialize enhanced RPG system
+        addBattleLog('🏰 Document Generation RPG initialized! Select NPCs and start your first quest.', 'log-quest');
+        addBattleLog('🧠 Enhanced RAG system online - smart NPC matching available', 'log-success');
+        
+        // Initialize enhancements
+        enhanceQuestInput();
+        loadInventoryFromStorage();
+        
+        // Discover system components
+        setTimeout(discoverSystemComponents, 1000);
+        
+        // Test connection to existing casino
+        fetch('http://localhost:9706/health')
+            .then(response => response.json())
+            .then(data => {
+                addBattleLog('🎰 AI Casino Master is online and ready for advanced reasoning!', 'log-success');
+                
+                // Test if reasoning endpoint is available
+                return fetch('http://localhost:9706/api/ai-casino/stats');
+            })
+            .then(response => {
+                if (response.ok) {
+                    addBattleLog('✨ Advanced AI recommendations enabled!', 'log-success');
+                }
+            })
+            .catch(error => {
+                addBattleLog('⚠️ AI Casino Master is offline - using keyword-based recommendations', 'log-npc');
+            });
+    </script>
+</body>
+</html>

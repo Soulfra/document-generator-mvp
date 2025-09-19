@@ -1,0 +1,1393 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>🎬 AI Reasoning Movie Theater</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        
+        body {
+            font-family: 'Courier New', monospace;
+            background: linear-gradient(135deg, #0a0a0a 0%, #1a1a2e 50%, #16213e 100%);
+            color: #fff;
+            min-height: 100vh;
+            overflow: hidden;
+        }
+        
+        .theater-container {
+            display: grid;
+            grid-template-rows: 60px 1fr 200px;
+            height: 100vh;
+        }
+        
+        /* Header */
+        .theater-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 0 20px;
+            background: rgba(0, 0, 0, 0.8);
+            border-bottom: 2px solid #ff6600;
+        }
+        
+        .session-info {
+            display: flex;
+            align-items: center;
+            gap: 15px;
+        }
+        
+        .session-title {
+            font-size: 20px;
+            color: #ff6600;
+            font-weight: bold;
+        }
+        
+        .session-meta {
+            font-size: 12px;
+            color: #aaa;
+        }
+        
+        .theater-controls {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+        
+        .control-btn {
+            background: rgba(255, 102, 0, 0.2);
+            border: 1px solid #ff6600;
+            color: #ff6600;
+            padding: 8px 12px;
+            border-radius: 5px;
+            cursor: pointer;
+            transition: all 0.3s;
+            font-family: 'Courier New', monospace;
+        }
+        
+        .control-btn:hover {
+            background: #ff6600;
+            color: #000;
+            transform: scale(1.05);
+        }
+        
+        .control-btn.active {
+            background: #ff6600;
+            color: #000;
+        }
+        
+        /* Main Viewer */
+        .main-viewer {
+            display: grid;
+            grid-template-columns: 3fr 1fr;
+            gap: 20px;
+            padding: 20px;
+            overflow: hidden;
+        }
+        
+        .reasoning-stage {
+            background: rgba(0, 0, 0, 0.7);
+            border: 2px solid #00ff88;
+            border-radius: 15px;
+            padding: 20px;
+            position: relative;
+            overflow-y: auto;
+        }
+        
+        .reasoning-stage h3 {
+            color: #00ff88;
+            margin-bottom: 15px;
+            text-align: center;
+        }
+        
+        .reasoning-content {
+            min-height: 400px;
+            position: relative;
+        }
+        
+        /* Multi-Track Display */
+        .track-container {
+            margin: 15px 0;
+            opacity: 0;
+            transform: translateY(20px);
+            transition: all 0.5s ease;
+        }
+        
+        .track-container.active {
+            opacity: 1;
+            transform: translateY(0);
+        }
+        
+        .track-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 10px;
+            padding: 8px 12px;
+            background: rgba(255, 255, 255, 0.05);
+            border-radius: 5px;
+        }
+        
+        .track-type {
+            font-weight: bold;
+            text-transform: uppercase;
+            font-size: 12px;
+        }
+        
+        .track-type.reasoning { color: #00ff88; }
+        .track-type.decision { color: #ff6600; }
+        .track-type.interaction { color: #00aaff; }
+        .track-type.system { color: #ffaa00; }
+        
+        .track-timestamp {
+            font-size: 11px;
+            color: #666;
+        }
+        
+        .track-content {
+            background: rgba(0, 0, 0, 0.5);
+            border-left: 4px solid;
+            padding: 15px;
+            border-radius: 0 8px 8px 0;
+            margin-left: 20px;
+        }
+        
+        .track-content.reasoning { border-color: #00ff88; }
+        .track-content.decision { border-color: #ff6600; }
+        .track-content.interaction { border-color: #00aaff; }
+        .track-content.system { border-color: #ffaa00; }
+        
+        .reasoning-text {
+            font-size: 14px;
+            line-height: 1.6;
+            margin-bottom: 10px;
+        }
+        
+        .confidence-bar {
+            width: 100%;
+            height: 4px;
+            background: rgba(255, 255, 255, 0.1);
+            border-radius: 2px;
+            overflow: hidden;
+            margin: 10px 0;
+        }
+        
+        .confidence-fill {
+            height: 100%;
+            background: linear-gradient(90deg, #ff0000, #ffaa00, #00ff00);
+            transition: width 0.5s ease;
+        }
+        
+        .decision-options {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 8px;
+            margin: 10px 0;
+        }
+        
+        .decision-option {
+            padding: 4px 8px;
+            border: 1px solid #666;
+            border-radius: 3px;
+            font-size: 12px;
+            background: rgba(255, 255, 255, 0.05);
+        }
+        
+        .decision-option.chosen {
+            border-color: #ff6600;
+            background: rgba(255, 102, 0, 0.2);
+            color: #ff6600;
+        }
+        
+        /* Side Panel */
+        .side-panel {
+            display: flex;
+            flex-direction: column;
+            gap: 15px;
+        }
+        
+        .panel-section {
+            background: rgba(0, 0, 0, 0.7);
+            border: 2px solid #ffaa00;
+            border-radius: 10px;
+            padding: 15px;
+        }
+        
+        .panel-section h4 {
+            color: #ffaa00;
+            margin-bottom: 10px;
+            font-size: 14px;
+        }
+        
+        .component-map {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 8px;
+        }
+        
+        .component-indicator {
+            padding: 6px;
+            border: 1px solid #333;
+            border-radius: 4px;
+            text-align: center;
+            font-size: 10px;
+            transition: all 0.3s;
+            cursor: pointer;
+        }
+        
+        .component-indicator.active {
+            border-color: #ff6600;
+            background: rgba(255, 102, 0, 0.2);
+            color: #ff6600;
+            box-shadow: 0 0 10px rgba(255, 102, 0, 0.3);
+        }
+        
+        .bookmark-list {
+            max-height: 150px;
+            overflow-y: auto;
+        }
+        
+        .bookmark-item {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 8px;
+            background: rgba(255, 255, 255, 0.05);
+            border-radius: 4px;
+            margin: 5px 0;
+            cursor: pointer;
+            transition: all 0.3s;
+        }
+        
+        .bookmark-item:hover {
+            background: rgba(255, 255, 255, 0.1);
+            transform: translateX(5px);
+        }
+        
+        .bookmark-name {
+            font-weight: bold;
+            font-size: 12px;
+        }
+        
+        .bookmark-time {
+            font-size: 10px;
+            color: #666;
+        }
+        
+        /* Timeline Controls */
+        .timeline-controls {
+            background: rgba(0, 0, 0, 0.9);
+            border-top: 2px solid #ff6600;
+            padding: 20px;
+        }
+        
+        .timeline-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 15px;
+        }
+        
+        .playback-controls {
+            display: flex;
+            align-items: center;
+            gap: 15px;
+        }
+        
+        .play-btn {
+            background: #ff6600;
+            border: none;
+            color: #000;
+            padding: 10px 15px;
+            border-radius: 50px;
+            cursor: pointer;
+            font-size: 18px;
+            transition: all 0.3s;
+            min-width: 50px;
+        }
+        
+        .play-btn:hover {
+            background: #ff9900;
+            transform: scale(1.1);
+        }
+        
+        .time-display {
+            font-family: 'Courier New', monospace;
+            font-size: 16px;
+            color: #00ff88;
+            min-width: 120px;
+            text-align: center;
+        }
+        
+        .speed-control {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+        
+        .speed-btn {
+            background: rgba(255, 255, 255, 0.1);
+            border: 1px solid #666;
+            color: #fff;
+            padding: 4px 8px;
+            border-radius: 3px;
+            cursor: pointer;
+            font-size: 11px;
+        }
+        
+        .speed-btn.active {
+            background: #00ff88;
+            color: #000;
+        }
+        
+        .timeline-scrubber {
+            position: relative;
+            height: 60px;
+            background: rgba(0, 0, 0, 0.5);
+            border: 1px solid #333;
+            border-radius: 5px;
+            cursor: pointer;
+            overflow: hidden;
+        }
+        
+        .timeline-track {
+            position: absolute;
+            height: 12px;
+            border-radius: 2px;
+            margin: 2px;
+        }
+        
+        .track-reasoning {
+            background: linear-gradient(90deg, transparent, #00ff88);
+            top: 5px;
+        }
+        
+        .track-decisions {
+            background: linear-gradient(90deg, transparent, #ff6600);
+            top: 20px;
+        }
+        
+        .track-interactions {
+            background: linear-gradient(90deg, transparent, #00aaff);
+            top: 35px;
+        }
+        
+        .timeline-progress {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 0%;
+            height: 100%;
+            background: linear-gradient(90deg, rgba(255, 102, 0, 0.3), rgba(255, 102, 0, 0.1));
+            border-right: 2px solid #ff6600;
+            transition: width 0.1s linear;
+        }
+        
+        .timeline-markers {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            pointer-events: none;
+        }
+        
+        .timeline-marker {
+            position: absolute;
+            width: 2px;
+            height: 100%;
+            background: #ffaa00;
+            opacity: 0.8;
+        }
+        
+        .timeline-marker.bookmark {
+            background: #ff00ff;
+            width: 4px;
+        }
+        
+        .timeline-time-labels {
+            display: flex;
+            justify-content: space-between;
+            margin-top: 8px;
+            font-size: 10px;
+            color: #666;
+        }
+        
+        /* Export Panel */
+        .export-panel {
+            position: fixed;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            background: #1a1a2e;
+            border: 2px solid #ff6600;
+            border-radius: 10px;
+            padding: 20px;
+            z-index: 1000;
+            display: none;
+        }
+        
+        .export-panel h3 {
+            color: #ff6600;
+            margin-bottom: 15px;
+        }
+        
+        .export-options {
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+            margin-bottom: 15px;
+        }
+        
+        .export-option {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+        
+        .export-buttons {
+            display: flex;
+            gap: 10px;
+            justify-content: flex-end;
+        }
+        
+        /* Loading State */
+        .loading-overlay {
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: rgba(0, 0, 0, 0.8);
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            z-index: 100;
+        }
+        
+        .loading-spinner {
+            width: 50px;
+            height: 50px;
+            border: 3px solid #333;
+            border-top: 3px solid #ff6600;
+            border-radius: 50%;
+            animation: spin 1s linear infinite;
+        }
+        
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+        
+        .loading-text {
+            margin-top: 15px;
+            color: #ff6600;
+            text-align: center;
+        }
+        
+        /* Responsive */
+        @media (max-width: 1200px) {
+            .main-viewer {
+                grid-template-columns: 1fr;
+            }
+            
+            .side-panel {
+                flex-direction: row;
+                overflow-x: auto;
+            }
+            
+            .panel-section {
+                min-width: 200px;
+            }
+        }
+        
+        @media (max-width: 768px) {
+            .theater-controls {
+                flex-wrap: wrap;
+                gap: 5px;
+            }
+            
+            .control-btn {
+                padding: 6px 8px;
+                font-size: 12px;
+            }
+            
+            .playback-controls {
+                flex-wrap: wrap;
+                gap: 8px;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="theater-container">
+        <!-- Header -->
+        <div class="theater-header">
+            <div class="session-info">
+                <div class="session-title" id="sessionTitle">AI Reasoning Session</div>
+                <div class="session-meta" id="sessionMeta">Loading session...</div>
+            </div>
+            <div class="theater-controls">
+                <button class="control-btn" onclick="togglePerspective()">📱 Perspective</button>
+                <button class="control-btn" onclick="toggleTracks()">🎬 Tracks</button>
+                <button class="control-btn" onclick="addBookmark()">🔖 Bookmark</button>
+                <button class="control-btn" onclick="showExportPanel()">📤 Export</button>
+                <button class="control-btn" onclick="toggleFullscreen()">⛶ Fullscreen</button>
+            </div>
+        </div>
+        
+        <!-- Main Viewer -->
+        <div class="main-viewer">
+            <div class="reasoning-stage">
+                <h3>🧠 AI Reasoning Theater</h3>
+                <div class="reasoning-content" id="reasoningContent">
+                    <div class="loading-overlay" id="loadingOverlay">
+                        <div>
+                            <div class="loading-spinner"></div>
+                            <div class="loading-text">Loading AI reasoning session...</div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            
+            <div class="side-panel">
+                <div class="panel-section">
+                    <h4>🔗 Component Activity</h4>
+                    <div class="component-map" id="componentMap">
+                        <!-- Dynamic component indicators -->
+                    </div>
+                </div>
+                
+                <div class="panel-section">
+                    <h4>🔖 Bookmarks</h4>
+                    <div class="bookmark-list" id="bookmarkList">
+                        <div class="bookmark-item" onclick="seekToTime(0)">
+                            <span class="bookmark-name">Session Start</span>
+                            <span class="bookmark-time">00:00</span>
+                        </div>
+                    </div>
+                </div>
+                
+                <div class="panel-section">
+                    <h4>📊 Session Stats</h4>
+                    <div id="sessionStats">
+                        <div style="font-size: 12px; line-height: 1.5;">
+                            <div>Duration: <span id="totalDuration">--:--</span></div>
+                            <div>Reasoning Steps: <span id="totalSteps">0</span></div>
+                            <div>Decisions: <span id="totalDecisions">0</span></div>
+                            <div>Components: <span id="totalComponents">0</span></div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        
+        <!-- Timeline Controls -->
+        <div class="timeline-controls">
+            <div class="timeline-header">
+                <div class="playback-controls">
+                    <button class="play-btn" id="playBtn" onclick="togglePlayback()">▶️</button>
+                    <button class="control-btn" onclick="seekRelative(-10000)">⏪ 10s</button>
+                    <button class="control-btn" onclick="seekRelative(10000)">10s ⏩</button>
+                    <div class="time-display" id="timeDisplay">00:00 / 00:00</div>
+                </div>
+                
+                <div class="speed-control">
+                    <span style="font-size: 12px; color: #666;">Speed:</span>
+                    <button class="speed-btn" onclick="setSpeed(0.5)">0.5x</button>
+                    <button class="speed-btn active" onclick="setSpeed(1.0)">1x</button>
+                    <button class="speed-btn" onclick="setSpeed(2.0)">2x</button>
+                    <button class="speed-btn" onclick="setSpeed(5.0)">5x</button>
+                </div>
+            </div>
+            
+            <div class="timeline-scrubber" id="timelineScrubber" onclick="handleTimelineClick(event)">
+                <div class="track-reasoning timeline-track"></div>
+                <div class="track-decisions timeline-track"></div>
+                <div class="track-interactions timeline-track"></div>
+                <div class="timeline-progress" id="timelineProgress"></div>
+                <div class="timeline-markers" id="timelineMarkers"></div>
+            </div>
+            
+            <div class="timeline-time-labels">
+                <span>00:00</span>
+                <span id="quarterTime">--:--</span>
+                <span id="halfTime">--:--</span>
+                <span id="threeQuarterTime">--:--</span>
+                <span id="endTime">--:--</span>
+            </div>
+        </div>
+    </div>
+    
+    <!-- Export Panel -->
+    <div class="export-panel" id="exportPanel">
+        <h3>📤 Export Reasoning Session</h3>
+        <div class="export-options">
+            <label class="export-option">
+                <input type="radio" name="exportFormat" value="json" checked>
+                <span>JSON (Complete Data)</span>
+            </label>
+            <label class="export-option">
+                <input type="radio" name="exportFormat" value="csv">
+                <span>CSV (Analysis Format)</span>
+            </label>
+            <label class="export-option">
+                <input type="radio" name="exportFormat" value="video">
+                <span>Video (MP4 Timeline)</span>
+            </label>
+            <label class="export-option">
+                <input type="checkbox" id="includeBookmarks">
+                <span>Include Bookmarks</span>
+            </label>
+        </div>
+        <div class="export-buttons">
+            <button class="control-btn" onclick="hideExportPanel()">Cancel</button>
+            <button class="control-btn" onclick="exportSession()">Export</button>
+        </div>
+    </div>
+    
+    <script>
+        // Global state
+        let currentSession = null;
+        let replayState = {
+            isPlaying: false,
+            currentTime: 0,
+            duration: 0,
+            speed: 1.0,
+            tracks: ['reasoning', 'decisions', 'interactions', 'system_events']
+        };
+        
+        let ws = null;
+        let bookmarks = [];
+        let components = [];
+        
+        // Initialize
+        async function init() {
+            // Connect to reasoning visualization server
+            connectToServer();
+            
+            // Load session from URL parameter or show session list
+            const urlParams = new URLSearchParams(window.location.search);
+            const sessionId = urlParams.get('session');
+            
+            if (sessionId) {
+                await loadSession(sessionId);
+            } else {
+                await showSessionSelector();
+            }
+            
+            // Setup keyboard shortcuts
+            setupKeyboardShortcuts();
+        }
+        
+        function connectToServer() {
+            ws = new WebSocket('ws://localhost:8117');
+            
+            ws.onopen = () => {
+                console.log('🎬 Connected to reasoning visualization server');
+            };
+            
+            ws.onmessage = (event) => {
+                const data = JSON.parse(event.data);
+                handleServerMessage(data);
+            };
+            
+            ws.onerror = (error) => {
+                console.error('WebSocket error:', error);
+                showError('Failed to connect to reasoning server');
+            };
+            
+            ws.onclose = () => {
+                console.log('Disconnected from server');
+                // Attempt to reconnect after 5 seconds
+                setTimeout(connectToServer, 5000);
+            };
+        }
+        
+        function handleServerMessage(data) {
+            switch (data.type) {
+                case 'replay:update':
+                    updateReplayDisplay(data);
+                    break;
+                case 'session:loaded':
+                    handleSessionLoaded(data.session);
+                    break;
+                case 'bookmark:added':
+                    addBookmarkToList(data.bookmark);
+                    break;
+                case 'export:complete':
+                    handleExportComplete(data);
+                    break;
+            }
+        }
+        
+        async function loadSession(sessionId) {
+            showLoading('Loading reasoning session...');
+            
+            try {
+                // Request session from server
+                if (ws && ws.readyState === WebSocket.OPEN) {
+                    ws.send(JSON.stringify({
+                        type: 'load_session',
+                        sessionId: sessionId
+                    }));
+                } else {
+                    // Fallback: load demo session
+                    await loadDemoSession();
+                }
+            } catch (error) {
+                console.error('Failed to load session:', error);
+                showError('Failed to load reasoning session');
+            }
+        }
+        
+        async function loadDemoSession() {
+            // Create a demo session for demonstration
+            const demoSession = {
+                id: 'demo_session_001',
+                title: 'AI Landing Page Generation',
+                description: 'Watch AI reason through creating a landing page',
+                duration: 45000, // 45 seconds
+                participants: ['Claude AI', 'SEO Specialist', 'Copywriter'],
+                reasoning_chains: [
+                    {
+                        id: 'r1',
+                        timestamp: 2000,
+                        component: 'claude-ai',
+                        reasoning_text: 'Analyzing user request for AI startup landing page. Need to identify key value propositions and target audience.',
+                        confidence: 0.9,
+                        processing_time: 1200
+                    },
+                    {
+                        id: 'r2',
+                        timestamp: 5500,
+                        component: 'seo-specialist',
+                        reasoning_text: 'Researching relevant keywords: "AI startup", "automation", "business efficiency". Optimizing for search intent.',
+                        confidence: 0.85,
+                        processing_time: 800
+                    },
+                    {
+                        id: 'r3',
+                        timestamp: 12000,
+                        component: 'copywriter',
+                        reasoning_text: 'Crafting compelling headline: "Transform Your Business with AI-Powered Automation". Focus on transformation and efficiency.',
+                        confidence: 0.92,
+                        processing_time: 1500
+                    }
+                ],
+                decisions: [
+                    {
+                        id: 'd1',
+                        timestamp: 8000,
+                        question: 'Should we focus on B2B or B2C messaging?',
+                        options: ['B2B Enterprise', 'B2C Individual', 'Hybrid Approach'],
+                        chosen_option: 'B2B Enterprise',
+                        reasoning: 'AI automation has higher value proposition for businesses',
+                        confidence: 0.88
+                    },
+                    {
+                        id: 'd2',
+                        timestamp: 25000,
+                        question: 'What call-to-action should we use?',
+                        options: ['Free Trial', 'Schedule Demo', 'Download Whitepaper'],
+                        chosen_option: 'Schedule Demo',
+                        reasoning: 'Demos allow for personalized value demonstration',
+                        confidence: 0.91
+                    }
+                ],
+                interactions: [
+                    {
+                        id: 'i1',
+                        timestamp: 15000,
+                        participant: 'user',
+                        content: 'Can we add testimonials section?',
+                        response_time: 1200,
+                        satisfaction_score: 0.9
+                    }
+                ],
+                system_events: [
+                    {
+                        id: 's1',
+                        timestamp: 1000,
+                        event_type: 'component_activated',
+                        component: 'claude-ai',
+                        message: 'Claude AI reasoning engine started'
+                    }
+                ]
+            };
+            
+            handleSessionLoaded(demoSession);
+        }
+        
+        function handleSessionLoaded(session) {
+            currentSession = session;
+            replayState.duration = session.duration;
+            
+            // Update UI
+            document.getElementById('sessionTitle').textContent = session.title;
+            document.getElementById('sessionMeta').textContent = 
+                `${session.participants.join(', ')} • ${formatDuration(session.duration)} • ${session.reasoning_chains.length} steps`;
+            
+            // Update stats
+            document.getElementById('totalDuration').textContent = formatDuration(session.duration);
+            document.getElementById('totalSteps').textContent = session.reasoning_chains.length;
+            document.getElementById('totalDecisions').textContent = session.decisions.length;
+            document.getElementById('totalComponents').textContent = 
+                new Set([
+                    ...session.reasoning_chains.map(r => r.component),
+                    ...session.decisions.map(d => d.component || 'decision_engine')
+                ]).size;
+            
+            // Update timeline labels
+            document.getElementById('quarterTime').textContent = formatDuration(session.duration * 0.25);
+            document.getElementById('halfTime').textContent = formatDuration(session.duration * 0.5);
+            document.getElementById('threeQuarterTime').textContent = formatDuration(session.duration * 0.75);
+            document.getElementById('endTime').textContent = formatDuration(session.duration);
+            
+            // Build component map
+            buildComponentMap(session);
+            
+            // Generate timeline markers
+            generateTimelineMarkers(session);
+            
+            hideLoading();
+            
+            // Start replay
+            startReplay();
+        }
+        
+        function buildComponentMap(session) {
+            const componentMap = document.getElementById('componentMap');
+            componentMap.innerHTML = '';
+            
+            // Extract unique components
+            components = Array.from(new Set([
+                ...session.reasoning_chains.map(r => r.component),
+                ...session.decisions.map(d => d.component || 'decision_engine'),
+                ...session.interactions.map(i => i.participant),
+                ...session.system_events.map(s => s.component)
+            ]));
+            
+            components.forEach(component => {
+                const indicator = document.createElement('div');
+                indicator.className = 'component-indicator';
+                indicator.textContent = component.replace(/-/g, ' ').toUpperCase();
+                indicator.onclick = () => focusOnComponent(component);
+                componentMap.appendChild(indicator);
+            });
+        }
+        
+        function generateTimelineMarkers(session) {
+            const markers = document.getElementById('timelineMarkers');
+            markers.innerHTML = '';
+            
+            // Add decision markers
+            session.decisions.forEach(decision => {
+                const marker = document.createElement('div');
+                marker.className = 'timeline-marker';
+                marker.style.left = `${(decision.timestamp / session.duration) * 100}%`;
+                marker.title = `Decision: ${decision.question}`;
+                markers.appendChild(marker);
+            });
+            
+            // Add bookmark markers (if any)
+            bookmarks.forEach(bookmark => {
+                const marker = document.createElement('div');
+                marker.className = 'timeline-marker bookmark';
+                marker.style.left = `${(bookmark.time / session.duration) * 100}%`;
+                marker.title = `Bookmark: ${bookmark.name}`;
+                markers.appendChild(marker);
+            });
+        }
+        
+        function startReplay() {
+            if (!currentSession) return;
+            
+            // Request replay start from server
+            if (ws && ws.readyState === WebSocket.OPEN) {
+                ws.send(JSON.stringify({
+                    type: 'start_replay',
+                    sessionId: currentSession.id,
+                    options: {
+                        autoPlay: false,
+                        tracks: replayState.tracks
+                    }
+                }));
+            } else {
+                // Fallback: simulate replay locally
+                simulateLocalReplay();
+            }
+        }
+        
+        function simulateLocalReplay() {
+            // Local simulation for demo purposes
+            replayState.currentTime = 0;
+            updateDisplay();
+        }
+        
+        function updateReplayDisplay(data) {
+            replayState.currentTime = data.currentTime;
+            replayState.isPlaying = data.isPlaying;
+            replayState.speed = data.speed;
+            
+            updateDisplay();
+            
+            // Show events for current time
+            if (data.events) {
+                displayCurrentEvents(data.events);
+            }
+        }
+        
+        function updateDisplay() {
+            // Update time display
+            const current = formatDuration(replayState.currentTime);
+            const total = formatDuration(replayState.duration);
+            document.getElementById('timeDisplay').textContent = `${current} / ${total}`;
+            
+            // Update progress bar
+            const progress = (replayState.currentTime / replayState.duration) * 100;
+            document.getElementById('timelineProgress').style.width = `${progress}%`;
+            
+            // Update play button
+            const playBtn = document.getElementById('playBtn');
+            playBtn.textContent = replayState.isPlaying ? '⏸️' : '▶️';
+            
+            // Update speed buttons
+            document.querySelectorAll('.speed-btn').forEach(btn => {
+                btn.classList.remove('active');
+                if (parseFloat(btn.textContent) === replayState.speed) {
+                    btn.classList.add('active');
+                }
+            });
+            
+            // Get and display events for current time
+            if (currentSession) {
+                const events = getEventsAtTime(replayState.currentTime);
+                displayCurrentEvents(events);
+                updateComponentActivity(events);
+            }
+        }
+        
+        function getEventsAtTime(time) {
+            if (!currentSession) return { reasoning: [], decisions: [], interactions: [], system_events: [] };
+            
+            const tolerance = 1000; // 1 second tolerance
+            const events = {
+                reasoning: [],
+                decisions: [],
+                interactions: [],
+                system_events: []
+            };
+            
+            currentSession.reasoning_chains.forEach(entry => {
+                if (Math.abs(entry.timestamp - time) <= tolerance) {
+                    events.reasoning.push(entry);
+                }
+            });
+            
+            currentSession.decisions.forEach(entry => {
+                if (Math.abs(entry.timestamp - time) <= tolerance) {
+                    events.decisions.push(entry);
+                }
+            });
+            
+            currentSession.interactions.forEach(entry => {
+                if (Math.abs(entry.timestamp - time) <= tolerance) {
+                    events.interactions.push(entry);
+                }
+            });
+            
+            currentSession.system_events.forEach(entry => {
+                if (Math.abs(entry.timestamp - time) <= tolerance) {
+                    events.system_events.push(entry);
+                }
+            });
+            
+            return events;
+        }
+        
+        function displayCurrentEvents(events) {
+            const content = document.getElementById('reasoningContent');
+            content.innerHTML = '';
+            
+            // Display reasoning events
+            events.reasoning.forEach(reasoning => {
+                const container = document.createElement('div');
+                container.className = 'track-container active';
+                container.innerHTML = `
+                    <div class="track-header">
+                        <span class="track-type reasoning">🧠 Reasoning</span>
+                        <span class="track-timestamp">${formatDuration(reasoning.timestamp)}</span>
+                    </div>
+                    <div class="track-content reasoning">
+                        <div class="reasoning-text">${reasoning.reasoning_text}</div>
+                        <div class="confidence-bar">
+                            <div class="confidence-fill" style="width: ${reasoning.confidence * 100}%"></div>
+                        </div>
+                        <div style="font-size: 12px; color: #666;">
+                            Component: ${reasoning.component} • 
+                            Processing: ${reasoning.processing_time}ms • 
+                            Confidence: ${(reasoning.confidence * 100).toFixed(1)}%
+                        </div>
+                    </div>
+                `;
+                content.appendChild(container);
+            });
+            
+            // Display decision events
+            events.decisions.forEach(decision => {
+                const container = document.createElement('div');
+                container.className = 'track-container active';
+                container.innerHTML = `
+                    <div class="track-header">
+                        <span class="track-type decision">🎯 Decision</span>
+                        <span class="track-timestamp">${formatDuration(decision.timestamp)}</span>
+                    </div>
+                    <div class="track-content decision">
+                        <div class="reasoning-text"><strong>${decision.question}</strong></div>
+                        <div class="decision-options">
+                            ${decision.options.map(option => 
+                                `<span class="decision-option ${option === decision.chosen_option ? 'chosen' : ''}">${option}</span>`
+                            ).join('')}
+                        </div>
+                        <div class="reasoning-text">${decision.reasoning}</div>
+                        <div class="confidence-bar">
+                            <div class="confidence-fill" style="width: ${decision.confidence * 100}%"></div>
+                        </div>
+                    </div>
+                `;
+                content.appendChild(container);
+            });
+            
+            // Display interaction events
+            events.interactions.forEach(interaction => {
+                const container = document.createElement('div');
+                container.className = 'track-container active';
+                container.innerHTML = `
+                    <div class="track-header">
+                        <span class="track-type interaction">💬 Interaction</span>
+                        <span class="track-timestamp">${formatDuration(interaction.timestamp)}</span>
+                    </div>
+                    <div class="track-content interaction">
+                        <div class="reasoning-text">
+                            <strong>${interaction.participant}:</strong> ${interaction.content}
+                        </div>
+                        <div style="font-size: 12px; color: #666;">
+                            Response time: ${interaction.response_time}ms
+                            ${interaction.satisfaction_score ? ` • Satisfaction: ${(interaction.satisfaction_score * 100).toFixed(1)}%` : ''}
+                        </div>
+                    </div>
+                `;
+                content.appendChild(container);
+            });
+            
+            // Display system events
+            events.system_events.forEach(event => {
+                const container = document.createElement('div');
+                container.className = 'track-container active';
+                container.innerHTML = `
+                    <div class="track-header">
+                        <span class="track-type system">⚙️ System</span>
+                        <span class="track-timestamp">${formatDuration(event.timestamp)}</span>
+                    </div>
+                    <div class="track-content system">
+                        <div class="reasoning-text">${event.message}</div>
+                        <div style="font-size: 12px; color: #666;">
+                            Component: ${event.component} • Severity: ${event.severity}
+                        </div>
+                    </div>
+                `;
+                content.appendChild(container);
+            });
+            
+            // If no events, show empty state
+            if (Object.values(events).every(arr => arr.length === 0)) {
+                content.innerHTML = `
+                    <div style="text-align: center; padding: 40px; color: #666;">
+                        <div style="font-size: 48px; margin-bottom: 20px;">🤔</div>
+                        <div>No active reasoning at this moment</div>
+                        <div style="font-size: 12px; margin-top: 10px;">
+                            Use the timeline to navigate to reasoning steps
+                        </div>
+                    </div>
+                `;
+            }
+        }
+        
+        function updateComponentActivity(events) {
+            // Reset all component indicators
+            document.querySelectorAll('.component-indicator').forEach(indicator => {
+                indicator.classList.remove('active');
+            });
+            
+            // Highlight active components
+            const activeComponents = new Set();
+            Object.values(events).forEach(eventArray => {
+                eventArray.forEach(event => {
+                    if (event.component) {
+                        activeComponents.add(event.component);
+                    }
+                    if (event.participant) {
+                        activeComponents.add(event.participant);
+                    }
+                });
+            });
+            
+            activeComponents.forEach(component => {
+                const indicator = Array.from(document.querySelectorAll('.component-indicator'))
+                    .find(el => el.textContent.toLowerCase().includes(component.toLowerCase().replace(/-/g, ' ')));
+                if (indicator) {
+                    indicator.classList.add('active');
+                }
+            });
+        }
+        
+        // Playback controls
+        function togglePlayback() {
+            if (ws && ws.readyState === WebSocket.OPEN) {
+                ws.send(JSON.stringify({
+                    type: replayState.isPlaying ? 'pause_replay' : 'play_replay',
+                    sessionId: currentSession.id
+                }));
+            } else {
+                // Local simulation
+                replayState.isPlaying = !replayState.isPlaying;
+                if (replayState.isPlaying) {
+                    startLocalPlayback();
+                }
+                updateDisplay();
+            }
+        }
+        
+        function startLocalPlayback() {
+            if (!replayState.isPlaying) return;
+            
+            const interval = setInterval(() => {
+                if (!replayState.isPlaying) {
+                    clearInterval(interval);
+                    return;
+                }
+                
+                replayState.currentTime += 100 * replayState.speed;
+                
+                if (replayState.currentTime >= replayState.duration) {
+                    replayState.currentTime = replayState.duration;
+                    replayState.isPlaying = false;
+                    clearInterval(interval);
+                }
+                
+                updateDisplay();
+            }, 100);
+        }
+        
+        function seekRelative(deltaMs) {
+            const newTime = Math.max(0, Math.min(replayState.currentTime + deltaMs, replayState.duration));
+            seekToTime(newTime);
+        }
+        
+        function seekToTime(time) {
+            if (ws && ws.readyState === WebSocket.OPEN) {
+                ws.send(JSON.stringify({
+                    type: 'seek_replay',
+                    sessionId: currentSession.id,
+                    time: time
+                }));
+            } else {
+                // Local simulation
+                replayState.currentTime = time;
+                updateDisplay();
+            }
+        }
+        
+        function setSpeed(speed) {
+            replayState.speed = speed;
+            
+            if (ws && ws.readyState === WebSocket.OPEN) {
+                ws.send(JSON.stringify({
+                    type: 'set_replay_speed',
+                    sessionId: currentSession.id,
+                    speed: speed
+                }));
+            }
+            
+            updateDisplay();
+        }
+        
+        function handleTimelineClick(event) {
+            const rect = event.target.getBoundingClientRect();
+            const clickX = event.clientX - rect.left;
+            const progress = clickX / rect.width;
+            const time = progress * replayState.duration;
+            
+            seekToTime(time);
+        }
+        
+        // Interface controls
+        function addBookmark() {
+            const name = prompt('Bookmark name:', `Key moment at ${formatDuration(replayState.currentTime)}`);
+            if (!name) return;
+            
+            const bookmark = {
+                id: Date.now().toString(),
+                sessionId: currentSession.id,
+                name: name,
+                time: replayState.currentTime,
+                created: Date.now()
+            };
+            
+            bookmarks.push(bookmark);
+            addBookmarkToList(bookmark);
+            
+            if (ws && ws.readyState === WebSocket.OPEN) {
+                ws.send(JSON.stringify({
+                    type: 'add_bookmark',
+                    sessionId: currentSession.id,
+                    bookmark: bookmark
+                }));
+            }
+        }
+        
+        function addBookmarkToList(bookmark) {
+            const bookmarkList = document.getElementById('bookmarkList');
+            const item = document.createElement('div');
+            item.className = 'bookmark-item';
+            item.onclick = () => seekToTime(bookmark.time);
+            item.innerHTML = `
+                <span class="bookmark-name">${bookmark.name}</span>
+                <span class="bookmark-time">${formatDuration(bookmark.time)}</span>
+            `;
+            bookmarkList.appendChild(item);
+            
+            // Regenerate timeline markers
+            if (currentSession) {
+                generateTimelineMarkers(currentSession);
+            }
+        }
+        
+        function showExportPanel() {
+            document.getElementById('exportPanel').style.display = 'block';
+        }
+        
+        function hideExportPanel() {
+            document.getElementById('exportPanel').style.display = 'none';
+        }
+        
+        function exportSession() {
+            const format = document.querySelector('input[name="exportFormat"]:checked').value;
+            const includeBookmarks = document.getElementById('includeBookmarks').checked;
+            
+            if (ws && ws.readyState === WebSocket.OPEN) {
+                ws.send(JSON.stringify({
+                    type: 'export_session',
+                    sessionId: currentSession.id,
+                    format: format,
+                    options: {
+                        includeBookmarks: includeBookmarks
+                    }
+                }));
+            }
+            
+            hideExportPanel();
+            showLoading('Exporting session...');
+        }
+        
+        function handleExportComplete(data) {
+            hideLoading();
+            alert(`Session exported successfully to: ${data.filepath}`);
+        }
+        
+        function togglePerspective() {
+            // Switch between different viewing perspectives
+            console.log('Toggle perspective');
+        }
+        
+        function toggleTracks() {
+            // Toggle visibility of different event tracks
+            console.log('Toggle tracks');
+        }
+        
+        function toggleFullscreen() {
+            if (document.fullscreenElement) {
+                document.exitFullscreen();
+            } else {
+                document.documentElement.requestFullscreen();
+            }
+        }
+        
+        function focusOnComponent(component) {
+            console.log('Focus on component:', component);
+            // This would highlight all events from this component
+        }
+        
+        // Utility functions
+        function formatDuration(ms) {
+            const seconds = Math.floor((ms / 1000) % 60);
+            const minutes = Math.floor((ms / (1000 * 60)) % 60);
+            return `${minutes.toString().padStart(2, '0')}:${seconds.toString().padStart(2, '0')}`;
+        }
+        
+        function showLoading(message) {
+            const overlay = document.getElementById('loadingOverlay');
+            overlay.style.display = 'flex';
+            overlay.querySelector('.loading-text').textContent = message;
+        }
+        
+        function hideLoading() {
+            document.getElementById('loadingOverlay').style.display = 'none';
+        }
+        
+        function showError(message) {
+            hideLoading();
+            alert('Error: ' + message);
+        }
+        
+        async function showSessionSelector() {
+            // This would show a list of available sessions
+            // For now, load the demo session
+            await loadDemoSession();
+        }
+        
+        function setupKeyboardShortcuts() {
+            document.addEventListener('keydown', (e) => {
+                if (e.target.tagName === 'INPUT') return; // Ignore inputs
+                
+                switch (e.key) {
+                    case ' ':
+                        e.preventDefault();
+                        togglePlayback();
+                        break;
+                    case 'ArrowLeft':
+                        e.preventDefault();
+                        seekRelative(-5000);
+                        break;
+                    case 'ArrowRight':
+                        e.preventDefault();
+                        seekRelative(5000);
+                        break;
+                    case 'b':
+                        addBookmark();
+                        break;
+                    case 'f':
+                        toggleFullscreen();
+                        break;
+                    case '1':
+                        setSpeed(0.5);
+                        break;
+                    case '2':
+                        setSpeed(1.0);
+                        break;
+                    case '3':
+                        setSpeed(2.0);
+                        break;
+                    case '4':
+                        setSpeed(5.0);
+                        break;
+                }
+            });
+        }
+        
+        // Initialize when page loads
+        window.addEventListener('load', init);
+    </script>
+</body>
+</html>

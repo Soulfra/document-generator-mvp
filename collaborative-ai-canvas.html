@@ -1,0 +1,1102 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>🎨 Collaborative AI Canvas - Draw Together with AI</title>
+    <style>
+        body {
+            margin: 0;
+            padding: 0;
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            background: #0a0a0a;
+            color: #fff;
+            overflow: hidden;
+        }
+        
+        #app {
+            display: flex;
+            height: 100vh;
+        }
+        
+        /* Canvas Area */
+        #canvas-container {
+            flex: 1;
+            position: relative;
+            background: #1a1a1a;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+        
+        #main-canvas {
+            background: white;
+            cursor: crosshair;
+            box-shadow: 0 0 50px rgba(0, 255, 255, 0.3);
+        }
+        
+        /* AI Canvas Overlay */
+        #ai-canvas {
+            position: absolute;
+            pointer-events: none;
+            opacity: 0.7;
+        }
+        
+        /* Toolbar */
+        #toolbar {
+            position: absolute;
+            top: 20px;
+            left: 20px;
+            background: rgba(30, 30, 30, 0.95);
+            border-radius: 12px;
+            padding: 15px;
+            display: flex;
+            gap: 10px;
+            box-shadow: 0 4px 20px rgba(0, 0, 0, 0.5);
+            backdrop-filter: blur(10px);
+        }
+        
+        .tool-group {
+            display: flex;
+            gap: 5px;
+            padding: 0 10px;
+            border-right: 1px solid #333;
+        }
+        
+        .tool-group:last-child {
+            border-right: none;
+        }
+        
+        button {
+            background: #2a2a2a;
+            color: #fff;
+            border: 1px solid #333;
+            padding: 8px 15px;
+            border-radius: 6px;
+            cursor: pointer;
+            font-size: 14px;
+            transition: all 0.2s;
+        }
+        
+        button:hover {
+            background: #3a3a3a;
+            border-color: #00ff88;
+        }
+        
+        button.active {
+            background: #00ff88;
+            color: #000;
+        }
+        
+        /* Color Palette */
+        #color-palette {
+            position: absolute;
+            top: 90px;
+            left: 20px;
+            background: rgba(30, 30, 30, 0.95);
+            border-radius: 12px;
+            padding: 15px;
+            display: grid;
+            grid-template-columns: repeat(5, 40px);
+            gap: 5px;
+            backdrop-filter: blur(10px);
+        }
+        
+        .color-swatch {
+            width: 40px;
+            height: 40px;
+            border-radius: 6px;
+            cursor: pointer;
+            border: 2px solid transparent;
+            transition: all 0.2s;
+        }
+        
+        .color-swatch:hover {
+            transform: scale(1.1);
+            border-color: #fff;
+        }
+        
+        .color-swatch.active {
+            border-color: #00ff88;
+            box-shadow: 0 0 10px currentColor;
+        }
+        
+        /* AI Panel */
+        #ai-panel {
+            width: 350px;
+            background: #111;
+            border-left: 1px solid #333;
+            display: flex;
+            flex-direction: column;
+        }
+        
+        #ai-header {
+            padding: 20px;
+            border-bottom: 1px solid #333;
+            background: #1a1a1a;
+        }
+        
+        #ai-chat {
+            flex: 1;
+            overflow-y: auto;
+            padding: 20px;
+        }
+        
+        .ai-message {
+            margin-bottom: 15px;
+            padding: 10px 15px;
+            border-radius: 8px;
+            animation: slideIn 0.3s ease;
+        }
+        
+        .ai-message.user {
+            background: #2a2a2a;
+            margin-left: 20px;
+        }
+        
+        .ai-message.ai {
+            background: linear-gradient(135deg, #00ff88 0%, #00a8ff 100%);
+            color: #000;
+            margin-right: 20px;
+        }
+        
+        #ai-input-container {
+            padding: 20px;
+            border-top: 1px solid #333;
+        }
+        
+        #ai-input {
+            width: 100%;
+            background: #2a2a2a;
+            border: 1px solid #333;
+            color: #fff;
+            padding: 12px;
+            border-radius: 8px;
+            font-size: 14px;
+            resize: vertical;
+            min-height: 60px;
+        }
+        
+        /* Collaborative Cursors */
+        .remote-cursor {
+            position: absolute;
+            width: 20px;
+            height: 20px;
+            pointer-events: none;
+            z-index: 1000;
+            transition: all 0.1s linear;
+        }
+        
+        .remote-cursor::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 0;
+            height: 0;
+            border-left: 6px solid transparent;
+            border-right: 6px solid transparent;
+            border-top: 12px solid currentColor;
+            transform: rotate(-45deg);
+        }
+        
+        .remote-cursor .name {
+            position: absolute;
+            top: 20px;
+            left: 10px;
+            background: rgba(0, 0, 0, 0.8);
+            padding: 2px 8px;
+            border-radius: 4px;
+            font-size: 12px;
+            white-space: nowrap;
+        }
+        
+        /* Layer Panel */
+        #layer-panel {
+            position: absolute;
+            top: 20px;
+            right: 20px;
+            background: rgba(30, 30, 30, 0.95);
+            border-radius: 12px;
+            padding: 15px;
+            backdrop-filter: blur(10px);
+            min-width: 200px;
+        }
+        
+        .layer-item {
+            display: flex;
+            align-items: center;
+            padding: 8px;
+            margin-bottom: 5px;
+            background: #2a2a2a;
+            border-radius: 6px;
+            cursor: pointer;
+        }
+        
+        .layer-item.active {
+            background: #3a3a3a;
+            border: 1px solid #00ff88;
+        }
+        
+        .layer-preview {
+            width: 40px;
+            height: 30px;
+            background: white;
+            border: 1px solid #444;
+            margin-right: 10px;
+            border-radius: 4px;
+        }
+        
+        /* Connection Status */
+        #connection-status {
+            position: absolute;
+            bottom: 20px;
+            left: 20px;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            background: rgba(30, 30, 30, 0.95);
+            padding: 10px 20px;
+            border-radius: 8px;
+            backdrop-filter: blur(10px);
+        }
+        
+        .status-dot {
+            width: 10px;
+            height: 10px;
+            border-radius: 50%;
+            background: #ff3333;
+        }
+        
+        .status-dot.connected {
+            background: #00ff88;
+            animation: pulse 2s infinite;
+        }
+        
+        @keyframes pulse {
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0.5; }
+        }
+        
+        @keyframes slideIn {
+            from {
+                opacity: 0;
+                transform: translateY(10px);
+            }
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+        
+        /* AI Suggestions */
+        #ai-suggestions {
+            position: absolute;
+            bottom: 100px;
+            left: 20px;
+            background: rgba(30, 30, 30, 0.95);
+            border-radius: 12px;
+            padding: 15px;
+            backdrop-filter: blur(10px);
+            max-width: 300px;
+            display: none;
+        }
+        
+        #ai-suggestions.active {
+            display: block;
+        }
+        
+        .suggestion-item {
+            padding: 8px 12px;
+            margin-bottom: 5px;
+            background: #2a2a2a;
+            border-radius: 6px;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+        
+        .suggestion-item:hover {
+            background: #3a3a3a;
+            transform: translateX(5px);
+        }
+        
+        /* Brush Preview */
+        #brush-preview {
+            position: absolute;
+            pointer-events: none;
+            border-radius: 50%;
+            border: 2px solid rgba(255, 255, 255, 0.5);
+            transform: translate(-50%, -50%);
+            transition: all 0.1s;
+        }
+    </style>
+</head>
+<body>
+    <div id="app">
+        <!-- Canvas Container -->
+        <div id="canvas-container">
+            <canvas id="main-canvas" width="1200" height="800"></canvas>
+            <canvas id="ai-canvas" width="1200" height="800"></canvas>
+            <div id="brush-preview"></div>
+            
+            <!-- Toolbar -->
+            <div id="toolbar">
+                <div class="tool-group">
+                    <button class="tool active" data-tool="brush">🖌️ Brush</button>
+                    <button class="tool" data-tool="eraser">🧹 Eraser</button>
+                    <button class="tool" data-tool="shape">⬜ Shape</button>
+                    <button class="tool" data-tool="text">📝 Text</button>
+                </div>
+                
+                <div class="tool-group">
+                    <button id="btn-undo">↩️ Undo</button>
+                    <button id="btn-redo">↪️ Redo</button>
+                    <button id="btn-clear">🗑️ Clear</button>
+                </div>
+                
+                <div class="tool-group">
+                    <button id="btn-ai-assist">🤖 AI Assist</button>
+                    <button id="btn-collab">👥 Collaborate</button>
+                    <button id="btn-export">💾 Export</button>
+                </div>
+            </div>
+            
+            <!-- Color Palette -->
+            <div id="color-palette">
+                <div class="color-swatch active" style="background: #000000" data-color="#000000"></div>
+                <div class="color-swatch" style="background: #FF0000" data-color="#FF0000"></div>
+                <div class="color-swatch" style="background: #00FF00" data-color="#00FF00"></div>
+                <div class="color-swatch" style="background: #0000FF" data-color="#0000FF"></div>
+                <div class="color-swatch" style="background: #FFFF00" data-color="#FFFF00"></div>
+                <div class="color-swatch" style="background: #FF00FF" data-color="#FF00FF"></div>
+                <div class="color-swatch" style="background: #00FFFF" data-color="#00FFFF"></div>
+                <div class="color-swatch" style="background: #FFFFFF" data-color="#FFFFFF"></div>
+                <div class="color-swatch" style="background: #808080" data-color="#808080"></div>
+                <div class="color-swatch" style="background: #FFA500" data-color="#FFA500"></div>
+            </div>
+            
+            <!-- Layer Panel -->
+            <div id="layer-panel">
+                <h3 style="margin: 0 0 10px 0; font-size: 16px;">Layers</h3>
+                <div class="layer-item active">
+                    <div class="layer-preview"></div>
+                    <span>User Layer</span>
+                </div>
+                <div class="layer-item">
+                    <div class="layer-preview" style="background: #e3f2fd;"></div>
+                    <span>AI Layer</span>
+                </div>
+                <div class="layer-item">
+                    <div class="layer-preview" style="background: #fff3e0;"></div>
+                    <span>Collab Layer</span>
+                </div>
+            </div>
+            
+            <!-- Connection Status -->
+            <div id="connection-status">
+                <div class="status-dot" id="status-dot"></div>
+                <span id="status-text">Connecting...</span>
+                <span id="peer-count">(0 peers)</span>
+            </div>
+            
+            <!-- AI Suggestions -->
+            <div id="ai-suggestions">
+                <h4 style="margin: 0 0 10px 0;">AI Suggestions</h4>
+                <div class="suggestion-item">Complete this shape</div>
+                <div class="suggestion-item">Add shading</div>
+                <div class="suggestion-item">Mirror horizontally</div>
+                <div class="suggestion-item">Generate background</div>
+            </div>
+        </div>
+        
+        <!-- AI Panel -->
+        <div id="ai-panel">
+            <div id="ai-header">
+                <h2 style="margin: 0; font-size: 20px;">🤖 AI Assistant</h2>
+                <p style="margin: 5px 0 0 0; opacity: 0.7; font-size: 14px;">Draw together with AI</p>
+            </div>
+            
+            <div id="ai-chat">
+                <div class="ai-message ai">
+                    👋 Hi! I'm your AI drawing assistant. I can help you:
+                    <ul style="margin: 10px 0; padding-left: 20px;">
+                        <li>Complete drawings</li>
+                        <li>Suggest improvements</li>
+                        <li>Generate ideas</li>
+                        <li>Create variations</li>
+                    </ul>
+                    Just draw something and ask me for help!
+                </div>
+            </div>
+            
+            <div id="ai-input-container">
+                <textarea id="ai-input" placeholder="Ask AI to draw, complete, or modify..."></textarea>
+            </div>
+        </div>
+    </div>
+    
+    <script>
+        // 🎨 COLLABORATIVE AI CANVAS SYSTEM
+        
+        class CollaborativeCanvas {
+            constructor() {
+                this.canvas = document.getElementById('main-canvas');
+                this.ctx = this.canvas.getContext('2d');
+                this.aiCanvas = document.getElementById('ai-canvas');
+                this.aiCtx = this.aiCanvas.getContext('2d');
+                
+                // Drawing state
+                this.isDrawing = false;
+                this.currentTool = 'brush';
+                this.currentColor = '#000000';
+                this.brushSize = 5;
+                this.history = [];
+                this.historyStep = -1;
+                
+                // Collaboration
+                this.peers = new Map();
+                this.myId = this.generateId();
+                this.websocket = null;
+                this.rtcConnections = new Map();
+                
+                // AI Integration
+                this.aiAssistActive = false;
+                this.aiSuggestions = [];
+                
+                this.initialize();
+            }
+            
+            initialize() {
+                this.setupCanvas();
+                this.setupTools();
+                this.setupColorPalette();
+                this.setupWebSocket();
+                this.setupAI();
+                this.setupKeyboardShortcuts();
+                
+                console.log('🎨 Collaborative AI Canvas initialized!');
+            }
+            
+            setupCanvas() {
+                // Mouse events
+                this.canvas.addEventListener('mousedown', this.startDrawing.bind(this));
+                this.canvas.addEventListener('mousemove', this.draw.bind(this));
+                this.canvas.addEventListener('mouseup', this.stopDrawing.bind(this));
+                this.canvas.addEventListener('mouseleave', this.stopDrawing.bind(this));
+                
+                // Touch events
+                this.canvas.addEventListener('touchstart', this.handleTouch.bind(this));
+                this.canvas.addEventListener('touchmove', this.handleTouch.bind(this));
+                this.canvas.addEventListener('touchend', this.stopDrawing.bind(this));
+                
+                // Brush preview
+                this.canvas.addEventListener('mousemove', this.updateBrushPreview.bind(this));
+                
+                // Initial save state
+                this.saveHistory();
+            }
+            
+            setupTools() {
+                document.querySelectorAll('.tool').forEach(btn => {
+                    btn.addEventListener('click', (e) => {
+                        document.querySelectorAll('.tool').forEach(b => b.classList.remove('active'));
+                        btn.classList.add('active');
+                        this.currentTool = btn.dataset.tool;
+                    });
+                });
+                
+                // Action buttons
+                document.getElementById('btn-undo').addEventListener('click', () => this.undo());
+                document.getElementById('btn-redo').addEventListener('click', () => this.redo());
+                document.getElementById('btn-clear').addEventListener('click', () => this.clearCanvas());
+                document.getElementById('btn-ai-assist').addEventListener('click', () => this.toggleAIAssist());
+                document.getElementById('btn-collab').addEventListener('click', () => this.inviteCollaborators());
+                document.getElementById('btn-export').addEventListener('click', () => this.exportCanvas());
+            }
+            
+            setupColorPalette() {
+                document.querySelectorAll('.color-swatch').forEach(swatch => {
+                    swatch.addEventListener('click', (e) => {
+                        document.querySelectorAll('.color-swatch').forEach(s => s.classList.remove('active'));
+                        swatch.classList.add('active');
+                        this.currentColor = swatch.dataset.color;
+                    });
+                });
+            }
+            
+            setupWebSocket() {
+                // Connect to collaboration server
+                this.websocket = new WebSocket('ws://localhost:7781');
+                
+                this.websocket.onopen = () => {
+                    console.log('🌐 Connected to collaboration server');
+                    this.updateConnectionStatus(true);
+                    
+                    // Announce presence
+                    this.sendMessage({
+                        type: 'join',
+                        id: this.myId,
+                        name: `User ${this.myId.substring(0, 4)}`
+                    });
+                };
+                
+                this.websocket.onmessage = (event) => {
+                    const data = JSON.parse(event.data);
+                    this.handleCollaborationMessage(data);
+                };
+                
+                this.websocket.onerror = (error) => {
+                    console.error('WebSocket error:', error);
+                    this.updateConnectionStatus(false);
+                };
+                
+                this.websocket.onclose = () => {
+                    console.log('Disconnected from collaboration server');
+                    this.updateConnectionStatus(false);
+                    
+                    // Attempt reconnection
+                    setTimeout(() => this.setupWebSocket(), 5000);
+                };
+            }
+            
+            setupAI() {
+                const aiInput = document.getElementById('ai-input');
+                
+                aiInput.addEventListener('keypress', (e) => {
+                    if (e.key === 'Enter' && !e.shiftKey) {
+                        e.preventDefault();
+                        this.sendAIMessage(aiInput.value);
+                        aiInput.value = '';
+                    }
+                });
+            }
+            
+            setupKeyboardShortcuts() {
+                document.addEventListener('keydown', (e) => {
+                    if (e.ctrlKey || e.metaKey) {
+                        switch(e.key) {
+                            case 'z':
+                                e.preventDefault();
+                                e.shiftKey ? this.redo() : this.undo();
+                                break;
+                            case 's':
+                                e.preventDefault();
+                                this.exportCanvas();
+                                break;
+                        }
+                    }
+                });
+            }
+            
+            // Drawing functions
+            startDrawing(e) {
+                this.isDrawing = true;
+                const rect = this.canvas.getBoundingClientRect();
+                const x = e.clientX - rect.left;
+                const y = e.clientY - rect.top;
+                
+                this.ctx.beginPath();
+                this.ctx.moveTo(x, y);
+                
+                // Broadcast drawing start
+                this.broadcastDrawing({
+                    type: 'drawStart',
+                    x, y,
+                    tool: this.currentTool,
+                    color: this.currentColor,
+                    size: this.brushSize
+                });
+            }
+            
+            draw(e) {
+                if (!this.isDrawing) return;
+                
+                const rect = this.canvas.getBoundingClientRect();
+                const x = e.clientX - rect.left;
+                const y = e.clientY - rect.top;
+                
+                this.ctx.lineWidth = this.brushSize;
+                this.ctx.lineCap = 'round';
+                this.ctx.strokeStyle = this.currentTool === 'eraser' ? '#FFFFFF' : this.currentColor;
+                this.ctx.globalCompositeOperation = this.currentTool === 'eraser' ? 'destination-out' : 'source-over';
+                
+                this.ctx.lineTo(x, y);
+                this.ctx.stroke();
+                
+                // Broadcast drawing
+                this.broadcastDrawing({
+                    type: 'draw',
+                    x, y
+                });
+                
+                // AI assistance
+                if (this.aiAssistActive) {
+                    this.requestAIAssistance(x, y);
+                }
+            }
+            
+            stopDrawing() {
+                if (this.isDrawing) {
+                    this.isDrawing = false;
+                    this.ctx.beginPath();
+                    this.saveHistory();
+                    
+                    // Broadcast drawing end
+                    this.broadcastDrawing({ type: 'drawEnd' });
+                }
+            }
+            
+            handleTouch(e) {
+                e.preventDefault();
+                const touch = e.touches[0];
+                const mouseEvent = new MouseEvent(e.type === 'touchstart' ? 'mousedown' : 
+                                                e.type === 'touchmove' ? 'mousemove' : 'mouseup', {
+                    clientX: touch.clientX,
+                    clientY: touch.clientY
+                });
+                this.canvas.dispatchEvent(mouseEvent);
+            }
+            
+            updateBrushPreview(e) {
+                const preview = document.getElementById('brush-preview');
+                const rect = this.canvas.getBoundingClientRect();
+                
+                preview.style.width = this.brushSize * 2 + 'px';
+                preview.style.height = this.brushSize * 2 + 'px';
+                preview.style.left = e.clientX + 'px';
+                preview.style.top = e.clientY + 'px';
+                preview.style.borderColor = this.currentColor;
+            }
+            
+            // History management
+            saveHistory() {
+                this.historyStep++;
+                if (this.historyStep < this.history.length) {
+                    this.history.length = this.historyStep;
+                }
+                this.history.push(this.canvas.toDataURL());
+            }
+            
+            undo() {
+                if (this.historyStep > 0) {
+                    this.historyStep--;
+                    this.restoreCanvas(this.history[this.historyStep]);
+                }
+            }
+            
+            redo() {
+                if (this.historyStep < this.history.length - 1) {
+                    this.historyStep++;
+                    this.restoreCanvas(this.history[this.historyStep]);
+                }
+            }
+            
+            restoreCanvas(dataUrl) {
+                const img = new Image();
+                img.onload = () => {
+                    this.ctx.clearRect(0, 0, this.canvas.width, this.canvas.height);
+                    this.ctx.drawImage(img, 0, 0);
+                };
+                img.src = dataUrl;
+            }
+            
+            clearCanvas() {
+                this.ctx.clearRect(0, 0, this.canvas.width, this.canvas.height);
+                this.aiCtx.clearRect(0, 0, this.aiCanvas.width, this.aiCanvas.height);
+                this.saveHistory();
+            }
+            
+            // Collaboration functions
+            handleCollaborationMessage(data) {
+                switch(data.type) {
+                    case 'peerJoined':
+                        this.addPeer(data.peer);
+                        break;
+                    case 'peerLeft':
+                        this.removePeer(data.peerId);
+                        break;
+                    case 'drawing':
+                        this.renderPeerDrawing(data);
+                        break;
+                    case 'rtcOffer':
+                        this.handleRTCOffer(data);
+                        break;
+                    case 'rtcAnswer':
+                        this.handleRTCAnswer(data);
+                        break;
+                    case 'rtcIceCandidate':
+                        this.handleIceCandidate(data);
+                        break;
+                }
+            }
+            
+            addPeer(peer) {
+                this.peers.set(peer.id, peer);
+                this.updatePeerCount();
+                
+                // Create cursor for peer
+                const cursor = document.createElement('div');
+                cursor.className = 'remote-cursor';
+                cursor.id = `cursor-${peer.id}`;
+                cursor.style.color = this.generatePeerColor(peer.id);
+                cursor.innerHTML = `<span class="name">${peer.name}</span>`;
+                document.getElementById('canvas-container').appendChild(cursor);
+                
+                // Establish WebRTC connection
+                this.createRTCConnection(peer.id);
+            }
+            
+            removePeer(peerId) {
+                this.peers.delete(peerId);
+                this.updatePeerCount();
+                
+                // Remove cursor
+                const cursor = document.getElementById(`cursor-${peerId}`);
+                if (cursor) cursor.remove();
+                
+                // Close RTC connection
+                const connection = this.rtcConnections.get(peerId);
+                if (connection) {
+                    connection.close();
+                    this.rtcConnections.delete(peerId);
+                }
+            }
+            
+            renderPeerDrawing(data) {
+                const peer = this.peers.get(data.peerId);
+                if (!peer) return;
+                
+                // Update cursor position
+                const cursor = document.getElementById(`cursor-${data.peerId}`);
+                if (cursor && data.x !== undefined && data.y !== undefined) {
+                    const rect = this.canvas.getBoundingClientRect();
+                    cursor.style.left = rect.left + data.x + 'px';
+                    cursor.style.top = rect.top + data.y + 'px';
+                }
+                
+                // Render drawing
+                if (data.drawingType === 'drawStart') {
+                    peer.path = new Path2D();
+                    peer.path.moveTo(data.x, data.y);
+                    peer.tool = data.tool;
+                    peer.color = data.color;
+                    peer.size = data.size;
+                } else if (data.drawingType === 'draw' && peer.path) {
+                    peer.path.lineTo(data.x, data.y);
+                    
+                    this.ctx.save();
+                    this.ctx.lineWidth = peer.size;
+                    this.ctx.lineCap = 'round';
+                    this.ctx.strokeStyle = peer.color;
+                    this.ctx.globalCompositeOperation = peer.tool === 'eraser' ? 'destination-out' : 'source-over';
+                    this.ctx.stroke(peer.path);
+                    this.ctx.restore();
+                }
+            }
+            
+            broadcastDrawing(data) {
+                if (this.websocket && this.websocket.readyState === WebSocket.OPEN) {
+                    this.sendMessage({
+                        type: 'drawing',
+                        peerId: this.myId,
+                        drawingType: data.type,
+                        ...data
+                    });
+                }
+            }
+            
+            // WebRTC setup for high-performance streaming
+            createRTCConnection(peerId) {
+                const config = {
+                    iceServers: [{ urls: 'stun:stun.l.google.com:19302' }]
+                };
+                
+                const connection = new RTCPeerConnection(config);
+                this.rtcConnections.set(peerId, connection);
+                
+                // Create data channel for low-latency drawing
+                const dataChannel = connection.createDataChannel('drawing', {
+                    ordered: false,
+                    maxRetransmits: 0
+                });
+                
+                dataChannel.onopen = () => {
+                    console.log(`📡 P2P channel open with ${peerId}`);
+                };
+                
+                connection.onicecandidate = (event) => {
+                    if (event.candidate) {
+                        this.sendMessage({
+                            type: 'rtcIceCandidate',
+                            targetId: peerId,
+                            candidate: event.candidate
+                        });
+                    }
+                };
+                
+                // Create offer
+                connection.createOffer().then(offer => {
+                    connection.setLocalDescription(offer);
+                    this.sendMessage({
+                        type: 'rtcOffer',
+                        targetId: peerId,
+                        offer: offer
+                    });
+                });
+            }
+            
+            // AI Integration
+            toggleAIAssist() {
+                this.aiAssistActive = !this.aiAssistActive;
+                document.getElementById('btn-ai-assist').classList.toggle('active', this.aiAssistActive);
+                document.getElementById('ai-suggestions').classList.toggle('active', this.aiAssistActive);
+                
+                if (this.aiAssistActive) {
+                    this.addAIMessage('AI Assist activated! I\'ll help enhance your drawings in real-time.');
+                }
+            }
+            
+            sendAIMessage(message) {
+                if (!message.trim()) return;
+                
+                // Add user message
+                this.addUserMessage(message);
+                
+                // Process AI request
+                this.processAIRequest(message);
+            }
+            
+            addUserMessage(message) {
+                const chat = document.getElementById('ai-chat');
+                const messageEl = document.createElement('div');
+                messageEl.className = 'ai-message user';
+                messageEl.textContent = message;
+                chat.appendChild(messageEl);
+                chat.scrollTop = chat.scrollHeight;
+            }
+            
+            addAIMessage(message) {
+                const chat = document.getElementById('ai-chat');
+                const messageEl = document.createElement('div');
+                messageEl.className = 'ai-message ai';
+                messageEl.innerHTML = message;
+                chat.appendChild(messageEl);
+                chat.scrollTop = chat.scrollHeight;
+            }
+            
+            processAIRequest(request) {
+                // Simulate AI processing
+                setTimeout(() => {
+                    // Analyze request
+                    if (request.toLowerCase().includes('complete')) {
+                        this.aiCompleteDrawing();
+                    } else if (request.toLowerCase().includes('suggest')) {
+                        this.aiSuggestImprovements();
+                    } else if (request.toLowerCase().includes('background')) {
+                        this.aiGenerateBackground();
+                    } else {
+                        this.aiGeneralResponse(request);
+                    }
+                }, 1000);
+            }
+            
+            aiCompleteDrawing() {
+                this.addAIMessage('Analyzing your drawing and completing it...');
+                
+                // Simulate AI drawing on AI layer
+                this.aiCtx.strokeStyle = 'rgba(0, 150, 255, 0.5)';
+                this.aiCtx.lineWidth = 3;
+                this.aiCtx.beginPath();
+                
+                // Draw some completion shapes
+                const centerX = this.aiCanvas.width / 2;
+                const centerY = this.aiCanvas.height / 2;
+                
+                this.aiCtx.arc(centerX, centerY, 100, 0, Math.PI * 2);
+                this.aiCtx.stroke();
+                
+                this.addAIMessage('✨ I\'ve added some suggested completions in blue. You can accept or modify them!');
+            }
+            
+            aiSuggestImprovements() {
+                const suggestions = [
+                    'Add shading to create depth',
+                    'Try using complementary colors',
+                    'Add highlights for a 3D effect',
+                    'Consider adding a background pattern',
+                    'Use gradients for smoother transitions'
+                ];
+                
+                const selected = suggestions[Math.floor(Math.random() * suggestions.length)];
+                this.addAIMessage(`💡 Suggestion: ${selected}`);
+            }
+            
+            aiGenerateBackground() {
+                this.addAIMessage('🎨 Generating background pattern...');
+                
+                // Create gradient background on AI layer
+                const gradient = this.aiCtx.createLinearGradient(0, 0, this.aiCanvas.width, this.aiCanvas.height);
+                gradient.addColorStop(0, 'rgba(255, 0, 150, 0.1)');
+                gradient.addColorStop(0.5, 'rgba(0, 255, 255, 0.1)');
+                gradient.addColorStop(1, 'rgba(255, 255, 0, 0.1)');
+                
+                this.aiCtx.fillStyle = gradient;
+                this.aiCtx.fillRect(0, 0, this.aiCanvas.width, this.aiCanvas.height);
+                
+                this.addAIMessage('Background generated! You can adjust the opacity or clear it if needed.');
+            }
+            
+            aiGeneralResponse(request) {
+                this.addAIMessage(`I understand you want to: "${request}". Let me help you with that...`);
+                
+                // Simulate some AI drawing
+                setTimeout(() => {
+                    this.aiCtx.strokeStyle = 'rgba(0, 255, 100, 0.3)';
+                    this.aiCtx.lineWidth = 2;
+                    
+                    for (let i = 0; i < 5; i++) {
+                        this.aiCtx.beginPath();
+                        this.aiCtx.moveTo(
+                            Math.random() * this.aiCanvas.width,
+                            Math.random() * this.aiCanvas.height
+                        );
+                        this.aiCtx.lineTo(
+                            Math.random() * this.aiCanvas.width,
+                            Math.random() * this.aiCanvas.height
+                        );
+                        this.aiCtx.stroke();
+                    }
+                    
+                    this.addAIMessage('I\'ve added some elements based on your request. Feel free to modify or build upon them!');
+                }, 500);
+            }
+            
+            requestAIAssistance(x, y) {
+                // Throttle AI requests
+                if (!this.aiAssistTimeout) {
+                    this.aiAssistTimeout = setTimeout(() => {
+                        // Analyze drawing pattern and provide real-time assistance
+                        this.analyzeDrawingPattern(x, y);
+                        this.aiAssistTimeout = null;
+                    }, 500);
+                }
+            }
+            
+            analyzeDrawingPattern(x, y) {
+                // Simple pattern detection
+                const imageData = this.ctx.getImageData(x - 50, y - 50, 100, 100);
+                const pixels = imageData.data;
+                
+                // Count non-white pixels
+                let filledPixels = 0;
+                for (let i = 0; i < pixels.length; i += 4) {
+                    if (pixels[i] < 250 || pixels[i+1] < 250 || pixels[i+2] < 250) {
+                        filledPixels++;
+                    }
+                }
+                
+                // Provide contextual assistance based on density
+                if (filledPixels > 5000) {
+                    // Dense area - might be shading
+                    this.showAISuggestion('Try using a lighter touch for smoother shading');
+                } else if (filledPixels < 1000) {
+                    // Sparse area - might be outlining
+                    this.showAISuggestion('Consider adding more detail here');
+                }
+            }
+            
+            showAISuggestion(suggestion) {
+                // Show temporary suggestion tooltip
+                const tooltip = document.createElement('div');
+                tooltip.style.cssText = `
+                    position: absolute;
+                    background: rgba(0, 0, 0, 0.8);
+                    color: white;
+                    padding: 8px 12px;
+                    border-radius: 6px;
+                    font-size: 14px;
+                    top: 50%;
+                    left: 50%;
+                    transform: translate(-50%, -50%);
+                    z-index: 1000;
+                    pointer-events: none;
+                `;
+                tooltip.textContent = suggestion;
+                document.getElementById('canvas-container').appendChild(tooltip);
+                
+                setTimeout(() => tooltip.remove(), 3000);
+            }
+            
+            // Utility functions
+            sendMessage(data) {
+                if (this.websocket && this.websocket.readyState === WebSocket.OPEN) {
+                    this.websocket.send(JSON.stringify({
+                        ...data,
+                        senderId: this.myId,
+                        timestamp: Date.now()
+                    }));
+                }
+            }
+            
+            updateConnectionStatus(connected) {
+                const dot = document.getElementById('status-dot');
+                const text = document.getElementById('status-text');
+                
+                dot.classList.toggle('connected', connected);
+                text.textContent = connected ? 'Connected' : 'Disconnected';
+            }
+            
+            updatePeerCount() {
+                document.getElementById('peer-count').textContent = `(${this.peers.size} peers)`;
+            }
+            
+            generateId() {
+                return Math.random().toString(36).substring(2, 15);
+            }
+            
+            generatePeerColor(peerId) {
+                const colors = ['#FF6B6B', '#4ECDC4', '#45B7D1', '#FFA07A', '#98D8C8', '#F7DC6F'];
+                const index = parseInt(peerId, 36) % colors.length;
+                return colors[index];
+            }
+            
+            inviteCollaborators() {
+                const link = `${window.location.origin}?room=${this.myId}`;
+                navigator.clipboard.writeText(link).then(() => {
+                    alert(`Collaboration link copied to clipboard!\n\n${link}`);
+                });
+            }
+            
+            exportCanvas() {
+                // Merge both canvases
+                const exportCanvas = document.createElement('canvas');
+                exportCanvas.width = this.canvas.width;
+                exportCanvas.height = this.canvas.height;
+                const exportCtx = exportCanvas.getContext('2d');
+                
+                // Draw main canvas
+                exportCtx.drawImage(this.canvas, 0, 0);
+                
+                // Draw AI canvas on top
+                exportCtx.drawImage(this.aiCanvas, 0, 0);
+                
+                // Download
+                const link = document.createElement('a');
+                link.download = `collaborative-drawing-${Date.now()}.png`;
+                link.href = exportCanvas.toDataURL();
+                link.click();
+            }
+        }
+        
+        // Initialize the collaborative canvas
+        const canvas = new CollaborativeCanvas();
+        
+        // Check for room parameter
+        const urlParams = new URLSearchParams(window.location.search);
+        const roomId = urlParams.get('room');
+        if (roomId) {
+            console.log(`Joining room: ${roomId}`);
+        }
+    </script>
+</body>
+</html>

@@ -1,0 +1,820 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>🏴‍☠️ Unified 3D Ship Game - Neural Network Enabled</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+    <style>
+        body { 
+            margin: 0; 
+            padding: 0; 
+            overflow: hidden; 
+            background: linear-gradient(to bottom, #001122 0%, #003366 50%, #006699 100%);
+            font-family: 'Courier New', monospace;
+        }
+        canvas { display: block; }
+        
+        #ui { 
+            position: absolute; 
+            top: 10px; 
+            left: 10px; 
+            color: #00ff88; 
+            z-index: 100;
+            background: rgba(0,0,0,0.8);
+            padding: 15px;
+            border-radius: 10px;
+            border: 2px solid #00ff88;
+            box-shadow: 0 0 20px rgba(0,255,136,0.3);
+        }
+        
+        #ship-selector {
+            position: absolute;
+            top: 10px;
+            right: 10px;
+            color: #ffaa00;
+            background: rgba(0,0,0,0.8);
+            padding: 15px;
+            border-radius: 10px;
+            border: 2px solid #ffaa00;
+            box-shadow: 0 0 20px rgba(255,170,0,0.3);
+        }
+        
+        #perspective-control {
+            position: absolute;
+            bottom: 10px;
+            right: 10px;
+            color: #ff6666;
+            background: rgba(0,0,0,0.8);
+            padding: 10px;
+            border-radius: 8px;
+            border: 2px solid #ff6666;
+            font-size: 12px;
+        }
+        
+        #controls {
+            position: absolute;
+            bottom: 10px;
+            left: 10px;
+            color: white;
+            background: rgba(0,0,0,0.8);
+            padding: 10px;
+            border-radius: 8px;
+            font-size: 12px;
+            border: 1px solid #444;
+        }
+        
+        #neural-status {
+            position: absolute;
+            top: 50%;
+            left: 10px;
+            color: #00ffff;
+            background: rgba(0,0,0,0.8);
+            padding: 10px;
+            border-radius: 8px;
+            font-size: 11px;
+            border: 1px solid #00ffff;
+            transform: translateY(-50%);
+        }
+        
+        .btn {
+            background: rgba(0,255,136,0.2);
+            border: 1px solid #00ff88;
+            color: #00ff88;
+            padding: 5px 10px;
+            margin: 2px;
+            cursor: pointer;
+            border-radius: 4px;
+            font-family: inherit;
+            font-size: 11px;
+        }
+        
+        .btn:hover {
+            background: rgba(0,255,136,0.4);
+        }
+        
+        .btn.active {
+            background: rgba(0,255,136,0.6);
+            color: black;
+        }
+        
+        .ship-option {
+            background: rgba(255,170,0,0.2);
+            border: 1px solid #ffaa00;
+            color: #ffaa00;
+            padding: 8px;
+            margin: 3px 0;
+            cursor: pointer;
+            border-radius: 4px;
+            font-size: 11px;
+        }
+        
+        .ship-option:hover {
+            background: rgba(255,170,0,0.4);
+        }
+        
+        .ship-option.selected {
+            background: rgba(255,170,0,0.6);
+            color: black;
+        }
+    </style>
+</head>
+<body>
+    <div id="ui">
+        <h2>🏴‍☠️ Ship Command</h2>
+        <div>Fleet: <span id="fleet-count">0</span></div>
+        <div>Score: <span id="score">0</span></div>
+        <div>Layer: <span id="current-layer">Surface</span></div>
+        <div>Neural: <span id="neural-status">Connecting...</span></div>
+        <div>FPS: <span id="fps">60</span></div>
+    </div>
+    
+    <div id="ship-selector">
+        <h3>🚢 Ship Selection</h3>
+        <div class="ship-option" data-ship="sloop">⛵ Pirate Sloop</div>
+        <div class="ship-option" data-ship="frigate">🏴‍☠️ Royal Frigate</div>
+        <div class="ship-option" data-ship="galleon">🏰 Spanish Galleon</div>
+        <div class="ship-option" data-ship="submarine">🚇 Steampunk Sub</div>
+        <div class="ship-option" data-ship="yacht">🛥️ Luxury Yacht</div>
+        <div class="ship-option" data-ship="destroyer">⚔️ Modern Destroyer</div>
+        <button id="spawn-ship" class="btn">Spawn Ship</button>
+    </div>
+    
+    <div id="perspective-control">
+        <h4>🧠 Neural Layers</h4>
+        <button class="btn" data-layer="sonar">Sonar</button>
+        <button class="btn active" data-layer="surface">Surface</button>
+        <button class="btn" data-layer="aerial">Aerial</button>
+        <button class="btn" data-layer="satellite">Satellite</button>
+    </div>
+    
+    <div id="controls">
+        <div><strong>⚓ Ship Controls:</strong></div>
+        <div>WASD - Navigate</div>
+        <div>Mouse - Look around</div>
+        <div>SPACE - Rise</div>
+        <div>SHIFT - Dive</div>
+        <div>Click Ships - Select</div>
+        <div>ESC - Pause</div>
+    </div>
+    
+    <div id="neural-status">
+        <div><strong>🧠 Neural Network</strong></div>
+        <div>Sea Layer: <span id="sea-detection">0</span></div>
+        <div>Air Layer: <span id="air-detection">0</span></div>
+        <div>Sat Layer: <span id="sat-detection">0</span></div>
+        <div>Analysis: <span id="neural-analysis">Idle</span></div>
+    </div>
+    
+    <div id="battle-control" style="position: absolute; top: 50%; right: 10px; transform: translateY(-50%); color: #ff8800; background: rgba(0,0,0,0.8); padding: 15px; border-radius: 10px; border: 2px solid #ff8800; font-size: 12px;">
+        <div><strong>⚔️ ShipRekt Battles</strong></div>
+        <div>Active: <span id="active-battles">0</span></div>
+        <div>SaveOrSink: <span id="saveorsink-ships">0</span></div>
+        <div>DealOrDelete: <span id="dealordelete-ships">0</span></div>
+        <div>Market: <span id="market-trend">Sideways</span></div>
+        <div>Volatility: <span id="market-volatility">Low</span></div>
+        <div style="margin-top: 10px;">
+            <button class="btn" id="start-chart-battle" style="background: rgba(255,136,0,0.2); border-color: #ff8800; color: #ff8800;">Chart Battle</button>
+            <button class="btn" id="start-trading-duel" style="background: rgba(255,136,0,0.2); border-color: #ff8800; color: #ff8800;">Trading Duel</button>
+        </div>
+    </div>
+    
+    <script type="module">
+        // Import our generated ship models and battle system
+        import { ShipLoader } from './generated-3d-ships/ship-loader.js';
+        import { SeaToSatelliteNeuralNetwork } from './generated-3d-ships/neural-network-integration.js';
+        import ShipRektBattleIntegration from './shiprekt-battle-integration.js';
+        
+        // Enhanced 3D Ship Game Engine with Neural Network
+        class UnifiedShipGameEngine {
+            constructor() {
+                this.scene = null;
+                this.camera = null;
+                this.renderer = null;
+                this.player = null;
+                this.ships = new Map();
+                this.selectedShip = null;
+                this.selectedShipType = 'sloop';
+                
+                // Sea to Satellite Neural Network
+                this.neuralNetwork = null;
+                this.currentLayer = 'surface';
+                this.layerSettings = {
+                    sonar: { 
+                        fogColor: 0x001133, 
+                        fogNear: 5, 
+                        fogFar: 50,
+                        ambientIntensity: 0.1,
+                        lightColor: 0x0066ff 
+                    },
+                    surface: { 
+                        fogColor: 0x001122, 
+                        fogNear: 10, 
+                        fogFar: 100,
+                        ambientIntensity: 0.4,
+                        lightColor: 0xffffff 
+                    },
+                    aerial: { 
+                        fogColor: 0x223344, 
+                        fogNear: 50, 
+                        fogFar: 300,
+                        ambientIntensity: 0.6,
+                        lightColor: 0xffffaa 
+                    },
+                    satellite: { 
+                        fogColor: 0x000011, 
+                        fogNear: 100, 
+                        fogFar: 1000,
+                        ambientIntensity: 0.2,
+                        lightColor: 0x8888ff 
+                    }
+                };
+                
+                // Game state
+                this.gameState = {
+                    score: 0,
+                    fleetCount: 0,
+                    paused: false,
+                    neuralConnected: false
+                };
+                
+                // Performance tracking
+                this.performance = {
+                    fps: 0,
+                    frameCount: 0,
+                    lastTime: 0
+                };
+                
+                // Controls
+                this.keys = {};
+                this.mouse = { x: 0, y: 0, sensitivity: 0.002 };
+                this.cameraTarget = new THREE.Vector3();
+                this.cameraPosition = new THREE.Vector3(0, 10, 20);
+                
+                // Ship loader
+                this.shipLoader = new ShipLoader();
+                
+                // ShipRekt battle integration
+                this.shipRektBattle = null;
+                this.mockShipRektEngine = this.createMockShipRektEngine();
+                
+                console.log('🏴‍☠️ Unified Ship Game Engine initializing...');
+            }
+            
+            async init() {
+                this.setupScene();
+                this.setupCamera();
+                this.setupRenderer();
+                this.setupLighting();
+                this.setupOcean();
+                this.setupControls();
+                this.setupUI();
+                
+                // Initialize ship loader
+                await this.shipLoader.init();
+                
+                // Initialize neural network
+                this.initializeNeuralNetwork();
+                
+                // Initialize ShipRekt battle system
+                this.initializeShipRektBattles();
+                
+                // Start with a demo ship
+                await this.spawnShip('sloop', new THREE.Vector3(0, 0, 0));
+                
+                // Start game loop
+                this.animate();
+                
+                console.log('✅ Unified Ship Game Engine ready!');
+            }
+            
+            setupScene() {
+                this.scene = new THREE.Scene();
+                this.updateLayerSettings();
+            }
+            
+            updateLayerSettings() {
+                const settings = this.layerSettings[this.currentLayer];
+                this.scene.fog = new THREE.Fog(settings.fogColor, settings.fogNear, settings.fogFar);
+                this.scene.background = new THREE.Color(settings.fogColor);
+            }
+            
+            setupCamera() {
+                this.camera = new THREE.PerspectiveCamera(
+                    75, 
+                    window.innerWidth / window.innerHeight, 
+                    0.1, 
+                    2000
+                );
+                this.updateCameraForLayer();
+            }
+            
+            updateCameraForLayer() {
+                switch(this.currentLayer) {
+                    case 'sonar':
+                        this.cameraPosition.set(0, -5, 15);
+                        break;
+                    case 'surface':
+                        this.cameraPosition.set(0, 8, 20);
+                        break;
+                    case 'aerial':
+                        this.cameraPosition.set(0, 50, 50);
+                        break;
+                    case 'satellite':
+                        this.cameraPosition.set(0, 200, 100);
+                        break;
+                }
+            }
+            
+            setupRenderer() {
+                this.renderer = new THREE.WebGLRenderer({ 
+                    antialias: true,
+                    powerPreference: "high-performance"
+                });
+                this.renderer.setSize(window.innerWidth, window.innerHeight);
+                this.renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+                this.renderer.shadowMap.enabled = true;
+                this.renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+                document.body.appendChild(this.renderer.domElement);
+            }
+            
+            setupLighting() {
+                // Dynamic lighting based on layer
+                this.ambientLight = new THREE.AmbientLight(0x404040, 0.4);
+                this.scene.add(this.ambientLight);
+                
+                this.directionalLight = new THREE.DirectionalLight(0xffffff, 0.8);
+                this.directionalLight.position.set(20, 20, 10);
+                this.directionalLight.castShadow = true;
+                
+                // Shadow optimization
+                this.directionalLight.shadow.mapSize.width = 2048;
+                this.directionalLight.shadow.mapSize.height = 2048;
+                this.directionalLight.shadow.camera.near = 0.5;
+                this.directionalLight.shadow.camera.far = 100;
+                this.directionalLight.shadow.camera.left = -50;
+                this.directionalLight.shadow.camera.right = 50;
+                this.directionalLight.shadow.camera.top = 50;
+                this.directionalLight.shadow.camera.bottom = -50;
+                
+                this.scene.add(this.directionalLight);
+                
+                this.updateLightingForLayer();
+            }
+            
+            updateLightingForLayer() {
+                const settings = this.layerSettings[this.currentLayer];
+                this.ambientLight.intensity = settings.ambientIntensity;
+                this.directionalLight.color.setHex(settings.lightColor);
+                
+                // Special effects per layer
+                switch(this.currentLayer) {
+                    case 'sonar':
+                        this.directionalLight.intensity = 0.3;
+                        break;
+                    case 'surface':
+                        this.directionalLight.intensity = 0.8;
+                        break;
+                    case 'aerial':
+                        this.directionalLight.intensity = 1.0;
+                        break;
+                    case 'satellite':
+                        this.directionalLight.intensity = 0.6;
+                        break;
+                }
+            }
+            
+            setupOcean() {
+                // Create ocean plane with animated waves
+                const oceanGeometry = new THREE.PlaneGeometry(500, 500, 50, 50);
+                const oceanMaterial = new THREE.MeshLambertMaterial({ 
+                    color: 0x006699,
+                    transparent: true,
+                    opacity: 0.8
+                });
+                
+                this.ocean = new THREE.Mesh(oceanGeometry, oceanMaterial);
+                this.ocean.rotation.x = -Math.PI / 2;
+                this.ocean.position.y = -1;
+                this.ocean.receiveShadow = true;
+                this.scene.add(this.ocean);
+                
+                // Store original vertices for wave animation
+                this.oceanVertices = oceanGeometry.attributes.position.array.slice();
+            }
+            
+            animateOcean() {
+                const time = Date.now() * 0.001;
+                const position = this.ocean.geometry.attributes.position;
+                
+                for (let i = 0; i < position.count; i++) {
+                    const x = this.oceanVertices[i * 3];
+                    const z = this.oceanVertices[i * 3 + 2];
+                    
+                    // Create wave pattern
+                    const wave1 = Math.sin(x * 0.02 + time) * 0.5;
+                    const wave2 = Math.sin(z * 0.03 + time * 0.7) * 0.3;
+                    
+                    position.setY(i, wave1 + wave2);
+                }
+                
+                position.needsUpdate = true;
+            }
+            
+            async spawnShip(shipType, position) {
+                try {
+                    const ship = await this.shipLoader.loadShip(shipType);
+                    if (!ship) {
+                        console.error(`Failed to load ship: ${shipType}`);
+                        return null;
+                    }
+                    
+                    ship.position.copy(position);
+                    ship.castShadow = true;
+                    ship.receiveShadow = true;
+                    
+                    // Add ship to scene and tracking
+                    this.scene.add(ship);
+                    const shipId = Date.now() + Math.random();
+                    this.ships.set(shipId, {
+                        mesh: ship,
+                        type: shipType,
+                        position: position.clone(),
+                        velocity: new THREE.Vector3(),
+                        health: 100,
+                        selected: false
+                    });
+                    
+                    this.gameState.fleetCount = this.ships.size;
+                    this.updateUI();
+                    
+                    console.log(`⚓ Spawned ${shipType} at`, position);
+                    return shipId;
+                    
+                } catch (error) {
+                    console.error(`Error spawning ship ${shipType}:`, error);
+                    return null;
+                }
+            }
+            
+            initializeNeuralNetwork() {
+                // Simulate neural network initialization
+                this.neuralNetwork = {
+                    layers: {
+                        sonar: { detection: 0, ships: [] },
+                        surface: { detection: 0, ships: [] },
+                        aerial: { detection: 0, ships: [] },
+                        satellite: { detection: 0, ships: [] }
+                    },
+                    analysis: 'Initializing...'
+                };
+                
+                // Start neural analysis loop
+                setInterval(() => {
+                    this.updateNeuralAnalysis();
+                }, 1000);
+                
+                this.gameState.neuralConnected = true;
+                console.log('🧠 Neural network initialized');
+            }
+            
+            updateNeuralAnalysis() {
+                // Simulate neural network analysis of ships
+                const ships = Array.from(this.ships.values());
+                
+                // Update detection per layer
+                this.neuralNetwork.layers.sonar.detection = this.currentLayer === 'sonar' ? ships.length : 0;
+                this.neuralNetwork.layers.surface.detection = this.currentLayer === 'surface' ? ships.length : Math.floor(ships.length * 0.8);
+                this.neuralNetwork.layers.aerial.detection = this.currentLayer === 'aerial' ? ships.length : Math.floor(ships.length * 0.6);
+                this.neuralNetwork.layers.satellite.detection = this.currentLayer === 'satellite' ? ships.length : Math.floor(ships.length * 0.4);
+                
+                // Update analysis status
+                if (ships.length === 0) {
+                    this.neuralNetwork.analysis = 'No targets';
+                } else if (ships.length === 1) {
+                    this.neuralNetwork.analysis = 'Single vessel';
+                } else {
+                    this.neuralNetwork.analysis = `Fleet of ${ships.length}`;
+                }
+                
+                this.updateNeuralUI();
+            }
+            
+            switchLayer(newLayer) {
+                this.currentLayer = newLayer;
+                this.updateLayerSettings();
+                this.updateCameraForLayer();
+                this.updateLightingForLayer();
+                
+                console.log(`🧠 Switched to ${newLayer} layer`);
+                document.getElementById('current-layer').textContent = newLayer.charAt(0).toUpperCase() + newLayer.slice(1);
+            }
+            
+            setupControls() {
+                // Keyboard controls
+                document.addEventListener('keydown', (e) => {
+                    this.keys[e.code] = true;
+                    
+                    if (['KeyW', 'KeyA', 'KeyS', 'KeyD', 'Space', 'ShiftLeft'].includes(e.code)) {
+                        e.preventDefault();
+                    }
+                });
+                
+                document.addEventListener('keyup', (e) => {
+                    this.keys[e.code] = false;
+                });
+                
+                // Mouse controls
+                document.addEventListener('mousemove', (e) => {
+                    if (document.pointerLockElement === this.renderer.domElement) {
+                        this.mouse.x += e.movementX * this.mouse.sensitivity;
+                        this.mouse.y += e.movementY * this.mouse.sensitivity;
+                        this.mouse.y = Math.max(-Math.PI/2, Math.min(Math.PI/2, this.mouse.y));
+                    }
+                });
+                
+                // Click to lock pointer
+                this.renderer.domElement.addEventListener('click', () => {
+                    this.renderer.domElement.requestPointerLock();
+                });
+                
+                // Window resize
+                window.addEventListener('resize', () => {
+                    this.camera.aspect = window.innerWidth / window.innerHeight;
+                    this.camera.updateProjectionMatrix();
+                    this.renderer.setSize(window.innerWidth, window.innerHeight);
+                });
+            }
+            
+            setupUI() {
+                // Ship selection
+                document.querySelectorAll('.ship-option').forEach(option => {
+                    option.addEventListener('click', () => {
+                        document.querySelectorAll('.ship-option').forEach(o => o.classList.remove('selected'));
+                        option.classList.add('selected');
+                        this.selectedShipType = option.dataset.ship;
+                    });
+                });
+                
+                // Set default selection
+                document.querySelector('.ship-option').classList.add('selected');
+                
+                // Spawn ship button
+                document.getElementById('spawn-ship').addEventListener('click', () => {
+                    const randomPos = new THREE.Vector3(
+                        (Math.random() - 0.5) * 50,
+                        0,
+                        (Math.random() - 0.5) * 50
+                    );
+                    this.spawnShip(this.selectedShipType, randomPos);
+                });
+                
+                // Layer switching
+                document.querySelectorAll('[data-layer]').forEach(btn => {
+                    btn.addEventListener('click', () => {
+                        document.querySelectorAll('[data-layer]').forEach(b => b.classList.remove('active'));
+                        btn.classList.add('active');
+                        this.switchLayer(btn.dataset.layer);
+                    });
+                });
+                
+                this.updateUI();
+            }
+            
+            updateCamera() {
+                // Dynamic camera based on layer and ships
+                if (this.ships.size > 0) {
+                    // Focus on ship fleet center
+                    const center = new THREE.Vector3();
+                    let count = 0;
+                    
+                    this.ships.forEach(ship => {
+                        center.add(ship.position);
+                        count++;
+                    });
+                    
+                    center.divideScalar(count);
+                    this.cameraTarget.copy(center);
+                } else {
+                    this.cameraTarget.set(0, 0, 0);
+                }
+                
+                // Apply mouse rotation
+                const offset = this.cameraPosition.clone();
+                offset.applyAxisAngle(new THREE.Vector3(0, 1, 0), this.mouse.x);
+                offset.applyAxisAngle(new THREE.Vector3(1, 0, 0), this.mouse.y);
+                
+                this.camera.position.copy(this.cameraTarget).add(offset);
+                this.camera.lookAt(this.cameraTarget);
+            }
+            
+            updateShips() {
+                this.ships.forEach((ship, id) => {
+                    // Simple AI movement for demo
+                    const time = Date.now() * 0.001;
+                    ship.velocity.x = Math.sin(time + id) * 0.02;
+                    ship.velocity.z = Math.cos(time + id * 0.5) * 0.02;
+                    
+                    ship.position.add(ship.velocity);
+                    ship.mesh.position.copy(ship.position);
+                    
+                    // Rotate ship based on movement
+                    ship.mesh.rotation.y = Math.atan2(ship.velocity.x, ship.velocity.z);
+                    
+                    // Keep ships on ocean surface
+                    ship.position.y = 0;
+                });
+            }
+            
+            updatePerformance() {
+                this.performance.frameCount++;
+                const now = performance.now();
+                
+                if (now >= this.performance.lastTime + 1000) {
+                    this.performance.fps = Math.round((this.performance.frameCount * 1000) / (now - this.performance.lastTime));
+                    this.performance.frameCount = 0;
+                    this.performance.lastTime = now;
+                    
+                    document.getElementById('fps').textContent = this.performance.fps;
+                }
+            }
+            
+            updateUI() {
+                document.getElementById('fleet-count').textContent = this.gameState.fleetCount;
+                document.getElementById('score').textContent = this.gameState.score;
+                document.getElementById('neural-status').textContent = this.gameState.neuralConnected ? 'Online' : 'Offline';
+            }
+            
+            updateNeuralUI() {
+                if (this.neuralNetwork) {
+                    document.getElementById('sea-detection').textContent = this.neuralNetwork.layers.surface.detection;
+                    document.getElementById('air-detection').textContent = this.neuralNetwork.layers.aerial.detection;
+                    document.getElementById('sat-detection').textContent = this.neuralNetwork.layers.satellite.detection;
+                    document.getElementById('neural-analysis').textContent = this.neuralNetwork.analysis;
+                }
+            }
+            
+            createMockShipRektEngine() {
+                // Mock ShipRekt engine for demonstration
+                const engine = {
+                    events: new Map(),
+                    
+                    on(event, callback) {
+                        if (!this.events.has(event)) {
+                            this.events.set(event, []);
+                        }
+                        this.events.get(event).push(callback);
+                    },
+                    
+                    emit(event, data) {
+                        if (this.events.has(event)) {
+                            this.events.get(event).forEach(callback => callback(data));
+                        }
+                    },
+                    
+                    startChartBattle() {
+                        this.emit('chart_battle_started', {
+                            id: `battle-${Date.now()}`,
+                            chart: { symbol: 'BTC/USD', timeframe: '5m' },
+                            participants: ['player1', 'player2']
+                        });
+                    },
+                    
+                    startTradingDuel() {
+                        this.emit('trading_duel_started', {
+                            id: `duel-${Date.now()}`,
+                            participants: ['trader1', 'trader2']
+                        });
+                    },
+                    
+                    simulateMarketMovement() {
+                        const marketData = {
+                            price: 50000 + Math.sin(Date.now() * 0.001) * 5000,
+                            volatility: 0.2 + Math.random() * 0.6,
+                            trend: ['bullish', 'bearish', 'sideways'][Math.floor(Math.random() * 3)],
+                            volume: Math.random() * 1000000
+                        };
+                        
+                        this.emit('market_movement', marketData);
+                    }
+                };
+                
+                return engine;
+            }
+            
+            initializeShipRektBattles() {
+                console.log('⚔️ Initializing ShipRekt battle system...');
+                
+                try {
+                    // Initialize battle integration with mock engine
+                    this.shipRektBattle = new ShipRektBattleIntegration(this.mockShipRektEngine, this);
+                    
+                    // Setup battle UI controls
+                    this.setupBattleUI();
+                    
+                    // Start market simulation
+                    setInterval(() => {
+                        this.mockShipRektEngine.simulateMarketMovement();
+                    }, 3000);
+                    
+                    console.log('✅ ShipRekt battle system ready');
+                    
+                } catch (error) {
+                    console.warn('⚠️ ShipRekt battle system not available, using mock:', error);
+                    this.setupMockBattleSystem();
+                }
+            }
+            
+            setupBattleUI() {
+                // Chart battle button
+                document.getElementById('start-chart-battle').addEventListener('click', () => {
+                    console.log('🎯 Starting chart battle...');
+                    this.mockShipRektEngine.startChartBattle();
+                });
+                
+                // Trading duel button  
+                document.getElementById('start-trading-duel').addEventListener('click', () => {
+                    console.log('⚔️ Starting trading duel...');
+                    this.mockShipRektEngine.startTradingDuel();
+                });
+                
+                this.updateBattleUI();
+            }
+            
+            setupMockBattleSystem() {
+                // Fallback battle system if integration fails
+                this.mockBattleState = {
+                    activeBattles: 0,
+                    saveOrSinkShips: 0,
+                    dealOrDeleteShips: 0,
+                    marketTrend: 'sideways',
+                    volatility: 'medium'
+                };
+                
+                this.setupBattleUI();
+                console.log('🎮 Mock battle system active');
+            }
+            
+            updateBattleUI() {
+                try {
+                    if (this.shipRektBattle) {
+                        const stats = this.shipRektBattle.getBattleStats();
+                        document.getElementById('active-battles').textContent = stats.activeBattles;
+                        document.getElementById('saveorsink-ships').textContent = stats.teamShips.saveOrSink;
+                        document.getElementById('dealordelete-ships').textContent = stats.teamShips.dealOrDelete;
+                        document.getElementById('market-trend').textContent = stats.marketConditions.trend || 'sideways';
+                        
+                        const volatility = stats.marketConditions.volatility || 0.5;
+                        const volatilityLevel = volatility > 0.7 ? 'High' : volatility > 0.3 ? 'Medium' : 'Low';
+                        document.getElementById('market-volatility').textContent = volatilityLevel;
+                    } else {
+                        // Mock data
+                        document.getElementById('active-battles').textContent = this.mockBattleState?.activeBattles || 0;
+                        document.getElementById('saveorsink-ships').textContent = this.mockBattleState?.saveOrSinkShips || 0;
+                        document.getElementById('dealordelete-ships').textContent = this.mockBattleState?.dealOrDeleteShips || 0;
+                        document.getElementById('market-trend').textContent = this.mockBattleState?.marketTrend || 'sideways';
+                        document.getElementById('market-volatility').textContent = this.mockBattleState?.volatility || 'medium';
+                    }
+                } catch (error) {
+                    console.warn('Battle UI update failed:', error);
+                }
+            }
+            
+            animate() {
+                requestAnimationFrame(() => this.animate());
+                
+                if (!this.gameState.paused) {
+                    this.animateOcean();
+                    this.updateShips();
+                    this.updateCamera();
+                }
+                
+                this.updatePerformance();
+                this.updateBattleUI();
+                this.renderer.render(this.scene, this.camera);
+            }
+        }
+        
+        // Initialize game when page loads
+        let game;
+        window.addEventListener('load', async () => {
+            game = new UnifiedShipGameEngine();
+            await game.init();
+            
+            console.log('🏴‍☠️ Unified 3D Ship Game loaded');
+            console.log('⚓ Ships from vault blueprints integrated');
+            console.log('🧠 Neural network sea-to-satellite enabled');
+            console.log('🎯 Click to capture mouse, spawn ships, switch layers');
+        });
+        
+        // Pause/unpause with ESC
+        document.addEventListener('keydown', (e) => {
+            if (e.code === 'Escape') {
+                if (game) {
+                    game.gameState.paused = !game.gameState.paused;
+                    console.log(game.gameState.paused ? '⏸️ Paused' : '▶️ Resumed');
+                }
+            }
+        });
+    </script>
+</body>
+</html>

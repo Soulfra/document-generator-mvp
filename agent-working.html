@@ -1,0 +1,714 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>🤖 Agent Working - Real-time Monitoring</title>
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    
+    body {
+      font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+      background: linear-gradient(135deg, #0a0a0a 0%, #1a1a2e 50%, #16213e 100%);
+      color: #ffffff;
+      min-height: 100vh;
+      padding: 2rem;
+    }
+    
+    .container {
+      max-width: 1200px;
+      margin: 0 auto;
+    }
+    
+    .header {
+      text-align: center;
+      margin-bottom: 3rem;
+    }
+    
+    .status-indicator {
+      display: inline-flex;
+      align-items: center;
+      gap: 0.5rem;
+      background: rgba(0, 255, 136, 0.1);
+      border: 1px solid #00ff88;
+      padding: 1rem 2rem;
+      border-radius: 25px;
+      margin-bottom: 1rem;
+      animation: pulse 2s ease-in-out infinite;
+    }
+    
+    @keyframes pulse {
+      0%, 100% { opacity: 1; }
+      50% { opacity: 0.7; }
+    }
+    
+    .status-dot {
+      width: 12px;
+      height: 12px;
+      background: #00ff88;
+      border-radius: 50%;
+      animation: blink 1s ease-in-out infinite;
+    }
+    
+    @keyframes blink {
+      0%, 100% { opacity: 1; }
+      50% { opacity: 0.3; }
+    }
+    
+    .job-title {
+      font-size: 2rem;
+      color: #00ff88;
+      margin-bottom: 0.5rem;
+    }
+    
+    .job-description {
+      opacity: 0.8;
+      font-size: 1.1rem;
+    }
+    
+    .monitoring-dashboard {
+      display: grid;
+      grid-template-columns: 1fr 350px;
+      gap: 2rem;
+      align-items: start;
+    }
+    
+    .main-content {
+      background: rgba(255, 255, 255, 0.05);
+      border: 1px solid rgba(0, 255, 136, 0.3);
+      border-radius: 20px;
+      padding: 2rem;
+    }
+    
+    .progress-section {
+      margin-bottom: 3rem;
+    }
+    
+    .progress-header {
+      display: flex;
+      justify-content: between;
+      align-items: center;
+      margin-bottom: 1rem;
+    }
+    
+    .progress-title {
+      font-size: 1.3rem;
+      color: #00ff88;
+    }
+    
+    .progress-percentage {
+      font-size: 1.1rem;
+      font-weight: bold;
+    }
+    
+    .progress-bar {
+      width: 100%;
+      height: 20px;
+      background: rgba(255, 255, 255, 0.1);
+      border-radius: 10px;
+      overflow: hidden;
+      margin-bottom: 1rem;
+    }
+    
+    .progress-fill {
+      height: 100%;
+      background: linear-gradient(45deg, #00ff88, #00ffff);
+      border-radius: 10px;
+      transition: width 0.5s ease;
+      position: relative;
+    }
+    
+    .progress-fill::after {
+      content: '';
+      position: absolute;
+      top: 0;
+      left: 0;
+      right: 0;
+      bottom: 0;
+      background: linear-gradient(
+        90deg,
+        transparent,
+        rgba(255, 255, 255, 0.3),
+        transparent
+      );
+      animation: shimmer 2s infinite;
+    }
+    
+    @keyframes shimmer {
+      0% { transform: translateX(-100%); }
+      100% { transform: translateX(100%); }
+    }
+    
+    .current-task {
+      background: rgba(0, 255, 136, 0.1);
+      border: 1px solid rgba(0, 255, 136, 0.3);
+      border-radius: 15px;
+      padding: 1.5rem;
+      margin-bottom: 2rem;
+    }
+    
+    .task-title {
+      font-weight: bold;
+      margin-bottom: 0.5rem;
+      color: #00ff88;
+    }
+    
+    .task-description {
+      opacity: 0.8;
+      margin-bottom: 1rem;
+    }
+    
+    .task-steps {
+      list-style: none;
+    }
+    
+    .task-step {
+      display: flex;
+      align-items: center;
+      gap: 0.8rem;
+      padding: 0.5rem 0;
+      transition: all 0.3s;
+    }
+    
+    .step-icon {
+      font-size: 1.2rem;
+    }
+    
+    .step-completed {
+      color: #00ff88;
+    }
+    
+    .step-current {
+      color: #ffff00;
+      animation: pulse 1.5s ease-in-out infinite;
+    }
+    
+    .step-pending {
+      color: #666;
+    }
+    
+    .live-output {
+      background: #000;
+      border: 1px solid #333;
+      border-radius: 10px;
+      padding: 1rem;
+      font-family: 'Courier New', monospace;
+      font-size: 0.9rem;
+      height: 300px;
+      overflow-y: auto;
+      margin-bottom: 2rem;
+    }
+    
+    .output-line {
+      margin-bottom: 0.5rem;
+      display: flex;
+      align-items: flex-start;
+      gap: 0.5rem;
+    }
+    
+    .timestamp {
+      color: #666;
+      font-size: 0.8rem;
+      min-width: 60px;
+    }
+    
+    .log-info { color: #00ff88; }
+    .log-warning { color: #ffff00; }
+    .log-error { color: #ff4444; }
+    .log-success { color: #00ff88; font-weight: bold; }
+    
+    /* Sidebar */
+    .sidebar {
+      background: rgba(255, 255, 255, 0.05);
+      border: 1px solid rgba(0, 255, 136, 0.3);
+      border-radius: 20px;
+      padding: 2rem;
+      position: sticky;
+      top: 2rem;
+    }
+    
+    .agent-info {
+      text-align: center;
+      margin-bottom: 2rem;
+    }
+    
+    .agent-avatar {
+      width: 80px;
+      height: 80px;
+      border-radius: 50%;
+      background: linear-gradient(45deg, #00ff88, #00ffff);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 2rem;
+      margin: 0 auto 1rem;
+    }
+    
+    .agent-name {
+      font-size: 1.3rem;
+      font-weight: bold;
+      color: #00ff88;
+      margin-bottom: 0.5rem;
+    }
+    
+    .agent-status {
+      color: #00ffff;
+      font-size: 0.9rem;
+    }
+    
+    .job-stats {
+      margin-bottom: 2rem;
+    }
+    
+    .stat-item {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      padding: 0.8rem 0;
+      border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+    }
+    
+    .stat-label {
+      opacity: 0.8;
+    }
+    
+    .stat-value {
+      font-weight: bold;
+      color: #00ff88;
+    }
+    
+    .action-buttons {
+      display: flex;
+      flex-direction: column;
+      gap: 1rem;
+    }
+    
+    .action-btn {
+      padding: 0.8rem 1.5rem;
+      border: 1px solid rgba(255, 255, 255, 0.3);
+      border-radius: 10px;
+      background: rgba(255, 255, 255, 0.05);
+      color: #fff;
+      cursor: pointer;
+      transition: all 0.3s;
+      text-align: center;
+      text-decoration: none;
+    }
+    
+    .action-btn:hover {
+      border-color: #00ff88;
+      background: rgba(0, 255, 136, 0.1);
+    }
+    
+    .action-btn.primary {
+      background: linear-gradient(45deg, #00ff88, #00ffff);
+      color: #000;
+      border-color: #00ff88;
+    }
+    
+    .action-btn.danger {
+      border-color: #ff4444;
+      color: #ff4444;
+    }
+    
+    .action-btn.danger:hover {
+      background: rgba(255, 68, 68, 0.1);
+    }
+    
+    .results-preview {
+      margin-top: 2rem;
+      padding: 1.5rem;
+      background: rgba(0, 255, 136, 0.05);
+      border: 1px solid rgba(0, 255, 136, 0.2);
+      border-radius: 15px;
+      display: none;
+    }
+    
+    .results-title {
+      color: #00ff88;
+      font-weight: bold;
+      margin-bottom: 1rem;
+    }
+    
+    .result-item {
+      margin-bottom: 1rem;
+      padding: 1rem;
+      background: rgba(255, 255, 255, 0.05);
+      border-radius: 10px;
+    }
+    
+    /* Mobile Responsive */
+    @media (max-width: 768px) {
+      .monitoring-dashboard {
+        grid-template-columns: 1fr;
+        gap: 2rem;
+      }
+      
+      .sidebar {
+        position: static;
+        order: -1;
+      }
+      
+      .live-output {
+        height: 200px;
+      }
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <div class="header">
+      <div class="status-indicator">
+        <div class="status-dot"></div>
+        <span>Agent is Working</span>
+      </div>
+      <h1 class="job-title" id="jobTitle">Analyzing Your Code</h1>
+      <p class="job-description" id="jobDescription">Alice is reviewing your React components for performance issues and security vulnerabilities</p>
+    </div>
+    
+    <div class="monitoring-dashboard">
+      <div class="main-content">
+        <div class="progress-section">
+          <div class="progress-header">
+            <h3 class="progress-title">Overall Progress</h3>
+            <span class="progress-percentage" id="progressPercentage">45%</span>
+          </div>
+          <div class="progress-bar">
+            <div class="progress-fill" id="progressFill" style="width: 45%"></div>
+          </div>
+        </div>
+        
+        <div class="current-task">
+          <div class="task-title">Current Task: Security Analysis</div>
+          <div class="task-description">Scanning for vulnerabilities and security best practices</div>
+          <ol class="task-steps">
+            <li class="task-step">
+              <span class="step-icon step-completed">✅</span>
+              <span>Initial code parsing</span>
+            </li>
+            <li class="task-step">
+              <span class="step-icon step-completed">✅</span>
+              <span>Dependencies analysis</span>
+            </li>
+            <li class="task-step">
+              <span class="step-icon step-completed">✅</span>
+              <span>Performance review</span>
+            </li>
+            <li class="task-step">
+              <span class="step-icon step-current">🔄</span>
+              <span>Security vulnerability scan</span>
+            </li>
+            <li class="task-step">
+              <span class="step-icon step-pending">⏳</span>
+              <span>Generate recommendations</span>
+            </li>
+            <li class="task-step">
+              <span class="step-icon step-pending">⏳</span>
+              <span>Create final report</span>
+            </li>
+          </ol>
+        </div>
+        
+        <div class="live-output" id="liveOutput">
+          <div class="output-line">
+            <span class="timestamp">14:23</span>
+            <span class="log-info">🚀 Starting code analysis job...</span>
+          </div>
+          <div class="output-line">
+            <span class="timestamp">14:23</span>
+            <span class="log-info">📂 Processing 847 files...</span>
+          </div>
+          <div class="output-line">
+            <span class="timestamp">14:24</span>
+            <span class="log-success">✅ Dependencies analyzed: 23 packages</span>
+          </div>
+          <div class="output-line">
+            <span class="timestamp">14:25</span>
+            <span class="log-warning">⚠️ Found potential performance issue in UserList.jsx</span>
+          </div>
+          <div class="output-line">
+            <span class="timestamp">14:26</span>
+            <span class="log-info">🔍 Running security vulnerability scan...</span>
+          </div>
+          <div class="output-line">
+            <span class="timestamp">14:27</span>
+            <span class="log-warning">⚠️ Outdated dependency detected: react-dom@16.8.2</span>
+          </div>
+        </div>
+        
+        <div class="results-preview" id="resultsPreview">
+          <div class="results-title">🎉 Preliminary Results</div>
+          <div class="result-item">
+            <strong>Performance Issues Found:</strong> 5 components can be optimized
+          </div>
+          <div class="result-item">
+            <strong>Security Vulnerabilities:</strong> 2 medium-risk issues identified
+          </div>
+          <div class="result-item">
+            <strong>Best Practices:</strong> 12 recommendations for improvement
+          </div>
+        </div>
+      </div>
+      
+      <div class="sidebar">
+        <div class="agent-info">
+          <div class="agent-avatar" id="agentAvatar">🤖</div>
+          <div class="agent-name" id="agentName">Alice Validator</div>
+          <div class="agent-status">Working at 98% efficiency</div>
+        </div>
+        
+        <div class="job-stats">
+          <div class="stat-item">
+            <span class="stat-label">Started</span>
+            <span class="stat-value" id="startTime">14:23:15</span>
+          </div>
+          <div class="stat-item">
+            <span class="stat-label">Estimated Completion</span>
+            <span class="stat-value" id="etaTime">14:35:00</span>
+          </div>
+          <div class="stat-item">
+            <span class="stat-label">Files Processed</span>
+            <span class="stat-value" id="filesProcessed">847 / 1,230</span>
+          </div>
+          <div class="stat-item">
+            <span class="stat-label">Issues Found</span>
+            <span class="stat-value" id="issuesFound">17</span>
+          </div>
+          <div class="stat-item">
+            <span class="stat-label">Cost</span>
+            <span class="stat-value" id="currentCost">156 tokens</span>
+          </div>
+        </div>
+        
+        <div class="action-buttons">
+          <button class="action-btn" onclick="pauseAgent()">⏸️ Pause Agent</button>
+          <button class="action-btn" onclick="viewLiveResults()">👁️ View Results</button>
+          <button class="action-btn" onclick="sendMessage()">💬 Message Agent</button>
+          <button class="action-btn danger" onclick="cancelJob()">🛑 Cancel Job</button>
+        </div>
+      </div>
+    </div>
+  </div>
+  
+  <script>
+    // Simulation data
+    let progress = 45;
+    let currentStep = 3;
+    let issuesFound = 17;
+    let filesProcessed = 847;
+    let totalFiles = 1230;
+    let currentCost = 156;
+    
+    const steps = [
+      'Initial code parsing',
+      'Dependencies analysis', 
+      'Performance review',
+      'Security vulnerability scan',
+      'Generate recommendations',
+      'Create final report'
+    ];
+    
+    const logMessages = [
+      { type: 'info', message: '🔍 Analyzing component lifecycle methods...' },
+      { type: 'warning', message: '⚠️ Unused variable detected in Dashboard.jsx:47' },
+      { type: 'success', message: '✅ Performance optimization identified' },
+      { type: 'info', message: '📊 Generating performance metrics...' },
+      { type: 'warning', message: '⚠️ Potential XSS vulnerability in UserInput.jsx' },
+      { type: 'info', message: '🔐 Checking authentication patterns...' },
+      { type: 'success', message: '✅ Security best practices validated' },
+      { type: 'info', message: '📝 Preparing final recommendations...' }
+    ];
+    
+    let logIndex = 0;
+    
+    // Initialize page with job data
+    function initializePage() {
+      const jobData = JSON.parse(localStorage.getItem('currentJob') || '{}');
+      
+      if (jobData.taskDescription) {
+        document.getElementById('jobDescription').textContent = jobData.taskDescription;
+      }
+      
+      if (jobData.agentName) {
+        document.getElementById('agentName').textContent = jobData.agentName;
+      }
+      
+      // Start simulation
+      startJobSimulation();
+    }
+    
+    // Simulate job progress
+    function startJobSimulation() {
+      const progressInterval = setInterval(() => {
+        if (progress < 100) {
+          progress += Math.random() * 5;
+          progress = Math.min(progress, 100);
+          
+          updateProgress();
+          
+          // Update current step
+          const newStep = Math.floor((progress / 100) * steps.length);
+          if (newStep !== currentStep && newStep < steps.length) {
+            currentStep = newStep;
+            updateCurrentStep();
+          }
+          
+          // Show results preview when 80% complete
+          if (progress > 80) {
+            document.getElementById('resultsPreview').style.display = 'block';
+          }
+          
+          // Complete job
+          if (progress >= 100) {
+            completeJob();
+            clearInterval(progressInterval);
+          }
+        }
+      }, 2000);
+      
+      // Add log messages
+      const logInterval = setInterval(() => {
+        if (logIndex < logMessages.length) {
+          addLogMessage(logMessages[logIndex]);
+          logIndex++;
+        } else {
+          clearInterval(logInterval);
+        }
+      }, 3000);
+      
+      // Update stats
+      const statsInterval = setInterval(() => {
+        if (filesProcessed < totalFiles) {
+          filesProcessed += Math.floor(Math.random() * 50) + 10;
+          filesProcessed = Math.min(filesProcessed, totalFiles);
+          
+          issuesFound += Math.random() > 0.7 ? 1 : 0;
+          currentCost += Math.floor(Math.random() * 5) + 1;
+          
+          updateStats();
+        }
+      }, 4000);
+    }
+    
+    function updateProgress() {
+      const progressFill = document.getElementById('progressFill');
+      const progressPercentage = document.getElementById('progressPercentage');
+      
+      progressFill.style.width = progress + '%';
+      progressPercentage.textContent = Math.floor(progress) + '%';
+    }
+    
+    function updateCurrentStep() {
+      const taskSteps = document.querySelectorAll('.task-step');
+      
+      taskSteps.forEach((step, index) => {
+        const icon = step.querySelector('.step-icon');
+        
+        if (index < currentStep) {
+          icon.className = 'step-icon step-completed';
+          icon.textContent = '✅';
+        } else if (index === currentStep) {
+          icon.className = 'step-icon step-current';
+          icon.textContent = '🔄';
+        } else {
+          icon.className = 'step-icon step-pending';
+          icon.textContent = '⏳';
+        }
+      });
+    }
+    
+    function updateStats() {
+      document.getElementById('filesProcessed').textContent = `${filesProcessed.toLocaleString()} / ${totalFiles.toLocaleString()}`;
+      document.getElementById('issuesFound').textContent = issuesFound.toString();
+      document.getElementById('currentCost').textContent = `${currentCost} tokens`;
+    }
+    
+    function addLogMessage(log) {
+      const liveOutput = document.getElementById('liveOutput');
+      const timestamp = new Date().toLocaleTimeString('en-US', { 
+        hour12: false, 
+        hour: '2-digit', 
+        minute: '2-digit' 
+      });
+      
+      const logLine = document.createElement('div');
+      logLine.className = 'output-line';
+      logLine.innerHTML = `
+        <span class="timestamp">${timestamp}</span>
+        <span class="log-${log.type}">${log.message}</span>
+      `;
+      
+      liveOutput.appendChild(logLine);
+      liveOutput.scrollTop = liveOutput.scrollHeight;
+    }
+    
+    function completeJob() {
+      // Update status
+      const statusIndicator = document.querySelector('.status-indicator');
+      statusIndicator.innerHTML = '<div style="width: 12px; height: 12px; background: #00ff88; border-radius: 50%;"></div><span>Job Completed</span>';
+      statusIndicator.style.background = 'rgba(0, 255, 136, 0.2)';
+      statusIndicator.style.animation = 'none';
+      
+      // Add completion log
+      addLogMessage({ type: 'success', message: '🎉 Analysis complete! Generating final report...' });
+      
+      // Update action buttons
+      const actionButtons = document.querySelector('.action-buttons');
+      actionButtons.innerHTML = `
+        <button class="action-btn primary" onclick="viewResults()">📄 View Full Report</button>
+        <button class="action-btn" onclick="downloadReport()">💾 Download Report</button>
+        <button class="action-btn" onclick="hireAgain()">🔄 Hire Again</button>
+        <a class="action-btn" href="AI-AGENT-MARKETPLACE.html">🏠 Back to Marketplace</a>
+      `;
+      
+      // Show completion notification
+      setTimeout(() => {
+        alert('🎉 Job completed successfully! Your code analysis report is ready.');
+      }, 2000);
+    }
+    
+    // Action functions
+    function pauseAgent() {
+      if (confirm('Pause the current job? You can resume it later.')) {
+        alert('⏸️ Agent paused. Job will resume when you return.');
+      }
+    }
+    
+    function viewLiveResults() {
+      document.getElementById('resultsPreview').style.display = 'block';
+      document.getElementById('resultsPreview').scrollIntoView({ behavior: 'smooth' });
+    }
+    
+    function sendMessage() {
+      const message = prompt('Send a message to your agent:', 'How is the analysis going?');
+      if (message) {
+        addLogMessage({ type: 'info', message: `💬 You: ${message}` });
+        setTimeout(() => {
+          addLogMessage({ type: 'info', message: '🤖 Alice: Analysis is progressing well! Found several optimization opportunities.' });
+        }, 1000);
+      }
+    }
+    
+    function cancelJob() {
+      if (confirm('Cancel this job? You will be refunded unused tokens.')) {
+        window.location.href = 'AI-AGENT-MARKETPLACE.html';
+      }
+    }
+    
+    function viewResults() {
+      window.location.href = 'agent-results.html';
+    }
+    
+    function downloadReport() {
+      alert('📄 Report downloaded! Check your downloads folder.');
+    }
+    
+    function hireAgain() {
+      window.location.href = 'hire-agent.html?agent=alice-validator';
+    }
+    
+    // Initialize page
+    document.addEventListener('DOMContentLoaded', initializePage);
+  </script>
+</body>
+</html>

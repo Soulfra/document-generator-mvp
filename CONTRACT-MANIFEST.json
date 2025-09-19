@@ -1,0 +1,328 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://document-generator.com/contracts/manifest.json",
+  "title": "Document Generator Contract Manifest",
+  "description": "Complete manifest of all contracts binding character settings to system behavior",
+  "version": "1.0.0",
+  "generated": "2025-08-13T18:30:00Z",
+  
+  "contracts": {
+    "character-binding": {
+      "id": "contract-character-binding-v1",
+      "type": "master",
+      "description": "Master contract binding character settings to all system behaviors",
+      "version": "1.0.0",
+      "status": "proposed",
+      "bindings": {
+        "personality": {
+          "riskTolerance": {
+            "type": "modifier",
+            "affects": ["token-costs", "service-routing", "trading-limits"],
+            "formula": "value * modifier",
+            "modifiers": {
+              "minimal": 1.2,
+              "low": 1.1,
+              "medium": 1.0,
+              "high": 0.9,
+              "maximum": 0.8
+            }
+          },
+          "errorHandling": {
+            "type": "behavior",
+            "affects": ["error-responses", "system-recovery", "logging"],
+            "behaviors": {
+              "fail-safe": "halt-on-error",
+              "strict": "log-and-reject",
+              "moderate": "log-and-continue",
+              "permissive": "auto-recover",
+              "ignore": "suppress-errors"
+            }
+          },
+          "experimentation": {
+            "type": "access-control",
+            "affects": ["service-availability", "feature-flags", "game-modes"],
+            "levels": {
+              "disabled": ["stable-only"],
+              "limited": ["stable", "beta"],
+              "cautious": ["stable", "beta", "experimental"],
+              "encouraged": ["all"],
+              "aggressive": ["all", "unstable", "chaos"]
+            }
+          },
+          "debugging": {
+            "type": "configuration",
+            "affects": ["log-level", "error-detail", "trace-depth"],
+            "settings": {
+              "off": { "logLevel": "error", "stackTrace": false },
+              "minimal": { "logLevel": "warn", "stackTrace": false },
+              "moderate": { "logLevel": "info", "stackTrace": true },
+              "verbose": { "logLevel": "debug", "stackTrace": true },
+              "trace": { "logLevel": "trace", "stackTrace": true, "heapDump": true }
+            }
+          }
+        },
+        "constraints": {
+          "apiLimits": {
+            "type": "rate-limiter",
+            "affects": ["request-rate", "burst-capacity", "quota"],
+            "limits": {
+              "none": { "rateLimit": null, "burst": null },
+              "generous": { "rateLimit": 1000, "burst": 100, "window": "1m" },
+              "moderate": { "rateLimit": 100, "burst": 20, "window": "1m" },
+              "strict": { "rateLimit": 10, "burst": 5, "window": "1m" },
+              "blocked": { "rateLimit": 0, "burst": 0 }
+            }
+          },
+          "resourceLimits": {
+            "type": "resource-control",
+            "affects": ["memory", "cpu", "storage", "bandwidth"],
+            "limits": {
+              "unlimited": { "memory": null, "cpu": null },
+              "generous": { "memory": "4GB", "cpu": "80%" },
+              "controlled": { "memory": "2GB", "cpu": "50%" },
+              "monitored": { "memory": "1GB", "cpu": "25%", "alerts": true },
+              "minimal": { "memory": "512MB", "cpu": "10%" }
+            }
+          },
+          "securityChecks": {
+            "type": "security-policy",
+            "affects": ["validation", "encryption", "audit", "access"],
+            "policies": {
+              "disabled": { "validate": false, "encrypt": false },
+              "basic": { "validate": true, "encrypt": false },
+              "enhanced": { "validate": true, "encrypt": true, "audit": true },
+              "maximum": { "validate": true, "encrypt": true, "audit": true, "mfa": true },
+              "paranoid": { "validate": true, "encrypt": true, "audit": true, "mfa": true, "zeroTrust": true }
+            }
+          },
+          "dataValidation": {
+            "type": "validation-rules",
+            "affects": ["input-validation", "output-sanitization", "type-checking"],
+            "levels": {
+              "none": { "validate": false },
+              "relaxed": { "validate": true, "strict": false },
+              "standard": { "validate": true, "strict": true },
+              "strict": { "validate": true, "strict": true, "sanitize": true },
+              "paranoid": { "validate": true, "strict": true, "sanitize": true, "doubleCheck": true }
+            }
+          }
+        }
+      },
+      "verification": {
+        "methods": ["cryptographic", "runtime", "audit-trail"],
+        "frequency": "per-request",
+        "proofs": ["compliance", "execution", "state-change"]
+      }
+    },
+    
+    "token-economy": {
+      "id": "contract-token-economy-v1",
+      "type": "component",
+      "description": "Contract governing token costs and rewards based on character",
+      "version": "1.0.0",
+      "status": "proposed",
+      "parent": "contract-character-binding-v1",
+      "specifications": {
+        "inputs": {
+          "action": { "type": "string", "required": true },
+          "userId": { "type": "string", "required": true },
+          "character": { "type": "CharacterSettings", "required": true }
+        },
+        "outputs": {
+          "cost": { "type": "number", "min": 0 },
+          "modifiers": { "type": "array", "items": "Modifier" },
+          "proof": { "type": "TokenCalculationProof" }
+        },
+        "behaviors": {
+          "calculateCost": {
+            "preconditions": ["valid-action", "user-authenticated", "character-loaded"],
+            "postconditions": ["cost-calculated", "modifiers-applied", "proof-generated"],
+            "invariants": ["cost >= 0", "cost <= maxCost"]
+          }
+        }
+      },
+      "formulas": {
+        "tokenCost": "baseCost * personalityModifier * constraintModifier",
+        "personalityModifier": "(1 - 0.2 * riskToleranceValue)",
+        "constraintModifier": "securityCheckMultiplier * validationMultiplier"
+      }
+    },
+    
+    "rate-limiting": {
+      "id": "contract-rate-limiting-v1",
+      "type": "component",
+      "description": "Contract enforcing API rate limits based on constraints",
+      "version": "1.0.0",
+      "status": "proposed",
+      "parent": "contract-character-binding-v1",
+      "specifications": {
+        "enforcement": {
+          "type": "blocking",
+          "response": { "status": 429, "message": "Rate limit exceeded" },
+          "backoff": "exponential"
+        },
+        "storage": {
+          "type": "redis",
+          "keyPattern": "ratelimit:${userId}:${endpoint}",
+          "ttl": "window + 60s"
+        }
+      }
+    },
+    
+    "error-handling": {
+      "id": "contract-error-handling-v1",
+      "type": "component",
+      "description": "Contract governing error handling behavior",
+      "version": "1.0.0",
+      "status": "proposed",
+      "parent": "contract-character-binding-v1",
+      "specifications": {
+        "behaviors": {
+          "fail-safe": {
+            "onError": "halt",
+            "response": "generic-error",
+            "recovery": "manual"
+          },
+          "permissive": {
+            "onError": "log-continue",
+            "response": "warning",
+            "recovery": "automatic"
+          }
+        }
+      }
+    },
+    
+    "service-routing": {
+      "id": "contract-service-routing-v1",
+      "type": "component",
+      "description": "Contract controlling service availability based on experimentation",
+      "version": "1.0.0",
+      "status": "proposed",
+      "parent": "contract-character-binding-v1",
+      "specifications": {
+        "routing": {
+          "stable": { "always": true },
+          "beta": { "requires": ["experimentation >= limited"] },
+          "experimental": { "requires": ["experimentation >= cautious"] },
+          "chaos": { "requires": ["experimentation = aggressive"] }
+        }
+      }
+    },
+    
+    "logging": {
+      "id": "contract-logging-v1",
+      "type": "component",
+      "description": "Contract controlling logging verbosity",
+      "version": "1.0.0",
+      "status": "proposed",
+      "parent": "contract-character-binding-v1",
+      "specifications": {
+        "outputs": {
+          "off": ["error"],
+          "minimal": ["error", "warn"],
+          "moderate": ["error", "warn", "info"],
+          "verbose": ["error", "warn", "info", "debug"],
+          "trace": ["error", "warn", "info", "debug", "trace", "silly"]
+        }
+      }
+    },
+    
+    "game-modes": {
+      "id": "contract-game-modes-v1",
+      "type": "component",
+      "description": "Contract controlling game mode access",
+      "version": "1.0.0",
+      "status": "proposed",
+      "parent": "contract-character-binding-v1",
+      "specifications": {
+        "modes": {
+          "classic": { "requires": [] },
+          "arcade": { "requires": [] },
+          "experimental": { "requires": ["experimentation >= encouraged"] },
+          "beta": { "requires": ["experimentation >= limited"] },
+          "chaos": { "requires": ["experimentation = aggressive", "riskTolerance >= high"] },
+          "high-stakes": { "requires": ["riskTolerance >= high"] },
+          "secure-pvp": { "requires": ["securityChecks >= maximum"] }
+        }
+      }
+    }
+  },
+  
+  "relationships": {
+    "hierarchy": {
+      "contract-character-binding-v1": {
+        "children": [
+          "contract-token-economy-v1",
+          "contract-rate-limiting-v1",
+          "contract-error-handling-v1",
+          "contract-service-routing-v1",
+          "contract-logging-v1",
+          "contract-game-modes-v1"
+        ]
+      }
+    },
+    "dependencies": {
+      "contract-token-economy-v1": ["contract-character-binding-v1"],
+      "contract-rate-limiting-v1": ["contract-character-binding-v1", "contract-token-economy-v1"],
+      "contract-game-modes-v1": ["contract-character-binding-v1", "contract-token-economy-v1"]
+    },
+    "conflicts": {
+      "aggressive-experimentation": {
+        "conflicts-with": ["paranoid-security"],
+        "resolution": "security-takes-precedence"
+      }
+    }
+  },
+  
+  "enforcement": {
+    "engine": "ContractEnforcementEngine",
+    "storage": "blockchain",
+    "verification": {
+      "frequency": "per-request",
+      "caching": {
+        "enabled": true,
+        "ttl": "5m",
+        "invalidation": "on-character-change"
+      }
+    },
+    "penalties": {
+      "violation": { "tokens": -100, "trustScore": -10 },
+      "repeated-violation": { "tokens": -500, "trustScore": -50, "ban": "1h" }
+    },
+    "rewards": {
+      "compliance": { "tokens": 1, "trustScore": 1 },
+      "perfect-compliance": { "tokens": 10, "trustScore": 5 }
+    }
+  },
+  
+  "verification": {
+    "methods": {
+      "cryptographic": {
+        "algorithm": "SHA256",
+        "includes": ["contractId", "characterId", "timestamp", "settings"]
+      },
+      "runtime": {
+        "checks": ["preconditions", "postconditions", "invariants"],
+        "monitoring": true
+      },
+      "audit": {
+        "storage": "immutable-log",
+        "retention": "365d",
+        "compliance": ["SOC2", "ISO27001"]
+      }
+    }
+  },
+  
+  "implementation": {
+    "status": "not-implemented",
+    "required-components": [
+      "ContractEnforcementEngine",
+      "ContractRegistry",
+      "BindingService",
+      "VerificationService",
+      "PenaltyRewardSystem"
+    ],
+    "estimated-effort": "40-60 hours",
+    "priority": "critical"
+  }
+}

@@ -1,0 +1,219 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>🧠 Ollama Integration Test</title>
+    <style>
+        body {
+            background: #000;
+            color: #0f0;
+            font-family: monospace;
+            padding: 20px;
+        }
+        .test-section {
+            margin: 20px 0;
+            padding: 10px;
+            border: 1px solid #0f0;
+        }
+        .success { color: #0f0; }
+        .error { color: #f00; }
+        .info { color: #ff0; }
+        button {
+            background: #0f0;
+            color: #000;
+            border: none;
+            padding: 10px 20px;
+            cursor: pointer;
+            font-family: monospace;
+            margin: 5px;
+        }
+        button:hover {
+            background: #0ff;
+        }
+        #output {
+            white-space: pre-wrap;
+            background: #111;
+            padding: 10px;
+            margin-top: 20px;
+            max-height: 400px;
+            overflow-y: auto;
+        }
+    </style>
+</head>
+<body>
+    <h1>🧠 Ollama Integration Test</h1>
+    
+    <div class="test-section">
+        <h2>1. Connection Test</h2>
+        <button onclick="testConnection()">Test Ollama Connection</button>
+        <div id="connection-status"></div>
+    </div>
+    
+    <div class="test-section">
+        <h2>2. Model List</h2>
+        <button onclick="listModels()">List Available Models</button>
+        <div id="model-list"></div>
+    </div>
+    
+    <div class="test-section">
+        <h2>3. Interactive Test</h2>
+        <select id="model-select">
+            <option value="mistral">Mistral</option>
+            <option value="codellama:7b">CodeLlama 7B</option>
+            <option value="llama2:7b">Llama2 7B</option>
+            <option value="phi">Phi</option>
+        </select>
+        <input type="text" id="prompt" placeholder="Ask the AI something..." style="width: 300px;">
+        <button onclick="askAI()">Ask</button>
+    </div>
+    
+    <div class="test-section">
+        <h2>4. Sequential Tag Integration Test</h2>
+        <button onclick="testSequentialTags()">Test Sequential Tags</button>
+    </div>
+    
+    <div id="output"></div>
+    
+    <script>
+        const output = document.getElementById('output');
+        
+        function log(message, type = 'info') {
+            const timestamp = new Date().toLocaleTimeString();
+            output.innerHTML += `<span class="${type}">[${timestamp}] ${message}</span>\n`;
+            output.scrollTop = output.scrollHeight;
+        }
+        
+        async function testConnection() {
+            log('Testing Ollama connection...');
+            try {
+                const response = await fetch('http://localhost:11434/api/tags');
+                if (response.ok) {
+                    const data = await response.json();
+                    document.getElementById('connection-status').innerHTML = 
+                        '<span class="success">✅ Connected to Ollama</span>';
+                    log('Connection successful!', 'success');
+                    log(JSON.stringify(data, null, 2));
+                } else {
+                    throw new Error(`HTTP ${response.status}`);
+                }
+            } catch (error) {
+                document.getElementById('connection-status').innerHTML = 
+                    '<span class="error">❌ Connection failed</span>';
+                log('Connection failed: ' + error.message, 'error');
+            }
+        }
+        
+        async function listModels() {
+            log('Fetching model list...');
+            try {
+                const response = await fetch('http://localhost:11434/api/tags');
+                if (response.ok) {
+                    const data = await response.json();
+                    const models = data.models || [];
+                    
+                    const modelHtml = models.map(m => 
+                        `<div>✅ ${m.name} (${(m.size / 1e9).toFixed(1)}GB) - Modified: ${new Date(m.modified_at).toLocaleDateString()}</div>`
+                    ).join('');
+                    
+                    document.getElementById('model-list').innerHTML = modelHtml || '<div>No models found</div>';
+                    log(`Found ${models.length} models`, 'success');
+                }
+            } catch (error) {
+                log('Failed to list models: ' + error.message, 'error');
+            }
+        }
+        
+        async function askAI() {
+            const model = document.getElementById('model-select').value;
+            const prompt = document.getElementById('prompt').value;
+            
+            if (!prompt) {
+                log('Please enter a prompt', 'error');
+                return;
+            }
+            
+            log(`Asking ${model}: "${prompt}"`);
+            
+            try {
+                const response = await fetch('http://localhost:11434/api/generate', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        model: model,
+                        prompt: prompt,
+                        stream: false,
+                        options: {
+                            temperature: 0.7,
+                            num_predict: 150
+                        }
+                    })
+                });
+                
+                if (response.ok) {
+                    const data = await response.json();
+                    log(`${model} says:`, 'success');
+                    log(data.response);
+                    log(`(Generated in ${(data.total_duration / 1e9).toFixed(2)}s)`);
+                } else {
+                    throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+                }
+            } catch (error) {
+                log(`Failed to get response: ${error.message}`, 'error');
+            }
+        }
+        
+        async function testSequentialTags() {
+            log('Testing sequential tag integration...');
+            
+            // Simulate sequential tags
+            const tags = [
+                'game:start',
+                'player:movement:forward',
+                'llm:interaction:mistral',
+                'thought:generated',
+                'world:update'
+            ];
+            
+            for (const tag of tags) {
+                log(`Tag: ${tag}`, 'info');
+                
+                // If it's an LLM interaction tag, trigger a query
+                if (tag.includes('llm:interaction')) {
+                    const model = tag.split(':')[2];
+                    try {
+                        const response = await fetch('http://localhost:11434/api/generate', {
+                            method: 'POST',
+                            headers: { 'Content-Type': 'application/json' },
+                            body: JSON.stringify({
+                                model: model || 'mistral',
+                                prompt: `[Sequential tag detected: ${tag}] Acknowledge this game event.`,
+                                stream: false,
+                                options: {
+                                    temperature: 0.5,
+                                    num_predict: 50
+                                }
+                            })
+                        });
+                        
+                        if (response.ok) {
+                            const data = await response.json();
+                            log(`LLM Response: ${data.response}`, 'success');
+                        }
+                    } catch (error) {
+                        log(`Sequential tag LLM error: ${error.message}`, 'error');
+                    }
+                }
+                
+                await new Promise(resolve => setTimeout(resolve, 1000));
+            }
+            
+            log('Sequential tag test complete!', 'success');
+        }
+        
+        // Auto-test connection on load
+        window.addEventListener('load', () => {
+            testConnection();
+            listModels();
+        });
+    </script>
+</body>
+</html>

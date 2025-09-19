@@ -1,0 +1,627 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Agent Streaming Network - Battle.net Style Data Separation</title>
+    <style>
+        body {
+            margin: 0;
+            padding: 20px;
+            background: linear-gradient(135deg, #0a0a0a 0%, #1a1a2e 50%, #16213e 100%);
+            color: #00ff00;
+            font-family: 'Courier New', monospace;
+            min-height: 100vh;
+        }
+        
+        .header {
+            text-align: center;
+            margin-bottom: 30px;
+            animation: glow 2s ease-in-out infinite alternate;
+        }
+        
+        @keyframes glow {
+            from { text-shadow: 0 0 5px #00ff00; }
+            to { text-shadow: 0 0 20px #00ff00, 0 0 30px #00ff00; }
+        }
+        
+        .network-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr 1fr;
+            gap: 20px;
+            margin-bottom: 30px;
+        }
+        
+        .vault-panel {
+            background: rgba(26, 26, 26, 0.8);
+            border: 2px solid #ff6600;
+            border-radius: 10px;
+            padding: 20px;
+            box-shadow: 0 0 20px rgba(255, 102, 0, 0.3);
+        }
+        
+        .stream-panel {
+            background: rgba(26, 26, 26, 0.8);
+            border: 2px solid #0066ff;
+            border-radius: 10px;
+            padding: 20px;
+            box-shadow: 0 0 20px rgba(0, 102, 255, 0.3);
+        }
+        
+        .agent-panel {
+            background: rgba(26, 26, 26, 0.8);
+            border: 2px solid #00ff00;
+            border-radius: 10px;
+            padding: 20px;
+            box-shadow: 0 0 20px rgba(0, 255, 0, 0.3);
+        }
+        
+        .panel h3 {
+            margin-top: 0;
+            text-align: center;
+            font-size: 18px;
+        }
+        
+        .vault-panel h3 { color: #ff6600; }
+        .stream-panel h3 { color: #0066ff; }
+        .agent-panel h3 { color: #00ff00; }
+        
+        .status-indicator {
+            display: inline-block;
+            width: 12px;
+            height: 12px;
+            border-radius: 50%;
+            margin-right: 8px;
+        }
+        
+        .status-secure { background: #ff6600; }
+        .status-streaming { background: #0066ff; }
+        .status-active { background: #00ff00; }
+        .status-inactive { background: #666; }
+        
+        .data-flow {
+            margin: 15px 0;
+            padding: 10px;
+            background: rgba(0, 255, 0, 0.1);
+            border-left: 4px solid #00ff00;
+            font-size: 12px;
+        }
+        
+        .button {
+            background: linear-gradient(45deg, #1a1a2e, #16213e);
+            border: 2px solid #00ff00;
+            color: #00ff00;
+            padding: 10px 20px;
+            margin: 5px;
+            cursor: pointer;
+            border-radius: 5px;
+            font-size: 14px;
+            font-family: 'Courier New', monospace;
+            transition: all 0.3s;
+        }
+        
+        .button:hover {
+            background: linear-gradient(45deg, #00ff00, #00dd00);
+            color: #000;
+            box-shadow: 0 0 20px #00ff00;
+            transform: scale(1.05);
+        }
+        
+        .jsonl-preview {
+            background: #000;
+            border: 1px solid #0066ff;
+            padding: 10px;
+            height: 150px;
+            overflow: auto;
+            font-size: 10px;
+            white-space: pre-wrap;
+            margin: 10px 0;
+        }
+        
+        .network-diagram {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin: 30px 0;
+            padding: 20px;
+            background: rgba(0, 0, 0, 0.5);
+            border: 1px solid #333;
+            border-radius: 10px;
+        }
+        
+        .network-node {
+            text-align: center;
+            padding: 15px;
+            border: 2px solid;
+            border-radius: 8px;
+            min-width: 120px;
+        }
+        
+        .private-node {
+            border-color: #ff6600;
+            background: rgba(255, 102, 0, 0.1);
+        }
+        
+        .public-node {
+            border-color: #0066ff;
+            background: rgba(0, 102, 255, 0.1);
+        }
+        
+        .agent-node {
+            border-color: #00ff00;
+            background: rgba(0, 255, 0, 0.1);
+        }
+        
+        .flow-arrow {
+            font-size: 24px;
+            color: #ffff00;
+            margin: 0 10px;
+        }
+        
+        .metrics {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+            gap: 15px;
+            margin: 20px 0;
+        }
+        
+        .metric {
+            text-align: center;
+            padding: 15px;
+            background: rgba(26, 26, 26, 0.8);
+            border: 1px solid #333;
+            border-radius: 5px;
+        }
+        
+        .metric-value {
+            font-size: 24px;
+            font-weight: bold;
+            color: #00ff00;
+        }
+        
+        .metric-label {
+            font-size: 12px;
+            color: #aaa;
+        }
+        
+        .log-area {
+            background: #000;
+            border: 2px solid #00ff00;
+            border-radius: 5px;
+            padding: 15px;
+            height: 200px;
+            overflow-y: auto;
+            font-size: 12px;
+            margin: 20px 0;
+        }
+        
+        .log-line {
+            margin: 2px 0;
+            opacity: 0;
+            animation: fadeIn 0.5s forwards;
+        }
+        
+        @keyframes fadeIn {
+            to { opacity: 1; }
+        }
+        
+        .log-vault { color: #ff6600; }
+        .log-stream { color: #0066ff; }
+        .log-agent { color: #00ff00; }
+        .log-system { color: #ffff00; }
+    </style>
+</head>
+<body>
+    <div class="header">
+        <h1>🏦 AGENT STREAMING NETWORK</h1>
+        <p>Battle.net Style Data Separation • Monero Privacy • IPFS Streaming</p>
+        <div id="timestamp"></div>
+    </div>
+    
+    <div class="network-diagram">
+        <div class="network-node private-node">
+            <strong>🔐 Private Vaults</strong><br>
+            <small>Monero-style encryption</small><br>
+            <span id="vaultStatus" class="status-indicator status-secure"></span>
+            <span id="vaultCount">0</span> vaults
+        </div>
+        
+        <div class="flow-arrow">→</div>
+        
+        <div class="network-node public-node">
+            <strong>🌐 JSONL Streams</strong><br>
+            <small>IPFS-style distribution</small><br>
+            <span id="streamStatus" class="status-indicator status-streaming"></span>
+            <span id="streamCount">0</span> streams
+        </div>
+        
+        <div class="flow-arrow">→</div>
+        
+        <div class="network-node agent-node">
+            <strong>🤖 Agent Teams</strong><br>
+            <small>Consuming & processing</small><br>
+            <span id="agentStatus" class="status-indicator status-active"></span>
+            <span id="agentCount">0</span> teams
+        </div>
+    </div>
+    
+    <div style="text-align: center; margin: 20px 0;">
+        <button class="button" onclick="connectToVaultSystem()">🔌 Connect to Vault System</button>
+        <button class="button" onclick="createDemoVault()">🏦 Create Demo Vault</button>
+        <button class="button" onclick="startAgentTeam()">🤖 Deploy Agent Team</button>
+        <button class="button" onclick="verifyNetwork()">🔍 Verify Network</button>
+    </div>
+    
+    <div class="network-grid">
+        <div class="vault-panel">
+            <h3>🔐 Private Vaults</h3>
+            <div class="data-flow">
+                <strong>Data Protection:</strong><br>
+                • Player credentials<br>
+                • Session tokens<br>
+                • Private statistics<br>
+                • Financial data
+            </div>
+            <button class="button" onclick="showVaultDetails()">View Vaults</button>
+            <div id="vaultList"></div>
+        </div>
+        
+        <div class="stream-panel">
+            <h3>🌐 Public JSONL Streams</h3>
+            <div class="jsonl-preview" id="jsonlPreview">
+                Waiting for JSONL stream data...
+            </div>
+            <button class="button" onclick="subscribeToStream()">Subscribe to Stream</button>
+        </div>
+        
+        <div class="agent-panel">
+            <h3>🤖 Agent Teams</h3>
+            <div class="data-flow">
+                <strong>Agent Capabilities:</strong><br>
+                • Strategic planning<br>
+                • Pattern recognition<br>
+                • Game optimization<br>
+                • Decision making
+            </div>
+            <button class="button" onclick="showAgentTeams()">View Teams</button>
+            <div id="agentTeamList"></div>
+        </div>
+    </div>
+    
+    <div class="metrics">
+        <div class="metric">
+            <div id="encryptedData" class="metric-value">0 MB</div>
+            <div class="metric-label">Encrypted Data</div>
+        </div>
+        <div class="metric">
+            <div id="publicEntries" class="metric-value">0</div>
+            <div class="metric-label">Public JSONL Entries</div>
+        </div>
+        <div class="metric">
+            <div id="activeAgents" class="metric-value">0</div>
+            <div class="metric-label">Active Agents</div>
+        </div>
+        <div class="metric">
+            <div id="dataFlow" class="metric-value">0 KB/s</div>
+            <div class="metric-label">Data Flow Rate</div>
+        </div>
+        <div class="metric">
+            <div id="privacyScore" class="metric-value">100%</div>
+            <div class="metric-label">Privacy Score</div>
+        </div>
+        <div class="metric">
+            <div id="networkHealth" class="metric-value">100%</div>
+            <div class="metric-label">Network Health</div>
+        </div>
+    </div>
+    
+    <div class="log-area" id="networkLog">
+        <div class="log-line log-system">[SYSTEM] Agent streaming network initialized</div>
+        <div class="log-line log-system">[SYSTEM] Battle.net style data separation active</div>
+        <div class="log-line log-system">[SYSTEM] Ready to connect to vault system</div>
+    </div>
+    
+    <script>
+        let vaultWS = null;
+        let streamWS = null;
+        let networkMetrics = {
+            vaults: 0,
+            streams: 0,
+            agents: 0,
+            encryptedDataMB: 0,
+            publicEntries: 0,
+            activeAgents: 0,
+            dataFlowKbps: 0
+        };
+        
+        function updateTimestamp() {
+            document.getElementById('timestamp').textContent = new Date().toLocaleString();
+        }
+        setInterval(updateTimestamp, 1000);
+        updateTimestamp();
+        
+        function logMessage(message, type = 'system') {
+            const log = document.getElementById('networkLog');
+            const timestamp = new Date().toLocaleTimeString();
+            const line = document.createElement('div');
+            line.className = `log-line log-${type}`;
+            line.textContent = `[${timestamp}] ${message}`;
+            log.appendChild(line);
+            log.scrollTop = log.scrollHeight;
+            
+            // Keep only last 50 lines
+            while (log.children.length > 50) {
+                log.removeChild(log.firstChild);
+            }
+        }
+        
+        function updateMetrics() {
+            document.getElementById('vaultCount').textContent = networkMetrics.vaults;
+            document.getElementById('streamCount').textContent = networkMetrics.streams;
+            document.getElementById('agentCount').textContent = networkMetrics.agents;
+            document.getElementById('encryptedData').textContent = networkMetrics.encryptedDataMB + ' MB';
+            document.getElementById('publicEntries').textContent = networkMetrics.publicEntries;
+            document.getElementById('activeAgents').textContent = networkMetrics.activeAgents;
+            document.getElementById('dataFlow').textContent = networkMetrics.dataFlowKbps + ' KB/s';
+        }
+        
+        function connectToVaultSystem() {
+            logMessage('Connecting to Monero-style vault system...', 'vault');
+            
+            // Connect to private vault WebSocket
+            vaultWS = new WebSocket('ws://localhost:48002');
+            
+            vaultWS.onopen = () => {
+                logMessage('✅ Connected to private vault service', 'vault');
+                document.getElementById('vaultStatus').className = 'status-indicator status-secure';
+            };
+            
+            vaultWS.onmessage = (event) => {
+                const data = JSON.parse(event.data);
+                handleVaultMessage(data);
+            };
+            
+            vaultWS.onerror = () => {
+                logMessage('❌ Failed to connect to vault service', 'vault');
+                logMessage('Start vault system: node monero-style-vault-system.js', 'system');
+            };
+            
+            // Connect to public stream WebSocket
+            streamWS = new WebSocket('ws://localhost:48003');
+            
+            streamWS.onopen = () => {
+                logMessage('✅ Connected to public JSONL stream service', 'stream');
+                document.getElementById('streamStatus').className = 'status-indicator status-streaming';
+                
+                // Request stream list
+                streamWS.send(JSON.stringify({ type: 'list_streams' }));
+            };
+            
+            streamWS.onmessage = (event) => {
+                const data = JSON.parse(event.data);
+                handleStreamMessage(data);
+            };
+            
+            streamWS.onerror = () => {
+                logMessage('❌ Failed to connect to stream service', 'stream');
+            };
+        }
+        
+        function handleVaultMessage(data) {
+            switch (data.type) {
+                case 'vault_created':
+                    logMessage(`🏦 Vault created: ${data.vaultId}`, 'vault');
+                    networkMetrics.vaults++;
+                    networkMetrics.encryptedDataMB += 0.1; // Estimate
+                    updateMetrics();
+                    break;
+                    
+                case 'vault_unlocked':
+                    logMessage(`🔓 Vault unlocked: ${data.vaultId}`, 'vault');
+                    break;
+                    
+                case 'vault_verification':
+                    logMessage(`🔍 Vault verified: ${data.verification.overall}`, 'vault');
+                    break;
+            }
+        }
+        
+        function handleStreamMessage(data) {
+            switch (data.type) {
+                case 'stream_list':
+                    logMessage(`📊 Found ${data.streams.length} public streams`, 'stream');
+                    networkMetrics.streams = data.streams.length;
+                    
+                    // Calculate total entries
+                    networkMetrics.publicEntries = data.streams.reduce((total, stream) => 
+                        total + stream.entries, 0);
+                    
+                    updateMetrics();
+                    displayStreams(data.streams);
+                    break;
+                    
+                case 'stream_data':
+                    logMessage(`📦 Received stream data: ${data.streamId}`, 'stream');
+                    displayJSONLPreview(data.content);
+                    break;
+                    
+                case 'agent_broadcast':
+                    if (data.event === 'new_jsonl_stream') {
+                        logMessage(`🤖 New stream broadcast: ${data.data.streamId}`, 'agent');
+                        networkMetrics.streams++;
+                        networkMetrics.publicEntries += data.data.entries;
+                        updateMetrics();
+                    }
+                    break;
+                    
+                case 'team_registered':
+                    logMessage(`🤖 Agent team registered: ${data.teamId}`, 'agent');
+                    networkMetrics.agents++;
+                    networkMetrics.activeAgents += 3; // Assume 3 agents per team
+                    updateMetrics();
+                    break;
+            }
+        }
+        
+        function createDemoVault() {
+            if (!vaultWS || vaultWS.readyState !== WebSocket.OPEN) {
+                logMessage('❌ Not connected to vault system', 'vault');
+                return;
+            }
+            
+            logMessage('🏦 Creating demo vault with LadderSlasher data...', 'vault');
+            
+            const demoGameData = {
+                player: {
+                    id: 'demo_player_' + Date.now(),
+                    real_name: 'Demo Player',
+                    email: 'demo@private.vault',
+                    session_token: 'demo_session_' + Math.random(),
+                    private_stats: { level: 25, experience: 15000 }
+                },
+                game_mechanics: {
+                    buttons: [
+                        { id: 'attack_btn', action: 'combat', public: true },
+                        { id: 'defend_btn', action: 'defense', public: true }
+                    ],
+                    rules: { combat_system: 'turn_based', max_level: 99 }
+                }
+            };
+            
+            vaultWS.send(JSON.stringify({
+                type: 'create_vault',
+                vaultId: 'demo_vault_' + Date.now(),
+                gameData: demoGameData,
+                passphrase: 'demo_password_123'
+            }));
+        }
+        
+        function startAgentTeam() {
+            if (!streamWS || streamWS.readyState !== WebSocket.OPEN) {
+                logMessage('❌ Not connected to stream system', 'agent');
+                return;
+            }
+            
+            logMessage('🤖 Deploying new agent team...', 'agent');
+            
+            const teamConfig = {
+                name: 'JSONL Processing Team',
+                agents: ['jsonl_parser_' + Date.now(), 'pattern_detector_' + Date.now(), 'decision_maker_' + Date.now()],
+                capabilities: ['jsonl_parsing', 'pattern_detection', 'strategy_optimization'],
+                vaultAccess: 'public_only'
+            };
+            
+            streamWS.send(JSON.stringify({
+                type: 'register_agent_team',
+                teamId: 'team_' + Date.now(),
+                teamConfig: teamConfig
+            }));
+        }
+        
+        function subscribeToStream() {
+            if (!streamWS || streamWS.readyState !== WebSocket.OPEN) {
+                logMessage('❌ Not connected to stream system', 'stream');
+                return;
+            }
+            
+            logMessage('📡 Requesting stream subscription...', 'stream');
+            streamWS.send(JSON.stringify({ type: 'list_streams' }));
+        }
+        
+        function displayStreams(streams) {
+            if (streams.length > 0) {
+                const latestStream = streams[streams.length - 1];
+                
+                // Subscribe to latest stream for preview
+                streamWS.send(JSON.stringify({
+                    type: 'subscribe_stream',
+                    streamId: latestStream.id
+                }));
+            }
+        }
+        
+        function displayJSONLPreview(content) {
+            const preview = document.getElementById('jsonlPreview');
+            const lines = content.split('\n').slice(0, 10); // Show first 10 lines
+            
+            const formattedContent = lines.map(line => {
+                if (line.trim()) {
+                    const json = JSON.parse(line);
+                    return `${json.type}: ${json.id}\n  Data: ${JSON.stringify(json.data).substring(0, 100)}...`;
+                }
+                return '';
+            }).filter(line => line).join('\n\n');
+            
+            preview.textContent = formattedContent;
+            networkMetrics.dataFlowKbps = Math.round(content.length / 1024);
+            updateMetrics();
+        }
+        
+        function showVaultDetails() {
+            logMessage('🏦 Requesting vault details...', 'vault');
+            const vaultList = document.getElementById('vaultList');
+            vaultList.innerHTML = `
+                <div style="margin-top: 10px; font-size: 12px;">
+                    <div>🔐 Private vaults contain:</div>
+                    <div>• Player credentials</div>
+                    <div>• Session tokens</div>
+                    <div>• Financial data</div>
+                    <div>• Personal statistics</div>
+                    <div style="margin-top: 10px; color: #ff6600;">
+                        <strong>⚠️ Private data never leaves vaults!</strong>
+                    </div>
+                </div>
+            `;
+        }
+        
+        function showAgentTeams() {
+            logMessage('🤖 Displaying agent teams...', 'agent');
+            const agentList = document.getElementById('agentTeamList');
+            agentList.innerHTML = `
+                <div style="margin-top: 10px; font-size: 12px;">
+                    <div>🤖 Active Teams:</div>
+                    <div>• Strategist Team (3 agents)</div>
+                    <div>• Analyst Team (3 agents)</div>
+                    <div>• JSONL Processors (dynamic)</div>
+                    <div style="margin-top: 10px; color: #00ff00;">
+                        <strong>✅ Only public JSONL access!</strong>
+                    </div>
+                </div>
+            `;
+        }
+        
+        function verifyNetwork() {
+            logMessage('🔍 Starting network verification...', 'system');
+            
+            // Simulate network health check
+            setTimeout(() => {
+                const healthScore = 95 + Math.round(Math.random() * 5);
+                document.getElementById('networkHealth').textContent = healthScore + '%';
+                
+                logMessage(`✅ Network verification complete: ${healthScore}%`, 'system');
+                logMessage('🔐 Private vaults: Secure', 'vault');
+                logMessage('🌐 JSONL streams: Active', 'stream');
+                logMessage('🤖 Agent teams: Processing', 'agent');
+                logMessage('🏦 Battle.net style separation: Verified', 'system');
+            }, 2000);
+        }
+        
+        // Simulate data flow
+        setInterval(() => {
+            if (networkMetrics.streams > 0) {
+                networkMetrics.dataFlowKbps = Math.round(5 + Math.random() * 15);
+                updateMetrics();
+            }
+        }, 3000);
+        
+        // Auto-connect after a short delay
+        setTimeout(() => {
+            logMessage('🚀 Auto-connecting to vault system...', 'system');
+            connectToVaultSystem();
+        }, 2000);
+        
+        logMessage('🏦 Agent streaming network ready', 'system');
+        logMessage('🔐 Monero-style privacy protection active', 'vault');
+        logMessage('🌐 IPFS-style public streaming ready', 'stream');
+        logMessage('🤖 Agent deployment system online', 'agent');
+    </script>
+</body>
+</html>

@@ -1,0 +1,384 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>💰 Empire Money Flow Visualizer</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body {
+            font-family: monospace;
+            background: #000;
+            color: #FFD700;
+            overflow: hidden;
+        }
+        
+        #canvas {
+            position: absolute;
+            top: 0;
+            left: 0;
+            background: radial-gradient(circle at center, #1a1a00, #000);
+        }
+        
+        .stats-panel {
+            position: fixed;
+            top: 20px;
+            left: 20px;
+            background: rgba(0,0,0,0.9);
+            border: 3px solid #FFD700;
+            padding: 20px;
+            border-radius: 10px;
+            min-width: 300px;
+            z-index: 100;
+        }
+        
+        .revenue-stream {
+            margin: 10px 0;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+        
+        .stream-name {
+            font-size: 14px;
+            text-transform: uppercase;
+        }
+        
+        .stream-value {
+            font-size: 20px;
+            font-weight: bold;
+            color: #00FF00;
+        }
+        
+        .total-revenue {
+            border-top: 2px solid #FFD700;
+            margin-top: 20px;
+            padding-top: 20px;
+            font-size: 24px;
+            text-align: center;
+        }
+        
+        .empire-nodes {
+            position: fixed;
+            bottom: 20px;
+            left: 50%;
+            transform: translateX(-50%);
+            display: flex;
+            gap: 20px;
+            z-index: 100;
+        }
+        
+        .node-control {
+            background: rgba(255,215,0,0.2);
+            border: 2px solid #FFD700;
+            padding: 15px 25px;
+            border-radius: 25px;
+            cursor: pointer;
+            transition: all 0.3s;
+        }
+        
+        .node-control:hover {
+            background: rgba(255,215,0,0.4);
+            transform: scale(1.1);
+        }
+        
+        .active-systems {
+            position: fixed;
+            top: 20px;
+            right: 20px;
+            background: rgba(0,0,0,0.9);
+            border: 3px solid #FFD700;
+            padding: 20px;
+            border-radius: 10px;
+            max-width: 400px;
+            max-height: 400px;
+            overflow-y: auto;
+            z-index: 100;
+        }
+        
+        .system-item {
+            margin: 5px 0;
+            padding: 5px;
+            background: rgba(255,215,0,0.1);
+            border-radius: 5px;
+            font-size: 12px;
+        }
+        
+        .pulse {
+            animation: pulse 2s infinite;
+        }
+        
+        @keyframes pulse {
+            0% { opacity: 1; }
+            50% { opacity: 0.5; }
+            100% { opacity: 1; }
+        }
+    </style>
+</head>
+<body>
+    <canvas id="canvas"></canvas>
+    
+    <div class="stats-panel">
+        <h2>💰 EMPIRE REVENUE FLOW 💰</h2>
+        <div class="revenue-stream">
+            <span class="stream-name">🤖 Agent Network</span>
+            <span class="stream-value" id="agent-revenue">$0</span>
+        </div>
+        <div class="revenue-stream">
+            <span class="stream-name">🎮 Gaming Empire</span>
+            <span class="stream-value" id="gaming-revenue">$0</span>
+        </div>
+        <div class="revenue-stream">
+            <span class="stream-name">🔗 Crypto Systems</span>
+            <span class="stream-value" id="crypto-revenue">$0</span>
+        </div>
+        <div class="revenue-stream">
+            <span class="stream-name">📄 Document Gen</span>
+            <span class="stream-value" id="docgen-revenue">$0</span>
+        </div>
+        <div class="revenue-stream">
+            <span class="stream-name">🏛️ Gov Grants</span>
+            <span class="stream-value" id="grant-revenue">$0</span>
+        </div>
+        <div class="total-revenue pulse">
+            <div>TOTAL EMPIRE VALUE</div>
+            <div id="total-revenue" style="font-size: 36px;">$0</div>
+        </div>
+    </div>
+    
+    <div class="active-systems">
+        <h3>🚀 Active Systems</h3>
+        <div id="systems-list"></div>
+    </div>
+    
+    <div class="empire-nodes">
+        <div class="node-control" onclick="activateNode('agents')">🤖 Activate Agents</div>
+        <div class="node-control" onclick="activateNode('gaming')">🎮 Gaming Tycoon</div>
+        <div class="node-control" onclick="activateNode('crypto')">🔗 Crypto Empire</div>
+        <div class="node-control" onclick="activateNode('all')">👑 FULL EMPIRE</div>
+    </div>
+    
+    <script>
+        const canvas = document.getElementById('canvas');
+        const ctx = canvas.getContext('2d');
+        
+        canvas.width = window.innerWidth;
+        canvas.height = window.innerHeight;
+        
+        // Empire state
+        const empire = {
+            agents: { active: false, revenue: 0, systems: [] },
+            gaming: { active: false, revenue: 0, systems: [] },
+            crypto: { active: false, revenue: 0, systems: [] },
+            docgen: { active: false, revenue: 0, systems: [] },
+            grants: { active: false, revenue: 0, systems: [] }
+        };
+        
+        // Money flow particles
+        class MoneyParticle {
+            constructor(source, target) {
+                this.source = source;
+                this.target = target;
+                this.x = source.x;
+                this.y = source.y;
+                this.progress = 0;
+                this.speed = 0.02 + Math.random() * 0.03;
+                this.value = Math.floor(Math.random() * 1000) + 100;
+                this.color = source.color;
+            }
+            
+            update() {
+                this.progress += this.speed;
+                
+                if (this.progress <= 1) {
+                    this.x = this.source.x + (this.target.x - this.source.x) * this.progress;
+                    this.y = this.source.y + (this.target.y - this.source.y) * this.progress;
+                }
+                
+                return this.progress <= 1;
+            }
+            
+            draw() {
+                // Money trail
+                ctx.beginPath();
+                ctx.arc(this.x, this.y, 5, 0, Math.PI * 2);
+                ctx.fillStyle = this.color;
+                ctx.fill();
+                
+                // Dollar sign
+                ctx.fillStyle = '#000';
+                ctx.font = 'bold 10px Arial';
+                ctx.textAlign = 'center';
+                ctx.fillText('$', this.x, this.y + 3);
+            }
+        }
+        
+        // System nodes
+        const nodes = {
+            agents: { x: 200, y: 300, color: '#00FFFF', emoji: '🤖' },
+            gaming: { x: 400, y: 200, color: '#FF00FF', emoji: '🎮' },
+            crypto: { x: 600, y: 300, color: '#FFA500', emoji: '🔗' },
+            docgen: { x: 400, y: 400, color: '#00FF00', emoji: '📄' },
+            grants: { x: 800, y: 200, color: '#FFD700', emoji: '🏛️' },
+            central: { x: canvas.width / 2, y: canvas.height / 2, color: '#FFD700', emoji: '👑' }
+        };
+        
+        const particles = [];
+        const activeSystems = new Set();
+        
+        // Activate node
+        function activateNode(type) {
+            if (type === 'all') {
+                Object.keys(empire).forEach(key => {
+                    empire[key].active = true;
+                    activateSystems(key);
+                });
+            } else {
+                empire[type].active = true;
+                activateSystems(type);
+            }
+        }
+        
+        // Activate systems for a branch
+        function activateSystems(branch) {
+            const systems = {
+                agents: [
+                    'AGENT-BLOCKCHAIN.js',
+                    'AGENT-ECONOMY-FORUM.js',
+                    'agent-affiliate-payout-system.js'
+                ],
+                gaming: [
+                    'MAXIMUM-TYCOON-EXPANSION-ARCHITECTURE.js',
+                    'billion-dollar-game-economy.js',
+                    'depths-civilization-tycoon.js'
+                ],
+                crypto: [
+                    'bitcoin-blamechain-analyzer.js',
+                    'crypto-differential-engine.js',
+                    'blockchain-wallet-mirror-bridge.js'
+                ]
+            };
+            
+            if (systems[branch]) {
+                systems[branch].forEach(sys => activeSystems.add(sys));
+                updateSystemsList();
+            }
+        }
+        
+        // Update active systems display
+        function updateSystemsList() {
+            const list = document.getElementById('systems-list');
+            list.innerHTML = Array.from(activeSystems).map(sys => 
+                `<div class="system-item">✅ ${sys}</div>`
+            ).join('');
+        }
+        
+        // Generate money flow
+        function generateMoneyFlow() {
+            Object.entries(empire).forEach(([key, data]) => {
+                if (data.active && Math.random() > 0.7) {
+                    const source = nodes[key];
+                    const target = nodes.central;
+                    particles.push(new MoneyParticle(source, target));
+                    
+                    // Update revenue
+                    const amount = Math.floor(Math.random() * 1000) + 100;
+                    data.revenue += amount;
+                    updateRevenue();
+                }
+            });
+        }
+        
+        // Update revenue display
+        function updateRevenue() {
+            document.getElementById('agent-revenue').textContent = 
+                '$' + empire.agents.revenue.toLocaleString();
+            document.getElementById('gaming-revenue').textContent = 
+                '$' + empire.gaming.revenue.toLocaleString();
+            document.getElementById('crypto-revenue').textContent = 
+                '$' + empire.crypto.revenue.toLocaleString();
+            document.getElementById('docgen-revenue').textContent = 
+                '$' + empire.docgen.revenue.toLocaleString();
+            document.getElementById('grant-revenue').textContent = 
+                '$' + empire.grants.revenue.toLocaleString();
+            
+            const total = Object.values(empire).reduce((sum, data) => sum + data.revenue, 0);
+            document.getElementById('total-revenue').textContent = 
+                '$' + total.toLocaleString();
+        }
+        
+        // Animation loop
+        function animate() {
+            ctx.fillStyle = 'rgba(0, 0, 0, 0.05)';
+            ctx.fillRect(0, 0, canvas.width, canvas.height);
+            
+            // Draw connections
+            Object.entries(nodes).forEach(([key, node]) => {
+                if (key !== 'central' && empire[key]?.active) {
+                    ctx.beginPath();
+                    ctx.moveTo(node.x, node.y);
+                    ctx.lineTo(nodes.central.x, nodes.central.y);
+                    ctx.strokeStyle = 'rgba(255, 215, 0, 0.2)';
+                    ctx.lineWidth = 2;
+                    ctx.stroke();
+                }
+            });
+            
+            // Draw nodes
+            Object.entries(nodes).forEach(([key, node]) => {
+                const isActive = key === 'central' || empire[key]?.active;
+                
+                ctx.beginPath();
+                ctx.arc(node.x, node.y, key === 'central' ? 40 : 30, 0, Math.PI * 2);
+                ctx.fillStyle = isActive ? node.color : 'rgba(255, 215, 0, 0.2)';
+                ctx.fill();
+                ctx.strokeStyle = node.color;
+                ctx.lineWidth = 3;
+                ctx.stroke();
+                
+                // Draw emoji
+                ctx.font = key === 'central' ? '30px Arial' : '24px Arial';
+                ctx.textAlign = 'center';
+                ctx.textBaseline = 'middle';
+                ctx.fillText(node.emoji, node.x, node.y);
+            });
+            
+            // Update and draw particles
+            for (let i = particles.length - 1; i >= 0; i--) {
+                const particle = particles[i];
+                if (!particle.update()) {
+                    particles.splice(i, 1);
+                } else {
+                    particle.draw();
+                }
+            }
+            
+            // Generate new money flow
+            generateMoneyFlow();
+            
+            requestAnimationFrame(animate);
+        }
+        
+        // Start animation
+        animate();
+        
+        // Auto-activate docgen (it's already running)
+        setTimeout(() => {
+            empire.docgen.active = true;
+            activeSystems.add('Document Generator Platform');
+            activeSystems.add('platform-os.js');
+            updateSystemsList();
+        }, 1000);
+        
+        // Window resize
+        window.addEventListener('resize', () => {
+            canvas.width = window.innerWidth;
+            canvas.height = window.innerHeight;
+            nodes.central = { 
+                x: canvas.width / 2, 
+                y: canvas.height / 2, 
+                color: '#FFD700', 
+                emoji: '👑' 
+            };
+        });
+    </script>
+</body>
+</html>

@@ -1,0 +1,1138 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>SSL Dashboard - Certificate Management</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            color: #333;
+        }
+        
+        .dashboard-container {
+            max-width: 1400px;
+            margin: 0 auto;
+            padding: 2rem;
+        }
+        
+        .header {
+            background: rgba(255, 255, 255, 0.95);
+            backdrop-filter: blur(10px);
+            border-radius: 20px;
+            padding: 2rem;
+            margin-bottom: 2rem;
+            box-shadow: 0 20px 40px rgba(0, 0, 0, 0.1);
+        }
+        
+        .header h1 {
+            font-size: 2.5rem;
+            background: linear-gradient(45deg, #667eea, #764ba2);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            margin-bottom: 0.5rem;
+        }
+        
+        .header p {
+            opacity: 0.7;
+            font-size: 1.1rem;
+        }
+        
+        .stats-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+            gap: 1.5rem;
+            margin-bottom: 2rem;
+        }
+        
+        .stat-card {
+            background: rgba(255, 255, 255, 0.95);
+            backdrop-filter: blur(10px);
+            border-radius: 15px;
+            padding: 1.5rem;
+            box-shadow: 0 10px 25px rgba(0, 0, 0, 0.1);
+            border: 1px solid rgba(255, 255, 255, 0.2);
+        }
+        
+        .stat-card h3 {
+            font-size: 0.9rem;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            opacity: 0.7;
+            margin-bottom: 0.5rem;
+        }
+        
+        .stat-card .value {
+            font-size: 2.5rem;
+            font-weight: bold;
+            margin-bottom: 0.5rem;
+        }
+        
+        .stat-card .trend {
+            font-size: 0.9rem;
+            opacity: 0.8;
+        }
+        
+        .stat-card.active .value { color: #10b981; }
+        .stat-card.warning .value { color: #f59e0b; }
+        .stat-card.critical .value { color: #ef4444; }
+        .stat-card.info .value { color: #3b82f6; }
+        
+        .main-content {
+            display: grid;
+            grid-template-columns: 1fr 350px;
+            gap: 2rem;
+        }
+        
+        .certificates-section {
+            background: rgba(255, 255, 255, 0.95);
+            backdrop-filter: blur(10px);
+            border-radius: 20px;
+            padding: 2rem;
+            box-shadow: 0 20px 40px rgba(0, 0, 0, 0.1);
+        }
+        
+        .section-header {
+            display: flex;
+            justify-content: between;
+            align-items: center;
+            margin-bottom: 2rem;
+            border-bottom: 1px solid rgba(0, 0, 0, 0.1);
+            padding-bottom: 1rem;
+        }
+        
+        .section-header h2 {
+            font-size: 1.5rem;
+            color: #374151;
+        }
+        
+        .action-buttons {
+            display: flex;
+            gap: 1rem;
+        }
+        
+        .btn {
+            background: linear-gradient(45deg, #667eea, #764ba2);
+            color: white;
+            border: none;
+            padding: 0.75rem 1.5rem;
+            border-radius: 10px;
+            cursor: pointer;
+            font-weight: 600;
+            transition: all 0.3s ease;
+            text-decoration: none;
+            display: inline-flex;
+            align-items: center;
+            gap: 0.5rem;
+        }
+        
+        .btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 10px 25px rgba(102, 126, 234, 0.3);
+        }
+        
+        .btn.secondary {
+            background: rgba(107, 114, 128, 0.1);
+            color: #374151;
+            border: 1px solid rgba(107, 114, 128, 0.2);
+        }
+        
+        .btn.danger {
+            background: linear-gradient(45deg, #ef4444, #dc2626);
+        }
+        
+        .certificate-card {
+            background: rgba(249, 250, 251, 0.8);
+            border: 1px solid rgba(229, 231, 235, 0.8);
+            border-radius: 15px;
+            padding: 1.5rem;
+            margin-bottom: 1rem;
+            transition: all 0.3s ease;
+        }
+        
+        .certificate-card:hover {
+            background: rgba(255, 255, 255, 0.9);
+            transform: translateY(-2px);
+            box-shadow: 0 10px 25px rgba(0, 0, 0, 0.1);
+        }
+        
+        .cert-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 1rem;
+        }
+        
+        .cert-domain {
+            font-size: 1.2rem;
+            font-weight: 600;
+            color: #1f2937;
+        }
+        
+        .cert-status {
+            padding: 0.25rem 0.75rem;
+            border-radius: 20px;
+            font-size: 0.8rem;
+            font-weight: 600;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+        
+        .cert-status.active {
+            background: rgba(16, 185, 129, 0.1);
+            color: #047857;
+        }
+        
+        .cert-status.expiring {
+            background: rgba(245, 158, 11, 0.1);
+            color: #92400e;
+        }
+        
+        .cert-status.expired {
+            background: rgba(239, 68, 68, 0.1);
+            color: #b91c1c;
+        }
+        
+        .cert-info {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+            gap: 1rem;
+            margin-bottom: 1rem;
+        }
+        
+        .cert-info-item {
+            display: flex;
+            flex-direction: column;
+        }
+        
+        .cert-info-label {
+            font-size: 0.8rem;
+            opacity: 0.7;
+            margin-bottom: 0.25rem;
+        }
+        
+        .cert-info-value {
+            font-weight: 500;
+        }
+        
+        .cert-actions {
+            display: flex;
+            gap: 0.5rem;
+            flex-wrap: wrap;
+        }
+        
+        .cert-actions .btn {
+            padding: 0.5rem 1rem;
+            font-size: 0.8rem;
+        }
+        
+        .sidebar {
+            display: flex;
+            flex-direction: column;
+            gap: 1.5rem;
+        }
+        
+        .widget {
+            background: rgba(255, 255, 255, 0.95);
+            backdrop-filter: blur(10px);
+            border-radius: 15px;
+            padding: 1.5rem;
+            box-shadow: 0 10px 25px rgba(0, 0, 0, 0.1);
+        }
+        
+        .widget h3 {
+            font-size: 1.1rem;
+            margin-bottom: 1rem;
+            color: #374151;
+        }
+        
+        .renewal-timeline {
+            space-y: 1rem;
+        }
+        
+        .renewal-item {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 0.75rem;
+            background: rgba(249, 250, 251, 0.8);
+            border-radius: 10px;
+            margin-bottom: 0.5rem;
+        }
+        
+        .renewal-domain {
+            font-weight: 500;
+            color: #374151;
+        }
+        
+        .renewal-days {
+            font-size: 0.8rem;
+            padding: 0.25rem 0.5rem;
+            border-radius: 15px;
+            font-weight: 600;
+        }
+        
+        .renewal-days.critical {
+            background: rgba(239, 68, 68, 0.1);
+            color: #b91c1c;
+        }
+        
+        .renewal-days.warning {
+            background: rgba(245, 158, 11, 0.1);
+            color: #92400e;
+        }
+        
+        .renewal-days.good {
+            background: rgba(16, 185, 129, 0.1);
+            color: #047857;
+        }
+        
+        .quick-actions {
+            display: flex;
+            flex-direction: column;
+            gap: 0.75rem;
+        }
+        
+        .security-score {
+            text-align: center;
+        }
+        
+        .score-circle {
+            width: 100px;
+            height: 100px;
+            border-radius: 50%;
+            background: conic-gradient(#10b981 0deg 270deg, rgba(16, 185, 129, 0.1) 270deg 360deg);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            margin: 0 auto 1rem;
+            position: relative;
+        }
+        
+        .score-circle::before {
+            content: '';
+            position: absolute;
+            width: 70px;
+            height: 70px;
+            background: white;
+            border-radius: 50%;
+        }
+        
+        .score-value {
+            position: relative;
+            z-index: 1;
+            font-size: 1.5rem;
+            font-weight: bold;
+            color: #10b981;
+        }
+        
+        .filters {
+            display: flex;
+            gap: 1rem;
+            margin-bottom: 1.5rem;
+            flex-wrap: wrap;
+        }
+        
+        .filter-btn {
+            padding: 0.5rem 1rem;
+            border: 1px solid rgba(107, 114, 128, 0.2);
+            background: rgba(255, 255, 255, 0.8);
+            border-radius: 20px;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            font-size: 0.9rem;
+        }
+        
+        .filter-btn.active {
+            background: linear-gradient(45deg, #667eea, #764ba2);
+            color: white;
+            border-color: transparent;
+        }
+        
+        .search-box {
+            width: 100%;
+            padding: 0.75rem 1rem;
+            border: 1px solid rgba(107, 114, 128, 0.2);
+            border-radius: 10px;
+            background: rgba(255, 255, 255, 0.8);
+            margin-bottom: 1.5rem;
+            font-size: 1rem;
+        }
+        
+        .search-box:focus {
+            outline: none;
+            border-color: #667eea;
+            box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.1);
+        }
+        
+        .empty-state {
+            text-align: center;
+            padding: 3rem;
+            opacity: 0.7;
+        }
+        
+        .empty-state h3 {
+            font-size: 1.5rem;
+            margin-bottom: 0.5rem;
+        }
+        
+        .loading {
+            display: inline-block;
+            width: 20px;
+            height: 20px;
+            border: 3px solid rgba(255, 255, 255, 0.3);
+            border-radius: 50%;
+            border-top-color: #fff;
+            animation: spin 1s ease-in-out infinite;
+        }
+        
+        @keyframes spin {
+            to { transform: rotate(360deg); }
+        }
+        
+        .notification {
+            position: fixed;
+            top: 2rem;
+            right: 2rem;
+            padding: 1rem 1.5rem;
+            border-radius: 10px;
+            color: white;
+            font-weight: 500;
+            z-index: 1000;
+            transform: translateX(400px);
+            transition: transform 0.3s ease;
+        }
+        
+        .notification.show {
+            transform: translateX(0);
+        }
+        
+        .notification.success {
+            background: linear-gradient(45deg, #10b981, #047857);
+        }
+        
+        .notification.error {
+            background: linear-gradient(45deg, #ef4444, #dc2626);
+        }
+        
+        .notification.warning {
+            background: linear-gradient(45deg, #f59e0b, #d97706);
+        }
+        
+        .modal {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100vw;
+            height: 100vh;
+            background: rgba(0, 0, 0, 0.5);
+            backdrop-filter: blur(5px);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            z-index: 1000;
+            opacity: 0;
+            visibility: hidden;
+            transition: all 0.3s ease;
+        }
+        
+        .modal.show {
+            opacity: 1;
+            visibility: visible;
+        }
+        
+        .modal-content {
+            background: white;
+            border-radius: 20px;
+            padding: 2rem;
+            max-width: 500px;
+            width: 90vw;
+            max-height: 80vh;
+            overflow-y: auto;
+            transform: scale(0.9);
+            transition: transform 0.3s ease;
+        }
+        
+        .modal.show .modal-content {
+            transform: scale(1);
+        }
+        
+        .modal-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 1.5rem;
+            border-bottom: 1px solid rgba(0, 0, 0, 0.1);
+            padding-bottom: 1rem;
+        }
+        
+        .modal-header h3 {
+            font-size: 1.5rem;
+            color: #374151;
+        }
+        
+        .close-btn {
+            background: none;
+            border: none;
+            font-size: 1.5rem;
+            cursor: pointer;
+            color: #6b7280;
+            padding: 0.5rem;
+            border-radius: 50%;
+            transition: all 0.3s ease;
+        }
+        
+        .close-btn:hover {
+            background: rgba(107, 114, 128, 0.1);
+        }
+        
+        .form-group {
+            margin-bottom: 1.5rem;
+        }
+        
+        .form-group label {
+            display: block;
+            margin-bottom: 0.5rem;
+            font-weight: 500;
+            color: #374151;
+        }
+        
+        .form-group input,
+        .form-group select {
+            width: 100%;
+            padding: 0.75rem;
+            border: 1px solid rgba(107, 114, 128, 0.2);
+            border-radius: 10px;
+            font-size: 1rem;
+        }
+        
+        .form-group input:focus,
+        .form-group select:focus {
+            outline: none;
+            border-color: #667eea;
+            box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.1);
+        }
+        
+        .progress-bar {
+            width: 100%;
+            height: 8px;
+            background: rgba(107, 114, 128, 0.1);
+            border-radius: 4px;
+            overflow: hidden;
+            margin: 1rem 0;
+        }
+        
+        .progress-fill {
+            height: 100%;
+            background: linear-gradient(45deg, #667eea, #764ba2);
+            transition: width 0.3s ease;
+        }
+        
+        @media (max-width: 768px) {
+            .main-content {
+                grid-template-columns: 1fr;
+            }
+            
+            .stats-grid {
+                grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+            }
+            
+            .cert-info {
+                grid-template-columns: 1fr;
+            }
+            
+            .filters {
+                flex-direction: column;
+            }
+            
+            .dashboard-container {
+                padding: 1rem;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="dashboard-container">
+        <!-- Header -->
+        <div class="header">
+            <h1>🔒 SSL Certificate Dashboard</h1>
+            <p>Multi-tenant SSL management with wildcard certificate automation</p>
+        </div>
+        
+        <!-- Statistics Grid -->
+        <div class="stats-grid">
+            <div class="stat-card active">
+                <h3>Active Certificates</h3>
+                <div class="value" id="activeCerts">12</div>
+                <div class="trend">+2 this month</div>
+            </div>
+            
+            <div class="stat-card warning">
+                <h3>Expiring Soon</h3>
+                <div class="value" id="expiringSoon">3</div>
+                <div class="trend">Within 30 days</div>
+            </div>
+            
+            <div class="stat-card info">
+                <h3>Wildcard Certificates</h3>
+                <div class="value" id="wildcardCerts">8</div>
+                <div class="trend">67% of total</div>
+            </div>
+            
+            <div class="stat-card critical">
+                <h3>Failed Renewals</h3>
+                <div class="value" id="failedRenewals">0</div>
+                <div class="trend">All systems healthy</div>
+            </div>
+        </div>
+        
+        <!-- Main Content -->
+        <div class="main-content">
+            <!-- Certificates Section -->
+            <div class="certificates-section">
+                <div class="section-header">
+                    <h2>SSL Certificates</h2>
+                    <div class="action-buttons">
+                        <button class="btn" onclick="showNewCertModal()">
+                            ➕ Issue Certificate
+                        </button>
+                        <button class="btn secondary" onclick="refreshDashboard()">
+                            🔄 Refresh
+                        </button>
+                    </div>
+                </div>
+                
+                <!-- Search and Filters -->
+                <input type="text" class="search-box" placeholder="Search domains..." id="searchBox" onkeyup="filterCertificates()">
+                
+                <div class="filters">
+                    <button class="filter-btn active" data-filter="all" onclick="setFilter('all')">All</button>
+                    <button class="filter-btn" data-filter="wildcard" onclick="setFilter('wildcard')">Wildcard</button>
+                    <button class="filter-btn" data-filter="expiring" onclick="setFilter('expiring')">Expiring</button>
+                    <button class="filter-btn" data-filter="active" onclick="setFilter('active')">Active</button>
+                    <button class="filter-btn" data-filter="failed" onclick="setFilter('failed')">Issues</button>
+                </div>
+                
+                <!-- Certificates List -->
+                <div id="certificatesList">
+                    <!-- Certificates will be populated by JavaScript -->
+                </div>
+            </div>
+            
+            <!-- Sidebar -->
+            <div class="sidebar">
+                <!-- Security Score Widget -->
+                <div class="widget">
+                    <h3>🛡️ Security Score</h3>
+                    <div class="security-score">
+                        <div class="score-circle">
+                            <div class="score-value">95</div>
+                        </div>
+                        <p>Excellent SSL hygiene</p>
+                        <small>All certificates valid and properly configured</small>
+                    </div>
+                </div>
+                
+                <!-- Renewal Timeline -->
+                <div class="widget">
+                    <h3>⏰ Renewal Timeline</h3>
+                    <div class="renewal-timeline" id="renewalTimeline">
+                        <!-- Timeline items will be populated by JavaScript -->
+                    </div>
+                </div>
+                
+                <!-- Quick Actions -->
+                <div class="widget">
+                    <h3>⚡ Quick Actions</h3>
+                    <div class="quick-actions">
+                        <button class="btn" onclick="bulkRenewal()">
+                            🔄 Bulk Renewal
+                        </button>
+                        <button class="btn secondary" onclick="exportCertificates()">
+                            📊 Export Report
+                        </button>
+                        <button class="btn secondary" onclick="viewLogs()">
+                            📝 View Logs
+                        </button>
+                        <button class="btn secondary" onclick="showSettings()">
+                            ⚙️ Settings
+                        </button>
+                    </div>
+                </div>
+                
+                <!-- DNS Provider Status -->
+                <div class="widget">
+                    <h3>🌐 DNS Provider</h3>
+                    <div style="display: flex; align-items: center; gap: 0.5rem; margin-bottom: 1rem;">
+                        <div style="width: 12px; height: 12px; background: #10b981; border-radius: 50%;"></div>
+                        <span>Cloudflare - Connected</span>
+                    </div>
+                    <div style="font-size: 0.9rem; opacity: 0.7;">
+                        API rate limit: 1,200/1,200 remaining
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <!-- New Certificate Modal -->
+    <div class="modal" id="newCertModal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h3>Issue New Certificate</h3>
+                <button class="close-btn" onclick="hideNewCertModal()">&times;</button>
+            </div>
+            
+            <form id="newCertForm" onsubmit="issueCertificate(event)">
+                <div class="form-group">
+                    <label for="domain">Domain</label>
+                    <input type="text" id="domain" name="domain" placeholder="example.com" required>
+                </div>
+                
+                <div class="form-group">
+                    <label for="certType">Certificate Type</label>
+                    <select id="certType" name="certType" onchange="updateCertTypeInfo()">
+                        <option value="wildcard">Wildcard (*.domain.com)</option>
+                        <option value="single">Single Domain</option>
+                        <option value="multi">Multi-Domain (SAN)</option>
+                    </select>
+                </div>
+                
+                <div class="form-group" id="wildcardInfo">
+                    <div style="background: rgba(16, 185, 129, 0.1); padding: 1rem; border-radius: 10px; font-size: 0.9rem;">
+                        <strong>💡 Wildcard Benefits:</strong> Covers unlimited subdomains (app.domain.com, blog.domain.com, etc.)
+                    </div>
+                </div>
+                
+                <div class="form-group">
+                    <label for="dnsProvider">DNS Provider</label>
+                    <select id="dnsProvider" name="dnsProvider">
+                        <option value="cloudflare">Cloudflare</option>
+                        <option value="route53">AWS Route53</option>
+                        <option value="digitalocean">DigitalOcean</option>
+                    </select>
+                </div>
+                
+                <div class="form-group">
+                    <label>
+                        <input type="checkbox" id="autoRenew" name="autoRenew" checked>
+                        Enable automatic renewal
+                    </label>
+                </div>
+                
+                <div id="issueProgress" style="display: none;">
+                    <div class="progress-bar">
+                        <div class="progress-fill" id="progressFill" style="width: 0%;"></div>
+                    </div>
+                    <div id="progressText">Preparing certificate issuance...</div>
+                </div>
+                
+                <div style="display: flex; gap: 1rem; justify-content: flex-end; margin-top: 2rem;">
+                    <button type="button" class="btn secondary" onclick="hideNewCertModal()">Cancel</button>
+                    <button type="submit" class="btn" id="submitBtn">Issue Certificate</button>
+                </div>
+            </form>
+        </div>
+    </div>
+    
+    <!-- Notification -->
+    <div class="notification" id="notification"></div>
+    
+    <script>
+        // Sample data - in production this would come from API
+        const sampleCertificates = [
+            {
+                id: 'cert-1',
+                domain: 'example.com',
+                type: 'wildcard',
+                status: 'active',
+                issuedAt: '2024-01-15',
+                expiresAt: '2024-04-15',
+                issuer: 'Let\'s Encrypt',
+                autoRenew: true,
+                subdomains: ['app', 'blog', 'shop', 'api'],
+                dnsProvider: 'cloudflare'
+            },
+            {
+                id: 'cert-2',
+                domain: 'myapp.com',
+                type: 'wildcard',
+                status: 'expiring',
+                issuedAt: '2023-12-01',
+                expiresAt: '2024-03-01',
+                issuer: 'Let\'s Encrypt',
+                autoRenew: true,
+                subdomains: ['www', 'api'],
+                dnsProvider: 'route53'
+            },
+            {
+                id: 'cert-3',
+                domain: 'startup.io',
+                type: 'single',
+                status: 'active',
+                issuedAt: '2024-02-01',
+                expiresAt: '2024-05-01',
+                issuer: 'Let\'s Encrypt',
+                autoRenew: false,
+                subdomains: [],
+                dnsProvider: 'cloudflare'
+            }
+        ];
+        
+        let currentFilter = 'all';
+        let searchTerm = '';
+        
+        // Initialize dashboard
+        document.addEventListener('DOMContentLoaded', function() {
+            loadCertificates();
+            updateStats();
+            loadRenewalTimeline();
+            
+            // Start real-time updates
+            setInterval(updateDashboard, 30000); // Update every 30 seconds
+        });
+        
+        function loadCertificates() {
+            const container = document.getElementById('certificatesList');
+            const filteredCerts = filterCertificateData(sampleCertificates);
+            
+            if (filteredCerts.length === 0) {
+                container.innerHTML = `
+                    <div class="empty-state">
+                        <h3>No certificates found</h3>
+                        <p>No certificates match your current filters</p>
+                    </div>
+                `;
+                return;
+            }
+            
+            container.innerHTML = filteredCerts.map(cert => `
+                <div class="certificate-card" data-cert-id="${cert.id}">
+                    <div class="cert-header">
+                        <div class="cert-domain">
+                            ${cert.type === 'wildcard' ? '🌟' : '📜'} 
+                            ${cert.type === 'wildcard' ? `*.${cert.domain}` : cert.domain}
+                        </div>
+                        <div class="cert-status ${cert.status}">${cert.status}</div>
+                    </div>
+                    
+                    <div class="cert-info">
+                        <div class="cert-info-item">
+                            <div class="cert-info-label">Expires</div>
+                            <div class="cert-info-value">${formatDate(cert.expiresAt)}</div>
+                        </div>
+                        <div class="cert-info-item">
+                            <div class="cert-info-label">Days Remaining</div>
+                            <div class="cert-info-value">${getDaysUntilExpiry(cert.expiresAt)}</div>
+                        </div>
+                        <div class="cert-info-item">
+                            <div class="cert-info-label">Type</div>
+                            <div class="cert-info-value">${cert.type}</div>
+                        </div>
+                        <div class="cert-info-item">
+                            <div class="cert-info-label">Auto Renew</div>
+                            <div class="cert-info-value">${cert.autoRenew ? '✅ Yes' : '❌ No'}</div>
+                        </div>
+                    </div>
+                    
+                    ${cert.type === 'wildcard' && cert.subdomains.length > 0 ? `
+                        <div class="cert-info-item" style="margin-top: 1rem;">
+                            <div class="cert-info-label">Active Subdomains (${cert.subdomains.length})</div>
+                            <div class="cert-info-value">${cert.subdomains.map(sub => `${sub}.${cert.domain}`).join(', ')}</div>
+                        </div>
+                    ` : ''}
+                    
+                    <div class="cert-actions">
+                        <button class="btn secondary" onclick="viewCertDetails('${cert.id}')">View Details</button>
+                        ${cert.status === 'expiring' ? `<button class="btn" onclick="renewCertificate('${cert.id}')">Renew Now</button>` : ''}
+                        <button class="btn secondary" onclick="downloadCert('${cert.id}')">Download</button>
+                        <button class="btn danger" onclick="revokeCertificate('${cert.id}')">Revoke</button>
+                    </div>
+                </div>
+            `).join('');
+        }
+        
+        function filterCertificateData(certificates) {
+            return certificates.filter(cert => {
+                // Filter by search term
+                if (searchTerm && !cert.domain.toLowerCase().includes(searchTerm.toLowerCase())) {
+                    return false;
+                }
+                
+                // Filter by status
+                switch (currentFilter) {
+                    case 'wildcard':
+                        return cert.type === 'wildcard';
+                    case 'expiring':
+                        return cert.status === 'expiring';
+                    case 'active':
+                        return cert.status === 'active';
+                    case 'failed':
+                        return cert.status === 'failed' || cert.status === 'error';
+                    default:
+                        return true;
+                }
+            });
+        }
+        
+        function updateStats() {
+            const stats = {
+                active: sampleCertificates.filter(c => c.status === 'active').length,
+                expiring: sampleCertificates.filter(c => c.status === 'expiring').length,
+                wildcard: sampleCertificates.filter(c => c.type === 'wildcard').length,
+                failed: sampleCertificates.filter(c => c.status === 'failed').length
+            };
+            
+            document.getElementById('activeCerts').textContent = stats.active;
+            document.getElementById('expiringSoon').textContent = stats.expiring;
+            document.getElementById('wildcardCerts').textContent = stats.wildcard;
+            document.getElementById('failedRenewals').textContent = stats.failed;
+        }
+        
+        function loadRenewalTimeline() {
+            const container = document.getElementById('renewalTimeline');
+            const upcomingRenewals = sampleCertificates
+                .map(cert => ({
+                    ...cert,
+                    daysUntilExpiry: getDaysUntilExpiry(cert.expiresAt)
+                }))
+                .filter(cert => cert.daysUntilExpiry <= 60)
+                .sort((a, b) => a.daysUntilExpiry - b.daysUntilExpiry);
+            
+            container.innerHTML = upcomingRenewals.map(cert => `
+                <div class="renewal-item">
+                    <div class="renewal-domain">${cert.domain}</div>
+                    <div class="renewal-days ${cert.daysUntilExpiry <= 7 ? 'critical' : cert.daysUntilExpiry <= 30 ? 'warning' : 'good'}">
+                        ${cert.daysUntilExpiry}d
+                    </div>
+                </div>
+            `).join('');
+        }
+        
+        function setFilter(filter) {
+            currentFilter = filter;
+            
+            // Update filter buttons
+            document.querySelectorAll('.filter-btn').forEach(btn => {
+                btn.classList.remove('active');
+                if (btn.dataset.filter === filter) {
+                    btn.classList.add('active');
+                }
+            });
+            
+            loadCertificates();
+        }
+        
+        function filterCertificates() {
+            searchTerm = document.getElementById('searchBox').value;
+            loadCertificates();
+        }
+        
+        function showNewCertModal() {
+            document.getElementById('newCertModal').classList.add('show');
+        }
+        
+        function hideNewCertModal() {
+            document.getElementById('newCertModal').classList.remove('show');
+            document.getElementById('newCertForm').reset();
+            document.getElementById('issueProgress').style.display = 'none';
+        }
+        
+        function updateCertTypeInfo() {
+            const certType = document.getElementById('certType').value;
+            const wildcardInfo = document.getElementById('wildcardInfo');
+            wildcardInfo.style.display = certType === 'wildcard' ? 'block' : 'none';
+        }
+        
+        async function issueCertificate(event) {
+            event.preventDefault();
+            
+            const formData = new FormData(event.target);
+            const data = Object.fromEntries(formData);
+            
+            const submitBtn = document.getElementById('submitBtn');
+            const progressDiv = document.getElementById('issueProgress');
+            const progressFill = document.getElementById('progressFill');
+            const progressText = document.getElementById('progressText');
+            
+            // Show progress
+            submitBtn.disabled = true;
+            submitBtn.innerHTML = '<div class="loading"></div> Issuing...';
+            progressDiv.style.display = 'block';
+            
+            try {
+                // Simulate certificate issuance process
+                const steps = [
+                    { progress: 10, text: 'Validating domain...' },
+                    { progress: 25, text: 'Creating ACME order...' },
+                    { progress: 40, text: 'Setting up DNS challenges...' },
+                    { progress: 60, text: 'Waiting for DNS propagation...' },
+                    { progress: 80, text: 'Verifying challenges...' },
+                    { progress: 95, text: 'Finalizing certificate...' },
+                    { progress: 100, text: 'Certificate issued successfully!' }
+                ];
+                
+                for (const step of steps) {
+                    await new Promise(resolve => setTimeout(resolve, 1000));
+                    progressFill.style.width = `${step.progress}%`;
+                    progressText.textContent = step.progress === 100 ? step.text : step.text;
+                }
+                
+                showNotification('Certificate issued successfully!', 'success');
+                hideNewCertModal();
+                refreshDashboard();
+                
+            } catch (error) {
+                showNotification('Failed to issue certificate: ' + error.message, 'error');
+            } finally {
+                submitBtn.disabled = false;
+                submitBtn.textContent = 'Issue Certificate';
+            }
+        }
+        
+        function showNotification(message, type = 'info') {
+            const notification = document.getElementById('notification');
+            notification.textContent = message;
+            notification.className = `notification ${type}`;
+            notification.classList.add('show');
+            
+            setTimeout(() => {
+                notification.classList.remove('show');
+            }, 4000);
+        }
+        
+        function refreshDashboard() {
+            showNotification('Dashboard refreshed', 'success');
+            loadCertificates();
+            updateStats();
+            loadRenewalTimeline();
+        }
+        
+        function updateDashboard() {
+            // Simulate real-time updates
+            loadRenewalTimeline();
+        }
+        
+        function renewCertificate(certId) {
+            const cert = sampleCertificates.find(c => c.id === certId);
+            if (cert) {
+                showNotification(`Renewing certificate for ${cert.domain}...`, 'info');
+                
+                // Simulate renewal
+                setTimeout(() => {
+                    cert.status = 'active';
+                    cert.expiresAt = new Date(Date.now() + 90 * 24 * 60 * 60 * 1000).toISOString().split('T')[0];
+                    showNotification(`Certificate renewed for ${cert.domain}`, 'success');
+                    refreshDashboard();
+                }, 3000);
+            }
+        }
+        
+        function viewCertDetails(certId) {
+            const cert = sampleCertificates.find(c => c.id === certId);
+            showNotification(`Viewing details for ${cert.domain}`, 'info');
+        }
+        
+        function downloadCert(certId) {
+            const cert = sampleCertificates.find(c => c.id === certId);
+            showNotification(`Downloading certificate for ${cert.domain}`, 'info');
+        }
+        
+        function revokeCertificate(certId) {
+            const cert = sampleCertificates.find(c => c.id === certId);
+            if (confirm(`Are you sure you want to revoke the certificate for ${cert.domain}?`)) {
+                showNotification(`Certificate revoked for ${cert.domain}`, 'warning');
+                cert.status = 'revoked';
+                refreshDashboard();
+            }
+        }
+        
+        function bulkRenewal() {
+            const expiringCerts = sampleCertificates.filter(c => c.status === 'expiring');
+            if (expiringCerts.length === 0) {
+                showNotification('No certificates need renewal', 'info');
+                return;
+            }
+            
+            if (confirm(`Renew ${expiringCerts.length} expiring certificates?`)) {
+                showNotification(`Starting bulk renewal for ${expiringCerts.length} certificates...`, 'info');
+                
+                // Simulate bulk renewal
+                setTimeout(() => {
+                    expiringCerts.forEach(cert => {
+                        cert.status = 'active';
+                        cert.expiresAt = new Date(Date.now() + 90 * 24 * 60 * 60 * 1000).toISOString().split('T')[0];
+                    });
+                    showNotification('Bulk renewal completed successfully!', 'success');
+                    refreshDashboard();
+                }, 5000);
+            }
+        }
+        
+        function exportCertificates() {
+            const csvContent = "data:text/csv;charset=utf-8," + 
+                "Domain,Type,Status,Issued,Expires,Days Remaining,Auto Renew\\n" +
+                sampleCertificates.map(cert => 
+                    `${cert.domain},${cert.type},${cert.status},${cert.issuedAt},${cert.expiresAt},${getDaysUntilExpiry(cert.expiresAt)},${cert.autoRenew}`
+                ).join("\\n");
+            
+            const encodedUri = encodeURI(csvContent);
+            const link = document.createElement("a");
+            link.setAttribute("href", encodedUri);
+            link.setAttribute("download", "ssl-certificates.csv");
+            document.body.appendChild(link);
+            link.click();
+            document.body.removeChild(link);
+            
+            showNotification('Certificate report exported', 'success');
+        }
+        
+        function viewLogs() {
+            showNotification('Opening certificate logs...', 'info');
+        }
+        
+        function showSettings() {
+            showNotification('Opening SSL settings...', 'info');
+        }
+        
+        // Utility functions
+        function formatDate(dateString) {
+            return new Date(dateString).toLocaleDateString('en-US', {
+                year: 'numeric',
+                month: 'short',
+                day: 'numeric'
+            });
+        }
+        
+        function getDaysUntilExpiry(expiryDate) {
+            const today = new Date();
+            const expiry = new Date(expiryDate);
+            const diffTime = expiry - today;
+            const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+            return Math.max(0, diffDays);
+        }
+        
+        // Handle modal clicks
+        document.getElementById('newCertModal').addEventListener('click', function(e) {
+            if (e.target === this) {
+                hideNewCertModal();
+            }
+        });
+        
+        // Handle escape key
+        document.addEventListener('keydown', function(e) {
+            if (e.key === 'Escape') {
+                hideNewCertModal();
+            }
+        });
+    </script>
+</body>
+</html>

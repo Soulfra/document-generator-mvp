@@ -1,0 +1,1 @@
+tier-3/debugging-quest/documents/ENCODING-PATTERN-ANALYSIS.md

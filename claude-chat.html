@@ -1,0 +1,143 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <title>Claude Desktop Chat</title>
+  <style>
+    body {
+      background: #181a20;
+      color: #00ff88;
+      font-family: 'Menlo', 'Monaco', monospace;
+      margin: 0;
+      padding: 0;
+      display: flex;
+      flex-direction: column;
+      height: 100vh;
+    }
+    .header {
+      padding: 20px;
+      text-align: center;
+      background: #222;
+      font-size: 1.5em;
+      font-weight: bold;
+      letter-spacing: 2px;
+      border-bottom: 1px solid #00ff88;
+    }
+    .chat-container {
+      flex: 1;
+      display: flex;
+      flex-direction: column;
+      justify-content: flex-end;
+      align-items: center;
+      padding: 30px;
+    }
+    .chat-box {
+      width: 100%;
+      max-width: 700px;
+      background: #222;
+      border-radius: 10px;
+      padding: 20px;
+      margin-bottom: 20px;
+      min-height: 300px;
+      overflow-y: auto;
+      box-shadow: 0 0 20px #00ff8822;
+    }
+    .user-msg {
+      color: #88ff00;
+      margin-bottom: 10px;
+      font-weight: bold;
+    }
+    .claude-msg {
+      color: #00ccff;
+      margin-bottom: 20px;
+      white-space: pre-wrap;
+    }
+    .input-row {
+      display: flex;
+      width: 100%;
+      max-width: 700px;
+      gap: 10px;
+    }
+    .chat-input {
+      flex: 1;
+      padding: 12px;
+      border-radius: 6px;
+      border: 1px solid #00ff88;
+      background: #181a20;
+      color: #00ff88;
+      font-size: 1em;
+      outline: none;
+    }
+    .send-btn {
+      background: linear-gradient(45deg, #00ff88, #00ccff);
+      color: #181a20;
+      border: none;
+      border-radius: 6px;
+      padding: 12px 24px;
+      font-weight: bold;
+      cursor: pointer;
+      transition: background 0.2s;
+    }
+    .send-btn:hover {
+      background: linear-gradient(45deg, #88ff00, #00ffcc);
+    }
+  </style>
+</head>
+<body>
+  <div class="header">Claude Desktop Chat</div>
+  <div class="chat-container">
+    <div class="chat-box" id="chatBox"></div>
+    <div class="input-row">
+      <input type="text" id="chatInput" class="chat-input" placeholder="Type your message to Claude..." autofocus />
+      <button class="send-btn" id="sendBtn">Send</button>
+    </div>
+  </div>
+  <script>
+    const chatBox = document.getElementById('chatBox');
+    const chatInput = document.getElementById('chatInput');
+    const sendBtn = document.getElementById('sendBtn');
+
+    function addMessage(role, text) {
+      const msgDiv = document.createElement('div');
+      msgDiv.className = role === 'user' ? 'user-msg' : 'claude-msg';
+      msgDiv.textContent = (role === 'user' ? 'You: ' : 'Claude: ') + text;
+      chatBox.appendChild(msgDiv);
+      chatBox.scrollTop = chatBox.scrollHeight;
+    }
+
+    async function sendMessage() {
+      const prompt = chatInput.value.trim();
+      if (!prompt) return;
+      addMessage('user', prompt);
+      chatInput.value = '';
+      addMessage('claude', 'Thinking...');
+      try {
+        // Send to Document Generator API
+        const response = await fetch('http://localhost:3001/api/chat', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ prompt })
+        });
+        
+        const data = await response.json();
+        
+        // Remove "Thinking..." and show response
+        const lastMsg = chatBox.querySelector('.claude-msg:last-child');
+        if (lastMsg) lastMsg.remove();
+        addMessage('claude', data.response || data.message || 'No response');
+      } catch (err) {
+        const lastMsg = chatBox.querySelector('.claude-msg:last-child');
+        if (lastMsg) lastMsg.remove();
+        addMessage('claude', 'Error: ' + err.message);
+      }
+    }
+
+    sendBtn.onclick = sendMessage;
+    chatInput.onkeypress = function(e) {
+      if (e.key === 'Enter') sendMessage();
+    };
+  </script>
+</body>
+</html>
+<userPrompt>
+Provide the full source code of the file, including the ipcMain.handle('claude-chat', async (event, prompt) => { return await askClaude(prompt); }); line.
+</userPrompt>

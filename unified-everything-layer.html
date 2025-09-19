@@ -1,0 +1,541 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Unified Everything Layer - The One Piece</title>
+    
+    <!-- Three.js for 3D -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+    
+    <!-- Socket.io for multiplayer -->
+    <script src="https://cdn.socket.io/4.5.0/socket.io.min.js"></script>
+    
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            font-family: 'Monaco', monospace;
+            background: #000;
+            color: #0ff;
+            overflow: hidden;
+        }
+        
+        #unified-canvas {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+        }
+        
+        #control-panel {
+            position: fixed;
+            top: 20px;
+            right: 20px;
+            background: rgba(0, 0, 0, 0.8);
+            border: 2px solid #0ff;
+            padding: 20px;
+            border-radius: 10px;
+            max-width: 400px;
+            z-index: 1000;
+        }
+        
+        .icp-selector {
+            margin: 10px 0;
+        }
+        
+        .icp-card {
+            background: rgba(0, 255, 255, 0.1);
+            border: 1px solid #0ff;
+            padding: 10px;
+            margin: 5px 0;
+            cursor: pointer;
+            transition: all 0.3s;
+        }
+        
+        .icp-card:hover {
+            background: rgba(0, 255, 255, 0.3);
+            transform: translateX(5px);
+        }
+        
+        .icp-card.active {
+            background: rgba(0, 255, 255, 0.5);
+            border-color: #fff;
+        }
+        
+        #layer-status {
+            position: fixed;
+            bottom: 20px;
+            left: 20px;
+            background: rgba(0, 0, 0, 0.8);
+            border: 1px solid #0ff;
+            padding: 10px;
+            font-size: 12px;
+            max-width: 300px;
+        }
+        
+        .status-item {
+            display: flex;
+            justify-content: space-between;
+            margin: 2px 0;
+        }
+        
+        .status-active {
+            color: #0f0;
+        }
+        
+        .status-inactive {
+            color: #f00;
+        }
+        
+        #brand-display {
+            position: fixed;
+            top: 20px;
+            left: 20px;
+            font-size: 24px;
+            font-weight: bold;
+            text-shadow: 0 0 10px currentColor;
+        }
+        
+        .component-art {
+            position: absolute;
+            width: 100px;
+            height: 100px;
+            border: 2px solid #0ff;
+            border-radius: 10px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            cursor: pointer;
+            transition: all 0.3s;
+        }
+        
+        .component-art:hover {
+            transform: scale(1.1);
+            box-shadow: 0 0 20px #0ff;
+        }
+    </style>
+</head>
+<body>
+    <canvas id="unified-canvas"></canvas>
+    
+    <div id="brand-display">🏴‍☠️ UNIFIED LAYER</div>
+    
+    <div id="control-panel">
+        <h3>ICP Rotation Control</h3>
+        <div class="icp-selector">
+            <div class="icp-card" data-icp="developer">
+                <strong>Developer</strong>
+                <p>Code generation, API integration, technical docs</p>
+            </div>
+            <div class="icp-card" data-icp="startup">
+                <strong>Startup Founder</strong>
+                <p>MVP building, business logic, rapid prototyping</p>
+            </div>
+            <div class="icp-card" data-icp="enterprise">
+                <strong>Enterprise</strong>
+                <p>Scalable architecture, security, compliance</p>
+            </div>
+            <div class="icp-card" data-icp="gamer">
+                <strong>Gamer/Creator</strong>
+                <p>Interactive experiences, streaming, multiplayer</p>
+            </div>
+            <div class="icp-card" data-icp="pirate">
+                <strong>Digital Pirate</strong>
+                <p>CTF challenges, security testing, underground</p>
+            </div>
+        </div>
+        
+        <h3>Active Domains</h3>
+        <div id="domain-list"></div>
+        
+        <h3>Component Gallery</h3>
+        <div id="component-gallery"></div>
+    </div>
+    
+    <div id="layer-status">
+        <h3>System Status</h3>
+        <div class="status-item">
+            <span>3D Engine:</span>
+            <span id="status-3d" class="status-inactive">●</span>
+        </div>
+        <div class="status-item">
+            <span>Streaming:</span>
+            <span id="status-streaming" class="status-inactive">●</span>
+        </div>
+        <div class="status-item">
+            <span>Gaming:</span>
+            <span id="status-gaming" class="status-inactive">●</span>
+        </div>
+        <div class="status-item">
+            <span>Multiplayer:</span>
+            <span id="status-multiplayer" class="status-inactive">●</span>
+        </div>
+        <div class="status-item">
+            <span>Document AI:</span>
+            <span id="status-ai" class="status-inactive">●</span>
+        </div>
+        <div class="status-item">
+            <span>Security:</span>
+            <span id="status-security" class="status-inactive">●</span>
+        </div>
+    </div>
+
+    <script>
+        // Unified Everything Layer - The One Piece
+        class UnifiedEverythingLayer {
+            constructor() {
+                this.currentICP = 'developer';
+                this.activeServices = new Map();
+                this.domainRotation = null;
+                this.componentArt = new Map();
+                this.socket = null;
+                
+                // Three.js setup
+                this.scene = new THREE.Scene();
+                this.camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 1000);
+                this.renderer = new THREE.WebGLRenderer({ 
+                    canvas: document.getElementById('unified-canvas'),
+                    antialias: true,
+                    alpha: true
+                });
+                
+                this.init();
+            }
+            
+            async init() {
+                console.log('🏴‍☠️ Initializing Unified Everything Layer...');
+                
+                // Setup 3D scene
+                this.setup3D();
+                
+                // Connect to all services
+                await this.connectServices();
+                
+                // Setup ICP rotation
+                this.setupICPRotation();
+                
+                // Initialize domain branding
+                this.initDomainBranding();
+                
+                // Load component art
+                this.loadComponentArt();
+                
+                // Start multiplayer connection
+                this.initMultiplayer();
+                
+                // Begin animation
+                this.animate();
+                
+                console.log('✅ The One Piece is assembled!');
+            }
+            
+            setup3D() {
+                this.renderer.setSize(window.innerWidth, window.innerHeight);
+                this.renderer.setPixelRatio(window.devicePixelRatio);
+                
+                // Camera position
+                this.camera.position.z = 5;
+                
+                // Lighting
+                const ambientLight = new THREE.AmbientLight(0x0088ff, 0.5);
+                this.scene.add(ambientLight);
+                
+                const pointLight = new THREE.PointLight(0x00ffff, 1);
+                pointLight.position.set(5, 5, 5);
+                this.scene.add(pointLight);
+                
+                // Create the unified cube - represents all systems
+                const geometry = new THREE.BoxGeometry(2, 2, 2);
+                const material = new THREE.MeshPhongMaterial({
+                    color: 0x00ffff,
+                    wireframe: true,
+                    transparent: true,
+                    opacity: 0.8
+                });
+                
+                this.unifiedCube = new THREE.Mesh(geometry, material);
+                this.scene.add(this.unifiedCube);
+                
+                // Add floating components around the cube
+                this.createFloatingComponents();
+                
+                // Update status
+                document.getElementById('status-3d').classList.add('status-active');
+            }
+            
+            createFloatingComponents() {
+                const components = [
+                    { name: 'Streaming', color: 0xff0000, position: [3, 0, 0] },
+                    { name: 'Gaming', color: 0x00ff00, position: [-3, 0, 0] },
+                    { name: 'AI', color: 0x0000ff, position: [0, 3, 0] },
+                    { name: 'Security', color: 0xffff00, position: [0, -3, 0] },
+                    { name: 'Database', color: 0xff00ff, position: [0, 0, 3] },
+                    { name: 'Network', color: 0x00ffff, position: [0, 0, -3] }
+                ];
+                
+                this.floatingComponents = [];
+                
+                components.forEach(comp => {
+                    const geometry = new THREE.SphereGeometry(0.5, 16, 16);
+                    const material = new THREE.MeshPhongMaterial({
+                        color: comp.color,
+                        emissive: comp.color,
+                        emissiveIntensity: 0.5
+                    });
+                    
+                    const sphere = new THREE.Mesh(geometry, material);
+                    sphere.position.set(...comp.position);
+                    sphere.userData = { name: comp.name, basePosition: comp.position };
+                    
+                    this.scene.add(sphere);
+                    this.floatingComponents.push(sphere);
+                });
+            }
+            
+            async connectServices() {
+                // Simulate connecting to all services
+                const services = [
+                    { id: 'streaming', url: 'http://localhost:8995', status: 'streaming' },
+                    { id: 'gaming', url: 'http://localhost:8997', status: 'gaming' },
+                    { id: 'ai', url: 'http://localhost:3001', status: 'ai' },
+                    { id: 'security', url: 'http://localhost:8998', status: 'security' }
+                ];
+                
+                for (const service of services) {
+                    try {
+                        // In real implementation, would actually connect
+                        this.activeServices.set(service.id, {
+                            url: service.url,
+                            connected: true,
+                            lastPing: Date.now()
+                        });
+                        
+                        document.getElementById(`status-${service.status}`).classList.add('status-active');
+                        console.log(`✅ Connected to ${service.id}`);
+                    } catch (error) {
+                        console.error(`❌ Failed to connect to ${service.id}:`, error);
+                    }
+                }
+            }
+            
+            setupICPRotation() {
+                const icpCards = document.querySelectorAll('.icp-card');
+                
+                icpCards.forEach(card => {
+                    card.addEventListener('click', (e) => {
+                        // Remove active from all
+                        icpCards.forEach(c => c.classList.remove('active'));
+                        
+                        // Set new active
+                        card.classList.add('active');
+                        this.currentICP = card.dataset.icp;
+                        
+                        // Rotate entire experience based on ICP
+                        this.rotateExperience(this.currentICP);
+                    });
+                });
+                
+                // Set initial active
+                document.querySelector(`[data-icp="${this.currentICP}"]`).classList.add('active');
+            }
+            
+            rotateExperience(icp) {
+                console.log(`🔄 Rotating to ICP: ${icp}`);
+                
+                const rotations = {
+                    developer: {
+                        brand: '💻 DEV LAYER',
+                        color: 0x00ff00,
+                        domains: ['api.unified.dev', 'docs.unified.dev', 'sdk.unified.dev'],
+                        components: ['Code Editor', 'API Explorer', 'Documentation']
+                    },
+                    startup: {
+                        brand: '🚀 STARTUP LAYER',
+                        color: 0x0088ff,
+                        domains: ['app.unified.io', 'mvp.unified.io', 'launch.unified.io'],
+                        components: ['MVP Builder', 'Business Canvas', 'Analytics']
+                    },
+                    enterprise: {
+                        brand: '🏢 ENTERPRISE LAYER',
+                        color: 0x8800ff,
+                        domains: ['enterprise.unified.com', 'secure.unified.com', 'cloud.unified.com'],
+                        components: ['Compliance', 'Security Audit', 'Scale Manager']
+                    },
+                    gamer: {
+                        brand: '🎮 GAMING LAYER',
+                        color: 0xff0088,
+                        domains: ['play.unified.gg', 'stream.unified.gg', 'compete.unified.gg'],
+                        components: ['Game Engine', 'Stream Setup', 'Leaderboards']
+                    },
+                    pirate: {
+                        brand: '🏴‍☠️ PIRATE LAYER',
+                        color: 0xff0000,
+                        domains: ['ctf.unified.hack', 'exploit.unified.hack', 'treasure.unified.hack'],
+                        components: ['CTF Terminal', 'Exploit Kit', 'Treasure Map']
+                    }
+                };
+                
+                const config = rotations[icp];
+                
+                // Update branding
+                document.getElementById('brand-display').textContent = config.brand;
+                document.getElementById('brand-display').style.color = `#${config.color.toString(16).padStart(6, '0')}`;
+                
+                // Update unified cube color
+                this.unifiedCube.material.color.setHex(config.color);
+                
+                // Update domains
+                this.updateDomains(config.domains);
+                
+                // Update component gallery
+                this.updateComponentGallery(config.components);
+                
+                // Trigger visual effect
+                this.triggerRotationEffect();
+            }
+            
+            updateDomains(domains) {
+                const domainList = document.getElementById('domain-list');
+                domainList.innerHTML = domains.map(domain => `
+                    <div style="margin: 5px 0; cursor: pointer; hover: opacity(0.8)">
+                        🌐 ${domain}
+                    </div>
+                `).join('');
+            }
+            
+            updateComponentGallery(components) {
+                const gallery = document.getElementById('component-gallery');
+                gallery.innerHTML = components.map((comp, i) => `
+                    <div class="component-art" style="position: relative; margin: 5px; display: inline-block;">
+                        ${this.getComponentIcon(comp)} ${comp}
+                    </div>
+                `).join('');
+            }
+            
+            getComponentIcon(component) {
+                const icons = {
+                    'Code Editor': '📝',
+                    'API Explorer': '🔍',
+                    'Documentation': '📚',
+                    'MVP Builder': '🏗️',
+                    'Business Canvas': '📊',
+                    'Analytics': '📈',
+                    'Compliance': '✅',
+                    'Security Audit': '🔐',
+                    'Scale Manager': '⚡',
+                    'Game Engine': '🎮',
+                    'Stream Setup': '📹',
+                    'Leaderboards': '🏆',
+                    'CTF Terminal': '💀',
+                    'Exploit Kit': '🔓',
+                    'Treasure Map': '🗺️'
+                };
+                
+                return icons[component] || '📦';
+            }
+            
+            initDomainBranding() {
+                // Symlink domain configuration
+                this.domainConfig = {
+                    base: 'unified.layer',
+                    symlinks: new Map([
+                        ['dev', 'developer.unified.layer'],
+                        ['app', 'application.unified.layer'],
+                        ['game', 'gaming.unified.layer'],
+                        ['hack', 'security.unified.layer'],
+                        ['stream', 'streaming.unified.layer']
+                    ])
+                };
+                
+                console.log('🔗 Domain symlinks configured');
+            }
+            
+            loadComponentArt() {
+                // Component art gallery system
+                const artPieces = [
+                    { id: 'submarine', emoji: '🚢', description: 'Deep sea exploration' },
+                    { id: 'wireshark', emoji: '🦈', description: 'Network analysis' },
+                    { id: 'wireframe', emoji: '🕸️', description: '3D wireframes' },
+                    { id: 'flag', emoji: '🏁', description: 'Capture the flag' },
+                    { id: 'treasure', emoji: '💎', description: 'The One Piece' }
+                ];
+                
+                artPieces.forEach(art => {
+                    this.componentArt.set(art.id, art);
+                });
+            }
+            
+            initMultiplayer() {
+                // Simulate Colyseus connection
+                console.log('🎮 Initializing multiplayer...');
+                
+                // In real implementation, would connect to Colyseus server
+                setTimeout(() => {
+                    document.getElementById('status-multiplayer').classList.add('status-active');
+                    console.log('✅ Multiplayer connected');
+                }, 1000);
+            }
+            
+            triggerRotationEffect() {
+                // Visual effect when rotating ICPs
+                const duration = 1000;
+                const start = Date.now();
+                
+                const rotate = () => {
+                    const elapsed = Date.now() - start;
+                    const progress = Math.min(elapsed / duration, 1);
+                    
+                    // Rotate the unified cube
+                    this.unifiedCube.rotation.y = progress * Math.PI * 2;
+                    
+                    if (progress < 1) {
+                        requestAnimationFrame(rotate);
+                    }
+                };
+                
+                rotate();
+            }
+            
+            animate() {
+                requestAnimationFrame(() => this.animate());
+                
+                // Rotate unified cube
+                this.unifiedCube.rotation.x += 0.001;
+                this.unifiedCube.rotation.y += 0.002;
+                
+                // Animate floating components
+                const time = Date.now() * 0.001;
+                this.floatingComponents.forEach((comp, i) => {
+                    const basePos = comp.userData.basePosition;
+                    comp.position.y = basePos[1] + Math.sin(time + i) * 0.2;
+                    comp.rotation.x += 0.01;
+                    comp.rotation.y += 0.02;
+                });
+                
+                this.renderer.render(this.scene, this.camera);
+            }
+        }
+        
+        // Initialize when page loads
+        window.addEventListener('DOMContentLoaded', () => {
+            const unifiedLayer = new UnifiedEverythingLayer();
+            
+            // Make it globally accessible
+            window.unifiedLayer = unifiedLayer;
+            
+            // Handle window resize
+            window.addEventListener('resize', () => {
+                unifiedLayer.camera.aspect = window.innerWidth / window.innerHeight;
+                unifiedLayer.camera.updateProjectionMatrix();
+                unifiedLayer.renderer.setSize(window.innerWidth, window.innerHeight);
+            });
+        });
+    </script>
+</body>
+</html>

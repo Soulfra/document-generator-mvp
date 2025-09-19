@@ -1,0 +1,1172 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>⛏️ Game Engine Reality Bridge - RuneScape-Style Agent Verification</title>
+    <style>
+        body {
+            background: #000;
+            color: #FFD700;
+            font-family: 'RuneScape', 'Courier New', monospace;
+            margin: 0;
+            padding: 0;
+            overflow: hidden;
+        }
+        
+        .main-container {
+            display: grid;
+            grid-template-columns: 300px 1fr 350px;
+            height: 100vh;
+            gap: 2px;
+            background: #111;
+        }
+        
+        /* Game World Canvas */
+        #gameWorld {
+            background: #000;
+            border: 2px solid #FFD700;
+            width: 100%;
+            height: 100%;
+            image-rendering: pixelated;
+            cursor: crosshair;
+        }
+        
+        /* Left Panel - Agent Status */
+        .agent-panel {
+            background: rgba(0, 0, 0, 0.9);
+            border: 2px solid #8B4513;
+            padding: 10px;
+            overflow-y: auto;
+        }
+        
+        .agent-card {
+            background: linear-gradient(to bottom, #2a2a2a, #1a1a1a);
+            border: 2px solid #FFD700;
+            border-radius: 5px;
+            padding: 10px;
+            margin: 10px 0;
+            position: relative;
+        }
+        
+        .agent-name {
+            color: #FFD700;
+            font-weight: bold;
+            font-size: 14px;
+        }
+        
+        .agent-stats {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 5px;
+            margin-top: 10px;
+            font-size: 11px;
+        }
+        
+        .stat-bar {
+            height: 8px;
+            background: #333;
+            border: 1px solid #666;
+            position: relative;
+            overflow: hidden;
+        }
+        
+        .stat-fill {
+            height: 100%;
+            transition: width 0.3s;
+        }
+        
+        .health-fill { background: linear-gradient(to right, #ff0000, #00ff00); }
+        .energy-fill { background: linear-gradient(to right, #000080, #00ffff); }
+        .xp-fill { background: linear-gradient(to right, #800080, #FFD700); }
+        
+        /* Right Panel - API/Engine Status */
+        .api-panel {
+            background: rgba(0, 0, 0, 0.9);
+            border: 2px solid #4169E1;
+            padding: 10px;
+            display: grid;
+            grid-template-rows: auto 1fr auto 1fr;
+            gap: 10px;
+            overflow: hidden;
+        }
+        
+        .panel-title {
+            color: #FFD700;
+            font-size: 16px;
+            text-align: center;
+            padding: 5px;
+            background: rgba(255, 215, 0, 0.1);
+            border: 1px solid #FFD700;
+        }
+        
+        /* API Call Monitor */
+        .api-monitor {
+            background: #000;
+            border: 1px solid #333;
+            padding: 5px;
+            overflow-y: auto;
+            font-size: 10px;
+            font-family: monospace;
+        }
+        
+        .api-call {
+            margin: 2px 0;
+            padding: 3px;
+            border-left: 3px solid;
+            animation: slideIn 0.3s;
+        }
+        
+        @keyframes slideIn {
+            from { transform: translateX(-20px); opacity: 0; }
+            to { transform: translateX(0); opacity: 1; }
+        }
+        
+        .api-get { border-color: #00ff00; color: #00ff00; }
+        .api-post { border-color: #ffff00; color: #ffff00; }
+        .api-update { border-color: #00ffff; color: #00ffff; }
+        .api-error { border-color: #ff0000; color: #ff0000; }
+        
+        /* Game State Monitor */
+        .state-monitor {
+            background: rgba(0, 0, 0, 0.8);
+            border: 1px solid #666;
+            padding: 10px;
+            font-size: 11px;
+        }
+        
+        .state-item {
+            display: grid;
+            grid-template-columns: 120px 1fr;
+            gap: 10px;
+            margin: 5px 0;
+            padding: 5px;
+            background: rgba(255, 255, 255, 0.05);
+            border-radius: 3px;
+        }
+        
+        .state-label {
+            color: #888;
+        }
+        
+        .state-value {
+            color: #FFD700;
+            font-weight: bold;
+        }
+        
+        /* Control Panel */
+        .control-panel {
+            position: absolute;
+            top: 10px;
+            left: 50%;
+            transform: translateX(-50%);
+            background: rgba(0, 0, 0, 0.9);
+            border: 2px solid #FFD700;
+            padding: 10px;
+            display: flex;
+            gap: 10px;
+            z-index: 1000;
+        }
+        
+        .control-btn {
+            background: linear-gradient(to bottom, #4a4a4a, #2a2a2a);
+            border: 2px solid #FFD700;
+            color: #FFD700;
+            padding: 5px 15px;
+            cursor: pointer;
+            font-family: inherit;
+            transition: all 0.2s;
+        }
+        
+        .control-btn:hover {
+            background: linear-gradient(to bottom, #5a5a5a, #3a3a3a);
+            box-shadow: 0 0 10px #FFD700;
+        }
+        
+        /* Chat/Log Window */
+        .chat-window {
+            background: rgba(0, 0, 0, 0.8);
+            border: 1px solid #333;
+            padding: 5px;
+            font-size: 11px;
+            overflow-y: auto;
+            max-height: 150px;
+        }
+        
+        .chat-message {
+            margin: 2px 0;
+            padding: 2px 5px;
+        }
+        
+        .system-msg { color: #ff0000; }
+        .game-msg { color: #FFD700; }
+        .agent-msg { color: #00ff00; }
+        
+        /* Inventory Grid */
+        .inventory-grid {
+            display: grid;
+            grid-template-columns: repeat(4, 40px);
+            gap: 2px;
+            padding: 10px;
+            background: rgba(0, 0, 0, 0.5);
+            border: 1px solid #666;
+        }
+        
+        .inventory-slot {
+            width: 40px;
+            height: 40px;
+            background: rgba(50, 50, 50, 0.8);
+            border: 1px solid #444;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 10px;
+            position: relative;
+            cursor: pointer;
+        }
+        
+        .inventory-slot:hover {
+            border-color: #FFD700;
+        }
+        
+        .item-count {
+            position: absolute;
+            bottom: 1px;
+            right: 1px;
+            font-size: 9px;
+            color: #FFD700;
+            text-shadow: 1px 1px 1px #000;
+        }
+        
+        /* Skill Icons */
+        .skill-icon {
+            display: inline-block;
+            width: 20px;
+            height: 20px;
+            margin-right: 5px;
+            vertical-align: middle;
+        }
+        
+        /* Verification Badge */
+        .verification-badge {
+            position: absolute;
+            top: 5px;
+            right: 5px;
+            background: #00ff00;
+            color: #000;
+            padding: 2px 6px;
+            border-radius: 3px;
+            font-size: 9px;
+            font-weight: bold;
+            animation: pulse 2s infinite;
+        }
+        
+        @keyframes pulse {
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0.5; }
+        }
+        
+        /* Proof Chain Display */
+        .proof-chain {
+            position: absolute;
+            bottom: 10px;
+            left: 10px;
+            right: 10px;
+            background: rgba(0, 0, 0, 0.9);
+            border: 1px solid #FFD700;
+            padding: 10px;
+            font-size: 10px;
+            max-height: 100px;
+            overflow-y: auto;
+        }
+        
+        .proof-entry {
+            margin: 2px 0;
+            padding: 3px;
+            background: rgba(255, 215, 0, 0.1);
+            border-left: 2px solid #FFD700;
+        }
+    </style>
+</head>
+<body>
+    <div class="main-container">
+        <!-- Left Panel - Agent Status -->
+        <div class="agent-panel">
+            <div class="panel-title">⚔️ ACTIVE AGENTS</div>
+            <div id="agentList"></div>
+            
+            <div class="panel-title" style="margin-top: 20px;">💰 INVENTORY</div>
+            <div class="inventory-grid" id="inventory"></div>
+            
+            <div class="panel-title" style="margin-top: 20px;">📊 SKILLS</div>
+            <div id="skillsList"></div>
+        </div>
+        
+        <!-- Center - Game World -->
+        <div style="position: relative;">
+            <div class="control-panel">
+                <button class="control-btn" onclick="startGameEngine()">▶️ Start Engine</button>
+                <button class="control-btn" onclick="spawnAgent()">🤖 Spawn Agent</button>
+                <button class="control-btn" onclick="startMining()">⛏️ Mine Ore</button>
+                <button class="control-btn" onclick="verifyActions()">✅ Verify</button>
+                <button class="control-btn" onclick="toggleAPILayer()">🔌 API Layer</button>
+            </div>
+            
+            <canvas id="gameWorld"></canvas>
+            
+            <div class="chat-window" style="position: absolute; bottom: 120px; left: 10px; right: 10px;" id="gameChat"></div>
+            
+            <div class="proof-chain" id="proofChain"></div>
+        </div>
+        
+        <!-- Right Panel - API/Engine Status -->
+        <div class="api-panel">
+            <div class="panel-title">🔌 API SWARM LAYER</div>
+            <div class="api-monitor" id="apiMonitor"></div>
+            
+            <div class="panel-title">🎮 GAME ENGINE STATE</div>
+            <div class="state-monitor" id="engineState">
+                <div class="state-item">
+                    <span class="state-label">Engine Status:</span>
+                    <span class="state-value" id="engineStatus">OFFLINE</span>
+                </div>
+                <div class="state-item">
+                    <span class="state-label">World Tick:</span>
+                    <span class="state-value" id="worldTick">0</span>
+                </div>
+                <div class="state-item">
+                    <span class="state-label">Active Entities:</span>
+                    <span class="state-value" id="entityCount">0</span>
+                </div>
+                <div class="state-item">
+                    <span class="state-label">API Calls/sec:</span>
+                    <span class="state-value" id="apiRate">0</span>
+                </div>
+                <div class="state-item">
+                    <span class="state-label">Verification:</span>
+                    <span class="state-value" id="verifyStatus">PENDING</span>
+                </div>
+            </div>
+            
+            <div class="panel-title">🛡️ GUARDIAN LAYER</div>
+            <div class="api-monitor" id="guardianMonitor"></div>
+        </div>
+    </div>
+    
+    <script>
+        // RuneScape-Style Game Engine Reality Bridge
+        class GameEngineRealityBridge {
+            constructor() {
+                this.canvas = document.getElementById('gameWorld');
+                this.ctx = this.canvas.getContext('2d');
+                this.canvas.width = this.canvas.offsetWidth;
+                this.canvas.height = this.canvas.offsetHeight;
+                
+                // Game state
+                this.engineRunning = false;
+                this.worldTick = 0;
+                this.tileSize = 32;
+                this.worldWidth = Math.floor(this.canvas.width / this.tileSize);
+                this.worldHeight = Math.floor(this.canvas.height / this.tileSize);
+                
+                // Entities
+                this.agents = new Map();
+                this.resources = new Map();
+                this.items = new Map();
+                
+                // API Layer
+                this.apiCalls = [];
+                this.apiCallRate = 0;
+                this.guardianChecks = [];
+                
+                // Verification
+                this.actionLog = [];
+                this.proofChain = [];
+                
+                // Game resources
+                this.resourceTypes = {
+                    copperOre: { name: 'Copper Ore', color: '#CD7F32', xp: 17.5, respawnTime: 3000 },
+                    ironOre: { name: 'Iron Ore', color: '#708090', xp: 35, respawnTime: 5000 },
+                    goldOre: { name: 'Gold Ore', color: '#FFD700', xp: 65, respawnTime: 10000 },
+                    tree: { name: 'Tree', color: '#228B22', xp: 25, respawnTime: 8000 },
+                    fish: { name: 'Fish', color: '#4169E1', xp: 40, respawnTime: 4000 }
+                };
+                
+                // Skills
+                this.skills = {
+                    mining: { level: 1, xp: 0, icon: '⛏️' },
+                    woodcutting: { level: 1, xp: 0, icon: '🪓' },
+                    fishing: { level: 1, xp: 0, icon: '🎣' },
+                    combat: { level: 1, xp: 0, icon: '⚔️' }
+                };
+                
+                // Inventory
+                this.inventory = new Array(16).fill(null);
+                
+                // Initialize world
+                this.initializeWorld();
+                this.render();
+            }
+            
+            initializeWorld() {
+                // Place resources randomly
+                for (let i = 0; i < 20; i++) {
+                    const x = Math.floor(Math.random() * this.worldWidth);
+                    const y = Math.floor(Math.random() * this.worldHeight);
+                    const types = Object.keys(this.resourceTypes);
+                    const type = types[Math.floor(Math.random() * types.length)];
+                    
+                    this.spawnResource(x, y, type);
+                }
+                
+                // Update UI
+                this.updateSkillsDisplay();
+                this.updateInventoryDisplay();
+            }
+            
+            startEngine() {
+                if (this.engineRunning) return;
+                
+                this.engineRunning = true;
+                document.getElementById('engineStatus').textContent = 'ONLINE';
+                document.getElementById('engineStatus').style.color = '#00ff00';
+                
+                // Log API call
+                this.logAPICall('POST', '/engine/start', { timestamp: Date.now() }, 'SUCCESS');
+                
+                // Add to proof chain
+                this.addProofEntry('ENGINE_START', 'Game engine initialized with seed: ' + Date.now());
+                
+                // Start game loop
+                this.gameLoop();
+                
+                // Start API monitoring
+                this.startAPIMonitoring();
+                
+                // System message
+                this.addChatMessage('system', 'Game engine started successfully!');
+                this.addChatMessage('game', 'Welcome to the Reality Bridge verification system');
+            }
+            
+            gameLoop() {
+                if (!this.engineRunning) return;
+                
+                // Update world tick
+                this.worldTick++;
+                document.getElementById('worldTick').textContent = this.worldTick;
+                
+                // Update agents
+                this.agents.forEach(agent => {
+                    this.updateAgent(agent);
+                });
+                
+                // Update resources
+                this.resources.forEach(resource => {
+                    if (resource.depleted && Date.now() - resource.depletedTime > resource.respawnTime) {
+                        resource.depleted = false;
+                        this.logAPICall('UPDATE', `/resource/${resource.id}/respawn`, { 
+                            type: resource.type,
+                            position: { x: resource.x, y: resource.y }
+                        }, 'SUCCESS');
+                    }
+                });
+                
+                // Update entity count
+                document.getElementById('entityCount').textContent = 
+                    this.agents.size + this.resources.size + this.items.size;
+                
+                // Render
+                this.render();
+                
+                // Continue loop
+                setTimeout(() => this.gameLoop(), 600); // ~100ms tick rate like RS
+            }
+            
+            spawnAgent() {
+                const id = 'agent_' + Date.now();
+                const x = Math.floor(this.worldWidth / 2);
+                const y = Math.floor(this.worldHeight / 2);
+                
+                const agent = {
+                    id: id,
+                    name: 'Mining Bot ' + (this.agents.size + 1),
+                    x: x,
+                    y: y,
+                    targetX: x,
+                    targetY: y,
+                    health: 100,
+                    energy: 100,
+                    action: 'idle',
+                    inventory: [],
+                    skills: { ...this.skills },
+                    color: `hsl(${Math.random() * 360}, 70%, 50%)`
+                };
+                
+                this.agents.set(id, agent);
+                
+                // Log API call
+                this.logAPICall('POST', '/agent/spawn', {
+                    id: id,
+                    position: { x: x, y: y },
+                    stats: agent.skills
+                }, 'SUCCESS');
+                
+                // Guardian check
+                this.logGuardianCheck('AGENT_SPAWN', id, 'APPROVED', 'Agent spawn authorized');
+                
+                // Create agent card
+                this.createAgentCard(agent);
+                
+                // Add to proof chain
+                this.addProofEntry('AGENT_SPAWN', `Agent ${agent.name} spawned at (${x}, ${y})`);
+                
+                // Chat message
+                this.addChatMessage('game', `${agent.name} has entered the world!`);
+            }
+            
+            updateAgent(agent) {
+                // Move towards target
+                if (agent.x !== agent.targetX || agent.y !== agent.targetY) {
+                    const dx = agent.targetX - agent.x;
+                    const dy = agent.targetY - agent.y;
+                    
+                    if (Math.abs(dx) > 0) {
+                        agent.x += Math.sign(dx);
+                    }
+                    if (Math.abs(dy) > 0) {
+                        agent.y += Math.sign(dy);
+                    }
+                    
+                    agent.energy = Math.max(0, agent.energy - 0.5);
+                    
+                    // Log movement API
+                    if (this.worldTick % 10 === 0) {
+                        this.logAPICall('PUT', `/agent/${agent.id}/position`, {
+                            x: agent.x,
+                            y: agent.y,
+                            energy: agent.energy
+                        }, 'SUCCESS');
+                    }
+                }
+                
+                // Perform action
+                if (agent.action === 'mining') {
+                    const resource = this.getResourceAt(agent.x, agent.y);
+                    if (resource && !resource.depleted) {
+                        this.mineResource(agent, resource);
+                    } else {
+                        agent.action = 'idle';
+                        this.findNearestResource(agent);
+                    }
+                }
+                
+                // Regenerate energy
+                if (agent.action === 'idle') {
+                    agent.energy = Math.min(100, agent.energy + 0.2);
+                }
+                
+                // Update UI
+                this.updateAgentCard(agent);
+            }
+            
+            mineResource(agent, resource) {
+                // Check if we're at the resource
+                if (agent.x === resource.x && agent.y === resource.y) {
+                    // Mining animation (simplified)
+                    if (this.worldTick % 5 === 0) {
+                        // Log mining action
+                        this.logAPICall('POST', `/agent/${agent.id}/action/mine`, {
+                            resourceId: resource.id,
+                            type: resource.type,
+                            position: { x: resource.x, y: resource.y }
+                        }, 'SUCCESS');
+                        
+                        // Guardian check for anti-cheat
+                        this.logGuardianCheck('MINING_ACTION', agent.id, 'VERIFIED', 
+                            `Mining action verified - Energy: ${agent.energy}, Distance: 0`);
+                        
+                        // Success chance based on mining level
+                        const miningLevel = agent.skills.mining.level;
+                        const successChance = 0.2 + (miningLevel * 0.05);
+                        
+                        if (Math.random() < successChance) {
+                            // Success! Get ore
+                            resource.depleted = true;
+                            resource.depletedTime = Date.now();
+                            
+                            // Add to inventory
+                            const freeSlot = this.inventory.findIndex(slot => slot === null);
+                            if (freeSlot !== -1) {
+                                this.inventory[freeSlot] = {
+                                    type: resource.type,
+                                    count: 1
+                                };
+                                
+                                // Update XP
+                                const xpGained = this.resourceTypes[resource.type].xp;
+                                agent.skills.mining.xp += xpGained;
+                                
+                                // Check level up
+                                const newLevel = Math.floor(Math.sqrt(agent.skills.mining.xp / 100)) + 1;
+                                if (newLevel > agent.skills.mining.level) {
+                                    agent.skills.mining.level = newLevel;
+                                    this.addChatMessage('game', 
+                                        `${agent.name} advanced Mining to level ${newLevel}!`);
+                                }
+                                
+                                // Log success
+                                this.logAPICall('POST', '/agent/inventory/add', {
+                                    agentId: agent.id,
+                                    item: resource.type,
+                                    xpGained: xpGained
+                                }, 'SUCCESS');
+                                
+                                // Add to proof chain
+                                this.addProofEntry('MINING_SUCCESS', 
+                                    `${agent.name} mined ${resource.type} (+${xpGained} XP)`);
+                                
+                                // Chat message
+                                this.addChatMessage('agent', 
+                                    `${agent.name}: Successfully mined ${resource.type}!`);
+                                
+                                // Update displays
+                                this.updateInventoryDisplay();
+                                this.updateSkillsDisplay();
+                            }
+                            
+                            // Find next resource
+                            agent.action = 'idle';
+                            this.findNearestResource(agent);
+                        }
+                    }
+                }
+            }
+            
+            findNearestResource(agent) {
+                let nearest = null;
+                let minDistance = Infinity;
+                
+                this.resources.forEach(resource => {
+                    if (!resource.depleted) {
+                        const distance = Math.abs(resource.x - agent.x) + Math.abs(resource.y - agent.y);
+                        if (distance < minDistance) {
+                            minDistance = distance;
+                            nearest = resource;
+                        }
+                    }
+                });
+                
+                if (nearest) {
+                    agent.targetX = nearest.x;
+                    agent.targetY = nearest.y;
+                    agent.action = 'moving';
+                    
+                    // Log pathfinding
+                    this.logAPICall('GET', '/pathfinding/calculate', {
+                        from: { x: agent.x, y: agent.y },
+                        to: { x: nearest.x, y: nearest.y },
+                        distance: minDistance
+                    }, 'SUCCESS');
+                }
+            }
+            
+            getResourceAt(x, y) {
+                for (const [id, resource] of this.resources) {
+                    if (resource.x === x && resource.y === y && !resource.depleted) {
+                        return resource;
+                    }
+                }
+                return null;
+            }
+            
+            spawnResource(x, y, type) {
+                const id = 'resource_' + Date.now() + '_' + Math.random();
+                const resourceInfo = this.resourceTypes[type];
+                
+                this.resources.set(id, {
+                    id: id,
+                    type: type,
+                    x: x,
+                    y: y,
+                    depleted: false,
+                    depletedTime: null,
+                    respawnTime: resourceInfo.respawnTime,
+                    color: resourceInfo.color
+                });
+            }
+            
+            startMining() {
+                if (this.agents.size === 0) {
+                    this.addChatMessage('system', 'No agents available! Spawn an agent first.');
+                    return;
+                }
+                
+                // Start all agents mining
+                this.agents.forEach(agent => {
+                    agent.action = 'idle';
+                    this.findNearestResource(agent);
+                    agent.action = 'mining';
+                });
+                
+                this.addChatMessage('system', 'All agents started mining!');
+            }
+            
+            render() {
+                // Clear canvas
+                this.ctx.fillStyle = '#1a1a1a';
+                this.ctx.fillRect(0, 0, this.canvas.width, this.canvas.height);
+                
+                // Draw grid
+                this.ctx.strokeStyle = '#333';
+                this.ctx.lineWidth = 1;
+                
+                for (let x = 0; x <= this.worldWidth; x++) {
+                    this.ctx.beginPath();
+                    this.ctx.moveTo(x * this.tileSize, 0);
+                    this.ctx.lineTo(x * this.tileSize, this.canvas.height);
+                    this.ctx.stroke();
+                }
+                
+                for (let y = 0; y <= this.worldHeight; y++) {
+                    this.ctx.beginPath();
+                    this.ctx.moveTo(0, y * this.tileSize);
+                    this.ctx.lineTo(this.canvas.width, y * this.tileSize);
+                    this.ctx.stroke();
+                }
+                
+                // Draw resources
+                this.resources.forEach(resource => {
+                    if (!resource.depleted) {
+                        this.ctx.fillStyle = resource.color;
+                        this.ctx.fillRect(
+                            resource.x * this.tileSize + 4,
+                            resource.y * this.tileSize + 4,
+                            this.tileSize - 8,
+                            this.tileSize - 8
+                        );
+                        
+                        // Resource icon
+                        this.ctx.fillStyle = '#000';
+                        this.ctx.font = '16px Arial';
+                        this.ctx.textAlign = 'center';
+                        this.ctx.textBaseline = 'middle';
+                        
+                        const icon = resource.type.includes('Ore') ? '⛏️' : 
+                                    resource.type === 'tree' ? '🌳' : '🐟';
+                        this.ctx.fillText(icon,
+                            resource.x * this.tileSize + this.tileSize / 2,
+                            resource.y * this.tileSize + this.tileSize / 2
+                        );
+                    }
+                });
+                
+                // Draw agents
+                this.agents.forEach(agent => {
+                    // Agent body
+                    this.ctx.fillStyle = agent.color;
+                    this.ctx.fillRect(
+                        agent.x * this.tileSize + 6,
+                        agent.y * this.tileSize + 6,
+                        this.tileSize - 12,
+                        this.tileSize - 12
+                    );
+                    
+                    // Agent direction indicator
+                    this.ctx.strokeStyle = '#fff';
+                    this.ctx.lineWidth = 2;
+                    this.ctx.beginPath();
+                    this.ctx.arc(
+                        agent.x * this.tileSize + this.tileSize / 2,
+                        agent.y * this.tileSize + this.tileSize / 2,
+                        8,
+                        0,
+                        Math.PI * 2
+                    );
+                    this.ctx.stroke();
+                    
+                    // Mining animation
+                    if (agent.action === 'mining' && this.worldTick % 10 < 5) {
+                        this.ctx.fillStyle = '#FFD700';
+                        this.ctx.font = '20px Arial';
+                        this.ctx.fillText('⛏️',
+                            agent.x * this.tileSize + this.tileSize,
+                            agent.y * this.tileSize
+                        );
+                    }
+                    
+                    // Agent name
+                    this.ctx.fillStyle = '#FFD700';
+                    this.ctx.font = '10px Arial';
+                    this.ctx.textAlign = 'center';
+                    this.ctx.fillText(agent.name,
+                        agent.x * this.tileSize + this.tileSize / 2,
+                        agent.y * this.tileSize - 5
+                    );
+                });
+                
+                // Draw path lines for agents
+                this.ctx.strokeStyle = 'rgba(255, 215, 0, 0.3)';
+                this.ctx.lineWidth = 2;
+                this.ctx.setLineDash([5, 5]);
+                
+                this.agents.forEach(agent => {
+                    if (agent.x !== agent.targetX || agent.y !== agent.targetY) {
+                        this.ctx.beginPath();
+                        this.ctx.moveTo(
+                            agent.x * this.tileSize + this.tileSize / 2,
+                            agent.y * this.tileSize + this.tileSize / 2
+                        );
+                        this.ctx.lineTo(
+                            agent.targetX * this.tileSize + this.tileSize / 2,
+                            agent.targetY * this.tileSize + this.tileSize / 2
+                        );
+                        this.ctx.stroke();
+                    }
+                });
+                
+                this.ctx.setLineDash([]);
+            }
+            
+            createAgentCard(agent) {
+                const agentList = document.getElementById('agentList');
+                
+                const card = document.createElement('div');
+                card.className = 'agent-card';
+                card.id = `card_${agent.id}`;
+                card.innerHTML = `
+                    <div class="verification-badge">VERIFIED</div>
+                    <div class="agent-name">${agent.name}</div>
+                    <div class="agent-stats">
+                        <div>Health:</div>
+                        <div class="stat-bar">
+                            <div class="stat-fill health-fill" style="width: ${agent.health}%"></div>
+                        </div>
+                        <div>Energy:</div>
+                        <div class="stat-bar">
+                            <div class="stat-fill energy-fill" style="width: ${agent.energy}%"></div>
+                        </div>
+                    </div>
+                    <div style="margin-top: 10px; font-size: 11px;">
+                        <div>Action: <span id="${agent.id}_action">${agent.action}</span></div>
+                        <div>Position: <span id="${agent.id}_pos">(${agent.x}, ${agent.y})</span></div>
+                    </div>
+                `;
+                
+                agentList.appendChild(card);
+            }
+            
+            updateAgentCard(agent) {
+                const card = document.getElementById(`card_${agent.id}`);
+                if (!card) return;
+                
+                // Update stats
+                card.querySelector('.health-fill').style.width = agent.health + '%';
+                card.querySelector('.energy-fill').style.width = agent.energy + '%';
+                
+                // Update action and position
+                document.getElementById(`${agent.id}_action`).textContent = agent.action;
+                document.getElementById(`${agent.id}_pos`).textContent = `(${agent.x}, ${agent.y})`;
+            }
+            
+            updateInventoryDisplay() {
+                const invContainer = document.getElementById('inventory');
+                invContainer.innerHTML = '';
+                
+                this.inventory.forEach((item, index) => {
+                    const slot = document.createElement('div');
+                    slot.className = 'inventory-slot';
+                    
+                    if (item) {
+                        const icon = item.type.includes('Ore') ? '🪨' : 
+                                    item.type === 'tree' ? '🪵' : '🐟';
+                        slot.innerHTML = `
+                            ${icon}
+                            <span class="item-count">${item.count}</span>
+                        `;
+                    }
+                    
+                    invContainer.appendChild(slot);
+                });
+            }
+            
+            updateSkillsDisplay() {
+                const skillsList = document.getElementById('skillsList');
+                skillsList.innerHTML = '';
+                
+                Object.entries(this.skills).forEach(([skill, data]) => {
+                    const skillDiv = document.createElement('div');
+                    skillDiv.style.margin = '5px 0';
+                    skillDiv.innerHTML = `
+                        <span class="skill-icon">${data.icon}</span>
+                        <span style="color: #FFD700;">${skill}:</span>
+                        <span style="color: #fff;">Level ${data.level}</span>
+                        <span style="color: #888; font-size: 10px;">(${data.xp} XP)</span>
+                    `;
+                    skillsList.appendChild(skillDiv);
+                });
+            }
+            
+            logAPICall(method, endpoint, data, status) {
+                const call = {
+                    id: Date.now(),
+                    method: method,
+                    endpoint: endpoint,
+                    data: data,
+                    status: status,
+                    timestamp: new Date().toISOString()
+                };
+                
+                this.apiCalls.push(call);
+                
+                // Update UI
+                const monitor = document.getElementById('apiMonitor');
+                const callDiv = document.createElement('div');
+                callDiv.className = `api-call api-${method.toLowerCase()}`;
+                
+                if (status === 'ERROR') {
+                    callDiv.className = 'api-call api-error';
+                }
+                
+                callDiv.innerHTML = `
+                    ${method} ${endpoint}
+                    <span style="float: right; color: #666;">${status}</span>
+                `;
+                
+                monitor.insertBefore(callDiv, monitor.firstChild);
+                
+                // Keep only recent calls
+                while (monitor.children.length > 20) {
+                    monitor.removeChild(monitor.lastChild);
+                }
+                
+                // Update rate
+                this.apiCallRate++;
+                if (this.worldTick % 10 === 0) {
+                    document.getElementById('apiRate').textContent = this.apiCallRate;
+                    this.apiCallRate = 0;
+                }
+            }
+            
+            logGuardianCheck(action, entityId, result, reason) {
+                const check = {
+                    action: action,
+                    entityId: entityId,
+                    result: result,
+                    reason: reason,
+                    timestamp: Date.now()
+                };
+                
+                this.guardianChecks.push(check);
+                
+                // Update UI
+                const monitor = document.getElementById('guardianMonitor');
+                const checkDiv = document.createElement('div');
+                checkDiv.className = `api-call ${result === 'APPROVED' ? 'api-get' : 'api-error'}`;
+                checkDiv.innerHTML = `
+                    ${action}: ${result}
+                    <br><span style="font-size: 9px; color: #666;">${reason}</span>
+                `;
+                
+                monitor.insertBefore(checkDiv, monitor.firstChild);
+                
+                // Keep only recent checks
+                while (monitor.children.length > 10) {
+                    monitor.removeChild(monitor.lastChild);
+                }
+            }
+            
+            addChatMessage(type, message) {
+                const chat = document.getElementById('gameChat');
+                const msgDiv = document.createElement('div');
+                msgDiv.className = `chat-message ${type}-msg`;
+                
+                const time = new Date().toLocaleTimeString();
+                msgDiv.innerHTML = `[${time}] ${message}`;
+                
+                chat.appendChild(msgDiv);
+                chat.scrollTop = chat.scrollHeight;
+                
+                // Keep chat size manageable
+                while (chat.children.length > 50) {
+                    chat.removeChild(chat.firstChild);
+                }
+            }
+            
+            addProofEntry(type, description) {
+                const proof = {
+                    id: Date.now(),
+                    type: type,
+                    description: description,
+                    worldTick: this.worldTick,
+                    hash: this.generateHash(type + description + this.worldTick),
+                    timestamp: new Date().toISOString()
+                };
+                
+                this.proofChain.push(proof);
+                
+                // Update UI
+                const chainDiv = document.getElementById('proofChain');
+                const entryDiv = document.createElement('div');
+                entryDiv.className = 'proof-entry';
+                entryDiv.innerHTML = `
+                    <strong>${type}</strong>: ${description}
+                    <br><span style="font-size: 9px; color: #666;">
+                    Tick: ${this.worldTick} | Hash: ${proof.hash.substring(0, 16)}...
+                    </span>
+                `;
+                
+                chainDiv.insertBefore(entryDiv, chainDiv.firstChild);
+                
+                // Keep only recent entries
+                while (chainDiv.children.length > 10) {
+                    chainDiv.removeChild(chainDiv.lastChild);
+                }
+            }
+            
+            verifyActions() {
+                // Verify all actions in proof chain
+                let valid = true;
+                let invalidCount = 0;
+                
+                // Check API calls match actions
+                const actionCount = this.proofChain.filter(p => 
+                    p.type === 'MINING_SUCCESS' || p.type === 'AGENT_SPAWN'
+                ).length;
+                
+                const apiActionCount = this.apiCalls.filter(call => 
+                    call.endpoint.includes('/action/') || call.endpoint.includes('/spawn')
+                ).length;
+                
+                if (Math.abs(actionCount - apiActionCount) > 5) {
+                    valid = false;
+                    invalidCount++;
+                }
+                
+                // Check guardian approvals
+                const guardianApprovals = this.guardianChecks.filter(c => c.result === 'APPROVED').length;
+                const guardianDenials = this.guardianChecks.filter(c => c.result === 'DENIED').length;
+                
+                // Check inventory matches mined resources
+                const minedCount = this.proofChain.filter(p => p.type === 'MINING_SUCCESS').length;
+                const inventoryCount = this.inventory.filter(slot => slot !== null).length;
+                
+                if (inventoryCount !== minedCount) {
+                    valid = false;
+                    invalidCount++;
+                }
+                
+                // Update verification status
+                const status = document.getElementById('verifyStatus');
+                if (valid) {
+                    status.textContent = 'VERIFIED ✓';
+                    status.style.color = '#00ff00';
+                } else {
+                    status.textContent = `FAILED (${invalidCount} issues)`;
+                    status.style.color = '#ff0000';
+                }
+                
+                // Show verification results
+                const results = `
+VERIFICATION REPORT:
+==================
+Proof Chain Entries: ${this.proofChain.length}
+API Calls: ${this.apiCalls.length}
+Guardian Checks: ${this.guardianChecks.length} (${guardianApprovals} approved)
+Action Consistency: ${valid ? 'PASS' : 'FAIL'}
+Inventory Match: ${inventoryCount === minedCount ? 'PASS' : 'FAIL'}
+
+Overall Status: ${valid ? 'VERIFIED' : 'VERIFICATION FAILED'}
+                `;
+                
+                alert(results);
+                
+                // Add to proof chain
+                this.addProofEntry('VERIFICATION', `System verification ${valid ? 'PASSED' : 'FAILED'}`);
+            }
+            
+            toggleAPILayer() {
+                const panel = document.querySelector('.api-panel');
+                panel.style.display = panel.style.display === 'none' ? 'grid' : 'none';
+            }
+            
+            startAPIMonitoring() {
+                // Simulate realistic API traffic
+                setInterval(() => {
+                    if (this.engineRunning && Math.random() > 0.5) {
+                        const endpoints = [
+                            '/world/state',
+                            '/agent/heartbeat',
+                            '/resource/check',
+                            '/inventory/sync',
+                            '/skill/update'
+                        ];
+                        
+                        const endpoint = endpoints[Math.floor(Math.random() * endpoints.length)];
+                        this.logAPICall('GET', endpoint, {}, 'SUCCESS');
+                    }
+                }, 2000);
+            }
+            
+            generateHash(data) {
+                let hash = 0;
+                const str = typeof data === 'string' ? data : JSON.stringify(data);
+                
+                for (let i = 0; i < str.length; i++) {
+                    const char = str.charCodeAt(i);
+                    hash = ((hash << 5) - hash) + char;
+                    hash = hash & hash;
+                }
+                
+                return Math.abs(hash).toString(16);
+            }
+        }
+        
+        // Global instance
+        let gameEngine;
+        
+        // Control functions
+        function startGameEngine() {
+            if (!gameEngine) {
+                gameEngine = new GameEngineRealityBridge();
+            }
+            gameEngine.startEngine();
+        }
+        
+        function spawnAgent() {
+            if (!gameEngine) {
+                alert('Start the game engine first!');
+                return;
+            }
+            gameEngine.spawnAgent();
+        }
+        
+        function startMining() {
+            if (!gameEngine) {
+                alert('Start the game engine first!');
+                return;
+            }
+            gameEngine.startMining();
+        }
+        
+        function verifyActions() {
+            if (!gameEngine) {
+                alert('Start the game engine first!');
+                return;
+            }
+            gameEngine.verifyActions();
+        }
+        
+        function toggleAPILayer() {
+            if (!gameEngine) {
+                alert('Start the game engine first!');
+                return;
+            }
+            gameEngine.toggleAPILayer();
+        }
+        
+        // Initialize on load
+        window.onload = () => {
+            console.log('⛏️ Game Engine Reality Bridge initialized');
+            console.log('Click "Start Engine" to begin the verification process');
+        };
+    </script>
+</body>
+</html>

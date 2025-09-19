@@ -1,0 +1,896 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Cal Character Generator - Simple Interface</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            font-family: 'Courier New', monospace;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: #fff;
+            min-height: 100vh;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            overflow-x: hidden;
+        }
+        
+        .container {
+            background: rgba(0, 0, 0, 0.1);
+            backdrop-filter: blur(20px);
+            border-radius: 20px;
+            padding: 40px;
+            max-width: 800px;
+            width: 90%;
+            text-align: center;
+            box-shadow: 0 20px 40px rgba(0, 0, 0, 0.3);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+        }
+        
+        .header {
+            margin-bottom: 40px;
+        }
+        
+        .header h1 {
+            font-size: 3em;
+            margin-bottom: 10px;
+            background: linear-gradient(45deg, #ff6b6b, #4ecdc4, #45b7d1, #96ceb4);
+            background-size: 400%;
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            animation: gradientShift 3s ease infinite;
+            text-shadow: 0 0 30px rgba(255, 255, 255, 0.3);
+        }
+        
+        @keyframes gradientShift {
+            0%, 100% { background-position: 0% 50%; }
+            50% { background-position: 100% 50%; }
+        }
+        
+        .subtitle {
+            font-size: 1.2em;
+            opacity: 0.9;
+            margin-bottom: 20px;
+        }
+        
+        .status-bar {
+            display: flex;
+            justify-content: center;
+            gap: 30px;
+            margin-bottom: 40px;
+            flex-wrap: wrap;
+        }
+        
+        .status-item {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            padding: 10px 15px;
+            background: rgba(255, 255, 255, 0.1);
+            border-radius: 25px;
+            font-size: 0.9em;
+        }
+        
+        .status-indicator {
+            width: 12px;
+            height: 12px;
+            border-radius: 50%;
+            background: #4ecdc4;
+            animation: pulse 2s infinite;
+        }
+        
+        .status-indicator.checking {
+            background: #ffeb3b;
+        }
+        
+        .status-indicator.offline {
+            background: #ff6b6b;
+        }
+        
+        @keyframes pulse {
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0.5; }
+        }
+        
+        .main-input {
+            margin-bottom: 30px;
+        }
+        
+        .cal-input {
+            width: 100%;
+            background: rgba(255, 255, 255, 0.1);
+            border: 2px solid rgba(255, 255, 255, 0.3);
+            color: #fff;
+            padding: 20px;
+            font-family: inherit;
+            font-size: 1.3em;
+            border-radius: 15px;
+            text-align: center;
+            backdrop-filter: blur(10px);
+            transition: all 0.3s;
+        }
+        
+        .cal-input:focus {
+            outline: none;
+            border-color: #4ecdc4;
+            box-shadow: 0 0 30px rgba(78, 205, 196, 0.3);
+            background: rgba(255, 255, 255, 0.15);
+        }
+        
+        .cal-input::placeholder {
+            color: rgba(255, 255, 255, 0.7);
+        }
+        
+        .action-buttons {
+            display: flex;
+            gap: 20px;
+            justify-content: center;
+            margin-bottom: 40px;
+            flex-wrap: wrap;
+        }
+        
+        .action-btn {
+            background: linear-gradient(45deg, #ff6b6b, #4ecdc4);
+            color: #fff;
+            border: none;
+            padding: 15px 30px;
+            border-radius: 50px;
+            font-family: inherit;
+            font-weight: bold;
+            font-size: 1.1em;
+            cursor: pointer;
+            transition: all 0.3s;
+            position: relative;
+            overflow: hidden;
+            min-width: 180px;
+        }
+        
+        .action-btn:hover {
+            transform: translateY(-3px);
+            box-shadow: 0 10px 25px rgba(0, 0, 0, 0.3);
+        }
+        
+        .action-btn:active {
+            transform: translateY(0);
+        }
+        
+        .action-btn.generating {
+            background: linear-gradient(45deg, #ffeb3b, #ff9800);
+            animation: generating 1s infinite;
+        }
+        
+        @keyframes generating {
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0.7; }
+        }
+        
+        .examples {
+            margin-bottom: 30px;
+        }
+        
+        .examples h3 {
+            margin-bottom: 15px;
+            color: #4ecdc4;
+        }
+        
+        .example-prompts {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 10px;
+        }
+        
+        .example-prompt {
+            background: rgba(255, 255, 255, 0.1);
+            border: 1px solid rgba(255, 255, 255, 0.2);
+            border-radius: 10px;
+            padding: 12px;
+            cursor: pointer;
+            transition: all 0.3s;
+            font-size: 0.9em;
+        }
+        
+        .example-prompt:hover {
+            background: rgba(255, 255, 255, 0.2);
+            transform: scale(1.02);
+            border-color: #4ecdc4;
+        }
+        
+        .result-area {
+            background: rgba(0, 0, 0, 0.2);
+            border-radius: 15px;
+            padding: 30px;
+            margin-top: 30px;
+            min-height: 200px;
+            display: none;
+        }
+        
+        .result-area.show {
+            display: block;
+            animation: slideIn 0.5s ease;
+        }
+        
+        @keyframes slideIn {
+            from {
+                opacity: 0;
+                transform: translateY(20px);
+            }
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+        
+        .character-preview {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 20px;
+            margin-top: 20px;
+        }
+        
+        .character-info {
+            background: rgba(255, 255, 255, 0.1);
+            padding: 20px;
+            border-radius: 10px;
+            text-align: left;
+        }
+        
+        .character-info h4 {
+            color: #4ecdc4;
+            margin-bottom: 10px;
+        }
+        
+        .export-buttons {
+            display: flex;
+            gap: 15px;
+            justify-content: center;
+            margin-top: 20px;
+            flex-wrap: wrap;
+        }
+        
+        .export-btn {
+            background: rgba(78, 205, 196, 0.3);
+            border: 2px solid #4ecdc4;
+            color: #fff;
+            padding: 10px 20px;
+            border-radius: 25px;
+            cursor: pointer;
+            transition: all 0.3s;
+            font-family: inherit;
+            font-weight: bold;
+        }
+        
+        .export-btn:hover {
+            background: rgba(78, 205, 196, 0.5);
+            transform: scale(1.05);
+        }
+        
+        .loading {
+            display: none;
+            margin: 20px 0;
+        }
+        
+        .loading.show {
+            display: block;
+        }
+        
+        .loading-bar {
+            width: 100%;
+            height: 6px;
+            background: rgba(255, 255, 255, 0.2);
+            border-radius: 3px;
+            overflow: hidden;
+            margin-bottom: 10px;
+        }
+        
+        .loading-fill {
+            height: 100%;
+            background: linear-gradient(45deg, #4ecdc4, #45b7d1);
+            border-radius: 3px;
+            animation: loading 2s ease infinite;
+        }
+        
+        @keyframes loading {
+            0% { width: 0%; }
+            50% { width: 70%; }
+            100% { width: 100%; }
+        }
+        
+        .footer {
+            margin-top: 40px;
+            padding-top: 20px;
+            border-top: 1px solid rgba(255, 255, 255, 0.1);
+            font-size: 0.9em;
+            opacity: 0.8;
+        }
+        
+        .system-links {
+            display: flex;
+            gap: 20px;
+            justify-content: center;
+            margin-top: 15px;
+            flex-wrap: wrap;
+        }
+        
+        .system-link {
+            color: #4ecdc4;
+            text-decoration: none;
+            padding: 5px 10px;
+            border-radius: 5px;
+            transition: all 0.3s;
+        }
+        
+        .system-link:hover {
+            background: rgba(78, 205, 196, 0.2);
+            transform: scale(1.05);
+        }
+        
+        @media (max-width: 768px) {
+            .container {
+                padding: 20px;
+            }
+            
+            .header h1 {
+                font-size: 2em;
+            }
+            
+            .cal-input {
+                font-size: 1.1em;
+                padding: 15px;
+            }
+            
+            .action-buttons {
+                flex-direction: column;
+                align-items: center;
+            }
+            
+            .character-preview {
+                grid-template-columns: 1fr;
+            }
+            
+            .status-bar {
+                flex-direction: column;
+                align-items: center;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>🤖 Cal Character Generator</h1>
+            <p class="subtitle">Just tell Cal what you want and get instant 3D characters</p>
+            <p style="opacity: 0.7; font-size: 0.9em;">Like the Twitch COBOL gamedev experience - type normal text, get 3D worlds</p>
+        </div>
+        
+        <div class="status-bar">
+            <div class="status-item">
+                <div class="status-indicator checking" id="calStatus"></div>
+                <span>Cal Character Generator</span>
+            </div>
+            <div class="status-item">
+                <div class="status-indicator checking" id="orchestratorStatus"></div>
+                <span>Cal Orchestration</span>
+            </div>
+            <div class="status-item">
+                <div class="status-indicator checking" id="bridgeStatus"></div>
+                <span>Unity/Unreal Bridge</span>
+            </div>
+            <div class="status-item">
+                <div class="status-indicator checking" id="ugcStatus"></div>
+                <span>Social Media Platform</span>
+            </div>
+        </div>
+        
+        <div class="main-input">
+            <input type="text" 
+                   class="cal-input" 
+                   id="calPrompt" 
+                   placeholder="Cal, draw me a pirate..."
+                   onkeypress="if(event.key==='Enter') generateCharacter()">
+        </div>
+        
+        <div class="action-buttons">
+            <button class="action-btn" id="generateBtn" onclick="generateCharacter()">
+                🎨 Create Character
+            </button>
+            <button class="action-btn" onclick="generateForSocialMedia()">
+                📱 Create for Social Media
+            </button>
+            <button class="action-btn" onclick="showSystemStatus()">
+                📊 System Status
+            </button>
+        </div>
+        
+        <div class="examples">
+            <h3>💡 Try these examples:</h3>
+            <div class="example-prompts">
+                <div class="example-prompt" onclick="useExample('Cal, draw me a pirate')">
+                    🏴‍☠️ Cal, draw me a pirate
+                </div>
+                <div class="example-prompt" onclick="useExample('Cal, create a cyberpunk warrior')">
+                    🤖 Cal, create a cyberpunk warrior
+                </div>
+                <div class="example-prompt" onclick="useExample('Cal, make a wizard with a staff')">
+                    🧙‍♂️ Cal, make a wizard with a staff
+                </div>
+                <div class="example-prompt" onclick="useExample('Cal, generate a friendly dragon')">
+                    🐉 Cal, generate a friendly dragon
+                </div>
+                <div class="example-prompt" onclick="useExample('Cal, build a steampunk inventor')">
+                    ⚙️ Cal, build a steampunk inventor
+                </div>
+                <div class="example-prompt" onclick="useExample('Cal, design a space marine')">
+                    🚀 Cal, design a space marine
+                </div>
+            </div>
+        </div>
+        
+        <div class="loading" id="loadingArea">
+            <div class="loading-bar">
+                <div class="loading-fill"></div>
+            </div>
+            <p id="loadingText">Generating character...</p>
+        </div>
+        
+        <div class="result-area" id="resultArea">
+            <h3 id="resultTitle">Character Generated!</h3>
+            <div id="resultContent"></div>
+        </div>
+        
+        <div class="footer">
+            <p>🎮 Complete Pipeline: Cal → Character Generation → Unity/Unreal Export → Social Media Ready</p>
+            <div class="system-links">
+                <a href="http://localhost:8200" class="system-link" target="_blank">🎨 Character Generator</a>
+                <a href="http://localhost:8300" class="system-link" target="_blank">🧠 Enhanced Cal</a>
+                <a href="http://localhost:8400" class="system-link" target="_blank">🌉 Unity/Unreal Bridge</a>
+                <a href="http://localhost:8500" class="system-link" target="_blank">📱 Social Media Platform</a>
+            </div>
+            <p style="margin-top: 15px; font-size: 0.8em;">
+                ✨ All systems integrated and ready for instant 3D character creation
+            </p>
+        </div>
+    </div>
+
+    <script>
+        let currentCharacter = null;
+        let systemsOnline = {
+            characterGenerator: false,
+            orchestrator: false,
+            bridge: false,
+            ugc: false
+        };
+
+        // Check system status on load
+        async function checkSystemStatus() {
+            const systems = [
+                { 
+                    name: 'characterGenerator', 
+                    url: 'http://localhost:8200/status', 
+                    indicator: 'calStatus' 
+                },
+                { 
+                    name: 'orchestrator', 
+                    url: 'http://localhost:8300/cal/status', 
+                    indicator: 'orchestratorStatus' 
+                },
+                { 
+                    name: 'bridge', 
+                    url: 'http://localhost:8400/status', 
+                    indicator: 'bridgeStatus' 
+                },
+                { 
+                    name: 'ugc', 
+                    url: 'http://localhost:8500/api/status', 
+                    indicator: 'ugcStatus' 
+                }
+            ];
+
+            for (const system of systems) {
+                try {
+                    const response = await fetch(system.url);
+                    const indicator = document.getElementById(system.indicator);
+                    
+                    if (response.ok) {
+                        systemsOnline[system.name] = true;
+                        indicator.className = 'status-indicator';
+                        indicator.style.background = '#4ecdc4';
+                    } else {
+                        throw new Error('Not responding');
+                    }
+                } catch (error) {
+                    systemsOnline[system.name] = false;
+                    const indicator = document.getElementById(system.indicator);
+                    indicator.className = 'status-indicator offline';
+                    indicator.style.background = '#ff6b6b';
+                }
+            }
+
+            console.log('System Status:', systemsOnline);
+        }
+
+        function useExample(prompt) {
+            document.getElementById('calPrompt').value = prompt;
+            document.getElementById('calPrompt').focus();
+        }
+
+        async function generateCharacter() {
+            const prompt = document.getElementById('calPrompt').value.trim();
+            
+            if (!prompt) {
+                alert('Please enter a prompt for Cal!');
+                return;
+            }
+
+            if (!systemsOnline.characterGenerator) {
+                alert('⚠️ Cal Character Generator is not online. Please start the system first.');
+                return;
+            }
+
+            showLoading('Cal is thinking about your request...');
+            
+            try {
+                // First try the enhanced Cal orchestration
+                let result;
+                
+                if (systemsOnline.orchestrator) {
+                    console.log('🧠 Using Enhanced Cal Orchestration...');
+                    updateLoadingText('Enhanced Cal processing request...');
+                    
+                    const response = await fetch('http://localhost:8300/cal/enhanced', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({ 
+                            input: prompt,
+                            context: { interface: 'simple' }
+                        })
+                    });
+                    
+                    const data = await response.json();
+                    
+                    if (data.success && data.result.type === 'character_created') {
+                        result = data.result.character;
+                    } else {
+                        throw new Error('Enhanced Cal did not create a character');
+                    }
+                } else {
+                    console.log('🎨 Using Direct Character Generator...');
+                    updateLoadingText('Generating character directly...');
+                    
+                    const response = await fetch('http://localhost:8200/generate', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({ prompt })
+                    });
+                    
+                    const data = await response.json();
+                    
+                    if (data.success) {
+                        result = data.character;
+                    } else {
+                        throw new Error(data.error);
+                    }
+                }
+
+                updateLoadingText('Character created! Preparing display...');
+                
+                setTimeout(() => {
+                    hideLoading();
+                    displayCharacter(result);
+                }, 1000);
+
+            } catch (error) {
+                hideLoading();
+                alert('❌ Error generating character: ' + error.message);
+                console.error('Generation error:', error);
+            }
+        }
+
+        async function generateForSocialMedia() {
+            const prompt = document.getElementById('calPrompt').value.trim() || 'Create an amazing character';
+            
+            if (!systemsOnline.ugc) {
+                alert('⚠️ Social Media Platform is not online. Please start the system first.');
+                return;
+            }
+
+            showLoading('Creating character for social media...');
+            
+            try {
+                updateLoadingText('Generating character and social content...');
+                
+                const response = await fetch('http://localhost:8500/api/generate-character', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        prompt: prompt,
+                        socialPlatforms: ['instagram', 'tiktok', 'youtube'],
+                        contentType: 'character_showcase'
+                    })
+                });
+                
+                const data = await response.json();
+                
+                if (data.success) {
+                    updateLoadingText('Social media content ready!');
+                    
+                    setTimeout(() => {
+                        hideLoading();
+                        displaySocialMediaResult(data);
+                    }, 1000);
+                } else {
+                    throw new Error(data.error);
+                }
+
+            } catch (error) {
+                hideLoading();
+                alert('❌ Error creating social media content: ' + error.message);
+            }
+        }
+
+        function displayCharacter(character) {
+            currentCharacter = character;
+            
+            const resultArea = document.getElementById('resultArea');
+            const resultTitle = document.getElementById('resultTitle');
+            const resultContent = document.getElementById('resultContent');
+            
+            resultTitle.textContent = `✨ ${character.name} Created!`;
+            
+            resultContent.innerHTML = `
+                <div class="character-preview">
+                    <div class="character-info">
+                        <h4>🎭 Character Details</h4>
+                        <p><strong>Name:</strong> ${character.name}</p>
+                        <p><strong>Type:</strong> ${character.type || 'Character'}</p>
+                        <p><strong>Created:</strong> ${new Date(character.createdAt).toLocaleTimeString()}</p>
+                        <p><strong>Generation Time:</strong> ${character.totalDuration || character.metadata?.generationTime || 'Instant'}ms</p>
+                        <p><strong>Original Prompt:</strong><br>"${character.originalPrompt || character.prompt || 'Generated character'}"</p>
+                    </div>
+                    <div class="character-info">
+                        <h4>🎮 Export Status</h4>
+                        <p><strong>Unity Ready:</strong> ${character.readyForUnity || character.unityData ? '✅ Yes' : '⏳ Processing'}</p>
+                        <p><strong>Unreal Ready:</strong> ${character.readyForUnreal || character.unrealData ? '✅ Yes' : '⏳ Processing'}</p>
+                        <p><strong>Social Media Ready:</strong> ✅ Yes</p>
+                        <p><strong>Format:</strong> ${character.format || 'GLTF'}</p>
+                        <p><strong>Quality:</strong> High</p>
+                    </div>
+                </div>
+                
+                <div class="export-buttons">
+                    <button class="export-btn" onclick="exportToUnity()">
+                        🎮 Export to Unity
+                    </button>
+                    <button class="export-btn" onclick="exportToUnreal()">
+                        🎮 Export to Unreal
+                    </button>
+                    <button class="export-btn" onclick="createSocialContent()">
+                        📱 Create Social Content
+                    </button>
+                    <button class="export-btn" onclick="createAnother()">
+                        🎨 Create Another
+                    </button>
+                </div>
+            `;
+            
+            resultArea.classList.add('show');
+        }
+
+        function displaySocialMediaResult(data) {
+            const resultArea = document.getElementById('resultArea');
+            const resultTitle = document.getElementById('resultTitle');
+            const resultContent = document.getElementById('resultContent');
+            
+            resultTitle.textContent = `📱 Social Media Content Created!`;
+            
+            const platformsList = Object.keys(data.platformOptimizations).join(', ');
+            
+            resultContent.innerHTML = `
+                <div class="character-preview">
+                    <div class="character-info">
+                        <h4>🎭 Character: ${data.character.name}</h4>
+                        <p><strong>Type:</strong> ${data.character.type}</p>
+                        <p><strong>Platforms:</strong> ${platformsList}</p>
+                        <p><strong>Content Type:</strong> Character Showcase</p>
+                        <p><strong>Ready for Posting:</strong> ✅ Yes</p>
+                    </div>
+                    <div class="character-info">
+                        <h4>📊 Social Content</h4>
+                        <p><strong>Videos Generated:</strong> ${Object.keys(data.platformOptimizations).length}</p>
+                        <p><strong>Images Generated:</strong> ${Object.keys(data.platformOptimizations).length}</p>
+                        <p><strong>Hashtags Ready:</strong> ✅ Yes</p>
+                        <p><strong>Thumbnails:</strong> ✅ Generated</p>
+                        <p><strong>Optimized for Virality:</strong> ✅ Yes</p>
+                    </div>
+                </div>
+                
+                <div class="export-buttons">
+                    <button class="export-btn" onclick="schedulePosting()">
+                        📅 Schedule Posting
+                    </button>
+                    <button class="export-btn" onclick="viewAnalytics()">
+                        📊 View Analytics
+                    </button>
+                    <button class="export-btn" onclick="exportToUnity()">
+                        🎮 Export Character
+                    </button>
+                    <button class="export-btn" onclick="createAnother()">
+                        🎨 Create Another
+                    </button>
+                </div>
+            `;
+            
+            resultArea.classList.add('show');
+            currentCharacter = data.character;
+        }
+
+        async function exportToUnity() {
+            if (!currentCharacter) {
+                alert('No character to export!');
+                return;
+            }
+
+            if (!systemsOnline.bridge) {
+                alert('⚠️ Unity/Unreal Bridge is not online. Character will be saved for later export.');
+                return;
+            }
+
+            showLoading('Exporting to Unity...');
+            
+            try {
+                const response = await fetch('http://localhost:8400/export/unity/character', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ 
+                        character: currentCharacter,
+                        options: { liveImport: true }
+                    })
+                });
+                
+                const data = await response.json();
+                
+                if (data.success) {
+                    hideLoading();
+                    alert(`✅ ${data.message}\n\n${data.unityReady ? '🎮 Live imported to Unity Editor!' : '📦 Package ready for download'}`);
+                } else {
+                    throw new Error(data.error);
+                }
+            } catch (error) {
+                hideLoading();
+                alert('❌ Export failed: ' + error.message);
+            }
+        }
+
+        async function exportToUnreal() {
+            if (!currentCharacter) {
+                alert('No character to export!');
+                return;
+            }
+
+            if (!systemsOnline.bridge) {
+                alert('⚠️ Unity/Unreal Bridge is not online. Character will be saved for later export.');
+                return;
+            }
+
+            showLoading('Exporting to Unreal...');
+            
+            try {
+                const response = await fetch('http://localhost:8400/export/unreal/character', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ 
+                        character: currentCharacter,
+                        options: { liveImport: true }
+                    })
+                });
+                
+                const data = await response.json();
+                
+                if (data.success) {
+                    hideLoading();
+                    alert(`✅ ${data.message}\n\n${data.unrealReady ? '🎮 Live imported to Unreal Editor!' : '📦 Package ready for download'}`);
+                } else {
+                    throw new Error(data.error);
+                }
+            } catch (error) {
+                hideLoading();
+                alert('❌ Export failed: ' + error.message);
+            }
+        }
+
+        async function createSocialContent() {
+            if (!currentCharacter) {
+                alert('No character to create content for!');
+                return;
+            }
+
+            generateForSocialMedia();
+        }
+
+        function createAnother() {
+            document.getElementById('calPrompt').value = '';
+            document.getElementById('resultArea').classList.remove('show');
+            currentCharacter = null;
+            document.getElementById('calPrompt').focus();
+        }
+
+        function schedulePosting() {
+            alert('📅 Scheduling interface coming soon! Content is ready for manual posting.');
+        }
+
+        function viewAnalytics() {
+            window.open('http://localhost:8500', '_blank');
+        }
+
+        function showSystemStatus() {
+            let status = '📊 System Status Report:\n\n';
+            
+            status += `🎨 Cal Character Generator: ${systemsOnline.characterGenerator ? '✅ Online' : '❌ Offline'}\n`;
+            status += `🧠 Enhanced Cal Orchestration: ${systemsOnline.orchestrator ? '✅ Online' : '❌ Offline'}\n`;
+            status += `🌉 Unity/Unreal Bridge: ${systemsOnline.bridge ? '✅ Online' : '❌ Offline'}\n`;
+            status += `📱 Social Media Platform: ${systemsOnline.ugc ? '✅ Online' : '❌ Offline'}\n\n`;
+            
+            const onlineCount = Object.values(systemsOnline).filter(Boolean).length;
+            status += `Overall Status: ${onlineCount}/4 systems online\n\n`;
+            
+            if (onlineCount === 4) {
+                status += '🎉 All systems operational! Ready for full pipeline creation.';
+            } else if (onlineCount >= 1) {
+                status += '⚠️ Partial functionality available. Some features may be limited.';
+            } else {
+                status += '❌ No systems online. Please start the services.';
+            }
+            
+            alert(status);
+        }
+
+        function showLoading(text) {
+            const loadingArea = document.getElementById('loadingArea');
+            const loadingText = document.getElementById('loadingText');
+            const generateBtn = document.getElementById('generateBtn');
+            
+            loadingText.textContent = text;
+            loadingArea.classList.add('show');
+            generateBtn.textContent = '⏳ Generating...';
+            generateBtn.classList.add('generating');
+            generateBtn.disabled = true;
+        }
+
+        function updateLoadingText(text) {
+            document.getElementById('loadingText').textContent = text;
+        }
+
+        function hideLoading() {
+            const loadingArea = document.getElementById('loadingArea');
+            const generateBtn = document.getElementById('generateBtn');
+            
+            loadingArea.classList.remove('show');
+            generateBtn.textContent = '🎨 Create Character';
+            generateBtn.classList.remove('generating');
+            generateBtn.disabled = false;
+        }
+
+        // Initialize
+        document.addEventListener('DOMContentLoaded', () => {
+            checkSystemStatus();
+            document.getElementById('calPrompt').focus();
+            
+            // Recheck system status every 30 seconds
+            setInterval(checkSystemStatus, 30000);
+        });
+
+        // Handle Enter key
+        document.getElementById('calPrompt').addEventListener('keypress', (e) => {
+            if (e.key === 'Enter') {
+                generateCharacter();
+            }
+        });
+    </script>
+</body>
+</html>

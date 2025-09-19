@@ -1,0 +1,641 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Revive Decay System - .soulfra Integration</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            background: #0a0a0a;
+            color: #fff;
+            min-height: 100vh;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            position: relative;
+            overflow: hidden;
+        }
+        
+        .decay-container {
+            max-width: 1200px;
+            width: 90%;
+            padding: 40px;
+            background: rgba(20, 20, 20, 0.9);
+            border-radius: 20px;
+            border: 2px solid #333;
+            backdrop-filter: blur(10px);
+        }
+        
+        h1 {
+            text-align: center;
+            font-size: 48px;
+            margin-bottom: 40px;
+            background: linear-gradient(45deg, #ff6b6b, #4ecdc4, #ffe66d);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            animation: gradient-shift 3s ease infinite;
+        }
+        
+        @keyframes gradient-shift {
+            0%, 100% { filter: hue-rotate(0deg); }
+            50% { filter: hue-rotate(30deg); }
+        }
+        
+        .systems-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+            gap: 20px;
+            margin-bottom: 40px;
+        }
+        
+        .system-card {
+            background: #1a1a1a;
+            border: 2px solid #333;
+            border-radius: 15px;
+            padding: 20px;
+            position: relative;
+            overflow: hidden;
+            transition: all 0.3s ease;
+        }
+        
+        .system-card.decaying {
+            animation: decay-pulse 2s ease-in-out infinite;
+        }
+        
+        @keyframes decay-pulse {
+            0%, 100% { 
+                border-color: #333;
+                box-shadow: 0 0 0 rgba(255, 107, 107, 0);
+            }
+            50% { 
+                border-color: #ff6b6b;
+                box-shadow: 0 0 20px rgba(255, 107, 107, 0.5);
+            }
+        }
+        
+        .system-card.revived {
+            border-color: #4ecdc4;
+            box-shadow: 0 0 30px rgba(78, 205, 196, 0.5);
+        }
+        
+        .system-name {
+            font-size: 20px;
+            font-weight: bold;
+            margin-bottom: 10px;
+        }
+        
+        .decay-meter {
+            width: 100%;
+            height: 10px;
+            background: #333;
+            border-radius: 5px;
+            overflow: hidden;
+            margin: 10px 0;
+            position: relative;
+        }
+        
+        .decay-bar {
+            height: 100%;
+            background: linear-gradient(90deg, #4ecdc4, #ffe66d, #ff6b6b);
+            transition: width 0.5s ease;
+            position: relative;
+        }
+        
+        .decay-bar::after {
+            content: '';
+            position: absolute;
+            top: 0;
+            right: 0;
+            width: 2px;
+            height: 100%;
+            background: white;
+            box-shadow: 0 0 10px white;
+            animation: pulse 1s ease-in-out infinite;
+        }
+        
+        @keyframes pulse {
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0.5; }
+        }
+        
+        .decay-info {
+            display: flex;
+            justify-content: space-between;
+            font-size: 14px;
+            opacity: 0.8;
+        }
+        
+        .revive-button {
+            width: 100%;
+            padding: 10px;
+            margin-top: 10px;
+            background: linear-gradient(45deg, #4ecdc4, #44a3aa);
+            border: none;
+            border-radius: 8px;
+            color: white;
+            font-weight: bold;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            position: relative;
+            overflow: hidden;
+        }
+        
+        .revive-button:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 5px 20px rgba(78, 205, 196, 0.4);
+        }
+        
+        .revive-button:disabled {
+            background: #333;
+            cursor: not-allowed;
+            transform: none;
+        }
+        
+        .revive-button::before {
+            content: '';
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            width: 0;
+            height: 0;
+            background: rgba(255, 255, 255, 0.3);
+            border-radius: 50%;
+            transform: translate(-50%, -50%);
+            transition: width 0.6s, height 0.6s;
+        }
+        
+        .revive-button:active::before {
+            width: 200px;
+            height: 200px;
+        }
+        
+        .soulfra-generator {
+            background: #1a1a1a;
+            border: 2px solid #4ecdc4;
+            border-radius: 15px;
+            padding: 30px;
+            text-align: center;
+            margin-bottom: 40px;
+        }
+        
+        .generate-soulfra {
+            background: linear-gradient(45deg, #ffe66d, #f9ca24);
+            color: #000;
+            border: none;
+            border-radius: 10px;
+            padding: 15px 40px;
+            font-size: 18px;
+            font-weight: bold;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            margin-top: 20px;
+        }
+        
+        .generate-soulfra:hover {
+            transform: scale(1.05);
+            box-shadow: 0 10px 30px rgba(255, 230, 109, 0.4);
+        }
+        
+        .drop-zone {
+            border: 3px dashed #4ecdc4;
+            border-radius: 15px;
+            padding: 40px;
+            text-align: center;
+            margin-top: 20px;
+            transition: all 0.3s ease;
+            position: relative;
+            overflow: hidden;
+        }
+        
+        .drop-zone.drag-over {
+            border-color: #ffe66d;
+            background: rgba(255, 230, 109, 0.1);
+            transform: scale(1.02);
+        }
+        
+        .drop-zone::before {
+            content: '';
+            position: absolute;
+            top: -50%;
+            left: -50%;
+            width: 200%;
+            height: 200%;
+            background: radial-gradient(circle, transparent, rgba(78, 205, 196, 0.1));
+            animation: rotate 20s linear infinite;
+            pointer-events: none;
+        }
+        
+        @keyframes rotate {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+        
+        .stats-panel {
+            background: #1a1a1a;
+            border: 1px solid #333;
+            border-radius: 10px;
+            padding: 20px;
+            margin-top: 20px;
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 20px;
+        }
+        
+        .stat-item {
+            text-align: center;
+        }
+        
+        .stat-value {
+            font-size: 36px;
+            font-weight: bold;
+            color: #4ecdc4;
+        }
+        
+        .stat-label {
+            font-size: 14px;
+            opacity: 0.7;
+            margin-top: 5px;
+        }
+        
+        .particle {
+            position: absolute;
+            width: 4px;
+            height: 4px;
+            background: #4ecdc4;
+            border-radius: 50%;
+            pointer-events: none;
+            opacity: 0;
+            animation: float-up 4s linear infinite;
+        }
+        
+        @keyframes float-up {
+            0% {
+                opacity: 0;
+                transform: translateY(100px) scale(0);
+            }
+            10% {
+                opacity: 1;
+                transform: translateY(80px) scale(1);
+            }
+            90% {
+                opacity: 1;
+                transform: translateY(-80px) scale(1);
+            }
+            100% {
+                opacity: 0;
+                transform: translateY(-100px) scale(0);
+            }
+        }
+        
+        .soulfra-preview {
+            background: #0a0a0a;
+            border: 1px solid #333;
+            border-radius: 8px;
+            padding: 15px;
+            margin-top: 20px;
+            font-family: 'Courier New', monospace;
+            font-size: 12px;
+            text-align: left;
+            max-height: 200px;
+            overflow-y: auto;
+        }
+        
+        .notification {
+            position: fixed;
+            top: 20px;
+            right: 20px;
+            background: #1a1a1a;
+            border: 2px solid #4ecdc4;
+            border-radius: 10px;
+            padding: 20px;
+            min-width: 300px;
+            transform: translateX(400px);
+            transition: transform 0.3s ease;
+            z-index: 1000;
+        }
+        
+        .notification.show {
+            transform: translateX(0);
+        }
+        
+        .notification.error {
+            border-color: #ff6b6b;
+        }
+        
+        .notification.success {
+            border-color: #4ecdc4;
+        }
+    </style>
+</head>
+<body>
+    <div class="decay-container">
+        <h1>⚡ REVIVE DECAY SYSTEM</h1>
+        
+        <div class="soulfra-generator">
+            <h2>📄 .soulfra File Generator</h2>
+            <p>Generate revive tokens to restore decaying systems</p>
+            <button class="generate-soulfra" onclick="generateSoulfra()">
+                Generate .soulfra Token
+            </button>
+            <div class="soulfra-preview" id="soulfraPreview" style="display: none;">
+                <pre id="soulfraContent"></pre>
+            </div>
+        </div>
+        
+        <div class="systems-grid" id="systemsGrid">
+            <!-- Systems will be dynamically added here -->
+        </div>
+        
+        <div class="drop-zone" id="dropZone">
+            <h3>🎯 Drop .soulfra files here to mass revive</h3>
+            <p>or click to select files</p>
+            <input type="file" id="fileInput" accept=".soulfra" multiple style="display: none;">
+        </div>
+        
+        <div class="stats-panel">
+            <div class="stat-item">
+                <div class="stat-value" id="totalSystems">0</div>
+                <div class="stat-label">Total Systems</div>
+            </div>
+            <div class="stat-item">
+                <div class="stat-value" id="decayingSystems">0</div>
+                <div class="stat-label">Decaying</div>
+            </div>
+            <div class="stat-item">
+                <div class="stat-value" id="revivedSystems">0</div>
+                <div class="stat-label">Revived</div>
+            </div>
+            <div class="stat-item">
+                <div class="stat-value" id="soulfraGenerated">0</div>
+                <div class="stat-label">.soulfra Generated</div>
+            </div>
+        </div>
+    </div>
+    
+    <div class="notification" id="notification">
+        <div id="notificationContent"></div>
+    </div>
+    
+    <script>
+        // System definitions
+        const systems = [
+            { id: 'auth-vault', name: 'Auth Vault Wormhole', decay: 100, rate: 0.5 },
+            { id: 'agent-economy', name: 'Agent Economy', decay: 100, rate: 0.8 },
+            { id: 'stripe-api', name: 'Stripe Integration', decay: 100, rate: 0.3 },
+            { id: 'database-mirror', name: 'Database Mirrors', decay: 100, rate: 0.6 },
+            { id: 'php-forks', name: 'PHP Forks', decay: 100, rate: 0.4 },
+            { id: 'wormhole-dns', name: 'Wormhole DNS', decay: 100, rate: 0.7 },
+            { id: 'voxel-processor', name: '3D Voxel Processor', decay: 100, rate: 0.5 },
+            { id: 'squash-dimension', name: '4.5D Squash', decay: 100, rate: 0.9 },
+            { id: 'free-tier', name: 'Free Tier Collapse', decay: 100, rate: 0.2 }
+        ];
+        
+        let soulfraCount = 0;
+        let reviveCount = 0;
+        
+        // Initialize systems
+        function initSystems() {
+            const grid = document.getElementById('systemsGrid');
+            
+            systems.forEach(system => {
+                const card = document.createElement('div');
+                card.className = 'system-card';
+                card.id = `system-${system.id}`;
+                card.innerHTML = `
+                    <div class="system-name">${system.name}</div>
+                    <div class="decay-meter">
+                        <div class="decay-bar" id="decay-${system.id}" style="width: ${system.decay}%"></div>
+                    </div>
+                    <div class="decay-info">
+                        <span>Decay: <span id="decay-value-${system.id}">${system.decay}%</span></span>
+                        <span>Rate: ${system.rate}/s</span>
+                    </div>
+                    <button class="revive-button" onclick="reviveSystem('${system.id}')">
+                        🔄 Revive
+                    </button>
+                `;
+                grid.appendChild(card);
+                
+                // Create floating particles for each system
+                for (let i = 0; i < 3; i++) {
+                    const particle = document.createElement('div');
+                    particle.className = 'particle';
+                    particle.style.left = Math.random() * 100 + '%';
+                    particle.style.animationDelay = Math.random() * 4 + 's';
+                    card.appendChild(particle);
+                }
+            });
+            
+            updateStats();
+        }
+        
+        // Start decay simulation
+        function startDecay() {
+            setInterval(() => {
+                systems.forEach(system => {
+                    if (system.decay > 0) {
+                        system.decay = Math.max(0, system.decay - system.rate);
+                        updateSystemUI(system);
+                    }
+                });
+                updateStats();
+            }, 1000);
+        }
+        
+        // Update system UI
+        function updateSystemUI(system) {
+            const bar = document.getElementById(`decay-${system.id}`);
+            const value = document.getElementById(`decay-value-${system.id}`);
+            const card = document.getElementById(`system-${system.id}`);
+            const button = card.querySelector('.revive-button');
+            
+            bar.style.width = system.decay + '%';
+            value.textContent = Math.round(system.decay) + '%';
+            
+            if (system.decay <= 0) {
+                card.classList.add('decaying');
+                button.disabled = false;
+            } else if (system.decay > 80) {
+                card.classList.add('revived');
+                card.classList.remove('decaying');
+                setTimeout(() => card.classList.remove('revived'), 1000);
+            }
+            
+            // Change bar color based on decay level
+            if (system.decay > 66) {
+                bar.style.background = 'linear-gradient(90deg, #4ecdc4, #4ecdc4)';
+            } else if (system.decay > 33) {
+                bar.style.background = 'linear-gradient(90deg, #ffe66d, #ffe66d)';
+            } else {
+                bar.style.background = 'linear-gradient(90deg, #ff6b6b, #ff6b6b)';
+            }
+        }
+        
+        // Revive individual system
+        function reviveSystem(systemId) {
+            const system = systems.find(s => s.id === systemId);
+            if (system) {
+                system.decay = 100;
+                updateSystemUI(system);
+                reviveCount++;
+                showNotification('System revived successfully!', 'success');
+                updateStats();
+            }
+        }
+        
+        // Generate .soulfra file
+        function generateSoulfra() {
+            soulfraCount++;
+            
+            const soulfraData = {
+                version: "1.0.0",
+                type: "revive_token",
+                generated: new Date().toISOString(),
+                id: `soulfra_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
+                metadata: {
+                    generator: "revive-decay-system",
+                    purpose: "system_revival",
+                    tier: "FREE"
+                },
+                revive: {
+                    systems: systems.filter(s => s.decay < 50).map(s => ({
+                        id: s.id,
+                        name: s.name,
+                        decay_level: s.decay,
+                        revival_amount: 100
+                    })),
+                    timestamp: Date.now(),
+                    expiry: Date.now() + (24 * 60 * 60 * 1000)
+                },
+                signature: btoa(JSON.stringify({
+                    hash: Math.random().toString(36).substr(2),
+                    timestamp: Date.now()
+                }))
+            };
+            
+            // Show preview
+            document.getElementById('soulfraPreview').style.display = 'block';
+            document.getElementById('soulfraContent').textContent = JSON.stringify(soulfraData, null, 2);
+            
+            // Download file
+            const blob = new Blob([JSON.stringify(soulfraData, null, 2)], { type: 'application/json' });
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = `revive_${soulfraCount}.soulfra`;
+            a.click();
+            URL.revokeObjectURL(url);
+            
+            showNotification(`.soulfra file generated! (${soulfraCount} total)`, 'success');
+            updateStats();
+        }
+        
+        // Handle file drops
+        const dropZone = document.getElementById('dropZone');
+        const fileInput = document.getElementById('fileInput');
+        
+        dropZone.addEventListener('click', () => fileInput.click());
+        
+        dropZone.addEventListener('dragover', (e) => {
+            e.preventDefault();
+            dropZone.classList.add('drag-over');
+        });
+        
+        dropZone.addEventListener('dragleave', () => {
+            dropZone.classList.remove('drag-over');
+        });
+        
+        dropZone.addEventListener('drop', (e) => {
+            e.preventDefault();
+            dropZone.classList.remove('drag-over');
+            handleFiles(e.dataTransfer.files);
+        });
+        
+        fileInput.addEventListener('change', (e) => {
+            handleFiles(e.target.files);
+        });
+        
+        function handleFiles(files) {
+            Array.from(files).forEach(file => {
+                if (file.name.endsWith('.soulfra')) {
+                    const reader = new FileReader();
+                    reader.onload = (e) => {
+                        try {
+                            const data = JSON.parse(e.target.result);
+                            processSoulfra(data);
+                        } catch (err) {
+                            showNotification('Invalid .soulfra file: ' + file.name, 'error');
+                        }
+                    };
+                    reader.readAsText(file);
+                }
+            });
+        }
+        
+        function processSoulfra(data) {
+            if (data.type === 'revive_token' && data.revive) {
+                let revivedCount = 0;
+                
+                data.revive.systems.forEach(sysData => {
+                    const system = systems.find(s => s.id === sysData.id);
+                    if (system) {
+                        system.decay = sysData.revival_amount || 100;
+                        updateSystemUI(system);
+                        revivedCount++;
+                    }
+                });
+                
+                reviveCount += revivedCount;
+                showNotification(`Revived ${revivedCount} systems with .soulfra token!`, 'success');
+                updateStats();
+            }
+        }
+        
+        // Update statistics
+        function updateStats() {
+            document.getElementById('totalSystems').textContent = systems.length;
+            document.getElementById('decayingSystems').textContent = systems.filter(s => s.decay < 50).length;
+            document.getElementById('revivedSystems').textContent = reviveCount;
+            document.getElementById('soulfraGenerated').textContent = soulfraCount;
+        }
+        
+        // Show notification
+        function showNotification(message, type = 'info') {
+            const notification = document.getElementById('notification');
+            const content = document.getElementById('notificationContent');
+            
+            notification.className = `notification ${type}`;
+            content.textContent = message;
+            notification.classList.add('show');
+            
+            setTimeout(() => {
+                notification.classList.remove('show');
+            }, 3000);
+        }
+        
+        // Initialize everything
+        initSystems();
+        startDecay();
+        
+        // Add some visual flair
+        document.addEventListener('mousemove', (e) => {
+            const cards = document.querySelectorAll('.system-card');
+            cards.forEach(card => {
+                const rect = card.getBoundingClientRect();
+                const x = e.clientX - rect.left;
+                const y = e.clientY - rect.top;
+                
+                card.style.setProperty('--mouse-x', `${x}px`);
+                card.style.setProperty('--mouse-y', `${y}px`);
+            });
+        });
+    </script>
+</body>
+</html>

@@ -1,0 +1,792 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>🤖⚔️ AI Agent Duel - 3D Spectator Dashboard</title>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/socket.io/4.0.1/socket.io.js"></script>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            font-family: 'Courier New', monospace;
+            background: linear-gradient(135deg, #0a0a0a 0%, #1a1a2e 50%, #16213e 100%);
+            color: #00ff88;
+            overflow: hidden;
+        }
+        
+        #gameContainer {
+            position: relative;
+            width: 100vw;
+            height: 100vh;
+        }
+        
+        #threeCanvas {
+            position: absolute;
+            top: 0;
+            left: 0;
+            z-index: 1;
+        }
+        
+        #ui {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            z-index: 10;
+            pointer-events: none;
+        }
+        
+        .hud-panel {
+            position: absolute;
+            background: rgba(0, 0, 0, 0.8);
+            border: 2px solid #00ff88;
+            border-radius: 10px;
+            padding: 15px;
+            pointer-events: auto;
+            backdrop-filter: blur(10px);
+        }
+        
+        #agentStats {
+            top: 20px;
+            left: 20px;
+            width: 400px;
+        }
+        
+        #gameControls {
+            top: 20px;
+            right: 20px;
+            width: 250px;
+        }
+        
+        #battleLog {
+            bottom: 20px;
+            left: 20px;
+            width: 600px;
+            height: 200px;
+            overflow-y: auto;
+        }
+        
+        #scoreBoard {
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            text-align: center;
+            min-width: 300px;
+        }
+        
+        .agent-card {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin: 10px 0;
+            padding: 10px;
+            background: rgba(0, 255, 136, 0.1);
+            border-radius: 5px;
+        }
+        
+        .agent-alpha {
+            border-left: 4px solid #ff4444;
+        }
+        
+        .agent-beta {
+            border-left: 4px solid #4444ff;
+        }
+        
+        .stat-bar {
+            width: 100px;
+            height: 6px;
+            background: #333;
+            border-radius: 3px;
+            overflow: hidden;
+            margin: 2px 0;
+        }
+        
+        .stat-fill {
+            height: 100%;
+            transition: width 0.3s ease;
+        }
+        
+        .health-bar { background: #ff4444; }
+        .energy-bar { background: #ffff44; }
+        .wealth-bar { background: #44ff44; }
+        
+        .button {
+            background: #00ff88;
+            color: #000;
+            border: none;
+            padding: 10px 20px;
+            border-radius: 5px;
+            cursor: pointer;
+            margin: 5px;
+            font-family: inherit;
+            transition: all 0.3s ease;
+        }
+        
+        .button:hover {
+            background: #00cc66;
+            transform: translateY(-2px);
+        }
+        
+        .button:disabled {
+            background: #666;
+            cursor: not-allowed;
+            transform: none;
+        }
+        
+        #battleLog .log-entry {
+            margin: 5px 0;
+            padding: 5px;
+            border-radius: 3px;
+            animation: slideIn 0.3s ease;
+        }
+        
+        .log-alpha { color: #ff8888; }
+        .log-beta { color: #8888ff; }
+        .log-system { color: #88ff88; }
+        
+        @keyframes slideIn {
+            from { opacity: 0; transform: translateX(-20px); }
+            to { opacity: 1; transform: translateX(0); }
+        }
+        
+        .score-display {
+            font-size: 2em;
+            margin: 10px 0;
+        }
+        
+        .round-display {
+            font-size: 1.2em;
+            opacity: 0.8;
+        }
+        
+        #statusIndicator {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            font-size: 3em;
+            font-weight: bold;
+            text-shadow: 0 0 20px currentColor;
+            animation: pulse 2s infinite;
+        }
+        
+        @keyframes pulse {
+            0%, 100% { opacity: 0.6; transform: translate(-50%, -50%) scale(1); }
+            50% { opacity: 1; transform: translate(-50%, -50%) scale(1.1); }
+        }
+        
+        .zone-indicator {
+            position: absolute;
+            bottom: 20px;
+            right: 20px;
+            background: rgba(0, 0, 0, 0.9);
+            padding: 10px;
+            border-radius: 5px;
+            border: 1px solid #00ff88;
+        }
+        
+        .emotion-display {
+            display: flex;
+            gap: 10px;
+            margin-top: 5px;
+        }
+        
+        .emotion {
+            font-size: 0.8em;
+            padding: 2px 6px;
+            border-radius: 3px;
+            background: rgba(255, 255, 255, 0.1);
+        }
+    </style>
+</head>
+<body>
+    <div id="gameContainer">
+        <canvas id="threeCanvas"></canvas>
+        
+        <div id="ui">
+            <!-- Agent Statistics Panel -->
+            <div id="agentStats" class="hud-panel">
+                <h3>🤖 Agent Status</h3>
+                
+                <div class="agent-card agent-alpha">
+                    <div>
+                        <strong>Agent Alpha</strong>
+                        <div class="emotion-display" id="alphaEmotions"></div>
+                    </div>
+                    <div>
+                        <div class="stat-bar"><div class="stat-fill health-bar" id="alphaHealth"></div></div>
+                        <div class="stat-bar"><div class="stat-fill energy-bar" id="alphaEnergy"></div></div>
+                        <div class="stat-bar"><div class="stat-fill wealth-bar" id="alphaWealth"></div></div>
+                    </div>
+                </div>
+                
+                <div class="agent-card agent-beta">
+                    <div>
+                        <strong>Agent Beta</strong>
+                        <div class="emotion-display" id="betaEmotions"></div>
+                    </div>
+                    <div>
+                        <div class="stat-bar"><div class="stat-fill health-bar" id="betaHealth"></div></div>
+                        <div class="stat-bar"><div class="stat-fill energy-bar" id="betaEnergy"></div></div>
+                        <div class="stat-bar"><div class="stat-fill wealth-bar" id="betaWealth"></div></div>
+                    </div>
+                </div>
+                
+                <div id="agentDetails">
+                    <div id="alphaStrategy"></div>
+                    <div id="betaStrategy"></div>
+                </div>
+            </div>
+            
+            <!-- Game Controls -->
+            <div id="gameControls" class="hud-panel">
+                <h3>🎮 Controls</h3>
+                <button class="button" id="startBtn">Start Duel</button>
+                <button class="button" id="pauseBtn" disabled>Pause</button>
+                <button class="button" id="speedBtn">Speed 1x</button>
+                <button class="button" id="resetBtn">Reset</button>
+                
+                <div style="margin-top: 15px;">
+                    <label>Camera:</label>
+                    <button class="button" id="topViewBtn">Top</button>
+                    <button class="button" id="sideViewBtn">Side</button>
+                    <button class="button" id="freeViewBtn">Free</button>
+                </div>
+            </div>
+            
+            <!-- Score Board -->
+            <div id="scoreBoard" class="hud-panel">
+                <div class="round-display" id="roundDisplay">Round 0 / 100</div>
+                <div class="score-display">
+                    <span style="color: #ff8888;" id="alphaScore">0</span>
+                    vs
+                    <span style="color: #8888ff;" id="betaScore">0</span>
+                </div>
+                <div id="winner" style="font-size: 1.5em; margin-top: 10px;"></div>
+            </div>
+            
+            <!-- Battle Log -->
+            <div id="battleLog" class="hud-panel">
+                <h3>⚔️ Battle Log</h3>
+                <div id="logContent"></div>
+            </div>
+            
+            <!-- Zone Indicator -->
+            <div class="zone-indicator">
+                <div>🗺️ Zone Activity</div>
+                <div id="zoneActivity"></div>
+            </div>
+        </div>
+        
+        <div id="statusIndicator" style="display: none;"></div>
+    </div>
+
+    <script>
+        class SpectatorDashboard {
+            constructor() {
+                this.scene = new THREE.Scene();
+                this.camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 1000);
+                this.renderer = new THREE.WebGLRenderer({ canvas: document.getElementById('threeCanvas'), alpha: true });
+                this.renderer.setSize(window.innerWidth, window.innerHeight);
+                this.renderer.setClearColor(0x000000, 0.1);
+                
+                this.agents = {};
+                this.gameState = null;
+                this.isConnected = false;
+                this.speed = 1;
+                this.cameraMode = 'free';
+                
+                this.setupScene();
+                this.setupEventListeners();
+                this.connectToGame();
+                this.animate();
+            }
+            
+            setupScene() {
+                // Lighting
+                const ambientLight = new THREE.AmbientLight(0x404040, 0.4);
+                this.scene.add(ambientLight);
+                
+                const pointLight = new THREE.PointLight(0x00ff88, 1, 100);
+                pointLight.position.set(10, 10, 10);
+                this.scene.add(pointLight);
+                
+                // Arena floor
+                const floorGeometry = new THREE.PlaneGeometry(20, 20);
+                const floorMaterial = new THREE.MeshLambertMaterial({ 
+                    color: 0x1a1a2e,
+                    transparent: true,
+                    opacity: 0.8
+                });
+                const floor = new THREE.Mesh(floorGeometry, floorMaterial);
+                floor.rotation.x = -Math.PI / 2;
+                this.scene.add(floor);
+                
+                // Grid
+                const gridHelper = new THREE.GridHelper(20, 20, 0x00ff88, 0x00ff88);
+                gridHelper.material.opacity = 0.3;
+                gridHelper.material.transparent = true;
+                this.scene.add(gridHelper);
+                
+                // Create agent representations
+                this.createAgentModels();
+                
+                // Set initial camera position
+                this.camera.position.set(0, 10, 15);
+                this.camera.lookAt(0, 0, 0);
+            }
+            
+            createAgentModels() {
+                // Agent Alpha (Red)
+                const alphaGeometry = new THREE.ConeGeometry(1, 2, 6);
+                const alphaMaterial = new THREE.MeshLambertMaterial({ color: 0xff4444 });
+                this.agents.alpha = new THREE.Mesh(alphaGeometry, alphaMaterial);
+                this.agents.alpha.position.set(-5, 1, 0);
+                this.scene.add(this.agents.alpha);
+                
+                // Agent Alpha label
+                const alphaLabel = this.createTextSprite('ALPHA', 0xff4444);
+                alphaLabel.position.set(-5, 3, 0);
+                this.scene.add(alphaLabel);
+                
+                // Agent Beta (Blue)
+                const betaGeometry = new THREE.ConeGeometry(1, 2, 6);
+                const betaMaterial = new THREE.MeshLambertMaterial({ color: 0x4444ff });
+                this.agents.beta = new THREE.Mesh(betaGeometry, betaMaterial);
+                this.agents.beta.position.set(5, 1, 0);
+                this.scene.add(this.agents.beta);
+                
+                // Agent Beta label
+                const betaLabel = this.createTextSprite('BETA', 0x4444ff);
+                betaLabel.position.set(5, 3, 0);
+                this.scene.add(betaLabel);
+                
+                // Create activity zones
+                this.createZones();
+            }
+            
+            createZones() {
+                const zones = [
+                    { name: 'Marketplace', pos: [-8, 0, -8], color: 0xffff44 },
+                    { name: 'Tech Zone', pos: [8, 0, -8], color: 0x44ffff },
+                    { name: 'Crypto Exchange', pos: [-8, 0, 8], color: 0xff44ff },
+                    { name: 'Security Citadel', pos: [8, 0, 8], color: 0x44ff44 }
+                ];
+                
+                zones.forEach(zone => {
+                    const geometry = new THREE.CylinderGeometry(2, 2, 0.2, 8);
+                    const material = new THREE.MeshLambertMaterial({ 
+                        color: zone.color,
+                        transparent: true,
+                        opacity: 0.3
+                    });
+                    const zoneMesh = new THREE.Mesh(geometry, material);
+                    zoneMesh.position.set(zone.pos[0], zone.pos[1], zone.pos[2]);
+                    this.scene.add(zoneMesh);
+                    
+                    const label = this.createTextSprite(zone.name, zone.color);
+                    label.position.set(zone.pos[0], zone.pos[1] + 2, zone.pos[2]);
+                    this.scene.add(label);
+                });
+            }
+            
+            createTextSprite(text, color) {
+                const canvas = document.createElement('canvas');
+                const context = canvas.getContext('2d');
+                canvas.width = 256;
+                canvas.height = 64;
+                
+                context.fillStyle = `#${color.toString(16).padStart(6, '0')}`;
+                context.font = '20px Courier New';
+                context.textAlign = 'center';
+                context.fillText(text, 128, 40);
+                
+                const texture = new THREE.CanvasTexture(canvas);
+                const material = new THREE.SpriteMaterial({ map: texture });
+                return new THREE.Sprite(material);
+            }
+            
+            setupEventListeners() {
+                // Game controls
+                document.getElementById('startBtn').onclick = () => this.startGame();
+                document.getElementById('pauseBtn').onclick = () => this.pauseGame();
+                document.getElementById('speedBtn').onclick = () => this.toggleSpeed();
+                document.getElementById('resetBtn').onclick = () => this.resetGame();
+                
+                // Camera controls
+                document.getElementById('topViewBtn').onclick = () => this.setCameraView('top');
+                document.getElementById('sideViewBtn').onclick = () => this.setCameraView('side');
+                document.getElementById('freeViewBtn').onclick = () => this.setCameraView('free');
+                
+                // Window resize
+                window.addEventListener('resize', () => {
+                    this.camera.aspect = window.innerWidth / window.innerHeight;
+                    this.camera.updateProjectionMatrix();
+                    this.renderer.setSize(window.innerWidth, window.innerHeight);
+                });
+                
+                // Mouse controls for free camera
+                let mouseDown = false;
+                let mouseX = 0;
+                let mouseY = 0;
+                
+                document.addEventListener('mousedown', (e) => {
+                    mouseDown = true;
+                    mouseX = e.clientX;
+                    mouseY = e.clientY;
+                });
+                
+                document.addEventListener('mouseup', () => {
+                    mouseDown = false;
+                });
+                
+                document.addEventListener('mousemove', (e) => {
+                    if (!mouseDown || this.cameraMode !== 'free') return;
+                    
+                    const deltaX = e.clientX - mouseX;
+                    const deltaY = e.clientY - mouseY;
+                    
+                    this.camera.position.x += deltaX * 0.01;
+                    this.camera.position.y -= deltaY * 0.01;
+                    this.camera.lookAt(0, 0, 0);
+                    
+                    mouseX = e.clientX;
+                    mouseY = e.clientY;
+                });
+            }
+            
+            connectToGame() {
+                // In a real implementation, this would connect to the AI duel WebSocket
+                // For now, simulate the connection and data
+                this.simulateGameConnection();
+            }
+            
+            simulateGameConnection() {
+                this.isConnected = true;
+                this.log('🔗 Connected to AI Duel System', 'system');
+                
+                // Show connection status
+                this.showStatus('READY TO DUEL', '#00ff88');
+                setTimeout(() => this.hideStatus(), 2000);
+            }
+            
+            startGame() {
+                if (!this.isConnected) return;
+                
+                this.log('🚀 Starting AI Agent Duel!', 'system');
+                this.showStatus('BATTLE COMMENCING', '#ffff44');
+                
+                document.getElementById('startBtn').disabled = true;
+                document.getElementById('pauseBtn').disabled = false;
+                
+                // Start simulated game data
+                this.startSimulation();
+            }
+            
+            startSimulation() {
+                let round = 0;
+                const maxRounds = 100;
+                let alphaScore = 0;
+                let betaScore = 0;
+                
+                const gameLoop = setInterval(() => {
+                    if (round >= maxRounds) {
+                        clearInterval(gameLoop);
+                        this.endGame(alphaScore, betaScore);
+                        return;
+                    }
+                    
+                    round++;
+                    
+                    // Simulate round data
+                    const roundData = this.simulateRound(round, alphaScore, betaScore);
+                    alphaScore += roundData.scores.alpha;
+                    betaScore += roundData.scores.beta;
+                    
+                    this.updateGameState({
+                        round,
+                        maxRounds,
+                        scores: { alpha: alphaScore, beta: betaScore },
+                        agents: roundData.agents,
+                        decisions: roundData.decisions
+                    });
+                    
+                }, 2000 / this.speed);
+            }
+            
+            simulateRound(round, currentAlphaScore, currentBetaScore) {
+                // Generate realistic round data
+                const actions = ['train_skill', 'crypto_trade', 'explore_zone', 'social_action', 'build_structure', 'rest'];
+                const skills = ['agility', 'trading', 'combat', 'construction'];
+                
+                const alphaAction = actions[Math.floor(Math.random() * actions.length)];
+                const betaAction = actions[Math.floor(Math.random() * actions.length)];
+                
+                const alphaSuccess = Math.random() > 0.3;
+                const betaSuccess = Math.random() > 0.3;
+                
+                const alphaPoints = alphaSuccess ? Math.floor(Math.random() * 20) + 5 : 0;
+                const betaPoints = betaSuccess ? Math.floor(Math.random() * 20) + 5 : 0;
+                
+                // Simulate agent states
+                const agents = {
+                    alpha: {
+                        health: Math.max(10, 100 - round * 0.5 + Math.random() * 10),
+                        energy: Math.max(10, 100 - round * 0.3 + Math.random() * 15),
+                        wealth: 1000 + currentAlphaScore * 10 + Math.random() * 200,
+                        currentZone: ['spawn', 'marketplace', 'tech_zone'][Math.floor(Math.random() * 3)],
+                        emotions: {
+                            happiness: 50 + (alphaSuccess ? 10 : -5),
+                            anger: alphaSuccess ? 0 : 10,
+                            excitement: 40 + Math.random() * 20
+                        }
+                    },
+                    beta: {
+                        health: Math.max(10, 100 - round * 0.5 + Math.random() * 10),
+                        energy: Math.max(10, 100 - round * 0.3 + Math.random() * 15),
+                        wealth: 1000 + currentBetaScore * 10 + Math.random() * 200,
+                        currentZone: ['spawn', 'marketplace', 'crypto_exchange'][Math.floor(Math.random() * 3)],
+                        emotions: {
+                            happiness: 50 + (betaSuccess ? 10 : -5),
+                            anger: betaSuccess ? 0 : 10,
+                            excitement: 40 + Math.random() * 20
+                        }
+                    }
+                };
+                
+                const decisions = {
+                    alpha: {
+                        action: { type: alphaAction, skill: skills[Math.floor(Math.random() * skills.length)] },
+                        result: { success: alphaSuccess },
+                        reasoning: this.generateReasoning(alphaAction, alphaSuccess)
+                    },
+                    beta: {
+                        action: { type: betaAction, skill: skills[Math.floor(Math.random() * skills.length)] },
+                        result: { success: betaSuccess },
+                        reasoning: this.generateReasoning(betaAction, betaSuccess)
+                    }
+                };
+                
+                return {
+                    scores: { alpha: alphaPoints, beta: betaPoints },
+                    agents,
+                    decisions
+                };
+            }
+            
+            generateReasoning(action, success) {
+                const reasons = {
+                    train_skill: success ? 'Skill training paid off' : 'Training was interrupted',
+                    crypto_trade: success ? 'Market timing was perfect' : 'Market volatility caused losses',
+                    explore_zone: success ? 'Discovery made!' : 'Nothing found this time',
+                    social_action: success ? 'Made valuable connections' : 'Social attempt failed',
+                    build_structure: success ? 'Construction completed' : 'Insufficient resources',
+                    rest: success ? 'Well-deserved recovery' : 'Rest was restless'
+                };
+                
+                return reasons[action] || 'Following instincts';
+            }
+            
+            updateGameState(gameState) {
+                this.gameState = gameState;
+                
+                // Update UI
+                this.updateScoreboard(gameState);
+                this.updateAgentStats(gameState.agents);
+                this.updateAgentPositions(gameState.agents);
+                this.logRoundActions(gameState.decisions, gameState.round);
+                this.updateZoneActivity(gameState.agents);
+            }
+            
+            updateScoreboard(gameState) {
+                document.getElementById('roundDisplay').textContent = 
+                    `Round ${gameState.round} / ${gameState.maxRounds}`;
+                document.getElementById('alphaScore').textContent = gameState.scores.alpha;
+                document.getElementById('betaScore').textContent = gameState.scores.beta;
+            }
+            
+            updateAgentStats(agents) {
+                // Update Alpha stats
+                document.getElementById('alphaHealth').style.width = `${agents.alpha.health}%`;
+                document.getElementById('alphaEnergy').style.width = `${agents.alpha.energy}%`;
+                document.getElementById('alphaWealth').style.width = `${Math.min(100, agents.alpha.wealth / 20)}%`;
+                
+                // Update Beta stats
+                document.getElementById('betaHealth').style.width = `${agents.beta.health}%`;
+                document.getElementById('betaEnergy').style.width = `${agents.beta.energy}%`;
+                document.getElementById('betaWealth').style.width = `${Math.min(100, agents.beta.wealth / 20)}%`;
+                
+                // Update emotions
+                this.updateEmotions('alphaEmotions', agents.alpha.emotions);
+                this.updateEmotions('betaEmotions', agents.beta.emotions);
+            }
+            
+            updateEmotions(elementId, emotions) {
+                const container = document.getElementById(elementId);
+                container.innerHTML = '';
+                
+                Object.entries(emotions).forEach(([emotion, value]) => {
+                    const span = document.createElement('span');
+                    span.className = 'emotion';
+                    span.textContent = `${emotion}: ${Math.round(value)}`;
+                    container.appendChild(span);
+                });
+            }
+            
+            updateAgentPositions(agents) {
+                // Move agents based on their current zones
+                const zonePositions = {
+                    spawn: { x: 0, z: 0 },
+                    marketplace: { x: -8, z: -8 },
+                    tech_zone: { x: 8, z: -8 },
+                    crypto_exchange: { x: -8, z: 8 },
+                    security_citadel: { x: 8, z: 8 }
+                };
+                
+                if (agents.alpha.currentZone && zonePositions[agents.alpha.currentZone]) {
+                    const pos = zonePositions[agents.alpha.currentZone];
+                    this.agents.alpha.position.x = pos.x + Math.random() * 2 - 1;
+                    this.agents.alpha.position.z = pos.z + Math.random() * 2 - 1;
+                }
+                
+                if (agents.beta.currentZone && zonePositions[agents.beta.currentZone]) {
+                    const pos = zonePositions[agents.beta.currentZone];
+                    this.agents.beta.position.x = pos.x + Math.random() * 2 - 1;
+                    this.agents.beta.position.z = pos.z + Math.random() * 2 - 1;
+                }
+                
+                // Add some animation
+                this.agents.alpha.rotation.y += 0.1;
+                this.agents.beta.rotation.y += 0.1;
+            }
+            
+            logRoundActions(decisions, round) {
+                this.log(`Round ${round}:`, 'system');
+                this.log(`Alpha: ${decisions.alpha.action.type} - ${decisions.alpha.reasoning}`, 'alpha');
+                this.log(`Beta: ${decisions.beta.action.type} - ${decisions.beta.reasoning}`, 'beta');
+            }
+            
+            updateZoneActivity(agents) {
+                const activity = document.getElementById('zoneActivity');
+                activity.innerHTML = `
+                    Alpha: ${agents.alpha.currentZone}<br>
+                    Beta: ${agents.beta.currentZone}
+                `;
+            }
+            
+            log(message, type = 'system') {
+                const logContent = document.getElementById('logContent');
+                const entry = document.createElement('div');
+                entry.className = `log-entry log-${type}`;
+                entry.textContent = `[${new Date().toLocaleTimeString()}] ${message}`;
+                logContent.appendChild(entry);
+                logContent.scrollTop = logContent.scrollHeight;
+                
+                // Keep only last 50 entries
+                while (logContent.children.length > 50) {
+                    logContent.removeChild(logContent.firstChild);
+                }
+            }
+            
+            showStatus(text, color = '#00ff88') {
+                const indicator = document.getElementById('statusIndicator');
+                indicator.textContent = text;
+                indicator.style.color = color;
+                indicator.style.display = 'block';
+            }
+            
+            hideStatus() {
+                document.getElementById('statusIndicator').style.display = 'none';
+            }
+            
+            endGame(alphaScore, betaScore) {
+                const winner = alphaScore > betaScore ? 'ALPHA WINS!' : 
+                              betaScore > alphaScore ? 'BETA WINS!' : 'TIE GAME!';
+                
+                this.showStatus(winner, alphaScore > betaScore ? '#ff4444' : '#4444ff');
+                this.log(`🏆 Game Over! ${winner}`, 'system');
+                
+                document.getElementById('winner').textContent = winner;
+                document.getElementById('startBtn').disabled = false;
+                document.getElementById('pauseBtn').disabled = true;
+            }
+            
+            pauseGame() {
+                this.log('⏸️ Game Paused', 'system');
+                // Pause logic would go here
+            }
+            
+            toggleSpeed() {
+                const speeds = [1, 2, 4];
+                const currentIndex = speeds.indexOf(this.speed);
+                this.speed = speeds[(currentIndex + 1) % speeds.length];
+                document.getElementById('speedBtn').textContent = `Speed ${this.speed}x`;
+            }
+            
+            resetGame() {
+                this.log('🔄 Game Reset', 'system');
+                
+                // Reset UI
+                document.getElementById('alphaScore').textContent = '0';
+                document.getElementById('betaScore').textContent = '0';
+                document.getElementById('roundDisplay').textContent = 'Round 0 / 100';
+                document.getElementById('winner').textContent = '';
+                document.getElementById('logContent').innerHTML = '';
+                
+                // Reset agent positions
+                this.agents.alpha.position.set(-5, 1, 0);
+                this.agents.beta.position.set(5, 1, 0);
+                
+                // Reset buttons
+                document.getElementById('startBtn').disabled = false;
+                document.getElementById('pauseBtn').disabled = true;
+                
+                this.hideStatus();
+            }
+            
+            setCameraView(mode) {
+                this.cameraMode = mode;
+                
+                switch (mode) {
+                    case 'top':
+                        this.camera.position.set(0, 20, 0);
+                        this.camera.lookAt(0, 0, 0);
+                        break;
+                    case 'side':
+                        this.camera.position.set(15, 5, 0);
+                        this.camera.lookAt(0, 0, 0);
+                        break;
+                    case 'free':
+                        this.camera.position.set(0, 10, 15);
+                        this.camera.lookAt(0, 0, 0);
+                        break;
+                }
+            }
+            
+            animate() {
+                requestAnimationFrame(() => this.animate());
+                
+                // Animate agent models
+                if (this.agents.alpha && this.agents.beta) {
+                    this.agents.alpha.rotation.y += 0.01;
+                    this.agents.beta.rotation.y += 0.01;
+                }
+                
+                this.renderer.render(this.scene, this.camera);
+            }
+        }
+        
+        // Initialize the dashboard when page loads
+        window.addEventListener('load', () => {
+            new SpectatorDashboard();
+        });
+    </script>
+</body>
+</html>

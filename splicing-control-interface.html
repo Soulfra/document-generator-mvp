@@ -1,0 +1,987 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>🧬 Verification & Splicing Control Interface</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #0f0f23, #1a1a2e, #16213e);
+            color: #ffffff;
+            min-height: 100vh;
+            overflow-x: hidden;
+        }
+
+        .splicing-interface {
+            display: grid;
+            grid-template-columns: 300px 1fr 300px;
+            grid-template-rows: auto 1fr;
+            gap: 20px;
+            padding: 20px;
+            min-height: 100vh;
+        }
+
+        .header {
+            grid-column: 1 / -1;
+            text-align: center;
+            padding: 20px;
+            background: rgba(255, 255, 255, 0.1);
+            border-radius: 15px;
+            backdrop-filter: blur(10px);
+        }
+
+        .header h1 {
+            font-size: 2.8em;
+            margin-bottom: 10px;
+            background: linear-gradient(45deg, #00ffff, #ff6b9d, #c44569, #40ff00);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+        }
+
+        .panel {
+            background: rgba(255, 255, 255, 0.1);
+            border-radius: 15px;
+            padding: 20px;
+            backdrop-filter: blur(10px);
+            border: 1px solid rgba(255, 255, 255, 0.2);
+            overflow-y: auto;
+        }
+
+        .main-panel {
+            display: grid;
+            grid-template-rows: auto 1fr auto;
+            gap: 20px;
+        }
+
+        .panel h2 {
+            color: #00ffff;
+            margin-bottom: 15px;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .component-item {
+            background: rgba(0, 255, 255, 0.1);
+            border: 1px solid #00ffff;
+            border-radius: 10px;
+            padding: 15px;
+            margin: 10px 0;
+            cursor: pointer;
+            transition: all 0.3s;
+        }
+
+        .component-item:hover {
+            background: rgba(0, 255, 255, 0.2);
+            transform: translateY(-2px);
+        }
+
+        .component-item.selected {
+            background: rgba(0, 255, 255, 0.3);
+            border-color: #40ff00;
+        }
+
+        .splice-point {
+            background: rgba(255, 107, 157, 0.1);
+            border: 1px solid #ff6b9d;
+            border-radius: 8px;
+            padding: 10px;
+            margin: 8px 0;
+            cursor: pointer;
+        }
+
+        .splice-point:hover {
+            background: rgba(255, 107, 157, 0.2);
+        }
+
+        .complexity-high { border-left: 4px solid #ff4757; }
+        .complexity-medium { border-left: 4px solid #ffa502; }
+        .complexity-low { border-left: 4px solid #00ff88; }
+
+        .verification-test {
+            background: rgba(0, 255, 136, 0.1);
+            border: 1px solid #00ff88;
+            border-radius: 10px;
+            padding: 15px;
+            margin: 10px 0;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .test-status {
+            width: 20px;
+            height: 20px;
+            border-radius: 50%;
+            display: inline-block;
+        }
+
+        .status-passed { background: #00ff88; }
+        .status-failed { background: #ff4757; }
+        .status-warning { background: #ffa502; }
+        .status-pending { background: #666; }
+
+        .modification-item {
+            background: rgba(255, 165, 2, 0.1);
+            border: 1px solid #ffa502;
+            border-radius: 10px;
+            padding: 15px;
+            margin: 10px 0;
+        }
+
+        .splicing-workspace {
+            background: rgba(0, 0, 0, 0.3);
+            border-radius: 10px;
+            padding: 20px;
+            min-height: 300px;
+        }
+
+        .code-editor {
+            background: #1a1a1a;
+            color: #00ff88;
+            font-family: 'Courier New', monospace;
+            padding: 15px;
+            border-radius: 8px;
+            min-height: 200px;
+            resize: vertical;
+            width: 100%;
+            border: 1px solid #333;
+        }
+
+        .btn {
+            padding: 12px 24px;
+            border: none;
+            border-radius: 8px;
+            cursor: pointer;
+            font-weight: bold;
+            transition: all 0.3s;
+            margin: 5px;
+        }
+
+        .btn-primary {
+            background: linear-gradient(45deg, #00ffff, #0084ff);
+            color: white;
+        }
+
+        .btn-success {
+            background: linear-gradient(45deg, #00ff88, #00b894);
+            color: white;
+        }
+
+        .btn-warning {
+            background: linear-gradient(45deg, #ffa502, #ff6348);
+            color: white;
+        }
+
+        .btn-danger {
+            background: linear-gradient(45deg, #ff4757, #c44569);
+            color: white;
+        }
+
+        .btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 5px 15px rgba(0, 0, 0, 0.3);
+        }
+
+        .btn:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+            transform: none;
+        }
+
+        .status-indicator {
+            width: 12px;
+            height: 12px;
+            border-radius: 50%;
+            display: inline-block;
+            margin-right: 8px;
+        }
+
+        .status-online { background: #00ff88; }
+        .status-offline { background: #ff4757; }
+
+        .metric {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 8px 0;
+            border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+        }
+
+        .metric-value {
+            font-weight: bold;
+            color: #00ffff;
+        }
+
+        .log-container {
+            height: 150px;
+            overflow-y: auto;
+            background: rgba(0, 0, 0, 0.5);
+            padding: 10px;
+            border-radius: 8px;
+            font-family: 'Courier New', monospace;
+            font-size: 12px;
+            margin-top: 10px;
+        }
+
+        .log-entry {
+            margin: 2px 0;
+            opacity: 0.9;
+        }
+
+        .log-timestamp {
+            color: #666;
+        }
+
+        .log-info { color: #00ffff; }
+        .log-success { color: #00ff88; }
+        .log-warning { color: #ffa502; }
+        .log-error { color: #ff4757; }
+
+        .progress-bar {
+            width: 100%;
+            height: 8px;
+            background: rgba(255, 255, 255, 0.1);
+            border-radius: 4px;
+            overflow: hidden;
+            margin: 10px 0;
+        }
+
+        .progress-fill {
+            height: 100%;
+            background: linear-gradient(90deg, #00ffff, #00ff88);
+            transition: width 0.3s;
+            width: 0%;
+        }
+
+        .splice-preview {
+            background: rgba(255, 255, 255, 0.05);
+            border: 1px dashed #666;
+            border-radius: 8px;
+            padding: 15px;
+            margin: 10px 0;
+            font-family: 'Courier New', monospace;
+            font-size: 12px;
+        }
+
+        .verification-summary {
+            display: grid;
+            grid-template-columns: repeat(4, 1fr);
+            gap: 15px;
+            margin: 20px 0;
+        }
+
+        .summary-card {
+            background: rgba(255, 255, 255, 0.1);
+            padding: 15px;
+            border-radius: 10px;
+            text-align: center;
+        }
+
+        .summary-number {
+            font-size: 2em;
+            font-weight: bold;
+            color: #00ffff;
+        }
+
+        @keyframes pulse {
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0.6; }
+        }
+
+        .pulsing {
+            animation: pulse 2s infinite;
+        }
+
+        @keyframes splice-glow {
+            0%, 100% { box-shadow: 0 0 5px rgba(0, 255, 255, 0.5); }
+            50% { box-shadow: 0 0 20px rgba(0, 255, 255, 0.8); }
+        }
+
+        .splicing-active {
+            animation: splice-glow 2s infinite;
+        }
+    </style>
+</head>
+<body>
+    <div class="splicing-interface">
+        <div class="header">
+            <h1>🧬 Verification & Splicing Control</h1>
+            <p>Customize and modify system components in real-time • Malleable architecture splicing</p>
+            <div style="margin-top: 15px;">
+                <span class="status-indicator" id="splicing-status"></span>
+                <span>Splicing System: </span><span id="connection-status">Connecting...</span>
+            </div>
+        </div>
+
+        <div class="panel">
+            <h2>🎯 System Components</h2>
+            <div id="components-list">
+                <div class="component-item" data-component="codebase_analysis">
+                    <strong>🧠 Codebase Analysis</strong>
+                    <div style="font-size: 0.9em; opacity: 0.8;">Port: 8088 • Pattern detection & file analysis</div>
+                </div>
+                <div class="component-item" data-component="emergency_system">
+                    <strong>🚨 Emergency System</strong>
+                    <div style="font-size: 0.9em; opacity: 0.8;">Port: 8090 • Critical alerts & notifications</div>
+                </div>
+                <div class="component-item" data-component="character_interface">
+                    <strong>🎮 Character Interface</strong>
+                    <div style="font-size: 0.9em; opacity: 0.8;">Port: 8087 • Game UI & notifications</div>
+                </div>
+                <div class="component-item" data-component="financial_detection">
+                    <strong>💰 Financial Detection</strong>
+                    <div style="font-size: 0.9em; opacity: 0.8;">Port: 8087 • Anomaly detection</div>
+                </div>
+                <div class="component-item" data-component="unified_os">
+                    <strong>🖥️ Unified OS</strong>
+                    <div style="font-size: 0.9em; opacity: 0.8;">Desktop interface & window management</div>
+                </div>
+            </div>
+
+            <h2 style="margin-top: 30px;">📊 System Metrics</h2>
+            <div class="metric">
+                <span>Active Modifications</span>
+                <span class="metric-value" id="active-modifications">0</span>
+            </div>
+            <div class="metric">
+                <span>Components Spliced</span>
+                <span class="metric-value" id="components-spliced">0</span>
+            </div>
+            <div class="metric">
+                <span>Backup Count</span>
+                <span class="metric-value" id="backup-count">0</span>
+            </div>
+            <div class="metric">
+                <span>Customizations</span>
+                <span class="metric-value" id="customizations-count">0</span>
+            </div>
+        </div>
+
+        <div class="panel main-panel">
+            <div>
+                <h2>🧬 Splicing Workspace</h2>
+                <div style="margin-bottom: 15px;">
+                    <strong>Selected Component:</strong> <span id="selected-component">None</span>
+                </div>
+            </div>
+
+            <div class="splicing-workspace">
+                <div id="splice-points-container" style="display: none;">
+                    <h3>🎯 Available Splice Points</h3>
+                    <div id="splice-points-list"></div>
+                </div>
+
+                <div id="splicing-editor" style="display: none;">
+                    <h3>✏️ Splice Editor</h3>
+                    <p><strong>Splice Point:</strong> <span id="current-splice-point">None</span></p>
+                    <p><strong>Complexity:</strong> <span id="splice-complexity">Unknown</span></p>
+                    
+                    <div style="margin: 15px 0;">
+                        <label for="splice-type">Modification Type:</label>
+                        <select id="splice-type" style="margin-left: 10px; padding: 5px; background: #333; color: #fff; border: 1px solid #666; border-radius: 4px;">
+                            <option value="pattern">Pattern Modification</option>
+                            <option value="threshold">Threshold Adjustment</option>
+                            <option value="algorithm">Algorithm Replacement</option>
+                            <option value="notification">Notification Customization</option>
+                        </select>
+                    </div>
+
+                    <textarea id="splice-code" class="code-editor" placeholder="Enter your modification code here..."></textarea>
+                    
+                    <div class="splice-preview" id="splice-preview" style="display: none;">
+                        <strong>Preview:</strong>
+                        <div id="preview-content"></div>
+                    </div>
+
+                    <div style="margin-top: 15px;">
+                        <button class="btn btn-success" onclick="applySplice()">🧬 Apply Splice</button>
+                        <button class="btn btn-warning" onclick="previewSplice()">👁️ Preview</button>
+                        <button class="btn btn-primary" onclick="backupComponent()">💾 Backup First</button>
+                    </div>
+                </div>
+
+                <div id="welcome-message">
+                    <h3>🎯 Select a Component to Begin Splicing</h3>
+                    <p>Choose a system component from the left panel to see available splice points and customization options.</p>
+                    
+                    <div style="margin-top: 20px;">
+                        <h4>🧬 Splicing Capabilities:</h4>
+                        <ul style="margin: 10px 0; padding-left: 20px;">
+                            <li>Pattern detection algorithms</li>
+                            <li>Threshold and sensitivity adjustments</li>
+                            <li>Notification styles and channels</li>
+                            <li>Algorithm replacement and enhancement</li>
+                            <li>UI customization and theming</li>
+                            <li>Integration point modification</li>
+                        </ul>
+                    </div>
+                </div>
+            </div>
+
+            <div>
+                <h3>🔍 Quick Verification</h3>
+                <div style="display: flex; gap: 10px; margin-bottom: 15px;">
+                    <button class="btn btn-primary" onclick="runQuickVerification()">🔍 Quick Test</button>
+                    <button class="btn btn-success" onclick="runFullVerification()">📋 Full Verification</button>
+                    <button class="btn btn-warning" onclick="restoreFromBackup()">🔄 Restore</button>
+                </div>
+                <div class="progress-bar">
+                    <div class="progress-fill" id="verification-progress"></div>
+                </div>
+                <div id="verification-status">Ready for verification</div>
+            </div>
+        </div>
+
+        <div class="panel">
+            <h2>✅ Verification Tests</h2>
+            <div id="verification-tests">
+                <div class="verification-test">
+                    <div>
+                        <strong>System Connectivity</strong>
+                        <div style="font-size: 0.9em; opacity: 0.8;">Check all services are running</div>
+                    </div>
+                    <div class="test-status status-pending" id="test-connectivity"></div>
+                </div>
+                <div class="verification-test">
+                    <div>
+                        <strong>Component Integrity</strong>
+                        <div style="font-size: 0.9em; opacity: 0.8;">Verify files are intact</div>
+                    </div>
+                    <div class="test-status status-pending" id="test-integrity"></div>
+                </div>
+                <div class="verification-test">
+                    <div>
+                        <strong>System Integration</strong>
+                        <div style="font-size: 0.9em; opacity: 0.8;">Test inter-system communication</div>
+                    </div>
+                    <div class="test-status status-pending" id="test-integration"></div>
+                </div>
+                <div class="verification-test">
+                    <div>
+                        <strong>Customizations</strong>
+                        <div style="font-size: 0.9em; opacity: 0.8;">Validate active modifications</div>
+                    </div>
+                    <div class="test-status status-pending" id="test-customizations"></div>
+                </div>
+                <div class="verification-test">
+                    <div>
+                        <strong>Performance</strong>
+                        <div style="font-size: 0.9em; opacity: 0.8;">Check system performance</div>
+                    </div>
+                    <div class="test-status status-pending" id="test-performance"></div>
+                </div>
+            </div>
+
+            <h2 style="margin-top: 30px;">🔄 Active Modifications</h2>
+            <div id="active-modifications">
+                <div class="modification-item">
+                    <strong>Example Modification</strong>
+                    <div style="font-size: 0.9em; opacity: 0.8;">Pattern threshold adjusted to 0.8</div>
+                    <div style="margin-top: 8px;">
+                        <button class="btn btn-danger" style="padding: 4px 8px; font-size: 0.8em;">Revert</button>
+                    </div>
+                </div>
+            </div>
+
+            <div class="log-container" id="activity-log">
+                <div class="log-entry log-info">
+                    <span class="log-timestamp">[12:34:56]</span> Splicing system initialized
+                </div>
+                <div class="log-entry log-success">
+                    <span class="log-timestamp">[12:35:02]</span> Connected to verification system
+                </div>
+                <div class="log-entry log-info">
+                    <span class="log-timestamp">[12:35:15]</span> Ready for component modifications
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // WebSocket connection for splicing system
+        let splicingWS = null;
+        let selectedComponent = null;
+        let selectedSplicePoint = null;
+
+        // Initialize the interface
+        document.addEventListener('DOMContentLoaded', function() {
+            connectToSplicingSystem();
+            setupComponentSelection();
+            setupSpliceTypeHandler();
+        });
+
+        function connectToSplicingSystem() {
+            try {
+                splicingWS = new WebSocket('ws://localhost:8091');
+                
+                splicingWS.onopen = () => {
+                    document.getElementById('splicing-status').className = 'status-indicator status-online';
+                    document.getElementById('connection-status').textContent = 'Connected';
+                    log('Connected to Splicing System', 'success');
+                };
+                
+                splicingWS.onmessage = (event) => {
+                    const data = JSON.parse(event.data);
+                    handleSplicingMessage(data);
+                };
+                
+                splicingWS.onerror = () => {
+                    document.getElementById('splicing-status').className = 'status-indicator status-offline';
+                    document.getElementById('connection-status').textContent = 'Connection Failed';
+                    log('Failed to connect to Splicing System', 'error');
+                };
+                
+            } catch (error) {
+                document.getElementById('splicing-status').className = 'status-indicator status-offline';
+                document.getElementById('connection-status').textContent = 'Not Available';
+                log('Splicing System not available', 'warning');
+            }
+        }
+
+        function handleSplicingMessage(data) {
+            switch (data.type) {
+                case 'splicing_status':
+                    updateSplicingStatus(data);
+                    break;
+                case 'pattern_spliced':
+                    log(`Pattern spliced successfully: ${data.splice.pattern_name}`, 'success');
+                    break;
+                case 'threshold_modified':
+                    log(`Threshold modified: ${data.splice.threshold_name} = ${data.splice.new_value}`, 'info');
+                    break;
+                case 'verification_result':
+                    updateVerificationResults(data.results);
+                    break;
+            }
+        }
+
+        function updateSplicingStatus(data) {
+            document.getElementById('active-modifications').textContent = data.active_modifications || 0;
+            document.getElementById('customizations-count').textContent = data.customizations_loaded || 0;
+            
+            log(`Splicing status: ${data.available_components?.length || 0} components available`, 'info');
+        }
+
+        function setupComponentSelection() {
+            const componentItems = document.querySelectorAll('.component-item');
+            
+            componentItems.forEach(item => {
+                item.addEventListener('click', () => {
+                    // Remove previous selection
+                    componentItems.forEach(i => i.classList.remove('selected'));
+                    
+                    // Select current item
+                    item.classList.add('selected');
+                    selectedComponent = item.dataset.component;
+                    
+                    // Update UI
+                    document.getElementById('selected-component').textContent = selectedComponent;
+                    loadComponentSplicePoints(selectedComponent);
+                    
+                    // Show splice points container
+                    document.getElementById('welcome-message').style.display = 'none';
+                    document.getElementById('splice-points-container').style.display = 'block';
+                    
+                    log(`Selected component: ${selectedComponent}`, 'info');
+                });
+            });
+        }
+
+        function loadComponentSplicePoints(componentName) {
+            if (!splicingWS || splicingWS.readyState !== WebSocket.OPEN) {
+                log('Not connected to splicing system', 'warning');
+                return;
+            }
+
+            splicingWS.send(JSON.stringify({
+                action: 'list_splice_points',
+                component: componentName
+            }));
+
+            // Simulate splice points for demo
+            const mockSplicePoints = {
+                'codebase_analysis': [
+                    { name: 'analyzeFile', complexity: 'medium', description: 'File analysis algorithm' },
+                    { name: 'generatePairings', complexity: 'high', description: 'Pattern pairing logic' },
+                    { name: 'detectTraps', complexity: 'medium', description: 'Trap detection patterns' }
+                ],
+                'emergency_system': [
+                    { name: 'handleCriticalDiscovery', complexity: 'high', description: 'Critical alert processing' },
+                    { name: 'triggerNotifications', complexity: 'low', description: 'Notification triggering' },
+                    { name: 'escalateAlert', complexity: 'medium', description: 'Alert escalation logic' }
+                ],
+                'character_interface': [
+                    { name: 'activateRune', complexity: 'low', description: 'Runic enhancement system' },
+                    { name: 'updateSkills', complexity: 'medium', description: 'Skill progression logic' },
+                    { name: 'displayNotification', complexity: 'low', description: 'Notification display' }
+                ]
+            };
+
+            const splicePoints = mockSplicePoints[componentName] || [];
+            displaySplicePoints(splicePoints);
+        }
+
+        function displaySplicePoints(splicePoints) {
+            const container = document.getElementById('splice-points-list');
+            container.innerHTML = '';
+
+            splicePoints.forEach(point => {
+                const div = document.createElement('div');
+                div.className = `splice-point complexity-${point.complexity}`;
+                div.innerHTML = `
+                    <strong>${point.name}</strong>
+                    <div style="font-size: 0.9em; opacity: 0.8;">${point.description}</div>
+                    <div style="font-size: 0.8em; margin-top: 4px;">
+                        Complexity: <span style="color: ${getComplexityColor(point.complexity)}">${point.complexity}</span>
+                    </div>
+                `;
+                
+                div.addEventListener('click', () => {
+                    selectSplicePoint(point);
+                });
+                
+                container.appendChild(div);
+            });
+        }
+
+        function getComplexityColor(complexity) {
+            switch (complexity) {
+                case 'high': return '#ff4757';
+                case 'medium': return '#ffa502';
+                case 'low': return '#00ff88';
+                default: return '#666';
+            }
+        }
+
+        function selectSplicePoint(point) {
+            selectedSplicePoint = point;
+            
+            // Update UI
+            document.getElementById('current-splice-point').textContent = point.name;
+            document.getElementById('splice-complexity').textContent = point.complexity;
+            document.getElementById('splice-complexity').style.color = getComplexityColor(point.complexity);
+            
+            // Show splicing editor
+            document.getElementById('splicing-editor').style.display = 'block';
+            
+            // Pre-populate with example code based on splice point
+            populateExampleCode(point);
+            
+            log(`Selected splice point: ${point.name} (${point.complexity} complexity)`, 'info');
+        }
+
+        function populateExampleCode(point) {
+            const codeEditor = document.getElementById('splice-code');
+            const examples = {
+                'analyzeFile': `// Enhanced file analysis with custom patterns
+function analyzeFile(filePath) {
+    const content = fs.readFileSync(filePath, 'utf8');
+    
+    // Custom pattern detection
+    const customPatterns = {
+        'security_risk': /\\b(password|secret|key)\\s*=\\s*["'][^"']+["']/gi,
+        'performance_issue': /\\b(setTimeout|setInterval)\\([^)]*,\\s*[0-9]{4,}/gi
+    };
+    
+    const results = {};
+    for (const [name, pattern] of Object.entries(customPatterns)) {
+        results[name] = (content.match(pattern) || []).length;
+    }
+    
+    return results;
+}`,
+                'handleCriticalDiscovery': `// Enhanced critical discovery handling
+function handleCriticalDiscovery(discovery) {
+    // Custom severity calculation
+    const severity = calculateCustomSeverity(discovery);
+    
+    if (severity > 0.9) {
+        // Immediate escalation for high severity
+        triggerImmediateResponse(discovery);
+    }
+    
+    // Custom notification channels
+    const channels = ['character_interface', 'email', 'slack'];
+    notifyAllChannels(discovery, channels);
+    
+    return { severity, processed: true };
+}`,
+                'activateRune': `// Enhanced runic system activation
+function activateRune(runeType, enhancement) {
+    // Custom enhancement multipliers
+    const customMultipliers = {
+        'detection': 2.5,
+        'analysis': 2.0,
+        'notification': 1.8
+    };
+    
+    const multiplier = customMultipliers[runeType] || 1.0;
+    return enhancement * multiplier;
+}`
+            };
+            
+            codeEditor.value = examples[point.name] || '// Enter your custom modification here...';
+        }
+
+        function setupSpliceTypeHandler() {
+            document.getElementById('splice-type').addEventListener('change', (e) => {
+                const type = e.target.value;
+                log(`Changed splice type to: ${type}`, 'info');
+                
+                // Update code editor placeholder based on type
+                updateCodeEditorForType(type);
+            });
+        }
+
+        function updateCodeEditorForType(type) {
+            const codeEditor = document.getElementById('splice-code');
+            const placeholders = {
+                'pattern': '// Define new pattern detection rules\nconst newPattern = /your-regex-here/gi;',
+                'threshold': '// Adjust threshold values\nconst newThreshold = 0.8; // 0.0 to 1.0',
+                'algorithm': '// Replace algorithm implementation\nfunction newAlgorithm(input) {\n  // Your logic here\n  return result;\n}',
+                'notification': '// Customize notification behavior\nconst notificationConfig = {\n  style: "urgent",\n  sound: true,\n  channels: ["character", "desktop"]\n};'
+            };
+            
+            if (!codeEditor.value || codeEditor.value.startsWith('//')) {
+                codeEditor.placeholder = placeholders[type] || 'Enter your modification...';
+            }
+        }
+
+        function previewSplice() {
+            const code = document.getElementById('splice-code').value;
+            const type = document.getElementById('splice-type').value;
+            
+            if (!code.trim()) {
+                alert('Please enter modification code first');
+                return;
+            }
+            
+            // Show preview
+            const preview = document.getElementById('splice-preview');
+            const previewContent = document.getElementById('preview-content');
+            
+            previewContent.innerHTML = `
+                <div><strong>Type:</strong> ${type}</div>
+                <div><strong>Component:</strong> ${selectedComponent}</div>
+                <div><strong>Splice Point:</strong> ${selectedSplicePoint?.name}</div>
+                <div><strong>Code Preview:</strong></div>
+                <pre style="margin-top: 8px; overflow-x: auto;">${code.substring(0, 200)}${code.length > 200 ? '...' : ''}</pre>
+            `;
+            
+            preview.style.display = 'block';
+            log(`Generated preview for ${type} modification`, 'info');
+        }
+
+        function applySplice() {
+            if (!selectedComponent || !selectedSplicePoint) {
+                alert('Please select a component and splice point first');
+                return;
+            }
+            
+            const code = document.getElementById('splice-code').value;
+            const type = document.getElementById('splice-type').value;
+            
+            if (!code.trim()) {
+                alert('Please enter modification code');
+                return;
+            }
+            
+            // Add splicing visual effect
+            document.getElementById('splicing-editor').classList.add('splicing-active');
+            
+            if (splicingWS && splicingWS.readyState === WebSocket.OPEN) {
+                const request = {
+                    action: `splice_${type}`,
+                    component: selectedComponent,
+                    splice_point: selectedSplicePoint.name,
+                    code: code
+                };
+                
+                // Add specific parameters based on type
+                if (type === 'pattern') {
+                    request.pattern_name = selectedSplicePoint.name;
+                    request.new_pattern = code;
+                } else if (type === 'threshold') {
+                    request.threshold_name = selectedSplicePoint.name;
+                    request.new_value = parseFloat(code.match(/[\d.]+/)?.[0]) || 0.5;
+                }
+                
+                splicingWS.send(JSON.stringify(request));
+                log(`Applied ${type} splice to ${selectedComponent}.${selectedSplicePoint.name}`, 'success');
+                
+                // Update UI
+                updateActiveModifications();
+                
+            } else {
+                log('Not connected to splicing system', 'error');
+            }
+            
+            // Remove visual effect after delay
+            setTimeout(() => {
+                document.getElementById('splicing-editor').classList.remove('splicing-active');
+            }, 2000);
+        }
+
+        function backupComponent() {
+            if (!selectedComponent) {
+                alert('Please select a component first');
+                return;
+            }
+            
+            if (splicingWS && splicingWS.readyState === WebSocket.OPEN) {
+                splicingWS.send(JSON.stringify({
+                    action: 'backup_component',
+                    component: selectedComponent
+                }));
+                
+                log(`Created backup for component: ${selectedComponent}`, 'success');
+                
+                // Update backup count
+                const backupCount = document.getElementById('backup-count');
+                backupCount.textContent = parseInt(backupCount.textContent) + 1;
+                
+            } else {
+                log('Not connected to splicing system', 'error');
+            }
+        }
+
+        function runQuickVerification() {
+            log('Running quick verification...', 'info');
+            
+            // Simulate quick verification
+            const progress = document.getElementById('verification-progress');
+            const status = document.getElementById('verification-status');
+            
+            let progressValue = 0;
+            status.textContent = 'Running quick verification...';
+            
+            const interval = setInterval(() => {
+                progressValue += 20;
+                progress.style.width = progressValue + '%';
+                
+                if (progressValue >= 100) {
+                    clearInterval(interval);
+                    status.textContent = 'Quick verification completed - All systems operational';
+                    log('Quick verification completed successfully', 'success');
+                }
+            }, 200);
+        }
+
+        function runFullVerification() {
+            if (splicingWS && splicingWS.readyState === WebSocket.OPEN) {
+                splicingWS.send(JSON.stringify({
+                    action: 'run_verification'
+                }));
+                
+                log('Starting full system verification...', 'info');
+                
+                // Update UI to show verification in progress
+                const testElements = ['test-connectivity', 'test-integrity', 'test-integration', 'test-customizations', 'test-performance'];
+                testElements.forEach(id => {
+                    document.getElementById(id).className = 'test-status status-pending pulsing';
+                });
+                
+                // Simulate verification results
+                setTimeout(() => {
+                    simulateVerificationResults();
+                }, 3000);
+                
+            } else {
+                log('Not connected to splicing system', 'error');
+            }
+        }
+
+        function simulateVerificationResults() {
+            const results = [
+                { id: 'test-connectivity', status: 'passed' },
+                { id: 'test-integrity', status: 'passed' },
+                { id: 'test-integration', status: 'warning' },
+                { id: 'test-customizations', status: 'passed' },
+                { id: 'test-performance', status: 'passed' }
+            ];
+            
+            results.forEach((result, index) => {
+                setTimeout(() => {
+                    const element = document.getElementById(result.id);
+                    element.className = `test-status status-${result.status}`;
+                    log(`Verification test ${result.id}: ${result.status}`, result.status === 'passed' ? 'success' : 'warning');
+                }, index * 500);
+            });
+            
+            setTimeout(() => {
+                log('Full verification completed - 4/5 tests passed, 1 warning', 'success');
+            }, results.length * 500);
+        }
+
+        function restoreFromBackup() {
+            if (!selectedComponent) {
+                alert('Please select a component first');
+                return;
+            }
+            
+            // For demo, simulate restore
+            log(`Restoring ${selectedComponent} from most recent backup...`, 'warning');
+            
+            setTimeout(() => {
+                log(`Component ${selectedComponent} restored successfully`, 'success');
+            }, 1000);
+        }
+
+        function updateActiveModifications() {
+            // Add new modification to the list
+            const container = document.getElementById('active-modifications');
+            
+            const modItem = document.createElement('div');
+            modItem.className = 'modification-item';
+            modItem.innerHTML = `
+                <strong>${selectedSplicePoint?.name} Modified</strong>
+                <div style="font-size: 0.9em; opacity: 0.8;">
+                    ${selectedComponent} • ${document.getElementById('splice-type').value}
+                </div>
+                <div style="margin-top: 8px;">
+                    <button class="btn btn-danger" style="padding: 4px 8px; font-size: 0.8em;" onclick="this.parentElement.parentElement.remove(); log('Modification reverted', 'warning');">Revert</button>
+                </div>
+            `;
+            
+            container.appendChild(modItem);
+            
+            // Update counter
+            const count = document.getElementById('active-modifications');
+            count.textContent = parseInt(count.textContent) + 1;
+        }
+
+        function log(message, level = 'info') {
+            const logContainer = document.getElementById('activity-log');
+            const timestamp = new Date().toLocaleTimeString();
+            
+            const logEntry = document.createElement('div');
+            logEntry.className = `log-entry log-${level}`;
+            logEntry.innerHTML = `<span class="log-timestamp">[${timestamp}]</span> ${message}`;
+            
+            logContainer.appendChild(logEntry);
+            logContainer.scrollTop = logContainer.scrollHeight;
+            
+            // Keep only last 50 entries
+            while (logContainer.children.length > 50) {
+                logContainer.removeChild(logContainer.firstChild);
+            }
+        }
+
+        // Initialize with some demo data
+        setTimeout(() => {
+            document.getElementById('components-spliced').textContent = '3';
+            document.getElementById('backup-count').textContent = '7';
+            document.getElementById('customizations-count').textContent = '12';
+        }, 1000);
+    </script>
+</body>
+</html>

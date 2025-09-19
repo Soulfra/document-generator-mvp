@@ -1,0 +1,1249 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Collaborative DJ Interface - GitHub Live DJ Integration</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            background: linear-gradient(135deg, #0a0a0a, #2a0a2a, #0a2a0a, #2a2a0a);
+            color: #fff;
+            font-family: 'Courier New', monospace;
+            min-height: 100vh;
+            overflow-x: hidden;
+        }
+        
+        /* DJ Interface Layout */
+        .dj-interface {
+            display: grid;
+            grid-template-rows: auto 1fr auto;
+            height: 100vh;
+            padding: 15px;
+            gap: 15px;
+        }
+        
+        /* Header */
+        .dj-header {
+            background: rgba(0, 0, 0, 0.9);
+            border: 3px solid #ff6b6b;
+            border-radius: 20px;
+            padding: 20px;
+            text-align: center;
+            backdrop-filter: blur(10px);
+        }
+        
+        .dj-title {
+            font-size: 28px;
+            background: linear-gradient(45deg, #ff6b6b, #4ecdc4, #ff9f43, #96ceb4, #74b9ff);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            margin-bottom: 10px;
+            animation: djTitleFlow 5s ease-in-out infinite alternate;
+        }
+        
+        @keyframes djTitleFlow {
+            from { 
+                filter: hue-rotate(0deg) brightness(1);
+            }
+            to { 
+                filter: hue-rotate(180deg) brightness(1.2);
+            }
+        }
+        
+        .dj-status {
+            display: flex;
+            justify-content: center;
+            gap: 20px;
+            flex-wrap: wrap;
+            margin-top: 15px;
+        }
+        
+        .status-badge {
+            background: rgba(255, 255, 255, 0.1);
+            border: 2px solid;
+            border-radius: 15px;
+            padding: 6px 12px;
+            font-size: 11px;
+            display: flex;
+            align-items: center;
+            gap: 6px;
+        }
+        
+        .status-badge.github-djs {
+            border-color: #4ecdc4;
+            color: #4ecdc4;
+        }
+        
+        .status-badge.web-sources {
+            border-color: #ff9f43;
+            color: #ff9f43;
+        }
+        
+        .status-badge.collaboration {
+            border-color: #96ceb4;
+            color: #96ceb4;
+        }
+        
+        .status-dot {
+            width: 6px;
+            height: 6px;
+            border-radius: 50%;
+            background: currentColor;
+            animation: djStatusPulse 2s infinite;
+        }
+        
+        @keyframes djStatusPulse {
+            0%, 100% { opacity: 1; transform: scale(1); }
+            50% { opacity: 0.6; transform: scale(1.4); }
+        }
+        
+        /* Main DJ Area */
+        .main-dj-area {
+            display: grid;
+            grid-template-columns: 300px 1fr 300px;
+            gap: 20px;
+            height: 100%;
+        }
+        
+        /* Left Panel - GitHub DJs */
+        .github-djs-panel {
+            background: rgba(0, 0, 0, 0.8);
+            border: 2px solid #4ecdc4;
+            border-radius: 15px;
+            padding: 20px;
+            backdrop-filter: blur(5px);
+            overflow-y: auto;
+        }
+        
+        .panel-title {
+            font-size: 16px;
+            font-weight: bold;
+            margin-bottom: 15px;
+            padding-bottom: 8px;
+            border-bottom: 2px solid;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+        
+        .github-djs-panel .panel-title {
+            color: #4ecdc4;
+            border-color: #4ecdc4;
+        }
+        
+        .dj-list {
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+        }
+        
+        .dj-item {
+            background: rgba(78, 205, 196, 0.1);
+            border: 1px solid #4ecdc4;
+            border-radius: 10px;
+            padding: 12px;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            position: relative;
+        }
+        
+        .dj-item:hover {
+            background: rgba(78, 205, 196, 0.2);
+            transform: translateY(-2px);
+            box-shadow: 0 4px 15px rgba(78, 205, 196, 0.3);
+        }
+        
+        .dj-item.connected {
+            border-color: #00ff88;
+            box-shadow: 0 0 10px rgba(0, 255, 136, 0.3);
+        }
+        
+        .dj-item.active {
+            background: rgba(78, 205, 196, 0.3);
+            border-width: 2px;
+        }
+        
+        .dj-name {
+            font-size: 12px;
+            font-weight: bold;
+            margin-bottom: 4px;
+            color: #4ecdc4;
+        }
+        
+        .dj-info {
+            font-size: 10px;
+            color: #aaa;
+            margin-bottom: 6px;
+        }
+        
+        .dj-capabilities {
+            display: flex;
+            gap: 4px;
+            flex-wrap: wrap;
+        }
+        
+        .capability-tag {
+            background: rgba(0, 0, 0, 0.6);
+            padding: 2px 6px;
+            border-radius: 8px;
+            font-size: 8px;
+            color: #4ecdc4;
+            border: 1px solid #4ecdc4;
+        }
+        
+        .connection-indicator {
+            position: absolute;
+            top: 8px;
+            right: 8px;
+            width: 8px;
+            height: 8px;
+            border-radius: 50%;
+            background: #ff6b6b;
+        }
+        
+        .connection-indicator.connected {
+            background: #00ff88;
+            animation: djStatusPulse 2s infinite;
+        }
+        
+        /* Center Panel - Collaborative Mixer */
+        .collaborative-mixer {
+            background: rgba(0, 0, 0, 0.9);
+            border: 2px solid #ff6b6b;
+            border-radius: 15px;
+            padding: 25px;
+            backdrop-filter: blur(10px);
+            display: flex;
+            flex-direction: column;
+            gap: 20px;
+        }
+        
+        .mixer-title {
+            color: #ff6b6b;
+            border-color: #ff6b6b;
+            text-align: center;
+            font-size: 18px;
+        }
+        
+        /* DJ Deck Simulation */
+        .dj-decks {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 15px;
+            flex: 1;
+        }
+        
+        .dj-deck {
+            background: rgba(255, 255, 255, 0.05);
+            border: 2px solid #333;
+            border-radius: 12px;
+            padding: 15px;
+            position: relative;
+        }
+        
+        .deck-title {
+            font-size: 12px;
+            color: #ff6b6b;
+            margin-bottom: 10px;
+            text-align: center;
+            font-weight: bold;
+        }
+        
+        .turntable {
+            width: 120px;
+            height: 120px;
+            border: 4px solid #ff6b6b;
+            border-radius: 50%;
+            margin: 0 auto 15px;
+            position: relative;
+            background: radial-gradient(circle, #333, #111);
+            cursor: pointer;
+        }
+        
+        .turntable.spinning {
+            animation: spin 2s linear infinite;
+        }
+        
+        @keyframes spin {
+            from { transform: rotate(0deg); }
+            to { transform: rotate(360deg); }
+        }
+        
+        .turntable::before {
+            content: '';
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            width: 8px;
+            height: 8px;
+            background: #ff6b6b;
+            border-radius: 50%;
+            transform: translate(-50%, -50%);
+        }
+        
+        .deck-controls {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 8px;
+        }
+        
+        .deck-control {
+            background: #333;
+            border: 1px solid #555;
+            border-radius: 6px;
+            padding: 6px;
+            font-size: 10px;
+            color: #fff;
+            cursor: pointer;
+            transition: all 0.3s;
+            text-align: center;
+        }
+        
+        .deck-control:hover {
+            background: #ff6b6b;
+            color: #000;
+        }
+        
+        .deck-control.active {
+            background: #4ecdc4;
+            color: #000;
+        }
+        
+        /* Crossfader and Master Controls */
+        .master-controls {
+            background: rgba(0, 0, 0, 0.8);
+            border: 2px solid #96ceb4;
+            border-radius: 12px;
+            padding: 15px;
+        }
+        
+        .crossfader-section {
+            text-align: center;
+            margin-bottom: 15px;
+        }
+        
+        .crossfader-label {
+            font-size: 11px;
+            color: #96ceb4;
+            margin-bottom: 8px;
+            font-weight: bold;
+        }
+        
+        .crossfader {
+            width: 200px;
+            height: 6px;
+            background: #333;
+            border-radius: 3px;
+            position: relative;
+            cursor: pointer;
+        }
+        
+        .crossfader-handle {
+            position: absolute;
+            top: -4px;
+            left: 50%;
+            width: 20px;
+            height: 14px;
+            background: #96ceb4;
+            border-radius: 4px;
+            transform: translateX(-50%);
+            cursor: grab;
+        }
+        
+        .master-volume-section {
+            display: grid;
+            grid-template-columns: 1fr 1fr 1fr;
+            gap: 10px;
+            text-align: center;
+        }
+        
+        .volume-control {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 5px;
+        }
+        
+        .volume-label {
+            font-size: 9px;
+            color: #96ceb4;
+            font-weight: bold;
+        }
+        
+        .volume-slider {
+            writing-mode: bt-lr; /* IE */
+            writing-mode: vertical-lr; /* Standard */
+            width: 20px;
+            height: 60px;
+            background: #333;
+            border-radius: 10px;
+            outline: none;
+            cursor: pointer;
+        }
+        
+        /* Right Panel - Web Data & Enhancement */
+        .web-data-panel {
+            background: rgba(0, 0, 0, 0.8);
+            border: 2px solid #ff9f43;
+            border-radius: 15px;
+            padding: 20px;
+            backdrop-filter: blur(5px);
+            overflow-y: auto;
+        }
+        
+        .web-data-panel .panel-title {
+            color: #ff9f43;
+            border-color: #ff9f43;
+        }
+        
+        .data-section {
+            margin-bottom: 20px;
+        }
+        
+        .data-section-title {
+            font-size: 12px;
+            color: #ff9f43;
+            margin-bottom: 8px;
+            font-weight: bold;
+            text-transform: uppercase;
+        }
+        
+        .data-items {
+            display: flex;
+            flex-direction: column;
+            gap: 6px;
+        }
+        
+        .data-item {
+            background: rgba(255, 159, 67, 0.1);
+            border: 1px solid rgba(255, 159, 67, 0.3);
+            border-radius: 6px;
+            padding: 8px;
+            font-size: 10px;
+        }
+        
+        .data-item-label {
+            color: #ff9f43;
+            font-weight: bold;
+            margin-bottom: 2px;
+        }
+        
+        .data-item-value {
+            color: #ccc;
+        }
+        
+        .enhancement-suggestions {
+            background: rgba(255, 159, 67, 0.15);
+            border: 2px solid #ff9f43;
+            border-radius: 8px;
+            padding: 10px;
+            margin-top: 10px;
+        }
+        
+        .suggestion-item {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 4px 0;
+            font-size: 10px;
+            border-bottom: 1px solid rgba(255, 159, 67, 0.2);
+        }
+        
+        .suggestion-item:last-child {
+            border-bottom: none;
+        }
+        
+        .suggestion-apply {
+            background: #ff9f43;
+            color: #000;
+            border: none;
+            padding: 2px 6px;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 8px;
+            font-weight: bold;
+        }
+        
+        /* Control Bar */
+        .control-bar {
+            background: rgba(0, 0, 0, 0.9);
+            border: 2px solid #96ceb4;
+            border-radius: 15px;
+            padding: 15px;
+            display: flex;
+            justify-content: center;
+            gap: 15px;
+            align-items: center;
+            backdrop-filter: blur(10px);
+        }
+        
+        .control-group {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+        
+        .control-label {
+            font-size: 11px;
+            color: #96ceb4;
+            font-weight: bold;
+        }
+        
+        .control-btn {
+            background: linear-gradient(45deg, #96ceb4, #4ecdc4);
+            border: none;
+            color: #000;
+            padding: 8px 16px;
+            border-radius: 8px;
+            font-size: 11px;
+            font-weight: bold;
+            cursor: pointer;
+            transition: all 0.3s;
+            font-family: 'Courier New', monospace;
+        }
+        
+        .control-btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 4px 15px rgba(150, 206, 180, 0.4);
+        }
+        
+        .control-btn.danger {
+            background: linear-gradient(45deg, #ff6b6b, #ff5252);
+            color: #fff;
+        }
+        
+        .control-btn.secondary {
+            background: linear-gradient(45deg, #ff9f43, #ff8c00);
+        }
+        
+        /* Loading Animations */
+        .loading-spinner {
+            display: inline-block;
+            width: 12px;
+            height: 12px;
+            border: 2px solid #333;
+            border-radius: 50%;
+            border-top-color: #4ecdc4;
+            animation: spin 1s ease-in-out infinite;
+        }
+        
+        /* Responsive Design */
+        @media (max-width: 1400px) {
+            .main-dj-area {
+                grid-template-columns: 250px 1fr 250px;
+            }
+        }
+        
+        @media (max-width: 1200px) {
+            .main-dj-area {
+                grid-template-columns: 1fr;
+                grid-template-rows: auto 1fr auto;
+            }
+            
+            .github-djs-panel,
+            .web-data-panel {
+                max-height: 200px;
+            }
+        }
+        
+        @media (max-width: 768px) {
+            .dj-decks {
+                grid-template-columns: 1fr;
+            }
+            
+            .master-volume-section {
+                grid-template-columns: 1fr;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="dj-interface">
+        <!-- Header -->
+        <div class="dj-header">
+            <h1 class="dj-title">🎧 COLLABORATIVE DJ INTERFACE</h1>
+            <div class="dj-status">
+                <div class="status-badge github-djs">
+                    <div class="status-dot"></div>
+                    <span id="githubDJCount">0 GitHub DJs</span>
+                </div>
+                <div class="status-badge web-sources">
+                    <div class="status-dot"></div>
+                    <span id="webSourceCount">0 Web Sources</span>
+                </div>
+                <div class="status-badge collaboration">
+                    <div class="status-dot"></div>
+                    <span id="collaborationStatus">Solo Mode</span>
+                </div>
+            </div>
+        </div>
+        
+        <!-- Main DJ Area -->
+        <div class="main-dj-area">
+            <!-- Left Panel - GitHub DJs -->
+            <div class="github-djs-panel">
+                <div class="panel-title">
+                    🔗 GitHub Live DJs
+                    <button class="control-btn" onclick="discoverGitHubDJs()" style="margin-left: auto; padding: 4px 8px; font-size: 9px;">
+                        🔍 Discover
+                    </button>
+                </div>
+                <div class="dj-list" id="githubDJList">
+                    <div style="text-align: center; color: #666; padding: 20px; font-size: 11px;">
+                        Click "Discover" to find GitHub DJs
+                    </div>
+                </div>
+            </div>
+            
+            <!-- Center Panel - Collaborative Mixer -->
+            <div class="collaborative-mixer">
+                <div class="panel-title mixer-title">
+                    🎵 Collaborative Mixer
+                </div>
+                
+                <!-- DJ Decks -->
+                <div class="dj-decks">
+                    <div class="dj-deck">
+                        <div class="deck-title">DECK A</div>
+                        <div class="turntable" id="turntableA" onclick="toggleTurntable('A')"></div>
+                        <div class="deck-controls">
+                            <div class="deck-control" onclick="deckControl('A', 'play')">▶ PLAY</div>
+                            <div class="deck-control" onclick="deckControl('A', 'cue')">● CUE</div>
+                            <div class="deck-control" onclick="deckControl('A', 'sync')">🔄 SYNC</div>
+                            <div class="deck-control" onclick="deckControl('A', 'loop')">🔁 LOOP</div>
+                        </div>
+                    </div>
+                    
+                    <div class="dj-deck">
+                        <div class="deck-title">DECK B</div>
+                        <div class="turntable" id="turntableB" onclick="toggleTurntable('B')"></div>
+                        <div class="deck-controls">
+                            <div class="deck-control" onclick="deckControl('B', 'play')">▶ PLAY</div>
+                            <div class="deck-control" onclick="deckControl('B', 'cue')">● CUE</div>
+                            <div class="deck-control" onclick="deckControl('B', 'sync')">🔄 SYNC</div>
+                            <div class="deck-control" onclick="deckControl('B', 'loop')">🔁 LOOP</div>
+                        </div>
+                    </div>
+                </div>
+                
+                <!-- Master Controls -->
+                <div class="master-controls">
+                    <div class="crossfader-section">
+                        <div class="crossfader-label">CROSSFADER</div>
+                        <div class="crossfader" onclick="adjustCrossfader(event)">
+                            <div class="crossfader-handle" id="crossfaderHandle"></div>
+                        </div>
+                    </div>
+                    
+                    <div class="master-volume-section">
+                        <div class="volume-control">
+                            <div class="volume-label">MASTER</div>
+                            <input type="range" class="volume-slider" id="masterVolume" min="0" max="100" value="70" orient="vertical">
+                        </div>
+                        <div class="volume-control">
+                            <div class="volume-label">HEADPHONES</div>
+                            <input type="range" class="volume-slider" id="headphoneVolume" min="0" max="100" value="50" orient="vertical">
+                        </div>
+                        <div class="volume-control">
+                            <div class="volume-label">BOOTH</div>
+                            <input type="range" class="volume-slider" id="boothVolume" min="0" max="100" value="60" orient="vertical">
+                        </div>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- Right Panel - Web Data -->
+            <div class="web-data-panel">
+                <div class="panel-title">
+                    🌐 Web Enhancement Data
+                    <button class="control-btn secondary" onclick="refreshWebData()" style="margin-left: auto; padding: 4px 8px; font-size: 9px;">
+                        🔄 Refresh
+                    </button>
+                </div>
+                
+                <div class="data-section">
+                    <div class="data-section-title">Wikipedia Insights</div>
+                    <div class="data-items" id="wikipediaData">
+                        <div class="data-item">
+                            <div class="data-item-label">Loading...</div>
+                        </div>
+                    </div>
+                </div>
+                
+                <div class="data-section">
+                    <div class="data-section-title">HTML5 Examples</div>
+                    <div class="data-items" id="html5Data">
+                        <div class="data-item">
+                            <div class="data-item-label">Searching...</div>
+                        </div>
+                    </div>
+                </div>
+                
+                <div class="data-section">
+                    <div class="data-section-title">GitHub Trending</div>
+                    <div class="data-items" id="githubTrendingData">
+                        <div class="data-item">
+                            <div class="data-item-label">Fetching...</div>
+                        </div>
+                    </div>
+                </div>
+                
+                <div class="enhancement-suggestions" id="enhancementSuggestions">
+                    <div class="data-section-title">🎵 Groove Suggestions</div>
+                    <div class="suggestion-item">
+                        <span>Analyzing web data...</span>
+                    </div>
+                </div>
+            </div>
+        </div>
+        
+        <!-- Control Bar -->
+        <div class="control-bar">
+            <div class="control-group">
+                <span class="control-label">Session:</span>
+                <button class="control-btn" onclick="startCollaborativeSession()">🎵 Start Collab</button>
+                <button class="control-btn secondary" onclick="syncWithBlockchain()">⛓️ Sync Blockchain</button>
+            </div>
+            
+            <div class="control-group">
+                <span class="control-label">Mode:</span>
+                <button class="control-btn" onclick="setMode('github_collab')">🔗 GitHub Mode</button>
+                <button class="control-btn" onclick="setMode('web_enhanced')">🌐 Web Enhanced</button>
+                <button class="control-btn" onclick="setMode('blockchain_sync')">⛓️ Blockchain Sync</button>
+            </div>
+            
+            <div class="control-group">
+                <span class="control-label">Actions:</span>
+                <button class="control-btn" onclick="exportMix()">💾 Export Mix</button>
+                <button class="control-btn danger" onclick="resetMixer()">🔄 Reset</button>
+            </div>
+        </div>
+    </div>
+    
+    <script>
+        // Collaborative DJ Interface State
+        let djInterface = {
+            ws: null,
+            githubDJs: new Map(),
+            webData: {},
+            activeTurntables: new Set(),
+            collaborativeSession: null,
+            currentMode: 'solo',
+            mixerState: {
+                crossfader: 0.5,
+                masterVolume: 0.7,
+                headphoneVolume: 0.5,
+                boothVolume: 0.6
+            }
+        };
+        
+        // Initialize interface
+        async function init() {
+            console.log('🎧 Initializing Collaborative DJ Interface...');
+            
+            // Connect to DJ integration system
+            connectToDJSystem();
+            
+            // Setup control listeners
+            setupControls();
+            
+            // Initialize with some data
+            await refreshWebData();
+            
+            console.log('✅ DJ Interface initialized');
+        }
+        
+        // Connect to DJ integration WebSocket
+        function connectToDJSystem() {
+            try {
+                djInterface.ws = new WebSocket('ws://localhost:48023');
+                
+                djInterface.ws.onopen = () => {
+                    console.log('🎧 Connected to DJ Integration System');
+                    
+                    // Register as a DJ client
+                    djInterface.ws.send(JSON.stringify({
+                        type: 'dj_register',
+                        djName: 'Collaborative Interface DJ',
+                        capabilities: ['mixing', 'collaboration', 'web_integration', 'blockchain_sync']
+                    }));
+                };
+                
+                djInterface.ws.onmessage = (event) => {
+                    try {
+                        const data = JSON.parse(event.data);
+                        handleDJMessage(data);
+                    } catch (error) {
+                        console.error('DJ message parse error:', error);
+                    }
+                };
+                
+                djInterface.ws.onerror = (error) => {
+                    console.error('DJ WebSocket error:', error);
+                };
+                
+                djInterface.ws.onclose = () => {
+                    console.log('🎧 DJ connection closed, attempting reconnect...');
+                    setTimeout(connectToDJSystem, 3000);
+                };
+                
+            } catch (error) {
+                console.error('Failed to connect to DJ system:', error);
+            }
+        }
+        
+        // Handle DJ system messages
+        function handleDJMessage(data) {
+            switch (data.type) {
+                case 'dj_registered':
+                    console.log('🎧 Registered as DJ:', data.djId);
+                    updateEnhancementData(data.enhancementData);
+                    break;
+                case 'enhancement_data_update':
+                    updateEnhancementData(data.data);
+                    break;
+                case 'collaboration_invite':
+                    handleCollaborationInvite(data);
+                    break;
+                case 'sync_signal':
+                    handleSyncSignal(data);
+                    break;
+            }
+        }
+        
+        // Setup control listeners
+        function setupControls() {
+            // Volume sliders
+            document.getElementById('masterVolume').addEventListener('input', (e) => {
+                djInterface.mixerState.masterVolume = e.target.value / 100;
+                updateMixerState();
+            });
+            
+            document.getElementById('headphoneVolume').addEventListener('input', (e) => {
+                djInterface.mixerState.headphoneVolume = e.target.value / 100;
+                updateMixerState();
+            });
+            
+            document.getElementById('boothVolume').addEventListener('input', (e) => {
+                djInterface.mixerState.boothVolume = e.target.value / 100;
+                updateMixerState();
+            });
+        }
+        
+        // Discover GitHub DJs
+        async function discoverGitHubDJs() {
+            try {
+                const discoverBtn = document.querySelector('.github-djs-panel .control-btn');
+                discoverBtn.innerHTML = '<div class="loading-spinner"></div> Discovering...';
+                discoverBtn.disabled = true;
+                
+                const response = await fetch('http://localhost:48023/api/discover-github-djs');
+                const data = await response.json();
+                
+                if (data.success) {
+                    displayGitHubDJs(data.discoveredDJs);
+                    document.getElementById('githubDJCount').textContent = `${data.count} GitHub DJs`;
+                } else {
+                    throw new Error(data.error);
+                }
+                
+            } catch (error) {
+                console.error('Failed to discover GitHub DJs:', error);
+                alert('Failed to discover GitHub DJs: ' + error.message);
+            } finally {
+                const discoverBtn = document.querySelector('.github-djs-panel .control-btn');
+                discoverBtn.innerHTML = '🔍 Discover';
+                discoverBtn.disabled = false;
+            }
+        }
+        
+        // Display GitHub DJs
+        function displayGitHubDJs(djs) {
+            const djList = document.getElementById('githubDJList');
+            djList.innerHTML = '';
+            
+            if (djs.length === 0) {
+                djList.innerHTML = '<div style="text-align: center; color: #666; padding: 20px; font-size: 11px;">No GitHub DJs found</div>';
+                return;
+            }
+            
+            djs.forEach(dj => {
+                const djItem = document.createElement('div');
+                djItem.className = 'dj-item';
+                djItem.onclick = () => connectToGitHubDJ(dj);
+                
+                djItem.innerHTML = `
+                    <div class="connection-indicator"></div>
+                    <div class="dj-name">${dj.name}</div>
+                    <div class="dj-info">⭐ ${dj.stars} stars • ${dj.language || 'JavaScript'}</div>
+                    <div class="dj-info">${dj.description || 'No description'}</div>
+                    <div class="dj-capabilities">
+                        ${dj.topics.slice(0, 3).map(topic => 
+                            `<div class="capability-tag">${topic}</div>`
+                        ).join('')}
+                    </div>
+                `;
+                
+                djList.appendChild(djItem);
+                djInterface.githubDJs.set(dj.name, dj);
+            });
+        }
+        
+        // Connect to specific GitHub DJ
+        async function connectToGitHubDJ(dj) {
+            try {
+                console.log(`🔗 Connecting to ${dj.name}...`);
+                
+                const response = await fetch('http://localhost:48023/api/connect-github-dj', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        repoUrl: dj.url,
+                        djName: dj.name
+                    })
+                });
+                
+                const data = await response.json();
+                
+                if (data.success) {
+                    // Update UI to show connection
+                    const djItems = document.querySelectorAll('.dj-item');
+                    djItems.forEach(item => {
+                        if (item.querySelector('.dj-name').textContent === dj.name) {
+                            item.classList.add('connected');
+                            item.querySelector('.connection-indicator').classList.add('connected');
+                        }
+                    });
+                    
+                    console.log(`✅ Connected to ${dj.name}`);
+                    alert(`Connected to ${dj.name}!\nCapabilities: ${data.connection.capabilities.join(', ')}`);
+                } else {
+                    throw new Error(data.error);
+                }
+                
+            } catch (error) {
+                console.error(`Failed to connect to ${dj.name}:`, error);
+                alert(`Failed to connect to ${dj.name}: ${error.message}`);
+            }
+        }
+        
+        // Refresh web data
+        async function refreshWebData() {
+            try {
+                const refreshBtn = document.querySelector('.web-data-panel .control-btn');
+                refreshBtn.innerHTML = '<div class="loading-spinner"></div> Refreshing...';
+                refreshBtn.disabled = true;
+                
+                const response = await fetch('http://localhost:48023/api/scraping-results');
+                const data = await response.json();
+                
+                if (data.success) {
+                    displayWebData(data.results);
+                    document.getElementById('webSourceCount').textContent = `${data.totalSources} Web Sources`;
+                } else {
+                    throw new Error('Failed to fetch web data');
+                }
+                
+            } catch (error) {
+                console.error('Failed to refresh web data:', error);
+            } finally {
+                const refreshBtn = document.querySelector('.web-data-panel .control-btn');
+                refreshBtn.innerHTML = '🔄 Refresh';
+                refreshBtn.disabled = false;
+            }
+        }
+        
+        // Display web data
+        function displayWebData(results) {
+            const wikipediaData = document.getElementById('wikipediaData');
+            const html5Data = document.getElementById('html5Data');
+            const githubTrendingData = document.getElementById('githubTrendingData');
+            
+            // Clear existing data
+            wikipediaData.innerHTML = '';
+            html5Data.innerHTML = '';
+            githubTrendingData.innerHTML = '';
+            
+            results.forEach(result => {
+                let targetElement;
+                let displayData;
+                
+                if (result.source.startsWith('wikipedia_')) {
+                    targetElement = wikipediaData;
+                    const data = result.data;
+                    displayData = {
+                        label: result.source.replace('wikipedia_', '').replace('_', ' '),
+                        value: `${data.tempo_references?.length || 0} tempo refs, ${data.frequency_references?.length || 0} freq refs`
+                    };
+                } else if (result.source.startsWith('html5_')) {
+                    targetElement = html5Data;
+                    displayData = {
+                        label: result.data.title || result.source,
+                        value: `${result.data.features?.join(', ') || 'Various features'}`
+                    };
+                } else if (result.source.startsWith('github_trending_')) {
+                    targetElement = githubTrendingData;
+                    displayData = {
+                        label: result.data.name || result.source,
+                        value: `⭐ ${result.data.stars} • ${result.data.language || 'Unknown'}`
+                    };
+                }
+                
+                if (targetElement && displayData) {
+                    const dataItem = document.createElement('div');
+                    dataItem.className = 'data-item';
+                    dataItem.innerHTML = `
+                        <div class="data-item-label">${displayData.label}</div>
+                        <div class="data-item-value">${displayData.value}</div>
+                    `;
+                    targetElement.appendChild(dataItem);
+                }
+            });
+            
+            // Update enhancement suggestions
+            updateEnhancementSuggestions(results);
+        }
+        
+        // Update enhancement suggestions
+        function updateEnhancementSuggestions(results) {
+            const suggestionsContainer = document.getElementById('enhancementSuggestions');
+            const suggestionsHTML = `
+                <div class="data-section-title">🎵 Groove Suggestions</div>
+                <div class="suggestion-item">
+                    <span>Tempo: 120-128 BPM (from web data)</span>
+                    <button class="suggestion-apply" onclick="applySuggestion('tempo', 124)">Apply</button>
+                </div>
+                <div class="suggestion-item">
+                    <span>Key: C minor (popular in electronic)</span>
+                    <button class="suggestion-apply" onclick="applySuggestion('key', 'Cm')">Apply</button>
+                </div>
+                <div class="suggestion-item">
+                    <span>Style: Web Audio API inspired</span>
+                    <button class="suggestion-apply" onclick="applySuggestion('style', 'web_audio')">Apply</button>
+                </div>
+            `;
+            
+            suggestionsContainer.innerHTML = suggestionsHTML;
+        }
+        
+        // Apply suggestion
+        function applySuggestion(type, value) {
+            console.log(`🎵 Applying suggestion: ${type} = ${value}`);
+            
+            // Send to groove layer if connected
+            if (djInterface.ws && djInterface.ws.readyState === WebSocket.OPEN) {
+                djInterface.ws.send(JSON.stringify({
+                    type: 'enhancement_request',
+                    enhancement: {
+                        type: type,
+                        value: value,
+                        source: 'web_data_suggestion'
+                    }
+                }));
+            }
+            
+            alert(`Applied ${type}: ${value}`);
+        }
+        
+        // Turntable controls
+        function toggleTurntable(deck) {
+            const turntable = document.getElementById(`turntable${deck}`);
+            
+            if (djInterface.activeTurntables.has(deck)) {
+                turntable.classList.remove('spinning');
+                djInterface.activeTurntables.delete(deck);
+                console.log(`🎵 Stopped deck ${deck}`);
+            } else {
+                turntable.classList.add('spinning');
+                djInterface.activeTurntables.add(deck);
+                console.log(`🎵 Started deck ${deck}`);
+            }
+        }
+        
+        // Deck controls
+        function deckControl(deck, action) {
+            console.log(`🎵 Deck ${deck} ${action}`);
+            
+            // Visual feedback
+            const controls = document.querySelectorAll(`.dj-deck:nth-child(${deck === 'A' ? '1' : '2'}) .deck-control`);
+            controls.forEach(control => {
+                if (control.textContent.toLowerCase().includes(action.toLowerCase())) {
+                    control.classList.add('active');
+                    setTimeout(() => control.classList.remove('active'), 500);
+                }
+            });
+            
+            // Send to mixer
+            updateMixerState();
+        }
+        
+        // Crossfader adjustment
+        function adjustCrossfader(event) {
+            const crossfader = event.currentTarget;
+            const rect = crossfader.getBoundingClientRect();
+            const position = (event.clientX - rect.left) / rect.width;
+            
+            djInterface.mixerState.crossfader = Math.max(0, Math.min(1, position));
+            
+            const handle = document.getElementById('crossfaderHandle');
+            handle.style.left = (position * 100) + '%';
+            
+            updateMixerState();
+        }
+        
+        // Update mixer state
+        function updateMixerState() {
+            // Send mixer state to DJ system
+            if (djInterface.ws && djInterface.ws.readyState === WebSocket.OPEN) {
+                djInterface.ws.send(JSON.stringify({
+                    type: 'track_update',
+                    mixerState: djInterface.mixerState,
+                    activeTurntables: Array.from(djInterface.activeTurntables),
+                    timestamp: Date.now()
+                }));
+            }
+        }
+        
+        // Collaborative session management
+        function startCollaborativeSession() {
+            console.log('🎵 Starting collaborative session...');
+            
+            if (djInterface.githubDJs.size === 0) {
+                alert('Please discover and connect to GitHub DJs first!');
+                return;
+            }
+            
+            djInterface.collaborativeSession = {
+                id: `collab_${Date.now()}`,
+                startTime: Date.now(),
+                participants: Array.from(djInterface.githubDJs.keys()),
+                mode: 'github_collab'
+            };
+            
+            document.getElementById('collaborationStatus').textContent = `Collab Active (${djInterface.githubDJs.size} DJs)`;
+            
+            alert(`Collaborative session started with ${djInterface.githubDJs.size} GitHub DJs!`);
+        }
+        
+        // Sync with blockchain
+        function syncWithBlockchain() {
+            console.log('⛓️ Syncing with blockchain...');
+            
+            // Send sync request to groove layer
+            if (djInterface.ws && djInterface.ws.readyState === WebSocket.OPEN) {
+                djInterface.ws.send(JSON.stringify({
+                    type: 'sync_request',
+                    syncType: 'blockchain',
+                    requestedData: ['chain_activity', 'vault_status', 'reasoning_state']
+                }));
+            }
+            
+            alert('Blockchain sync requested!');
+        }
+        
+        // Set DJ mode
+        function setMode(mode) {
+            djInterface.currentMode = mode;
+            console.log(`🎵 DJ mode set to: ${mode}`);
+            
+            // Visual feedback
+            const modeButtons = document.querySelectorAll('.control-group:nth-child(2) .control-btn');
+            modeButtons.forEach(btn => btn.classList.remove('active'));
+            
+            event.target.classList.add('active');
+            
+            alert(`DJ mode set to: ${mode.replace('_', ' ').toUpperCase()}`);
+        }
+        
+        // Export mix
+        function exportMix() {
+            const mixData = {
+                timestamp: Date.now(),
+                mixerState: djInterface.mixerState,
+                activeTurntables: Array.from(djInterface.activeTurntables),
+                connectedDJs: Array.from(djInterface.githubDJs.keys()),
+                collaborativeSession: djInterface.collaborativeSession,
+                mode: djInterface.currentMode
+            };
+            
+            const blob = new Blob([JSON.stringify(mixData, null, 2)], { type: 'application/json' });
+            const url = URL.createObjectURL(blob);
+            
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = `dj_mix_${Date.now()}.json`;
+            a.click();
+            
+            URL.revokeObjectURL(url);
+            
+            console.log('💾 Mix exported');
+        }
+        
+        // Reset mixer
+        function resetMixer() {
+            if (confirm('Reset all mixer settings and connections?')) {
+                djInterface.activeTurntables.clear();
+                djInterface.mixerState = {
+                    crossfader: 0.5,
+                    masterVolume: 0.7,
+                    headphoneVolume: 0.5,
+                    boothVolume: 0.6
+                };
+                
+                // Reset UI
+                document.querySelectorAll('.turntable').forEach(t => t.classList.remove('spinning'));
+                document.getElementById('crossfaderHandle').style.left = '50%';
+                document.getElementById('masterVolume').value = 70;
+                document.getElementById('headphoneVolume').value = 50;
+                document.getElementById('boothVolume').value = 60;
+                
+                console.log('🔄 Mixer reset');
+            }
+        }
+        
+        // Update enhancement data
+        function updateEnhancementData(data) {
+            if (data && data.connectedDJs) {
+                document.getElementById('githubDJCount').textContent = `${data.connectedDJs.length} GitHub DJs`;
+            }
+            
+            if (data && data.webData) {
+                document.getElementById('webSourceCount').textContent = `${data.webData.totalSources} Web Sources`;
+            }
+        }
+        
+        // Handle collaboration invite
+        function handleCollaborationInvite(data) {
+            if (confirm(`Join collaborative session with ${data.initiator}?`)) {
+                // Accept collaboration
+                djInterface.ws.send(JSON.stringify({
+                    type: 'collaborative_join',
+                    sessionId: data.sessionId,
+                    accept: true
+                }));
+            }
+        }
+        
+        // Handle sync signal
+        function handleSyncSignal(data) {
+            console.log('🎵 Received sync signal:', data);
+            
+            // Update mixer based on sync signal
+            if (data.tempo) {
+                // Adjust tempo-related visualizations
+            }
+            
+            if (data.blockchainActivity) {
+                // Update based on blockchain activity
+            }
+        }
+        
+        // Initialize on page load
+        window.onload = init;
+    </script>
+</body>
+</html>

@@ -1,0 +1,788 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Middle-Out Builder - API Key Core with OSRS Prices</title>
+    <link rel="stylesheet" href="scythe-design-system.css">
+    <style>
+        body {
+            margin: 0;
+            padding: 0;
+            background: #1a0f08;
+            color: #ffd700;
+            font-family: 'Courier New', monospace;
+            overflow: hidden;
+            position: relative;
+        }
+
+        /* Main container */
+        .main-container {
+            width: 100vw;
+            height: 100vh;
+            position: relative;
+        }
+
+        /* Center API Key Core */
+        .api-key-center {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            z-index: 100;
+        }
+
+        .api-key-display {
+            background: radial-gradient(ellipse at center, rgba(75, 0, 130, 0.9) 0%, rgba(0, 0, 0, 0.8) 70%);
+            border: 3px solid #ffd700;
+            border-radius: 20px;
+            padding: 30px;
+            box-shadow: 
+                0 0 50px #ffd700,
+                inset 0 0 30px rgba(255, 215, 0, 0.3);
+            text-align: center;
+            min-width: 300px;
+        }
+
+        .api-key-title {
+            font-size: 24px;
+            margin-bottom: 20px;
+            text-shadow: 0 0 10px #ffd700;
+        }
+
+        .api-key-item {
+            background: rgba(0, 0, 0, 0.5);
+            border: 1px solid #8b4513;
+            border-radius: 5px;
+            padding: 10px;
+            margin: 10px 0;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            transition: all 0.3s ease;
+        }
+
+        .api-key-item:hover {
+            border-color: #ffd700;
+            background: rgba(255, 215, 0, 0.1);
+        }
+
+        .api-key-item.active {
+            border-color: #00ff00;
+            box-shadow: 0 0 15px rgba(0, 255, 0, 0.5);
+        }
+
+        /* Ripple effect containers */
+        .ripple-container {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            width: 100%;
+            height: 100%;
+            pointer-events: none;
+        }
+
+        /* Price display panels */
+        .price-panel {
+            position: absolute;
+            background: linear-gradient(135deg, #3d2f1f 0%, #2d1810 100%);
+            border: 3px solid #8b4513;
+            border-radius: 10px;
+            padding: 20px;
+            min-width: 250px;
+            transition: all 0.3s ease;
+            opacity: 0;
+            transform: scale(0.8);
+        }
+
+        .price-panel.active {
+            opacity: 1;
+            transform: scale(1);
+        }
+
+        .price-panel.top-left { top: 20px; left: 20px; }
+        .price-panel.top-right { top: 20px; right: 20px; }
+        .price-panel.bottom-left { bottom: 20px; left: 20px; }
+        .price-panel.bottom-right { bottom: 20px; right: 20px; }
+
+        .price-header {
+            font-size: 18px;
+            font-weight: bold;
+            margin-bottom: 15px;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .price-row {
+            display: flex;
+            justify-content: space-between;
+            padding: 8px;
+            margin: 5px 0;
+            background: rgba(0, 0, 0, 0.3);
+            border-radius: 4px;
+            cursor: pointer;
+            transition: all 0.2s ease;
+        }
+
+        .price-row:hover {
+            background: rgba(255, 215, 0, 0.1);
+            transform: translateX(5px);
+        }
+
+        .price-value {
+            color: #00ff00;
+            font-weight: bold;
+        }
+
+        .price-change {
+            font-size: 12px;
+        }
+
+        .price-change.up { color: #00ff00; }
+        .price-change.down { color: #ff0000; }
+
+        /* Sound controls */
+        .sound-controls {
+            position: fixed;
+            bottom: 20px;
+            left: 50%;
+            transform: translateX(-50%);
+            display: flex;
+            gap: 15px;
+            z-index: 200;
+        }
+
+        /* Connection status */
+        .connection-status {
+            position: fixed;
+            top: 10px;
+            left: 50%;
+            transform: translateX(-50%);
+            padding: 5px 15px;
+            background: rgba(0, 0, 0, 0.8);
+            border: 2px solid #8b4513;
+            border-radius: 20px;
+            font-size: 12px;
+            z-index: 200;
+        }
+
+        .connection-status.connected { border-color: #00ff00; color: #00ff00; }
+        .connection-status.disconnected { border-color: #ff0000; color: #ff0000; }
+
+        /* Building animation */
+        .build-wave {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            width: 300px;
+            height: 300px;
+            border-radius: 50%;
+            border: 3px solid rgba(255, 215, 0, 0.5);
+            pointer-events: none;
+        }
+
+        /* Hex grid toggle */
+        .hex-toggle {
+            position: fixed;
+            top: 20px;
+            left: 20px;
+            z-index: 200;
+        }
+
+        /* Cursor selector */
+        .cursor-selector {
+            position: fixed;
+            top: 60px;
+            left: 20px;
+            background: rgba(0, 0, 0, 0.9);
+            border: 2px solid #8b4513;
+            border-radius: 8px;
+            padding: 10px;
+            z-index: 200;
+        }
+
+        .cursor-option {
+            padding: 5px 10px;
+            margin: 5px 0;
+            cursor: pointer;
+            border-radius: 4px;
+            transition: all 0.2s ease;
+        }
+
+        .cursor-option:hover {
+            background: rgba(255, 215, 0, 0.2);
+        }
+
+        .cursor-option.active {
+            background: rgba(255, 215, 0, 0.3);
+            border: 1px solid #ffd700;
+        }
+
+        /* Sound effect indicator */
+        .sound-indicator {
+            position: fixed;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            font-size: 48px;
+            opacity: 0;
+            pointer-events: none;
+            z-index: 300;
+        }
+
+        .sound-indicator.ping {
+            animation: sound-ping 1s ease-out;
+        }
+
+        @keyframes sound-ping {
+            0% { opacity: 0; transform: translate(-50%, -50%) scale(0.5); }
+            50% { opacity: 1; transform: translate(-50%, -50%) scale(1.5); }
+            100% { opacity: 0; transform: translate(-50%, -50%) scale(2); }
+        }
+    </style>
+</head>
+<body>
+    <div class="main-container middle-out-container">
+        <!-- Hex grid overlay -->
+        <div class="hex-grid-overlay" id="hexGrid" style="display: none;"></div>
+        
+        <!-- Mouse tracker -->
+        <div class="mouse-tracker" id="mouseTracker"></div>
+        
+        <!-- Hex coordinate display -->
+        <div class="hex-coordinate" id="hexCoordinate"></div>
+        
+        <!-- Connection status -->
+        <div class="connection-status disconnected" id="connectionStatus">
+            <span id="statusText">Connecting...</span>
+        </div>
+
+        <!-- API Key Center Core -->
+        <div class="api-key-center">
+            <div class="api-key-display api-key-core">
+                <div class="api-key-title">🔑 API KEY CORE 🔑</div>
+                <div class="api-key-item" data-api="openai">
+                    <span>OpenAI</span>
+                    <span class="api-status">🔴</span>
+                </div>
+                <div class="api-key-item" data-api="anthropic">
+                    <span>Anthropic</span>
+                    <span class="api-status">🔴</span>
+                </div>
+                <div class="api-key-item" data-api="stripe">
+                    <span>Stripe</span>
+                    <span class="api-status">🔴</span>
+                </div>
+                <div class="api-key-item" data-api="osrs">
+                    <span>OSRS Wiki</span>
+                    <span class="api-status">🟢</span>
+                </div>
+            </div>
+        </div>
+
+        <!-- Ripple container for middle-out effect -->
+        <div class="ripple-container" id="rippleContainer"></div>
+
+        <!-- Price Panels -->
+        <div class="price-panel top-left" id="weaponPanel">
+            <div class="price-header">
+                <span>⚔️</span>
+                <span>Weapon Prices</span>
+            </div>
+            <div class="price-row" data-item="scythe-charged">
+                <span>Scythe of Vitur (c)</span>
+                <span class="price-value">--</span>
+            </div>
+            <div class="price-row" data-item="scythe-uncharged">
+                <span>Scythe of Vitur</span>
+                <span class="price-value">--</span>
+            </div>
+            <div class="price-row" data-item="tbow">
+                <span>Twisted Bow</span>
+                <span class="price-value">1.2B</span>
+            </div>
+            <div class="price-row" data-item="shadow">
+                <span>Tumeken's Shadow</span>
+                <span class="price-value">1.8B</span>
+            </div>
+        </div>
+
+        <div class="price-panel top-right" id="armorPanel">
+            <div class="price-header">
+                <span>🛡️</span>
+                <span>Armor Prices</span>
+            </div>
+            <div class="price-row" data-item="torva-full">
+                <span>Torva Full</span>
+                <span class="price-value">800M</span>
+            </div>
+            <div class="price-row" data-item="ancestral">
+                <span>Ancestral Full</span>
+                <span class="price-value">450M</span>
+            </div>
+        </div>
+
+        <div class="price-panel bottom-left" id="consumablePanel">
+            <div class="price-header">
+                <span>🧪</span>
+                <span>Consumables</span>
+            </div>
+            <div class="price-row" data-item="sangstaff">
+                <span>Sang Staff Charges</span>
+                <span class="price-value">125 gp</span>
+            </div>
+            <div class="price-row" data-item="scythe-charge">
+                <span>Scythe Charges</span>
+                <span class="price-value">850 gp</span>
+            </div>
+        </div>
+
+        <div class="price-panel bottom-right" id="rarePanel">
+            <div class="price-header">
+                <span>💎</span>
+                <span>Rares & Resources</span>
+            </div>
+            <div class="price-row" data-item="blue-phat">
+                <span>Blue Partyhat</span>
+                <span class="price-value">MAX</span>
+            </div>
+            <div class="price-row" data-item="blood-rune">
+                <span>Blood Rune</span>
+                <span class="price-value">385 gp</span>
+            </div>
+        </div>
+
+        <!-- Sound controls -->
+        <div class="sound-controls">
+            <button class="osrs-button" id="toggleSound">🔊 Sound ON</button>
+            <button class="osrs-button" id="toggleBuild">🌊 Start Build</button>
+            <button class="osrs-button" id="refreshPrices">🔄 Refresh Prices</button>
+        </div>
+
+        <!-- Hex grid toggle -->
+        <div class="hex-toggle">
+            <button class="osrs-button" id="toggleHex">⬡ Toggle Hex Grid</button>
+        </div>
+
+        <!-- Cursor selector -->
+        <div class="cursor-selector">
+            <div class="cursor-option active" data-cursor="default">⚔️ Default</div>
+            <div class="cursor-option" data-cursor="scythe">🌙 Scythe</div>
+            <div class="cursor-option" data-cursor="dragon-claws">🐉 D Claws</div>
+            <div class="cursor-option" data-cursor="twisted-bow">🏹 T Bow</div>
+            <div class="cursor-option" data-cursor="abyssal-whip">🪱 Whip</div>
+        </div>
+
+        <!-- Sound indicator -->
+        <div class="sound-indicator" id="soundIndicator">🔔</div>
+    </div>
+
+    <!-- Audio elements for sound effects -->
+    <audio id="pingSound" preload="auto">
+        <source src="data:audio/wav;base64,UklGRnoGAABXQVZFZm10IBAAAAABAAEAQB8AAEAfAAABAAgAZGF0YQoGAACBhYqFbF1fdJivrJBhNjVgodDbq2EcBj+a2/LDciUFLIHO8tiJNwgZaLvt559NEAxQp+PwtmMcBjiR1/LMeSwFJHfH8N2QQAoUXrTp66hVFApGn+DyvmwhBTGH0fPTgjMGHm7A7+OZURE" type="audio/wav">
+    </audio>
+    
+    <audio id="buildSound" preload="auto">
+        <source src="data:audio/wav;base64,UklGRpAFAABXQVZFZm10IBAAAAABAAEARKwAAIhYAQACABAAZGF0YWwFAAD//wAA//8AAP//AAD//wAA//8AAP3/AAD9/wAA/f8AAP3/AAD7/wAA+/8AAPv/AAD7/wAA+f8AAPn/AAD5/wAA+f8AAPf/AAD3/wAA9/8AAPf/AAD1/wAA9f8AAPX/" type="audio/wav">
+    </audio>
+
+    <script>
+        class MiddleOutBuilder {
+            constructor() {
+                this.soundEnabled = true;
+                this.buildActive = false;
+                this.hexGridVisible = false;
+                this.currentCursor = 'default';
+                this.priceUpdateInterval = null;
+                this.wsConnection = null;
+                this.mouseTrail = [];
+                
+                this.init();
+            }
+            
+            init() {
+                this.setupEventListeners();
+                this.setupMouseTracking();
+                this.connectToPriceServer();
+                this.startBuildAnimation();
+                this.loadStoredApiKeys();
+            }
+            
+            setupEventListeners() {
+                // Sound toggle
+                document.getElementById('toggleSound').addEventListener('click', () => {
+                    this.soundEnabled = !this.soundEnabled;
+                    document.getElementById('toggleSound').textContent = 
+                        this.soundEnabled ? '🔊 Sound ON' : '🔇 Sound OFF';
+                });
+                
+                // Build toggle
+                document.getElementById('toggleBuild').addEventListener('click', () => {
+                    this.buildActive = !this.buildActive;
+                    document.getElementById('toggleBuild').textContent = 
+                        this.buildActive ? '⏸️ Pause Build' : '🌊 Start Build';
+                    if (this.buildActive) {
+                        this.triggerBuildWave();
+                    }
+                });
+                
+                // Hex grid toggle
+                document.getElementById('toggleHex').addEventListener('click', () => {
+                    this.hexGridVisible = !this.hexGridVisible;
+                    document.getElementById('hexGrid').style.display = 
+                        this.hexGridVisible ? 'block' : 'none';
+                });
+                
+                // Refresh prices
+                document.getElementById('refreshPrices').addEventListener('click', () => {
+                    this.fetchPrices();
+                    this.playSound('ping');
+                });
+                
+                // Cursor selection
+                document.querySelectorAll('.cursor-option').forEach(option => {
+                    option.addEventListener('click', (e) => {
+                        this.changeCursor(e.target.dataset.cursor);
+                    });
+                });
+                
+                // API key items
+                document.querySelectorAll('.api-key-item').forEach(item => {
+                    item.addEventListener('click', (e) => {
+                        this.toggleApiKey(e.currentTarget);
+                    });
+                });
+                
+                // Price row clicks
+                document.querySelectorAll('.price-row').forEach(row => {
+                    row.addEventListener('click', (e) => {
+                        this.createWeaponEffect(e.currentTarget);
+                    });
+                });
+            }
+            
+            setupMouseTracking() {
+                let mouseX = 0, mouseY = 0;
+                
+                document.addEventListener('mousemove', (e) => {
+                    mouseX = e.clientX;
+                    mouseY = e.clientY;
+                    
+                    // Update mouse tracker
+                    const tracker = document.getElementById('mouseTracker');
+                    tracker.style.left = mouseX + 'px';
+                    tracker.style.top = mouseY + 'px';
+                    
+                    // Update hex coordinate
+                    if (this.hexGridVisible) {
+                        const hexCoord = this.getHexCoordinate(mouseX, mouseY);
+                        document.getElementById('hexCoordinate').textContent = hexCoord;
+                        document.getElementById('hexCoordinate').style.left = (mouseX + 15) + 'px';
+                        document.getElementById('hexCoordinate').style.top = (mouseY - 25) + 'px';
+                    }
+                    
+                    // Create hex trail
+                    this.createHexTrail(mouseX, mouseY);
+                });
+                
+                document.addEventListener('click', (e) => {
+                    this.createClickEffect(e.clientX, e.clientY);
+                });
+            }
+            
+            getHexCoordinate(x, y) {
+                const hexSize = 35;
+                const col = Math.floor(x / hexSize);
+                const row = Math.floor(y / hexSize);
+                return `H${col}:${row}`;
+            }
+            
+            createHexTrail(x, y) {
+                if (this.mouseTrail.length > 10) {
+                    const oldest = this.mouseTrail.shift();
+                    if (oldest.parentElement) oldest.remove();
+                }
+                
+                const trail = document.createElement('div');
+                trail.className = 'hex-trail';
+                trail.style.left = x + 'px';
+                trail.style.top = y + 'px';
+                document.body.appendChild(trail);
+                this.mouseTrail.push(trail);
+                
+                setTimeout(() => {
+                    if (trail.parentElement) trail.remove();
+                    this.mouseTrail = this.mouseTrail.filter(t => t !== trail);
+                }, 2000);
+            }
+            
+            connectToPriceServer() {
+                // Try to connect to OSRS price server
+                this.fetchPrices();
+                
+                // Update prices every 30 seconds
+                this.priceUpdateInterval = setInterval(() => {
+                    this.fetchPrices();
+                }, 30000);
+                
+                // Update connection status
+                this.updateConnectionStatus(true);
+            }
+            
+            async fetchPrices() {
+                try {
+                    const response = await fetch('http://localhost:9001/api/scythe-price');
+                    if (response.ok) {
+                        const data = await response.json();
+                        this.updateScythePrices(data);
+                        this.updateConnectionStatus(true);
+                    } else {
+                        this.updateConnectionStatus(false);
+                    }
+                } catch (error) {
+                    console.log('Price server not available, using demo prices');
+                    this.updateConnectionStatus(false);
+                }
+            }
+            
+            updateScythePrices(data) {
+                if (data.prices.charged) {
+                    const chargedRow = document.querySelector('[data-item="scythe-charged"] .price-value');
+                    const oldPrice = chargedRow.textContent;
+                    const newPrice = this.formatPrice(data.prices.charged.high);
+                    chargedRow.textContent = newPrice;
+                    
+                    if (oldPrice !== '--' && oldPrice !== newPrice) {
+                        this.animatePriceChange(chargedRow.parentElement, 
+                            data.prices.charged.high > this.parsePrice(oldPrice));
+                    }
+                }
+                
+                if (data.prices.uncharged) {
+                    const unchargedRow = document.querySelector('[data-item="scythe-uncharged"] .price-value');
+                    const oldPrice = unchargedRow.textContent;
+                    const newPrice = this.formatPrice(data.prices.uncharged.high);
+                    unchargedRow.textContent = newPrice;
+                    
+                    if (oldPrice !== '--' && oldPrice !== newPrice) {
+                        this.animatePriceChange(unchargedRow.parentElement,
+                            data.prices.uncharged.high > this.parsePrice(oldPrice));
+                    }
+                }
+            }
+            
+            formatPrice(price) {
+                if (!price) return '--';
+                if (price >= 1000000000) return `${(price / 1000000000).toFixed(1)}B`;
+                if (price >= 1000000) return `${(price / 1000000).toFixed(1)}M`;
+                if (price >= 1000) return `${(price / 1000).toFixed(1)}K`;
+                return price + ' gp';
+            }
+            
+            parsePrice(priceStr) {
+                if (priceStr === '--' || priceStr === 'MAX') return 0;
+                const num = parseFloat(priceStr);
+                if (priceStr.includes('B')) return num * 1000000000;
+                if (priceStr.includes('M')) return num * 1000000;
+                if (priceStr.includes('K')) return num * 1000;
+                return num;
+            }
+            
+            animatePriceChange(element, isIncrease) {
+                element.classList.add(isIncrease ? 'price-up' : 'price-down');
+                setTimeout(() => {
+                    element.classList.remove('price-up', 'price-down');
+                }, 1000);
+                
+                if (this.soundEnabled) {
+                    this.playSound('ping');
+                    this.showSoundIndicator();
+                }
+            }
+            
+            updateConnectionStatus(connected) {
+                const status = document.getElementById('connectionStatus');
+                const statusText = document.getElementById('statusText');
+                
+                if (connected) {
+                    status.classList.remove('disconnected');
+                    status.classList.add('connected');
+                    statusText.textContent = '🟢 Connected to OSRS Price Server';
+                } else {
+                    status.classList.remove('connected');
+                    status.classList.add('disconnected');
+                    statusText.textContent = '🔴 Using Demo Prices';
+                }
+            }
+            
+            loadStoredApiKeys() {
+                // Simulate checking for stored API keys
+                const apiKeys = {
+                    openai: localStorage.getItem('api_key_openai'),
+                    anthropic: localStorage.getItem('api_key_anthropic'),
+                    stripe: localStorage.getItem('api_key_stripe'),
+                    osrs: true // Always active
+                };
+                
+                Object.entries(apiKeys).forEach(([api, hasKey]) => {
+                    const item = document.querySelector(`[data-api="${api}"]`);
+                    if (item && hasKey) {
+                        item.classList.add('active');
+                        item.querySelector('.api-status').textContent = '🟢';
+                    }
+                });
+            }
+            
+            toggleApiKey(element) {
+                element.classList.toggle('active');
+                const status = element.querySelector('.api-status');
+                const isActive = element.classList.contains('active');
+                status.textContent = isActive ? '🟢' : '🔴';
+                
+                if (isActive) {
+                    this.triggerBuildWave();
+                    this.playSound('build');
+                }
+            }
+            
+            startBuildAnimation() {
+                // Create initial ripples
+                this.createRipple();
+                
+                setInterval(() => {
+                    if (this.buildActive) {
+                        this.createRipple();
+                    }
+                }, 2000);
+                
+                // Animate price panels in sequence
+                setTimeout(() => {
+                    document.querySelectorAll('.price-panel').forEach((panel, index) => {
+                        setTimeout(() => {
+                            panel.classList.add('active');
+                        }, index * 500);
+                    });
+                }, 1000);
+            }
+            
+            createRipple() {
+                const ripple = document.createElement('div');
+                ripple.className = 'ripple-layer';
+                document.getElementById('rippleContainer').appendChild(ripple);
+                
+                setTimeout(() => {
+                    if (ripple.parentElement) ripple.remove();
+                }, 4000);
+            }
+            
+            triggerBuildWave() {
+                const wave = document.createElement('div');
+                wave.className = 'build-wave';
+                wave.style.animation = 'ripple-out 2s ease-out';
+                document.querySelector('.api-key-center').appendChild(wave);
+                
+                setTimeout(() => {
+                    if (wave.parentElement) wave.remove();
+                }, 2000);
+            }
+            
+            changeCursor(cursorType) {
+                // Remove all cursor classes
+                document.body.classList.remove(
+                    'scythe-cursor', 
+                    'dragon-claws-cursor', 
+                    'twisted-bow-cursor', 
+                    'abyssal-whip-cursor'
+                );
+                
+                // Add new cursor class if not default
+                if (cursorType !== 'default') {
+                    document.body.classList.add(`${cursorType}-cursor`);
+                }
+                
+                // Update active state
+                document.querySelectorAll('.cursor-option').forEach(option => {
+                    option.classList.toggle('active', option.dataset.cursor === cursorType);
+                });
+                
+                this.currentCursor = cursorType;
+            }
+            
+            createClickEffect(x, y) {
+                const effect = document.createElement('div');
+                effect.className = `weapon-swing ${this.currentCursor}`;
+                effect.style.left = x + 'px';
+                effect.style.top = y + 'px';
+                effect.textContent = this.getWeaponEmoji(this.currentCursor);
+                effect.style.fontSize = '48px';
+                document.body.appendChild(effect);
+                
+                setTimeout(() => {
+                    if (effect.parentElement) effect.remove();
+                }, 500);
+                
+                if (this.soundEnabled) {
+                    this.playSound('build');
+                }
+            }
+            
+            getWeaponEmoji(weapon) {
+                const emojis = {
+                    default: '⚔️',
+                    scythe: '🌙',
+                    'dragon-claws': '🐉',
+                    'twisted-bow': '🏹',
+                    'abyssal-whip': '🪱'
+                };
+                return emojis[weapon] || '⚔️';
+            }
+            
+            createWeaponEffect(element) {
+                const rect = element.getBoundingClientRect();
+                const effect = document.createElement('div');
+                effect.className = 'weapon-glow';
+                effect.style.position = 'fixed';
+                effect.style.left = rect.left + 'px';
+                effect.style.top = rect.top + 'px';
+                effect.style.width = rect.width + 'px';
+                effect.style.height = rect.height + 'px';
+                effect.style.pointerEvents = 'none';
+                effect.style.border = '2px solid #ffd700';
+                effect.style.borderRadius = '4px';
+                document.body.appendChild(effect);
+                
+                setTimeout(() => {
+                    if (effect.parentElement) effect.remove();
+                }, 1000);
+                
+                this.playSound('ping');
+            }
+            
+            playSound(type) {
+                if (!this.soundEnabled) return;
+                
+                const audio = document.getElementById(type + 'Sound');
+                if (audio) {
+                    audio.currentTime = 0;
+                    audio.play().catch(e => console.log('Audio play failed:', e));
+                }
+            }
+            
+            showSoundIndicator() {
+                const indicator = document.getElementById('soundIndicator');
+                indicator.classList.add('ping');
+                
+                setTimeout(() => {
+                    indicator.classList.remove('ping');
+                }, 1000);
+            }
+        }
+        
+        // Initialize the application
+        const app = new MiddleOutBuilder();
+    </script>
+</body>
+</html>

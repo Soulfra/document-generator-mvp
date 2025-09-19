@@ -1,0 +1,980 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>User Control Center - Document Generator</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Monaco', 'Courier New', monospace;
+            background: linear-gradient(135deg, #1a1a2e, #16213e, #0f3460);
+            color: #00ff41;
+            min-height: 100vh;
+            overflow-x: hidden;
+        }
+
+        .control-center {
+            display: grid;
+            grid-template-columns: 250px 1fr 300px;
+            grid-template-rows: 60px 1fr;
+            height: 100vh;
+            gap: 10px;
+            padding: 10px;
+        }
+
+        .header {
+            grid-column: 1 / -1;
+            background: rgba(0, 255, 65, 0.1);
+            border: 1px solid #00ff41;
+            border-radius: 10px;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: 0 20px;
+            backdrop-filter: blur(10px);
+        }
+
+        .header h1 {
+            font-size: 24px;
+            text-shadow: 0 0 10px #00ff41;
+        }
+
+        .status-indicators {
+            display: flex;
+            gap: 10px;
+        }
+
+        .status-dot {
+            width: 12px;
+            height: 12px;
+            border-radius: 50%;
+            background: #00ff41;
+            box-shadow: 0 0 10px #00ff41;
+            animation: pulse 2s infinite;
+        }
+
+        @keyframes pulse {
+            0%, 100% { opacity: 1; transform: scale(1); }
+            50% { opacity: 0.5; transform: scale(1.2); }
+        }
+
+        .sidebar {
+            background: rgba(0, 255, 65, 0.05);
+            border: 1px solid #00ff41;
+            border-radius: 10px;
+            padding: 20px;
+            overflow-y: auto;
+        }
+
+        .main-area {
+            background: rgba(0, 255, 65, 0.03);
+            border: 1px solid #00ff41;
+            border-radius: 10px;
+            display: flex;
+            flex-direction: column;
+        }
+
+        .properties-panel {
+            background: rgba(0, 255, 65, 0.05);
+            border: 1px solid #00ff41;
+            border-radius: 10px;
+            padding: 20px;
+            overflow-y: auto;
+        }
+
+        .tab-container {
+            display: flex;
+            border-bottom: 1px solid #00ff41;
+            margin-bottom: 20px;
+        }
+
+        .tab {
+            padding: 10px 20px;
+            cursor: pointer;
+            border-bottom: 2px solid transparent;
+            transition: all 0.3s;
+        }
+
+        .tab.active {
+            border-bottom-color: #00ff41;
+            background: rgba(0, 255, 65, 0.1);
+            text-shadow: 0 0 5px #00ff41;
+        }
+
+        .tab:hover {
+            background: rgba(0, 255, 65, 0.05);
+        }
+
+        .workspace {
+            flex: 1;
+            position: relative;
+            padding: 20px;
+            overflow: auto;
+        }
+
+        .component-library {
+            margin-bottom: 30px;
+        }
+
+        .component-library h3 {
+            margin-bottom: 15px;
+            color: #00ff41;
+            text-shadow: 0 0 5px #00ff41;
+        }
+
+        .component-item {
+            display: block;
+            width: 100%;
+            padding: 10px;
+            margin-bottom: 10px;
+            background: rgba(0, 255, 65, 0.1);
+            border: 1px solid #00ff41;
+            border-radius: 5px;
+            color: #00ff41;
+            text-align: center;
+            cursor: grab;
+            transition: all 0.3s;
+            font-family: inherit;
+        }
+
+        .component-item:hover {
+            background: rgba(0, 255, 65, 0.2);
+            transform: translateX(5px);
+            box-shadow: 0 0 15px rgba(0, 255, 65, 0.3);
+        }
+
+        .component-item:active {
+            cursor: grabbing;
+        }
+
+        .drop-zone {
+            min-height: 400px;
+            border: 2px dashed #00ff41;
+            border-radius: 10px;
+            background: rgba(0, 255, 65, 0.02);
+            position: relative;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            flex-direction: column;
+            transition: all 0.3s;
+        }
+
+        .drop-zone.drag-over {
+            background: rgba(0, 255, 65, 0.1);
+            border-color: #ff6b35;
+            box-shadow: inset 0 0 20px rgba(0, 255, 65, 0.2);
+        }
+
+        .drop-zone-text {
+            font-size: 18px;
+            opacity: 0.6;
+            pointer-events: none;
+        }
+
+        .dropped-element {
+            position: absolute;
+            padding: 10px 20px;
+            background: rgba(0, 255, 65, 0.15);
+            border: 1px solid #00ff41;
+            border-radius: 5px;
+            cursor: move;
+            user-select: none;
+            transition: all 0.3s;
+        }
+
+        .dropped-element:hover {
+            background: rgba(0, 255, 65, 0.25);
+            transform: scale(1.05);
+            z-index: 10;
+        }
+
+        .dropped-element.selected {
+            border-color: #ff6b35;
+            box-shadow: 0 0 15px rgba(255, 107, 53, 0.5);
+        }
+
+        .calculator-area {
+            display: none;
+            grid-template-columns: 1fr 300px;
+            gap: 20px;
+            height: 100%;
+            padding: 20px;
+        }
+
+        .calculator-area.active {
+            display: grid;
+        }
+
+        .canvas-container {
+            background: rgba(0, 0, 0, 0.3);
+            border: 1px solid #00ff41;
+            border-radius: 10px;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .calculator-canvas {
+            width: 100%;
+            height: 100%;
+            cursor: crosshair;
+        }
+
+        .calculator-controls {
+            display: flex;
+            flex-direction: column;
+            gap: 20px;
+        }
+
+        .shape-selector {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 10px;
+        }
+
+        .shape-btn {
+            padding: 15px;
+            background: rgba(0, 255, 65, 0.1);
+            border: 1px solid #00ff41;
+            border-radius: 5px;
+            color: #00ff41;
+            cursor: pointer;
+            transition: all 0.3s;
+            font-family: inherit;
+        }
+
+        .shape-btn:hover, .shape-btn.active {
+            background: rgba(0, 255, 65, 0.2);
+            transform: scale(1.05);
+            box-shadow: 0 0 10px rgba(0, 255, 65, 0.3);
+        }
+
+        .calculation-display {
+            background: rgba(0, 0, 0, 0.5);
+            border: 1px solid #00ff41;
+            border-radius: 10px;
+            padding: 20px;
+            min-height: 150px;
+        }
+
+        .calculation-result {
+            font-size: 24px;
+            color: #00ff41;
+            text-shadow: 0 0 10px #00ff41;
+            margin-bottom: 10px;
+        }
+
+        .calculation-formula {
+            font-size: 14px;
+            opacity: 0.7;
+            font-style: italic;
+        }
+
+        .property-group {
+            margin-bottom: 20px;
+        }
+
+        .property-group h4 {
+            margin-bottom: 10px;
+            color: #00ff41;
+        }
+
+        .property-input {
+            width: 100%;
+            padding: 8px;
+            background: rgba(0, 0, 0, 0.3);
+            border: 1px solid #00ff41;
+            border-radius: 3px;
+            color: #00ff41;
+            font-family: inherit;
+            margin-bottom: 10px;
+        }
+
+        .property-input:focus {
+            outline: none;
+            box-shadow: 0 0 10px rgba(0, 255, 65, 0.5);
+        }
+
+        .color-picker {
+            display: flex;
+            gap: 5px;
+            margin-bottom: 10px;
+        }
+
+        .color-swatch {
+            width: 30px;
+            height: 30px;
+            border-radius: 3px;
+            cursor: pointer;
+            border: 2px solid transparent;
+            transition: all 0.3s;
+        }
+
+        .color-swatch.active {
+            border-color: #00ff41;
+            box-shadow: 0 0 10px rgba(0, 255, 65, 0.5);
+        }
+
+        .export-controls {
+            margin-top: auto;
+            padding-top: 20px;
+            border-top: 1px solid #00ff41;
+        }
+
+        .export-btn {
+            width: 100%;
+            padding: 12px;
+            background: rgba(0, 255, 65, 0.2);
+            border: 1px solid #00ff41;
+            border-radius: 5px;
+            color: #00ff41;
+            cursor: pointer;
+            font-family: inherit;
+            margin-bottom: 10px;
+            transition: all 0.3s;
+        }
+
+        .export-btn:hover {
+            background: rgba(0, 255, 65, 0.3);
+            transform: translateY(-2px);
+            box-shadow: 0 5px 15px rgba(0, 255, 65, 0.2);
+        }
+
+        .integration-status {
+            background: rgba(0, 0, 0, 0.3);
+            border: 1px solid #00ff41;
+            border-radius: 5px;
+            padding: 10px;
+            margin-bottom: 20px;
+            font-size: 12px;
+        }
+
+        .status-item {
+            display: flex;
+            justify-content: space-between;
+            margin-bottom: 5px;
+        }
+
+        .status-online {
+            color: #00ff41;
+        }
+
+        .status-offline {
+            color: #ff6b35;
+        }
+
+        @media (max-width: 1200px) {
+            .control-center {
+                grid-template-columns: 1fr;
+                grid-template-rows: auto auto 1fr auto;
+            }
+            
+            .sidebar, .properties-panel {
+                order: 2;
+            }
+            
+            .main-area {
+                order: 1;
+            }
+        }
+
+        .version-info {
+            font-size: 12px;
+            opacity: 0.6;
+            text-align: center;
+        }
+    </style>
+</head>
+<body>
+    <div class="control-center">
+        <div class="header">
+            <h1>🎛️ User Control Center</h1>
+            <div class="status-indicators">
+                <div class="status-dot" title="System Online"></div>
+                <div class="status-dot" title="AI Services Active"></div>
+                <div class="status-dot" title="Database Connected"></div>
+            </div>
+        </div>
+
+        <div class="sidebar">
+            <div class="component-library">
+                <h3>🔘 Button Components</h3>
+                <button class="component-item" draggable="true" data-component="primary-button">
+                    Primary Button
+                </button>
+                <button class="component-item" draggable="true" data-component="secondary-button">
+                    Secondary Button
+                </button>
+                <button class="component-item" draggable="true" data-component="icon-button">
+                    Icon Button
+                </button>
+                <button class="component-item" draggable="true" data-component="toggle-button">
+                    Toggle Button
+                </button>
+            </div>
+
+            <div class="component-library">
+                <h3>📊 UI Elements</h3>
+                <button class="component-item" draggable="true" data-component="slider">
+                    Slider Control
+                </button>
+                <button class="component-item" draggable="true" data-component="dropdown">
+                    Dropdown Menu
+                </button>
+                <button class="component-item" draggable="true" data-component="checkbox">
+                    Checkbox
+                </button>
+                <button class="component-item" draggable="true" data-component="text-input">
+                    Text Input
+                </button>
+            </div>
+
+            <div class="component-library">
+                <h3>🎮 Game Elements</h3>
+                <button class="component-item" draggable="true" data-component="health-bar">
+                    Health Bar
+                </button>
+                <button class="component-item" draggable="true" data-component="score-counter">
+                    Score Counter
+                </button>
+                <button class="component-item" draggable="true" data-component="progress-bar">
+                    Progress Bar
+                </button>
+            </div>
+
+            <div class="integration-status">
+                <h4>🔗 System Integrations</h4>
+                <div class="status-item">
+                    <span>Character Model Service</span>
+                    <span class="status-online">●</span>
+                </div>
+                <div class="status-item">
+                    <span>Visual Builder</span>
+                    <span class="status-online">●</span>
+                </div>
+                <div class="status-item">
+                    <span>Component Graph</span>
+                    <span class="status-online">●</span>
+                </div>
+                <div class="status-item">
+                    <span>Universal Interface</span>
+                    <span class="status-offline">●</span>
+                </div>
+            </div>
+        </div>
+
+        <div class="main-area">
+            <div class="tab-container">
+                <div class="tab active" data-tab="designer">🎨 Button Designer</div>
+                <div class="tab" data-tab="calculator">📐 Area Calculator</div>
+                <div class="tab" data-tab="config">⚙️ Configuration</div>
+            </div>
+
+            <div class="workspace" id="designer-workspace">
+                <div class="drop-zone" id="button-drop-zone">
+                    <div class="drop-zone-text">
+                        Drag components here to start designing your interface
+                    </div>
+                </div>
+            </div>
+
+            <div class="calculator-area" id="calculator-workspace">
+                <div class="canvas-container">
+                    <canvas class="calculator-canvas" id="geometry-canvas"></canvas>
+                </div>
+                <div class="calculator-controls">
+                    <div>
+                        <h4>🔷 Shape Tools</h4>
+                        <div class="shape-selector">
+                            <button class="shape-btn active" data-shape="rectangle">Rectangle</button>
+                            <button class="shape-btn" data-shape="circle">Circle</button>
+                            <button class="shape-btn" data-shape="triangle">Triangle</button>
+                            <button class="shape-btn" data-shape="polygon">Polygon</button>
+                        </div>
+                    </div>
+                    
+                    <div class="calculation-display">
+                        <div class="calculation-result" id="area-result">
+                            Area: 0 units²
+                        </div>
+                        <div class="calculation-formula" id="area-formula">
+                            Select or draw a shape to calculate area
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="properties-panel">
+            <div class="property-group">
+                <h4>🎨 Appearance</h4>
+                <input type="text" class="property-input" placeholder="Label text" id="element-text">
+                <div class="color-picker">
+                    <div class="color-swatch active" style="background: #00ff41" data-color="#00ff41"></div>
+                    <div class="color-swatch" style="background: #ff6b35" data-color="#ff6b35"></div>
+                    <div class="color-swatch" style="background: #4ecdc4" data-color="#4ecdc4"></div>
+                    <div class="color-swatch" style="background: #45b7d1" data-color="#45b7d1"></div>
+                    <div class="color-swatch" style="background: #f9ca24" data-color="#f9ca24"></div>
+                    <div class="color-swatch" style="background: #f0932b" data-color="#f0932b"></div>
+                </div>
+            </div>
+
+            <div class="property-group">
+                <h4>📏 Dimensions</h4>
+                <input type="number" class="property-input" placeholder="Width" id="element-width">
+                <input type="number" class="property-input" placeholder="Height" id="element-height">
+            </div>
+
+            <div class="property-group">
+                <h4>🎯 Actions</h4>
+                <input type="text" class="property-input" placeholder="Click action" id="element-action">
+                <input type="text" class="property-input" placeholder="API endpoint" id="element-endpoint">
+            </div>
+
+            <div class="property-group">
+                <h4>✨ Effects</h4>
+                <label>
+                    <input type="checkbox" id="element-glow"> Glow effect
+                </label><br>
+                <label>
+                    <input type="checkbox" id="element-pulse"> Pulse animation
+                </label><br>
+                <label>
+                    <input type="checkbox" id="element-hover"> Hover transform
+                </label>
+            </div>
+
+            <div class="export-controls">
+                <button class="export-btn" onclick="exportAsHTML()">
+                    📄 Export as HTML
+                </button>
+                <button class="export-btn" onclick="exportAsCSS()">
+                    🎨 Export as CSS
+                </button>
+                <button class="export-btn" onclick="exportAsJS()">
+                    ⚙️ Export as JavaScript
+                </button>
+                <button class="export-btn" onclick="saveProfile()">
+                    💾 Save Profile
+                </button>
+            </div>
+
+            <div class="version-info">
+                v1.0.0 - Document Generator UI Builder
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // Core Control Center JavaScript
+        let selectedElement = null;
+        let currentShape = 'rectangle';
+        let isDrawing = false;
+        let shapes = [];
+
+        // Tab switching
+        document.querySelectorAll('.tab').forEach(tab => {
+            tab.addEventListener('click', () => {
+                document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
+                tab.classList.add('active');
+                
+                const tabName = tab.dataset.tab;
+                
+                // Hide all workspaces
+                document.getElementById('designer-workspace').style.display = 'none';
+                document.getElementById('calculator-workspace').classList.remove('active');
+                
+                // Show selected workspace
+                if (tabName === 'designer') {
+                    document.getElementById('designer-workspace').style.display = 'block';
+                } else if (tabName === 'calculator') {
+                    document.getElementById('calculator-workspace').classList.add('active');
+                    initCanvas();
+                } else if (tabName === 'config') {
+                    showConfigPanel();
+                }
+            });
+        });
+
+        // Drag and Drop System
+        let draggedElement = null;
+
+        document.querySelectorAll('.component-item').forEach(item => {
+            item.addEventListener('dragstart', (e) => {
+                draggedElement = e.target;
+                e.dataTransfer.effectAllowed = 'copy';
+            });
+        });
+
+        const dropZone = document.getElementById('button-drop-zone');
+
+        dropZone.addEventListener('dragover', (e) => {
+            e.preventDefault();
+            dropZone.classList.add('drag-over');
+        });
+
+        dropZone.addEventListener('dragleave', () => {
+            dropZone.classList.remove('drag-over');
+        });
+
+        dropZone.addEventListener('drop', (e) => {
+            e.preventDefault();
+            dropZone.classList.remove('drag-over');
+            
+            if (draggedElement) {
+                const rect = dropZone.getBoundingClientRect();
+                const x = e.clientX - rect.left;
+                const y = e.clientY - rect.top;
+                
+                createDroppedElement(draggedElement.dataset.component, x, y, draggedElement.textContent);
+                
+                // Hide drop zone text if first element
+                if (dropZone.children.length === 2) {
+                    dropZone.querySelector('.drop-zone-text').style.display = 'none';
+                }
+            }
+        });
+
+        function createDroppedElement(component, x, y, text) {
+            const element = document.createElement('div');
+            element.className = 'dropped-element';
+            element.style.left = x + 'px';
+            element.style.top = y + 'px';
+            element.textContent = text;
+            element.dataset.component = component;
+            
+            element.addEventListener('click', () => selectElement(element));
+            element.addEventListener('mousedown', startDrag);
+            
+            dropZone.appendChild(element);
+        }
+
+        function selectElement(element) {
+            document.querySelectorAll('.dropped-element').forEach(el => {
+                el.classList.remove('selected');
+            });
+            
+            element.classList.add('selected');
+            selectedElement = element;
+            
+            // Update property panel
+            document.getElementById('element-text').value = element.textContent;
+            document.getElementById('element-width').value = element.offsetWidth;
+            document.getElementById('element-height').value = element.offsetHeight;
+        }
+
+        function startDrag(e) {
+            if (!e.target.classList.contains('dropped-element')) return;
+            
+            const element = e.target;
+            const rect = dropZone.getBoundingClientRect();
+            const offsetX = e.clientX - element.getBoundingClientRect().left;
+            const offsetY = e.clientY - element.getBoundingClientRect().top;
+            
+            function onMouseMove(e) {
+                const x = e.clientX - rect.left - offsetX;
+                const y = e.clientY - rect.top - offsetY;
+                
+                element.style.left = Math.max(0, Math.min(x, dropZone.offsetWidth - element.offsetWidth)) + 'px';
+                element.style.top = Math.max(0, Math.min(y, dropZone.offsetHeight - element.offsetHeight)) + 'px';
+            }
+            
+            function onMouseUp() {
+                document.removeEventListener('mousemove', onMouseMove);
+                document.removeEventListener('mouseup', onMouseUp);
+            }
+            
+            document.addEventListener('mousemove', onMouseMove);
+            document.addEventListener('mouseup', onMouseUp);
+        }
+
+        // Property Panel Updates
+        document.getElementById('element-text').addEventListener('input', (e) => {
+            if (selectedElement) {
+                selectedElement.textContent = e.target.value;
+            }
+        });
+
+        document.querySelectorAll('.color-swatch').forEach(swatch => {
+            swatch.addEventListener('click', () => {
+                document.querySelectorAll('.color-swatch').forEach(s => s.classList.remove('active'));
+                swatch.classList.add('active');
+                
+                if (selectedElement) {
+                    selectedElement.style.borderColor = swatch.dataset.color;
+                    selectedElement.style.color = swatch.dataset.color;
+                }
+            });
+        });
+
+        // Canvas System for Area Calculator
+        let canvas, ctx;
+
+        function initCanvas() {
+            canvas = document.getElementById('geometry-canvas');
+            ctx = canvas.getContext('2d');
+            
+            // Set canvas size
+            canvas.width = canvas.offsetWidth;
+            canvas.height = canvas.offsetHeight;
+            
+            // Clear canvas
+            ctx.fillStyle = 'rgba(0, 20, 40, 0.8)';
+            ctx.fillRect(0, 0, canvas.width, canvas.height);
+            
+            // Add event listeners
+            canvas.addEventListener('mousedown', startDrawing);
+            canvas.addEventListener('mousemove', drawShape);
+            canvas.addEventListener('mouseup', finishDrawing);
+        }
+
+        // Shape selection
+        document.querySelectorAll('.shape-btn').forEach(btn => {
+            btn.addEventListener('click', () => {
+                document.querySelectorAll('.shape-btn').forEach(b => b.classList.remove('active'));
+                btn.classList.add('active');
+                currentShape = btn.dataset.shape;
+            });
+        });
+
+        let startX, startY;
+
+        function startDrawing(e) {
+            const rect = canvas.getBoundingClientRect();
+            startX = e.clientX - rect.left;
+            startY = e.clientY - rect.top;
+            isDrawing = true;
+        }
+
+        function drawShape(e) {
+            if (!isDrawing) return;
+            
+            const rect = canvas.getBoundingClientRect();
+            const currentX = e.clientX - rect.left;
+            const currentY = e.clientY - rect.top;
+            
+            // Clear and redraw
+            ctx.fillStyle = 'rgba(0, 20, 40, 0.8)';
+            ctx.fillRect(0, 0, canvas.width, canvas.height);
+            
+            // Redraw existing shapes
+            shapes.forEach(shape => {
+                drawShapeObject(shape);
+            });
+            
+            // Draw current shape
+            ctx.strokeStyle = '#00ff41';
+            ctx.lineWidth = 2;
+            ctx.beginPath();
+            
+            switch (currentShape) {
+                case 'rectangle':
+                    const width = currentX - startX;
+                    const height = currentY - startY;
+                    ctx.rect(startX, startY, width, height);
+                    break;
+                    
+                case 'circle':
+                    const radius = Math.sqrt(Math.pow(currentX - startX, 2) + Math.pow(currentY - startY, 2));
+                    ctx.arc(startX, startY, radius, 0, 2 * Math.PI);
+                    break;
+                    
+                case 'triangle':
+                    ctx.moveTo(startX, startY);
+                    ctx.lineTo(currentX, currentY);
+                    ctx.lineTo(startX - (currentX - startX), currentY);
+                    ctx.closePath();
+                    break;
+            }
+            
+            ctx.stroke();
+        }
+
+        function finishDrawing(e) {
+            if (!isDrawing) return;
+            isDrawing = false;
+            
+            const rect = canvas.getBoundingClientRect();
+            const endX = e.clientX - rect.left;
+            const endY = e.clientY - rect.top;
+            
+            // Create shape object
+            const shape = {
+                type: currentShape,
+                startX: startX,
+                startY: startY,
+                endX: endX,
+                endY: endY
+            };
+            
+            shapes.push(shape);
+            calculateArea(shape);
+        }
+
+        function drawShapeObject(shape) {
+            ctx.strokeStyle = '#00ff41';
+            ctx.lineWidth = 2;
+            ctx.beginPath();
+            
+            switch (shape.type) {
+                case 'rectangle':
+                    const width = shape.endX - shape.startX;
+                    const height = shape.endY - shape.startY;
+                    ctx.rect(shape.startX, shape.startY, width, height);
+                    break;
+                    
+                case 'circle':
+                    const radius = Math.sqrt(Math.pow(shape.endX - shape.startX, 2) + Math.pow(shape.endY - shape.startY, 2));
+                    ctx.arc(shape.startX, shape.startY, radius, 0, 2 * Math.PI);
+                    break;
+                    
+                case 'triangle':
+                    ctx.moveTo(shape.startX, shape.startY);
+                    ctx.lineTo(shape.endX, shape.endY);
+                    ctx.lineTo(shape.startX - (shape.endX - shape.startX), shape.endY);
+                    ctx.closePath();
+                    break;
+            }
+            
+            ctx.stroke();
+        }
+
+        function calculateArea(shape) {
+            let area = 0;
+            let formula = '';
+            
+            switch (shape.type) {
+                case 'rectangle':
+                    const width = Math.abs(shape.endX - shape.startX);
+                    const height = Math.abs(shape.endY - shape.startY);
+                    area = width * height;
+                    formula = `Area = width × height = ${Math.round(width)} × ${Math.round(height)} = ${Math.round(area)}`;
+                    break;
+                    
+                case 'circle':
+                    const radius = Math.sqrt(Math.pow(shape.endX - shape.startX, 2) + Math.pow(shape.endY - shape.startY, 2));
+                    area = Math.PI * radius * radius;
+                    formula = `Area = π × r² = π × ${Math.round(radius)}² = ${Math.round(area)}`;
+                    break;
+                    
+                case 'triangle':
+                    const base = Math.abs(2 * (shape.endX - shape.startX));
+                    const tri_height = Math.abs(shape.endY - shape.startY);
+                    area = 0.5 * base * tri_height;
+                    formula = `Area = ½ × base × height = ½ × ${Math.round(base)} × ${Math.round(tri_height)} = ${Math.round(area)}`;
+                    break;
+            }
+            
+            document.getElementById('area-result').textContent = `Area: ${Math.round(area)} units²`;
+            document.getElementById('area-formula').textContent = formula;
+        }
+
+        // Export Functions
+        function exportAsHTML() {
+            const elements = document.querySelectorAll('.dropped-element');
+            let html = '<div class="custom-interface">\n';
+            
+            elements.forEach(element => {
+                html += `  <button class="${element.dataset.component}" style="position: absolute; left: ${element.style.left}; top: ${element.style.top}; color: ${element.style.color}; border-color: ${element.style.borderColor};">\n`;
+                html += `    ${element.textContent}\n`;
+                html += `  </button>\n`;
+            });
+            
+            html += '</div>';
+            
+            downloadFile('interface.html', html);
+        }
+
+        function exportAsCSS() {
+            const elements = document.querySelectorAll('.dropped-element');
+            let css = '/* Generated CSS from User Control Center */\n\n';
+            
+            css += '.custom-interface {\n  position: relative;\n  width: 100%;\n  height: 400px;\n}\n\n';
+            
+            elements.forEach((element, index) => {
+                css += `.${element.dataset.component}-${index} {\n`;
+                css += `  position: absolute;\n`;
+                css += `  left: ${element.style.left};\n`;
+                css += `  top: ${element.style.top};\n`;
+                css += `  color: ${element.style.color};\n`;
+                css += `  border-color: ${element.style.borderColor};\n`;
+                css += '}\n\n';
+            });
+            
+            downloadFile('interface.css', css);
+        }
+
+        function exportAsJS() {
+            const elements = document.querySelectorAll('.dropped-element');
+            let js = '// Generated JavaScript from User Control Center\n\n';
+            
+            js += 'const interfaceElements = [\n';
+            
+            elements.forEach((element, index) => {
+                js += '  {\n';
+                js += `    type: "${element.dataset.component}",\n`;
+                js += `    text: "${element.textContent}",\n`;
+                js += `    x: ${parseInt(element.style.left)},\n`;
+                js += `    y: ${parseInt(element.style.top)},\n`;
+                js += `    color: "${element.style.color}",\n`;
+                js += `    borderColor: "${element.style.borderColor}"\n`;
+                js += '  }' + (index < elements.length - 1 ? ',' : '') + '\n';
+            });
+            
+            js += '];\n\n';
+            js += '// Function to recreate the interface\nfunction createInterface() {\n  // Implementation here\n}';
+            
+            downloadFile('interface.js', js);
+        }
+
+        function saveProfile() {
+            const elements = document.querySelectorAll('.dropped-element');
+            const profile = {
+                version: '1.0.0',
+                timestamp: new Date().toISOString(),
+                elements: Array.from(elements).map(element => ({
+                    type: element.dataset.component,
+                    text: element.textContent,
+                    x: parseInt(element.style.left),
+                    y: parseInt(element.style.top),
+                    color: element.style.color,
+                    borderColor: element.style.borderColor
+                })),
+                shapes: shapes
+            };
+            
+            downloadFile('profile.json', JSON.stringify(profile, null, 2));
+        }
+
+        function downloadFile(filename, content) {
+            const blob = new Blob([content], { type: 'text/plain' });
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = filename;
+            document.body.appendChild(a);
+            a.click();
+            document.body.removeChild(a);
+            URL.revokeObjectURL(url);
+        }
+
+        function showConfigPanel() {
+            alert('Configuration panel coming soon! This will integrate with your existing systems.');
+        }
+
+        // Initialize
+        document.addEventListener('DOMContentLoaded', () => {
+            console.log('🎛️ User Control Center initialized');
+            console.log('✅ Drag & Drop System Ready');
+            console.log('✅ Area Calculator Ready'); 
+            console.log('✅ Export System Ready');
+        });
+    </script>
+</body>
+</html>

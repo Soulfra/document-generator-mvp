@@ -1,0 +1,709 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>🏴‍☠️ Document Generator - Visual Command Center</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        
+        body {
+            font-family: 'Monaco', 'Menlo', 'Ubuntu Mono', monospace;
+            background: linear-gradient(135deg, #0a0a0a 0%, #1a1a2e 50%, #16213e 100%);
+            color: #00ff88;
+            overflow-x: hidden;
+        }
+        
+        .main-container {
+            display: grid;
+            grid-template-columns: 300px 1fr;
+            height: 100vh;
+        }
+        
+        .sidebar {
+            background: rgba(0, 0, 0, 0.8);
+            border-right: 2px solid #00ff88;
+            padding: 20px;
+            overflow-y: auto;
+        }
+        
+        .main-content {
+            display: grid;
+            grid-template-rows: auto 1fr auto;
+            height: 100vh;
+        }
+        
+        .header {
+            background: rgba(0, 255, 136, 0.1);
+            padding: 20px;
+            border-bottom: 2px solid #00ff88;
+            text-align: center;
+        }
+        
+        .header h1 {
+            font-size: 2.5em;
+            text-shadow: 0 0 20px #00ff88;
+            margin-bottom: 10px;
+        }
+        
+        .workspace {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            grid-template-rows: 1fr 1fr;
+            gap: 20px;
+            padding: 20px;
+            overflow: hidden;
+        }
+        
+        .panel {
+            background: rgba(26, 26, 46, 0.8);
+            border: 1px solid #00ff88;
+            border-radius: 10px;
+            padding: 20px;
+            overflow: hidden;
+            position: relative;
+        }
+        
+        .panel h3 {
+            color: #00ffff;
+            margin-bottom: 15px;
+            text-align: center;
+        }
+        
+        .ocean-container {
+            width: 100%;
+            height: 300px;
+            background: radial-gradient(circle, #001122, #003366);
+            border-radius: 10px;
+            position: relative;
+            overflow: hidden;
+        }
+        
+        .ship {
+            position: absolute;
+            width: 40px;
+            height: 30px;
+            background: #8B4513;
+            clip-path: polygon(15% 0%, 85% 0%, 100% 50%, 85% 100%, 15% 100%, 0% 50%);
+            transition: all 2s ease-in-out;
+            cursor: pointer;
+        }
+        
+        .ship.save-or-sink {
+            background: #00ff88;
+            filter: drop-shadow(0 0 10px #00ff88);
+        }
+        
+        .ship.deal-or-delete {
+            background: #ff6666;
+            filter: drop-shadow(0 0 10px #ff6666);
+        }
+        
+        .island {
+            position: absolute;
+            width: 60px;
+            height: 60px;
+            background: radial-gradient(circle, #228B22, #006400);
+            border-radius: 50%;
+            box-shadow: 0 0 20px rgba(0, 100, 0, 0.5);
+        }
+        
+        .treasure {
+            position: absolute;
+            width: 20px;
+            height: 20px;
+            background: gold;
+            border-radius: 50%;
+            animation: glitter 2s ease-in-out infinite;
+        }
+        
+        @keyframes glitter {
+            0%, 100% { transform: scale(1); }
+            50% { transform: scale(1.3); }
+        }
+        
+        .waves {
+            position: absolute;
+            width: 100%;
+            height: 100%;
+            background: url('data:image/svg+xml,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100"><path d="M0 50 Q 25 40 50 50 T 100 50 L 100 100 L 0 100 Z" fill="%23004488" opacity="0.3"/></svg>');
+            animation: waves 3s ease-in-out infinite;
+        }
+        
+        @keyframes waves {
+            0%, 100% { transform: translateY(0); }
+            50% { transform: translateY(-10px); }
+        }
+        
+        .service-status {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 10px;
+            max-height: 300px;
+            overflow-y: auto;
+        }
+        
+        .service {
+            background: rgba(0, 0, 0, 0.6);
+            padding: 10px;
+            border-radius: 5px;
+            border-left: 4px solid #666;
+            transition: all 0.3s ease;
+        }
+        
+        .service.online {
+            border-left-color: #00ff00;
+            background: rgba(0, 255, 0, 0.1);
+        }
+        
+        .service.offline {
+            border-left-color: #ff0000;
+            background: rgba(255, 0, 0, 0.1);
+        }
+        
+        .drop-zone {
+            border: 2px dashed #00ff88;
+            border-radius: 10px;
+            padding: 40px;
+            text-align: center;
+            transition: all 0.3s ease;
+            background: rgba(0, 255, 136, 0.05);
+        }
+        
+        .drop-zone:hover {
+            background: rgba(0, 255, 136, 0.1);
+            border-color: #88ff00;
+        }
+        
+        .drop-zone.dragging {
+            background: rgba(0, 255, 136, 0.2);
+            border-color: #ffff00;
+        }
+        
+        .menu-item {
+            display: block;
+            width: 100%;
+            padding: 10px;
+            margin: 5px 0;
+            background: rgba(0, 255, 136, 0.1);
+            border: 1px solid #00ff88;
+            border-radius: 5px;
+            color: #00ff88;
+            text-decoration: none;
+            transition: all 0.3s ease;
+        }
+        
+        .menu-item:hover {
+            background: rgba(0, 255, 136, 0.2);
+            transform: translateX(5px);
+        }
+        
+        .status-footer {
+            background: rgba(0, 0, 0, 0.8);
+            padding: 15px;
+            border-top: 2px solid #00ff88;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+        
+        .stats {
+            display: flex;
+            gap: 20px;
+        }
+        
+        .stat {
+            text-align: center;
+        }
+        
+        .stat-value {
+            font-size: 1.5em;
+            color: #88ff00;
+            font-weight: bold;
+        }
+        
+        .log-output {
+            background: rgba(0, 0, 0, 0.8);
+            padding: 15px;
+            border-radius: 5px;
+            height: 200px;
+            overflow-y: auto;
+            font-family: monospace;
+            font-size: 0.9em;
+        }
+        
+        .log-entry {
+            margin: 2px 0;
+            padding: 2px 0;
+        }
+        
+        .log-entry.info { color: #00ff88; }
+        .log-entry.warning { color: #ffff00; }
+        .log-entry.error { color: #ff6666; }
+        .log-entry.success { color: #88ff00; }
+    </style>
+</head>
+<body>
+    <div class="main-container">
+        <!-- Sidebar Menu -->
+        <div class="sidebar">
+            <h2>🎛️ Command Center</h2>
+            
+            <h3>🚀 Quick Actions</h3>
+            <a href="#" class="menu-item" onclick="generateMVP()">📄 Generate MVP</a>
+            <a href="#" class="menu-item" onclick="openShipRektGame()">🏴‍☠️ ShipRekt Battle</a>
+            <a href="#" class="menu-item" onclick="startVoiceChat()">🗣️ Voice Chat</a>
+            <a href="#" class="menu-item" onclick="viewAnalytics()">📊 Analytics</a>
+            
+            <h3>🌐 Services</h3>
+            <a href="http://localhost:8889" class="menu-item" target="_blank">📄 Document Gen</a>
+            <a href="http://localhost:9706" class="menu-item" target="_blank">🎮 Gaming Economy</a>
+            <a href="http://localhost:9705" class="menu-item" target="_blank">📈 Charting Engine</a>
+            <a href="http://localhost:3000" class="menu-item" target="_blank">🔧 MCP Templates</a>
+            <a href="http://localhost:8080" class="menu-item" target="_blank">🏛️ Platform Hub</a>
+            
+            <h3>🎮 Games</h3>
+            <a href="AI-GAME-WORLD.html" class="menu-item" target="_blank">🤖 AI Game World</a>
+            <a href="3D-API-WORLD.html" class="menu-item" target="_blank">🌐 3D API World</a>
+            <a href="WORKING-GAMING-ENGINE.js" class="menu-item" onclick="startGamingEngine()">⚙️ Gaming Engine</a>
+            
+            <h3>🤖 AI Systems</h3>
+            <div id="ollama-status" class="service offline">
+                <strong>Ollama AI</strong><br>
+                <small>http://localhost:11434</small>
+                <div id="ollama-models" style="font-size: 0.8em; margin-top: 5px; color: #888;"></div>
+            </div>
+            
+            <h3>🚀 AI Integration</h3>
+            <div id="ai-integration-status">
+                <div style="margin: 5px 0; font-size: 0.9em;">
+                    <span style="color: #00ff88;">Document AI:</span> <span id="document-ai-status">Checking...</span>
+                </div>
+                <div style="margin: 5px 0; font-size: 0.9em;">
+                    <span style="color: #00ffff;">MVP AI:</span> <span id="mvp-ai-status">Checking...</span>
+                </div>
+                <div style="margin: 5px 0; font-size: 0.9em;">
+                    <span style="color: #ffff00;">Gaming AI:</span> <span id="gaming-ai-status">Checking...</span>
+                </div>
+            </div>
+        </div>
+        
+        <!-- Main Content -->
+        <div class="main-content">
+            <div class="header">
+                <h1>🏴‍☠️ Document Generator Platform</h1>
+                <p>Transform Documents → Working MVPs → Pirate Adventures</p>
+            </div>
+            
+            <div class="workspace">
+                <!-- ShipRekt Ocean View -->
+                <div class="panel">
+                    <h3>🌊 ShipRekt Ocean</h3>
+                    <div class="ocean-container" id="ocean">
+                        <div class="waves"></div>
+                        <!-- Ships will be added dynamically -->
+                    </div>
+                    <div style="margin-top: 10px; text-align: center;">
+                        <strong>SaveOrSink: <span id="save-score">0</span></strong> | 
+                        <strong>DealOrDelete: <span id="delete-score">0</span></strong>
+                    </div>
+                </div>
+                
+                <!-- Document Upload -->
+                <div class="panel">
+                    <h3>📄 Document Processing</h3>
+                    <div class="drop-zone" ondrop="dropHandler(event);" ondragover="dragOverHandler(event);">
+                        <h4>Drop Your Document Here</h4>
+                        <p>PDF, Word, Markdown, Business Plans</p>
+                        <p><strong>→ AI Analysis → MVP Generation → Pirate Game</strong></p>
+                        <input type="file" id="fileInput" style="display: none;" onchange="handleFile(this.files[0])">
+                        <br><br>
+                        <button onclick="document.getElementById('fileInput').click()" 
+                                style="background: #00ff88; color: #001122; padding: 10px 20px; border: none; border-radius: 5px; cursor: pointer;">
+                            Choose File
+                        </button>
+                    </div>
+                </div>
+                
+                <!-- Services Status -->
+                <div class="panel">
+                    <h3>🔧 System Status</h3>
+                    <div class="service-status" id="services">
+                        <!-- Services will be populated dynamically -->
+                    </div>
+                </div>
+                
+                <!-- Live Logs -->
+                <div class="panel">
+                    <h3>📋 Live Activity</h3>
+                    <div class="log-output" id="logs">
+                        <div class="log-entry info">🚀 Document Generator Platform initialized</div>
+                        <div class="log-entry info">🎮 ShipRekt gaming engine ready</div>
+                        <div class="log-entry info">🤖 AI services connecting...</div>
+                    </div>
+                </div>
+            </div>
+            
+            <div class="status-footer">
+                <div class="stats">
+                    <div class="stat">
+                        <div class="stat-value" id="mvp-count">0</div>
+                        <div>MVPs Generated</div>
+                    </div>
+                    <div class="stat">
+                        <div class="stat-value" id="game-count">0</div>
+                        <div>Games Created</div>
+                    </div>
+                    <div class="stat">
+                        <div class="stat-value" id="ai-requests">0</div>
+                        <div>AI Requests</div>
+                    </div>
+                </div>
+                <div>
+                    <strong>Status:</strong> <span id="system-status">🟢 All Systems Operational</span>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // Global state
+        let ships = [];
+        let gameStats = { saveOrSink: 0, dealOrDelete: 0 };
+        let systemStats = { mvps: 0, games: 0, aiRequests: 0 };
+        
+        // Initialize the system
+        async function initializeSystem() {
+            console.log('🚀 Initializing Document Generator Platform...');
+            
+            // Check services
+            await checkSystemServices();
+            
+            // Initialize ocean with ships
+            initializeOcean();
+            
+            // Start monitoring
+            setInterval(updateSystemStatus, 10000);
+            setInterval(updateShipPositions, 3000);
+            
+            addLog('✅ Platform initialization complete', 'success');
+        }
+        
+        // Check all system services
+        async function checkSystemServices() {
+            const services = [
+                { name: 'Document Generator', url: 'http://localhost:8889', port: 8889 },
+                { name: 'Gaming Economy', url: 'http://localhost:9706', port: 9706 },
+                { name: 'Charting Engine', url: 'http://localhost:9705', port: 9705 },
+                { name: 'MCP Templates', url: 'http://localhost:3000', port: 3000 },
+                { name: 'Platform Hub', url: 'http://localhost:8080', port: 8080 },
+                { name: 'Ollama AI', url: 'http://localhost:11434', port: 11434 }
+            ];
+            
+            // Check AI integration status
+            await checkAIIntegrationStatus();
+            
+            const servicesContainer = document.getElementById('services');
+            servicesContainer.innerHTML = '';
+            
+            for (const service of services) {
+                const serviceEl = document.createElement('div');
+                serviceEl.className = 'service';
+                
+                try {
+                    const response = await fetch(service.url + '/api/status', { 
+                        method: 'GET',
+                        timeout: 5000 
+                    }).catch(() => null);
+                    
+                    if (response && response.ok) {
+                        serviceEl.classList.add('online');
+                        serviceEl.innerHTML = `
+                            <strong>${service.name}</strong><br>
+                            <small>:${service.port} - Online</small>
+                        `;
+                        addLog(`✅ ${service.name} online`, 'success');
+                    } else {
+                        serviceEl.classList.add('offline');
+                        serviceEl.innerHTML = `
+                            <strong>${service.name}</strong><br>
+                            <small>:${service.port} - Offline</small>
+                        `;
+                    }
+                } catch (error) {
+                    serviceEl.classList.add('offline');
+                    serviceEl.innerHTML = `
+                        <strong>${service.name}</strong><br>
+                        <small>:${service.port} - Error</small>
+                    `;
+                }
+                
+                servicesContainer.appendChild(serviceEl);
+            }
+            
+            // Special handling for Ollama AI
+            try {
+                const ollamaResponse = await fetch('http://localhost:11434/api/tags');
+                if (ollamaResponse.ok) {
+                    const data = await ollamaResponse.json();
+                    const ollamaStatus = document.getElementById('ollama-status');
+                    ollamaStatus.classList.remove('offline');
+                    ollamaStatus.classList.add('online');
+                    
+                    const modelsDiv = document.getElementById('ollama-models');
+                    modelsDiv.innerHTML = `Models: ${data.models.length} (${data.models.slice(0, 3).map(m => m.name.split(':')[0]).join(', ')})`;
+                    
+                    addLog(`🤖 Ollama: ${data.models.length} models loaded`, 'success');
+                }
+            } catch (error) {
+                addLog('⚠️ Ollama AI offline', 'warning');
+            }
+        }
+        
+        // Check AI integration status across services
+        async function checkAIIntegrationStatus() {
+            try {
+                // Test document AI integration
+                const testDocResponse = await fetch('http://localhost:11434/api/generate', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        model: 'codellama:7b',
+                        prompt: 'Test connection',
+                        stream: false,
+                        options: { max_tokens: 10 }
+                    })
+                });
+                
+                document.getElementById('document-ai-status').textContent = testDocResponse.ok ? 
+                    '✅ CodeLlama Active' : '❌ Offline';
+                document.getElementById('document-ai-status').style.color = testDocResponse.ok ? 
+                    '#00ff88' : '#ff6666';
+                
+            } catch (error) {
+                document.getElementById('document-ai-status').textContent = '❌ Connection Failed';
+                document.getElementById('document-ai-status').style.color = '#ff6666';
+            }
+            
+            try {
+                // Test MVP generator AI status
+                const mvpStatus = await fetch('http://localhost:8889/api/integration/status');
+                if (mvpStatus.ok) {
+                    const data = await mvpStatus.json();
+                    document.getElementById('mvp-ai-status').textContent = data.integration_active ? 
+                        '✅ Integrated' : '⚠️ Fallback Mode';
+                    document.getElementById('mvp-ai-status').style.color = data.integration_active ? 
+                        '#00ff88' : '#ffff00';
+                }
+            } catch (error) {
+                document.getElementById('mvp-ai-status').textContent = '❌ Service Offline';
+                document.getElementById('mvp-ai-status').style.color = '#ff6666';
+            }
+            
+            try {
+                // Test gaming AI integration
+                const gamingStatus = await fetch('http://localhost:9706/api/gaming-economy/overview');
+                if (gamingStatus.ok) {
+                    document.getElementById('gaming-ai-status').textContent = '✅ Economy Active';
+                    document.getElementById('gaming-ai-status').style.color = '#00ff88';
+                }
+            } catch (error) {
+                document.getElementById('gaming-ai-status').textContent = '❌ Economy Offline';
+                document.getElementById('gaming-ai-status').style.color = '#ff6666';
+            }
+        }
+        
+        // Initialize ocean with ships
+        function initializeOcean() {
+            const ocean = document.getElementById('ocean');
+            
+            // Add islands
+            for (let i = 0; i < 3; i++) {
+                const island = document.createElement('div');
+                island.className = 'island';
+                island.style.left = Math.random() * 80 + '%';
+                island.style.top = Math.random() * 70 + '%';
+                ocean.appendChild(island);
+                
+                // Add treasure to some islands
+                if (Math.random() > 0.5) {
+                    const treasure = document.createElement('div');
+                    treasure.className = 'treasure';
+                    treasure.style.left = Math.random() * 80 + '%';
+                    treasure.style.top = Math.random() * 70 + '%';
+                    ocean.appendChild(treasure);
+                }
+            }
+            
+            // Add ships
+            createShip('save-or-sink', 'SaveOrSink Fleet');
+            createShip('deal-or-delete', 'DealOrDelete Armada');
+            createShip('save-or-sink', 'Guardian Ship');
+        }
+        
+        // Create a ship
+        function createShip(team, name) {
+            const ocean = document.getElementById('ocean');
+            const ship = document.createElement('div');
+            ship.className = `ship ${team}`;
+            ship.title = name;
+            ship.style.left = Math.random() * 80 + '%';
+            ship.style.top = Math.random() * 70 + '%';
+            
+            ship.addEventListener('click', () => {
+                addLog(`🚢 ${name} selected - Ready for orders!`, 'info');
+                // Add ship interaction logic here
+            });
+            
+            ocean.appendChild(ship);
+            ships.push({ element: ship, name, team });
+        }
+        
+        // Update ship positions (simulate movement)
+        function updateShipPositions() {
+            ships.forEach(ship => {
+                const currentLeft = parseInt(ship.element.style.left);
+                const currentTop = parseInt(ship.element.style.top);
+                
+                const newLeft = Math.max(0, Math.min(80, currentLeft + (Math.random() - 0.5) * 10));
+                const newTop = Math.max(0, Math.min(70, currentTop + (Math.random() - 0.5) * 10));
+                
+                ship.element.style.left = newLeft + '%';
+                ship.element.style.top = newTop + '%';
+            });
+        }
+        
+        // File handling
+        function dragOverHandler(ev) {
+            ev.preventDefault();
+            ev.currentTarget.classList.add('dragging');
+        }
+        
+        function dropHandler(ev) {
+            ev.preventDefault();
+            ev.currentTarget.classList.remove('dragging');
+            
+            if (ev.dataTransfer.items) {
+                for (let i = 0; i < ev.dataTransfer.items.length; i++) {
+                    if (ev.dataTransfer.items[i].kind === 'file') {
+                        const file = ev.dataTransfer.items[i].getAsFile();
+                        handleFile(file);
+                    }
+                }
+            }
+        }
+        
+        // Handle uploaded file
+        async function handleFile(file) {
+            if (!file) return;
+            
+            addLog(`📄 Processing: ${file.name} (${(file.size / 1024).toFixed(1)}KB)`, 'info');
+            
+            const formData = new FormData();
+            formData.append('document', file);
+            formData.append('gameMode', 'auto');
+            
+            try {
+                // Send to ShipRekt game generator
+                const response = await fetch('http://localhost:8889/generate-game', {
+                    method: 'POST',
+                    body: formData
+                });
+                
+                if (response.ok) {
+                    const result = await response.json();
+                    addLog(`✅ Game generated: ${result.elements.ships} ships, ${result.elements.islands} islands`, 'success');
+                    
+                    // Update stats
+                    systemStats.games++;
+                    document.getElementById('game-count').textContent = systemStats.games;
+                    
+                    // Open the generated game
+                    window.open(result.game.url, '_blank');
+                    
+                } else {
+                    addLog(`❌ Game generation failed: ${response.statusText}`, 'error');
+                }
+            } catch (error) {
+                addLog(`❌ Error: ${error.message}`, 'error');
+            }
+        }
+        
+        // Menu actions
+        async function generateMVP() {
+            addLog('🚀 Starting MVP generation...', 'info');
+            systemStats.mvps++;
+            document.getElementById('mvp-count').textContent = systemStats.mvps;
+        }
+        
+        function openShipRektGame() {
+            window.open('http://localhost:8889', '_blank');
+            addLog('🏴‍☠️ Opening ShipRekt battle interface', 'info');
+        }
+        
+        function startVoiceChat() {
+            addLog('🗣️ Voice chat system starting...', 'info');
+            // Add voice chat logic here
+        }
+        
+        function viewAnalytics() {
+            window.open('http://localhost:9706/api/gaming-economy/overview', '_blank');
+            addLog('📊 Opening analytics dashboard', 'info');
+        }
+        
+        function startGamingEngine() {
+            addLog('⚙️ Gaming engine starting...', 'info');
+            // Add gaming engine logic here
+        }
+        
+        // Update system status
+        async function updateSystemStatus() {
+            systemStats.aiRequests++;
+            document.getElementById('ai-requests').textContent = systemStats.aiRequests;
+            
+            // Update scores from gaming services
+            try {
+                const response = await fetch('http://localhost:9705/api/shiprekt/teams');
+                if (response.ok) {
+                    const data = await response.json();
+                    gameStats.saveOrSink = data.saveOrSink.score || 0;
+                    gameStats.dealOrDelete = data.dealOrDelete.score || 0;
+                    
+                    document.getElementById('save-score').textContent = gameStats.saveOrSink;
+                    document.getElementById('delete-score').textContent = gameStats.dealOrDelete;
+                }
+            } catch (error) {
+                console.error('Failed to update game stats:', error);
+            }
+        }
+        
+        // Add log entry
+        function addLog(message, type = 'info') {
+            const logs = document.getElementById('logs');
+            const timestamp = new Date().toLocaleTimeString();
+            
+            const logEntry = document.createElement('div');
+            logEntry.className = `log-entry ${type}`;
+            logEntry.innerHTML = `<span style="color: #666;">${timestamp}</span> ${message}`;
+            
+            logs.appendChild(logEntry);
+            logs.scrollTop = logs.scrollHeight;
+            
+            // Limit log entries
+            while (logs.children.length > 50) {
+                logs.removeChild(logs.firstChild);
+            }
+        }
+        
+        // Initialize on page load
+        document.addEventListener('DOMContentLoaded', initializeSystem);
+        
+        // Add some startup logs
+        setTimeout(() => {
+            addLog('🤖 AI systems initializing...', 'info');
+            addLog('🎮 Gaming services connecting...', 'info');
+            addLog('📄 Document processors ready', 'success');
+        }, 2000);
+    </script>
+</body>
+</html>

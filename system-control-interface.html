@@ -1,0 +1,1136 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>🔧 System Control Center</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            font-family: 'Segoe UI', -apple-system, BlinkMacSystemFont, sans-serif;
+            background: linear-gradient(135deg, #0f0f23 0%, #1a1a2e 50%, #16213e 100%);
+            color: #e1e5ee;
+            min-height: 100vh;
+            padding: 20px;
+        }
+        
+        .control-container {
+            max-width: 1400px;
+            margin: 0 auto;
+            display: grid;
+            grid-template-rows: auto auto 1fr;
+            gap: 20px;
+            height: calc(100vh - 40px);
+        }
+        
+        .control-header {
+            background: rgba(0, 0, 0, 0.8);
+            border: 2px solid #00ff88;
+            border-radius: 10px;
+            padding: 20px;
+            text-align: center;
+            box-shadow: 0 0 30px rgba(0, 255, 136, 0.3);
+        }
+        
+        .control-title {
+            font-size: 2.5em;
+            color: #00ff88;
+            text-shadow: 0 0 10px rgba(0, 255, 136, 0.5);
+            margin-bottom: 10px;
+        }
+        
+        .control-subtitle {
+            color: #888;
+            font-size: 1.1em;
+        }
+        
+        .quick-actions {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+            gap: 15px;
+        }
+        
+        .quick-action {
+            background: rgba(0, 255, 136, 0.1);
+            border: 2px solid #00ff88;
+            border-radius: 8px;
+            padding: 15px;
+            text-align: center;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            position: relative;
+        }
+        
+        .quick-action:hover {
+            background: rgba(0, 255, 136, 0.2);
+            transform: translateY(-2px);
+        }
+        
+        .quick-action.critical {
+            border-color: #ff4444;
+            background: rgba(255, 68, 68, 0.1);
+        }
+        
+        .quick-action.warning {
+            border-color: #ffaa00;
+            background: rgba(255, 170, 0, 0.1);
+        }
+        
+        .action-icon {
+            font-size: 2em;
+            margin-bottom: 8px;
+        }
+        
+        .action-label {
+            font-weight: bold;
+            margin-bottom: 5px;
+        }
+        
+        .action-status {
+            font-size: 0.8em;
+            color: #888;
+        }
+        
+        .action-status.healthy {
+            color: #00ff88;
+        }
+        
+        .action-status.degraded {
+            color: #ffaa00;
+        }
+        
+        .action-status.critical {
+            color: #ff4444;
+        }
+        
+        .main-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 20px;
+            overflow: hidden;
+        }
+        
+        .control-section {
+            background: rgba(0, 0, 0, 0.6);
+            border: 1px solid #333;
+            border-radius: 8px;
+            overflow: hidden;
+            display: flex;
+            flex-direction: column;
+        }
+        
+        .section-header {
+            background: #2a2a3e;
+            padding: 15px;
+            border-bottom: 1px solid #444;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+        
+        .section-title {
+            color: #00ff88;
+            font-weight: bold;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+        
+        .section-content {
+            flex: 1;
+            padding: 20px;
+            overflow-y: auto;
+        }
+        
+        .control-tabs {
+            display: flex;
+            background: rgba(0, 0, 0, 0.5);
+            border-bottom: 1px solid #444;
+        }
+        
+        .control-tab {
+            flex: 1;
+            padding: 10px 15px;
+            text-align: center;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            border-bottom: 2px solid transparent;
+        }
+        
+        .control-tab:hover {
+            background: rgba(0, 255, 136, 0.1);
+        }
+        
+        .control-tab.active {
+            background: rgba(0, 255, 136, 0.2);
+            border-bottom-color: #00ff88;
+            color: #00ff88;
+        }
+        
+        .tab-content {
+            display: none;
+            padding: 20px;
+        }
+        
+        .tab-content.active {
+            display: block;
+        }
+        
+        .service-list {
+            display: grid;
+            gap: 10px;
+        }
+        
+        .service-item {
+            background: rgba(255, 255, 255, 0.05);
+            border: 1px solid #333;
+            border-radius: 5px;
+            padding: 15px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+        
+        .service-item.healthy {
+            border-left: 4px solid #00ff88;
+        }
+        
+        .service-item.degraded {
+            border-left: 4px solid #ffaa00;
+        }
+        
+        .service-item.critical {
+            border-left: 4px solid #ff4444;
+        }
+        
+        .service-info {
+            flex: 1;
+        }
+        
+        .service-name {
+            font-weight: bold;
+            margin-bottom: 5px;
+        }
+        
+        .service-details {
+            font-size: 0.8em;
+            color: #888;
+        }
+        
+        .service-actions {
+            display: flex;
+            gap: 10px;
+        }
+        
+        .service-btn {
+            background: rgba(0, 255, 136, 0.2);
+            border: 1px solid #00ff88;
+            color: #00ff88;
+            padding: 5px 10px;
+            border-radius: 3px;
+            cursor: pointer;
+            font-size: 0.8em;
+            transition: all 0.3s ease;
+        }
+        
+        .service-btn:hover {
+            background: rgba(0, 255, 136, 0.4);
+        }
+        
+        .service-btn.danger {
+            background: rgba(255, 68, 68, 0.2);
+            border-color: #ff4444;
+            color: #ff4444;
+        }
+        
+        .service-btn.danger:hover {
+            background: rgba(255, 68, 68, 0.4);
+        }
+        
+        .context-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 15px;
+        }
+        
+        .context-card {
+            background: rgba(255, 255, 255, 0.05);
+            border: 1px solid #333;
+            border-radius: 8px;
+            padding: 15px;
+            text-align: center;
+            cursor: pointer;
+            transition: all 0.3s ease;
+        }
+        
+        .context-card:hover {
+            border-color: #00ff88;
+            transform: translateY(-2px);
+        }
+        
+        .context-card.active {
+            border-color: #00ff88;
+            background: rgba(0, 255, 136, 0.1);
+        }
+        
+        .context-icon {
+            font-size: 2em;
+            margin-bottom: 10px;
+        }
+        
+        .context-name {
+            font-weight: bold;
+            margin-bottom: 5px;
+        }
+        
+        .context-description {
+            font-size: 0.8em;
+            color: #888;
+            margin-bottom: 10px;
+        }
+        
+        .context-services {
+            font-size: 0.7em;
+            color: #666;
+        }
+        
+        .backup-list {
+            display: grid;
+            gap: 10px;
+            max-height: 300px;
+            overflow-y: auto;
+        }
+        
+        .backup-item {
+            background: rgba(255, 255, 255, 0.05);
+            border: 1px solid #333;
+            border-radius: 5px;
+            padding: 10px 15px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+        
+        .backup-info {
+            flex: 1;
+        }
+        
+        .backup-name {
+            font-weight: bold;
+            margin-bottom: 3px;
+        }
+        
+        .backup-date {
+            font-size: 0.8em;
+            color: #888;
+        }
+        
+        .backup-actions {
+            display: flex;
+            gap: 8px;
+        }
+        
+        .form-group {
+            margin-bottom: 15px;
+        }
+        
+        .form-label {
+            color: #00ff88;
+            display: block;
+            margin-bottom: 5px;
+            font-weight: bold;
+        }
+        
+        .form-input {
+            width: 100%;
+            background: rgba(0, 0, 0, 0.7);
+            border: 1px solid #333;
+            color: #e1e5ee;
+            padding: 8px 12px;
+            border-radius: 5px;
+        }
+        
+        .form-input:focus {
+            border-color: #00ff88;
+            outline: none;
+        }
+        
+        .btn {
+            background: #00ff88;
+            color: black;
+            border: none;
+            padding: 10px 20px;
+            border-radius: 5px;
+            cursor: pointer;
+            font-weight: bold;
+            transition: all 0.3s ease;
+        }
+        
+        .btn:hover {
+            background: #00dd77;
+            transform: translateY(-1px);
+        }
+        
+        .btn.secondary {
+            background: rgba(255, 255, 255, 0.1);
+            color: #e1e5ee;
+            border: 1px solid #333;
+        }
+        
+        .btn.secondary:hover {
+            background: rgba(255, 255, 255, 0.2);
+        }
+        
+        .btn.danger {
+            background: #ff4444;
+            color: white;
+        }
+        
+        .btn.danger:hover {
+            background: #ff3333;
+        }
+        
+        .verification-results {
+            margin-top: 20px;
+            padding: 15px;
+            background: rgba(0, 0, 0, 0.5);
+            border-radius: 5px;
+            border-left: 4px solid #00ff88;
+        }
+        
+        .verification-results.degraded {
+            border-left-color: #ffaa00;
+        }
+        
+        .verification-results.critical {
+            border-left-color: #ff4444;
+        }
+        
+        .results-header {
+            font-weight: bold;
+            margin-bottom: 10px;
+            display: flex;
+            justify-content: between;
+            align-items: center;
+        }
+        
+        .results-content {
+            font-size: 0.9em;
+        }
+        
+        .issue-list {
+            margin-top: 10px;
+        }
+        
+        .issue-item {
+            background: rgba(255, 68, 68, 0.1);
+            border-left: 3px solid #ff4444;
+            padding: 8px 12px;
+            margin-bottom: 5px;
+            border-radius: 3px;
+        }
+        
+        .recommendation-list {
+            margin-top: 10px;
+        }
+        
+        .recommendation-item {
+            background: rgba(0, 255, 136, 0.1);
+            border-left: 3px solid #00ff88;
+            padding: 8px 12px;
+            margin-bottom: 5px;
+            border-radius: 3px;
+        }
+        
+        .loading {
+            display: inline-block;
+            width: 16px;
+            height: 16px;
+            border: 2px solid #333;
+            border-top: 2px solid #00ff88;
+            border-radius: 50%;
+            animation: spin 1s linear infinite;
+        }
+        
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+        
+        .status-indicator {
+            display: inline-block;
+            width: 8px;
+            height: 8px;
+            border-radius: 50%;
+            margin-right: 5px;
+        }
+        
+        .status-indicator.healthy {
+            background: #00ff88;
+        }
+        
+        .status-indicator.degraded {
+            background: #ffaa00;
+        }
+        
+        .status-indicator.critical {
+            background: #ff4444;
+        }
+        
+        .scrollbar::-webkit-scrollbar {
+            width: 6px;
+        }
+        
+        .scrollbar::-webkit-scrollbar-track {
+            background: #333;
+        }
+        
+        .scrollbar::-webkit-scrollbar-thumb {
+            background: #00ff88;
+            border-radius: 3px;
+        }
+    </style>
+</head>
+<body>
+    <div class="control-container">
+        <div class="control-header">
+            <h1 class="control-title">🔧 System Control Center</h1>
+            <p class="control-subtitle">Comprehensive system verification, state management, and recovery tools</p>
+        </div>
+        
+        <div class="quick-actions">
+            <div class="quick-action" onclick="runVerification()">
+                <div class="action-icon">🔍</div>
+                <div class="action-label">System Verification</div>
+                <div class="action-status" id="verificationStatus">Ready</div>
+            </div>
+            
+            <div class="quick-action" onclick="createBackup()">
+                <div class="action-icon">💾</div>
+                <div class="action-label">Create Backup</div>
+                <div class="action-status" id="backupStatus">Ready</div>
+            </div>
+            
+            <div class="quick-action" onclick="showContextSwitcher()">
+                <div class="action-icon">🔄</div>
+                <div class="action-label">Switch Context</div>
+                <div class="action-status" id="contextStatus">full_stack</div>
+            </div>
+            
+            <div class="quick-action critical" onclick="emergencyFallback()">
+                <div class="action-icon">🚨</div>
+                <div class="action-label">Emergency Fallback</div>
+                <div class="action-status">Use if critical</div>
+            </div>
+            
+            <div class="quick-action" onclick="restartAllServices()">
+                <div class="action-icon">🔄</div>
+                <div class="action-label">Restart All</div>
+                <div class="action-status" id="restartStatus">Ready</div>
+            </div>
+            
+            <div class="quick-action" onclick="refreshStatus()">
+                <div class="action-icon">📊</div>
+                <div class="action-label">System Status</div>
+                <div class="action-status" id="systemHealth">Checking...</div>
+            </div>
+        </div>
+        
+        <div class="main-grid">
+            <div class="control-section">
+                <div class="control-tabs">
+                    <div class="control-tab active" onclick="switchTab('services')">🚀 Services</div>
+                    <div class="control-tab" onclick="switchTab('verification')">🔍 Verification</div>
+                    <div class="control-tab" onclick="switchTab('monitoring')">📊 Monitoring</div>
+                </div>
+                
+                <div class="tab-content active" id="servicesTab">
+                    <h3>Service Management</h3>
+                    <div class="service-list" id="serviceList">
+                        <!-- Services will be populated here -->
+                    </div>
+                </div>
+                
+                <div class="tab-content" id="verificationTab">
+                    <h3>System Verification</h3>
+                    <div style="margin-bottom: 20px;">
+                        <button class="btn" onclick="runVerification()">Run Full Verification</button>
+                        <button class="btn secondary" onclick="runQuickCheck()">Quick Health Check</button>
+                    </div>
+                    <div id="verificationResults"></div>
+                </div>
+                
+                <div class="tab-content" id="monitoringTab">
+                    <h3>System Monitoring</h3>
+                    <div id="monitoringData">
+                        <div>Loading monitoring data...</div>
+                    </div>
+                </div>
+            </div>
+            
+            <div class="control-section">
+                <div class="control-tabs">
+                    <div class="control-tab active" onclick="switchTab2('contexts')">🎯 Contexts</div>
+                    <div class="control-tab" onclick="switchTab2('backups')">💾 Backups</div>
+                    <div class="control-tab" onclick="switchTab2('recovery')">🛠️ Recovery</div>
+                </div>
+                
+                <div class="tab-content active" id="contextsTab">
+                    <h3>Context Switching</h3>
+                    <div class="context-grid" id="contextGrid">
+                        <!-- Contexts will be populated here -->
+                    </div>
+                </div>
+                
+                <div class="tab-content" id="backupsTab">
+                    <h3>Backup Management</h3>
+                    <div style="margin-bottom: 20px;">
+                        <div class="form-group">
+                            <label class="form-label">Backup Name:</label>
+                            <input type="text" class="form-input" id="backupName" placeholder="Optional custom name">
+                        </div>
+                        <button class="btn" onclick="createBackup()">Create New Backup</button>
+                    </div>
+                    <div class="backup-list scrollbar" id="backupList">
+                        <!-- Backups will be populated here -->
+                    </div>
+                </div>
+                
+                <div class="tab-content" id="recoveryTab">
+                    <h3>System Recovery</h3>
+                    <div class="form-group">
+                        <label class="form-label">Recovery Options:</label>
+                        <button class="btn secondary" onclick="rebuildSystem()">Rebuild from Config</button>
+                        <button class="btn secondary" onclick="restartAllServices()">Restart All Services</button>
+                        <button class="btn danger" onclick="emergencyFallback()">Emergency Fallback</button>
+                    </div>
+                    
+                    <div style="margin-top: 30px;">
+                        <h4>Service Controls</h4>
+                        <div id="serviceControls">
+                            <!-- Individual service controls -->
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <script>
+        class SystemControlInterface {
+            constructor() {
+                this.systemData = {
+                    services: new Map(),
+                    contexts: new Map(),
+                    backups: new Map(),
+                    currentContext: 'full_stack'
+                };
+                
+                this.serviceConfigs = {
+                    'ideas-npc': { name: 'Ideas NPC', port: 8085, icon: '🧠' },
+                    'qr-reasoning': { name: 'QR Reasoning', port: 8082, icon: '🎯' },
+                    'project-bartering': { name: 'Project Bartering', port: 8084, icon: '🏛️' },
+                    'business-management': { name: 'Business Management', port: 8086, icon: '💼' },
+                    'document-generator': { name: 'Document Generator', port: 8080, icon: '📄' }
+                };
+                
+                this.contexts = {
+                    'development': {
+                        name: 'Development',
+                        icon: '⚡',
+                        description: 'Dev tools and experimentation',
+                        services: ['ideas-npc', 'qr-reasoning', 'document-generator']
+                    },
+                    'production': {
+                        name: 'Production',
+                        icon: '🏭',
+                        description: 'Business-focused production mode',
+                        services: ['business-management', 'document-generator', 'project-bartering']
+                    },
+                    'research': {
+                        name: 'Research',
+                        icon: '🔬',
+                        description: 'Research and analysis mode',
+                        services: ['ideas-npc', 'qr-reasoning', 'project-bartering']
+                    },
+                    'business': {
+                        name: 'Business',
+                        icon: '💼',
+                        description: 'Business operations only',
+                        services: ['business-management', 'document-generator']
+                    },
+                    'full_stack': {
+                        name: 'Full Stack',
+                        icon: '🌟',
+                        description: 'All systems operational',
+                        services: Object.keys(this.serviceConfigs)
+                    }
+                };
+                
+                this.init();
+            }
+            
+            async init() {
+                console.log('🔧 Initializing System Control Interface...');
+                
+                // Populate UI
+                this.populateServices();
+                this.populateContexts();
+                this.populateBackups();
+                
+                // Start monitoring
+                this.startStatusUpdates();
+                
+                // Initial status check
+                await this.refreshStatus();
+                
+                console.log('✅ System Control Interface ready!');
+            }
+            
+            populateServices() {
+                const serviceList = document.getElementById('serviceList');
+                serviceList.innerHTML = '';
+                
+                Object.entries(this.serviceConfigs).forEach(([id, config]) => {
+                    const serviceItem = document.createElement('div');
+                    serviceItem.className = 'service-item';
+                    serviceItem.id = `service-${id}`;
+                    
+                    serviceItem.innerHTML = `
+                        <div class="service-info">
+                            <div class="service-name">${config.icon} ${config.name}</div>
+                            <div class="service-details">Port: ${config.port} • Status: <span id="status-${id}">Checking...</span></div>
+                        </div>
+                        <div class="service-actions">
+                            <button class="service-btn" onclick="controlInterface.restartService('${id}')">Restart</button>
+                            <button class="service-btn danger" onclick="controlInterface.stopService('${id}')">Stop</button>
+                        </div>
+                    `;
+                    
+                    serviceList.appendChild(serviceItem);
+                });
+            }
+            
+            populateContexts() {
+                const contextGrid = document.getElementById('contextGrid');
+                contextGrid.innerHTML = '';
+                
+                Object.entries(this.contexts).forEach(([id, context]) => {
+                    const contextCard = document.createElement('div');
+                    contextCard.className = 'context-card';
+                    if (id === this.systemData.currentContext) {
+                        contextCard.classList.add('active');
+                    }
+                    
+                    contextCard.innerHTML = `
+                        <div class="context-icon">${context.icon}</div>
+                        <div class="context-name">${context.name}</div>
+                        <div class="context-description">${context.description}</div>
+                        <div class="context-services">${context.services.length} services</div>
+                    `;
+                    
+                    contextCard.addEventListener('click', () => {
+                        this.switchContext(id);
+                    });
+                    
+                    contextGrid.appendChild(contextCard);
+                });
+            }
+            
+            populateBackups() {
+                const backupList = document.getElementById('backupList');
+                backupList.innerHTML = '<div style="color: #888; text-align: center; padding: 20px;">Loading backups...</div>';
+                
+                // Simulate loading backups
+                setTimeout(() => {
+                    backupList.innerHTML = '';
+                    
+                    const mockBackups = [
+                        { name: 'auto-backup-1735151234567', date: '2025-01-25 14:30', size: '2.4MB' },
+                        { name: 'pre-update-backup', date: '2025-01-25 10:15', size: '2.1MB' },
+                        { name: 'emergency-fallback-1735145678901', date: '2025-01-25 08:45', size: '1.8MB' }
+                    ];
+                    
+                    mockBackups.forEach(backup => {
+                        const backupItem = document.createElement('div');
+                        backupItem.className = 'backup-item';
+                        
+                        backupItem.innerHTML = `
+                            <div class="backup-info">
+                                <div class="backup-name">${backup.name}</div>
+                                <div class="backup-date">${backup.date} • ${backup.size}</div>
+                            </div>
+                            <div class="backup-actions">
+                                <button class="service-btn" onclick="controlInterface.restoreBackup('${backup.name}')">Restore</button>
+                                <button class="service-btn danger" onclick="controlInterface.deleteBackup('${backup.name}')">Delete</button>
+                            </div>
+                        `;
+                        
+                        backupList.appendChild(backupItem);
+                    });
+                }, 1000);
+            }
+            
+            async refreshStatus() {
+                console.log('📊 Refreshing system status...');
+                
+                // Check each service
+                for (const [serviceId, config] of Object.entries(this.serviceConfigs)) {
+                    const isHealthy = await this.checkServiceHealth(config.port);
+                    this.updateServiceStatus(serviceId, isHealthy);
+                }
+                
+                // Update overall system health
+                const healthyServices = Object.keys(this.serviceConfigs).filter(id => {
+                    const statusEl = document.getElementById(`status-${id}`);
+                    return statusEl && statusEl.textContent === 'Online';
+                }).length;
+                
+                const totalServices = Object.keys(this.serviceConfigs).length;
+                let systemHealth = 'critical';
+                
+                if (healthyServices === totalServices) {
+                    systemHealth = 'healthy';
+                } else if (healthyServices >= totalServices * 0.7) {
+                    systemHealth = 'degraded';
+                }
+                
+                const systemHealthEl = document.getElementById('systemHealth');
+                systemHealthEl.textContent = `${healthyServices}/${totalServices} Online`;
+                systemHealthEl.className = `action-status ${systemHealth}`;
+            }
+            
+            async checkServiceHealth(port) {
+                try {
+                    // Simulate service health check
+                    // In real implementation, this would make actual HTTP/WebSocket requests
+                    return Math.random() > 0.2; // 80% chance of being healthy
+                } catch (error) {
+                    return false;
+                }
+            }
+            
+            updateServiceStatus(serviceId, isHealthy) {
+                const serviceItem = document.getElementById(`service-${serviceId}`);
+                const statusEl = document.getElementById(`status-${serviceId}`);
+                
+                if (isHealthy) {
+                    serviceItem.className = 'service-item healthy';
+                    statusEl.textContent = 'Online';
+                } else {
+                    serviceItem.className = 'service-item critical';
+                    statusEl.textContent = 'Offline';
+                }
+            }
+            
+            startStatusUpdates() {
+                // Update status every 30 seconds
+                setInterval(() => {
+                    this.refreshStatus();
+                }, 30000);
+            }
+            
+            async runVerification() {
+                const verificationStatus = document.getElementById('verificationStatus');
+                const verificationResults = document.getElementById('verificationResults');
+                
+                verificationStatus.innerHTML = '<span class="loading"></span> Running...';
+                
+                try {
+                    // Simulate comprehensive verification
+                    await this.delay(3000);
+                    
+                    const mockResults = {
+                        overall_status: 'healthy',
+                        services: {
+                            'ideas-npc': { healthy: true, response_time: 45 },
+                            'qr-reasoning': { healthy: true, response_time: 62 },
+                            'project-bartering': { healthy: false, error: 'Connection timeout' },
+                            'business-management': { healthy: true, response_time: 38 },
+                            'document-generator': { healthy: true, response_time: 55 }
+                        },
+                        issues: ['project-bartering: Connection timeout'],
+                        recommendations: [
+                            'Restart project-bartering service',
+                            'Check network connectivity'
+                        ],
+                        performance: {
+                            overall_score: 85,
+                            memory_usage: 45,
+                            cpu_usage: 23
+                        }
+                    };
+                    
+                    this.displayVerificationResults(mockResults);
+                    verificationStatus.textContent = 'Complete';
+                    
+                } catch (error) {
+                    verificationStatus.textContent = 'Failed';
+                    console.error('Verification failed:', error);
+                }
+            }
+            
+            displayVerificationResults(results) {
+                const verificationResults = document.getElementById('verificationResults');
+                
+                let statusClass = 'verification-results';
+                if (results.overall_status === 'degraded') {
+                    statusClass += ' degraded';
+                } else if (results.overall_status === 'critical') {
+                    statusClass += ' critical';
+                }
+                
+                verificationResults.className = statusClass;
+                verificationResults.innerHTML = `
+                    <div class="results-header">
+                        <span class="status-indicator ${results.overall_status}"></span>
+                        System Status: ${results.overall_status.toUpperCase()}
+                        <span style="margin-left: auto;">Score: ${results.performance.overall_score}/100</span>
+                    </div>
+                    <div class="results-content">
+                        <div><strong>Services:</strong> ${Object.values(results.services).filter(s => s.healthy).length}/${Object.keys(results.services).length} healthy</div>
+                        <div><strong>Performance:</strong> CPU ${results.performance.cpu_usage}%, Memory ${results.performance.memory_usage}%</div>
+                        
+                        ${results.issues.length > 0 ? `
+                            <div class="issue-list">
+                                <strong>Issues Found:</strong>
+                                ${results.issues.map(issue => `<div class="issue-item">${issue}</div>`).join('')}
+                            </div>
+                        ` : ''}
+                        
+                        ${results.recommendations.length > 0 ? `
+                            <div class="recommendation-list">
+                                <strong>Recommendations:</strong>
+                                ${results.recommendations.map(rec => `<div class="recommendation-item">${rec}</div>`).join('')}
+                            </div>
+                        ` : ''}
+                    </div>
+                `;
+            }
+            
+            async createBackup() {
+                const backupStatus = document.getElementById('backupStatus');
+                const backupName = document.getElementById('backupName').value || null;
+                
+                backupStatus.innerHTML = '<span class="loading"></span> Creating...';
+                
+                try {
+                    // Simulate backup creation
+                    await this.delay(2000);
+                    
+                    const timestamp = Date.now();
+                    const name = backupName || `backup-${timestamp}`;
+                    
+                    backupStatus.textContent = 'Created';
+                    document.getElementById('backupName').value = '';
+                    
+                    // Refresh backup list
+                    this.populateBackups();
+                    
+                    console.log(`Backup created: ${name}`);
+                    
+                } catch (error) {
+                    backupStatus.textContent = 'Failed';
+                    console.error('Backup failed:', error);
+                }
+            }
+            
+            async switchContext(contextName) {
+                const contextStatus = document.getElementById('contextStatus');
+                
+                contextStatus.innerHTML = '<span class="loading"></span> Switching...';
+                
+                try {
+                    // Simulate context switch
+                    await this.delay(2000);
+                    
+                    this.systemData.currentContext = contextName;
+                    contextStatus.textContent = contextName;
+                    
+                    // Update context cards
+                    document.querySelectorAll('.context-card').forEach(card => {
+                        card.classList.remove('active');
+                    });
+                    
+                    const activeCard = document.querySelector(`.context-card:nth-child(${Object.keys(this.contexts).indexOf(contextName) + 1})`);
+                    if (activeCard) {
+                        activeCard.classList.add('active');
+                    }
+                    
+                    // Refresh service status
+                    await this.refreshStatus();
+                    
+                    console.log(`Context switched to: ${contextName}`);
+                    
+                } catch (error) {
+                    contextStatus.textContent = 'Failed';
+                    console.error('Context switch failed:', error);
+                }
+            }
+            
+            async restartService(serviceId) {
+                console.log(`Restarting service: ${serviceId}`);
+                
+                const statusEl = document.getElementById(`status-${serviceId}`);
+                statusEl.innerHTML = '<span class="loading"></span> Restarting...';
+                
+                try {
+                    // Simulate service restart
+                    await this.delay(3000);
+                    
+                    // Update status
+                    this.updateServiceStatus(serviceId, true);
+                    
+                } catch (error) {
+                    statusEl.textContent = 'Failed';
+                    console.error('Service restart failed:', error);
+                }
+            }
+            
+            async stopService(serviceId) {
+                console.log(`Stopping service: ${serviceId}`);
+                this.updateServiceStatus(serviceId, false);
+            }
+            
+            async restoreBackup(backupName) {
+                console.log(`Restoring backup: ${backupName}`);
+                
+                if (confirm(`Are you sure you want to restore from backup: ${backupName}?`)) {
+                    // Simulate restore process
+                    alert('Backup restore initiated. System will reload shortly.');
+                }
+            }
+            
+            async deleteBackup(backupName) {
+                if (confirm(`Are you sure you want to delete backup: ${backupName}?`)) {
+                    console.log(`Deleting backup: ${backupName}`);
+                    this.populateBackups();
+                }
+            }
+            
+            async emergencyFallback() {
+                if (confirm('EMERGENCY FALLBACK will stop all services and restart in minimal mode. Continue?')) {
+                    console.log('🚨 Emergency fallback initiated...');
+                    
+                    // Update all service statuses
+                    Object.keys(this.serviceConfigs).forEach(serviceId => {
+                        this.updateServiceStatus(serviceId, false);
+                    });
+                    
+                    // Simulate emergency fallback
+                    setTimeout(() => {
+                        alert('Emergency fallback complete. Minimal system restored.');
+                        this.refreshStatus();
+                    }, 3000);
+                }
+            }
+            
+            async restartAllServices() {
+                const restartStatus = document.getElementById('restartStatus');
+                
+                if (confirm('Restart all services? This may cause temporary downtime.')) {
+                    restartStatus.innerHTML = '<span class="loading"></span> Restarting...';
+                    
+                    try {
+                        // Simulate restarting all services
+                        for (const serviceId of Object.keys(this.serviceConfigs)) {
+                            await this.restartService(serviceId);
+                            await this.delay(500);
+                        }
+                        
+                        restartStatus.textContent = 'Complete';
+                        
+                    } catch (error) {
+                        restartStatus.textContent = 'Failed';
+                        console.error('Restart all failed:', error);
+                    }
+                }
+            }
+            
+            async rebuildSystem() {
+                if (confirm('Rebuild system from configuration? This will reset all services.')) {
+                    console.log('🔧 Rebuilding system...');
+                    
+                    // Simulate system rebuild
+                    setTimeout(() => {
+                        alert('System rebuild complete!');
+                        this.refreshStatus();
+                    }, 5000);
+                }
+            }
+            
+            delay(ms) {
+                return new Promise(resolve => setTimeout(resolve, ms));
+            }
+        }
+        
+        // Global functions
+        function switchTab(tabName) {
+            // Update tab buttons
+            document.querySelectorAll('.control-section:first-child .control-tab').forEach(tab => {
+                tab.classList.remove('active');
+            });
+            event.target.classList.add('active');
+            
+            // Update tab content
+            document.querySelectorAll('.control-section:first-child .tab-content').forEach(content => {
+                content.classList.remove('active');
+            });
+            document.getElementById(tabName + 'Tab').classList.add('active');
+        }
+        
+        function switchTab2(tabName) {
+            // Update tab buttons
+            document.querySelectorAll('.control-section:last-child .control-tab').forEach(tab => {
+                tab.classList.remove('active');
+            });
+            event.target.classList.add('active');
+            
+            // Update tab content
+            document.querySelectorAll('.control-section:last-child .tab-content').forEach(content => {
+                content.classList.remove('active');
+            });
+            document.getElementById(tabName + 'Tab').classList.add('active');
+        }
+        
+        function runVerification() {
+            controlInterface.runVerification();
+        }
+        
+        function runQuickCheck() {
+            controlInterface.refreshStatus();
+        }
+        
+        function createBackup() {
+            controlInterface.createBackup();
+        }
+        
+        function showContextSwitcher() {
+            // Already visible in contexts tab
+            switchTab2('contexts');
+        }
+        
+        function emergencyFallback() {
+            controlInterface.emergencyFallback();
+        }
+        
+        function restartAllServices() {
+            controlInterface.restartAllServices();
+        }
+        
+        function refreshStatus() {
+            controlInterface.refreshStatus();
+        }
+        
+        // Initialize the interface
+        const controlInterface = new SystemControlInterface();
+        
+        console.log('🔧 System Control Interface loaded');
+    </script>
+</body>
+</html>

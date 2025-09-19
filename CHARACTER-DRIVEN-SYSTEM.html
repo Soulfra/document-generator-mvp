@@ -1,0 +1,751 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Character-Driven System - STOP THE BULLSHIT</title>
+    <style>
+        body {
+            margin: 0;
+            padding: 0;
+            background: linear-gradient(45deg, #000011, #001122);
+            color: #ffffff;
+            font-family: 'Arial', sans-serif;
+            overflow: hidden;
+        }
+        
+        #game-world {
+            position: relative;
+            width: 100vw;
+            height: 100vh;
+            perspective: 1000px;
+        }
+        
+        .character {
+            position: absolute;
+            width: 80px;
+            height: 80px;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 40px;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            border: 3px solid;
+            box-shadow: 0 0 20px;
+            z-index: 100;
+        }
+        
+        .character:hover {
+            transform: scale(1.2);
+            z-index: 200;
+        }
+        
+        .character.talking {
+            animation: talk 0.5s infinite alternate;
+        }
+        
+        @keyframes talk {
+            0% { transform: scale(1); }
+            100% { transform: scale(1.1); }
+        }
+        
+        #grant-hunter {
+            top: 20%;
+            left: 10%;
+            background: linear-gradient(45deg, #00ff00, #008800);
+            border-color: #00ff00;
+            box-shadow: 0 0 20px #00ff00;
+        }
+        
+        #code-wizard {
+            top: 30%;
+            right: 15%;
+            background: linear-gradient(45deg, #0088ff, #004488);
+            border-color: #0088ff;
+            box-shadow: 0 0 20px #0088ff;
+        }
+        
+        #dungeon-master {
+            top: 60%;
+            left: 50%;
+            transform: translateX(-50%);
+            background: linear-gradient(45deg, #8800ff, #440088);
+            border-color: #8800ff;
+            box-shadow: 0 0 20px #8800ff;
+            width: 100px;
+            height: 100px;
+            font-size: 50px;
+        }
+        
+        #voice-oracle {
+            top: 20%;
+            right: 40%;
+            background: linear-gradient(45deg, #ff8800, #884400);
+            border-color: #ff8800;
+            box-shadow: 0 0 20px #ff8800;
+        }
+        
+        #shadow-tracker {
+            bottom: 20%;
+            left: 20%;
+            background: linear-gradient(45deg, #ff0088, #880044);
+            border-color: #ff0088;
+            box-shadow: 0 0 20px #ff0088;
+        }
+        
+        .speech-bubble {
+            position: absolute;
+            background: rgba(0, 0, 0, 0.9);
+            color: #ffffff;
+            padding: 15px 20px;
+            border-radius: 20px;
+            border: 2px solid;
+            max-width: 300px;
+            font-size: 14px;
+            line-height: 1.4;
+            transform: translateX(-50%);
+            z-index: 1000;
+            animation: fadeIn 0.3s ease;
+        }
+        
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateX(-50%) translateY(10px); }
+            to { opacity: 1; transform: translateX(-50%) translateY(0); }
+        }
+        
+        .speech-bubble::after {
+            content: '';
+            position: absolute;
+            bottom: -10px;
+            left: 50%;
+            transform: translateX(-50%);
+            width: 0;
+            height: 0;
+            border-left: 10px solid transparent;
+            border-right: 10px solid transparent;
+            border-top: 10px solid;
+            border-top-color: inherit;
+        }
+        
+        #central-button {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            width: 120px;
+            height: 120px;
+            border-radius: 50%;
+            background: radial-gradient(circle, #ff0040, #800020);
+            border: 4px solid #ff0040;
+            color: white;
+            font-size: 16px;
+            font-weight: bold;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            text-align: center;
+            box-shadow: 0 0 30px #ff0040;
+            transition: all 0.3s ease;
+            z-index: 50;
+        }
+        
+        #central-button:hover {
+            transform: translate(-50%, -50%) scale(1.1);
+            box-shadow: 0 0 50px #ff0040;
+        }
+        
+        #character-status {
+            position: absolute;
+            top: 20px;
+            left: 20px;
+            background: rgba(0, 0, 0, 0.8);
+            padding: 15px;
+            border-radius: 10px;
+            border: 1px solid #333;
+            min-width: 200px;
+            z-index: 300;
+        }
+        
+        .status-line {
+            margin: 5px 0;
+            display: flex;
+            justify-content: space-between;
+        }
+        
+        .status-indicator {
+            width: 10px;
+            height: 10px;
+            border-radius: 50%;
+            display: inline-block;
+            margin-left: 10px;
+        }
+        
+        .status-active { background: #00ff00; }
+        .status-idle { background: #888888; }
+        .status-working { background: #ffaa00; animation: blink 1s infinite; }
+        
+        @keyframes blink {
+            0%, 50% { opacity: 1; }
+            51%, 100% { opacity: 0.3; }
+        }
+        
+        #action-log {
+            position: absolute;
+            bottom: 20px;
+            right: 20px;
+            width: 300px;
+            height: 200px;
+            background: rgba(0, 0, 0, 0.8);
+            border: 1px solid #333;
+            border-radius: 10px;
+            padding: 10px;
+            overflow-y: auto;
+            font-size: 12px;
+            z-index: 300;
+        }
+        
+        .log-entry {
+            margin: 3px 0;
+            padding: 3px 6px;
+            border-radius: 3px;
+            animation: slideIn 0.3s ease;
+        }
+        
+        @keyframes slideIn {
+            from { transform: translateX(100%); opacity: 0; }
+            to { transform: translateX(0); opacity: 1; }
+        }
+        
+        .log-grant { background: rgba(0, 255, 0, 0.2); }
+        .log-code { background: rgba(0, 136, 255, 0.2); }
+        .log-story { background: rgba(136, 0, 255, 0.2); }
+        .log-voice { background: rgba(255, 136, 0, 0.2); }
+        .log-shadow { background: rgba(255, 0, 136, 0.2); }
+        
+        #connection-lines {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            pointer-events: none;
+            z-index: 1;
+        }
+        
+        .connection-line {
+            position: absolute;
+            height: 2px;
+            background: linear-gradient(90deg, transparent, #ffffff, transparent);
+            opacity: 0.3;
+            animation: flow 2s infinite;
+        }
+        
+        @keyframes flow {
+            0% { opacity: 0.1; }
+            50% { opacity: 0.6; }
+            100% { opacity: 0.1; }
+        }
+    </style>
+</head>
+<body>
+    <div id="game-world">
+        <!-- Connection Lines Background -->
+        <div id="connection-lines"></div>
+        
+        <!-- Characters -->
+        <div class="character" id="grant-hunter" data-name="Grant Hunter" data-role="money_finder">
+            💰
+        </div>
+        
+        <div class="character" id="code-wizard" data-name="Code Wizard" data-role="builder">
+            🧙‍♂️
+        </div>
+        
+        <div class="character" id="dungeon-master" data-name="Dungeon Master" data-role="narrator">
+            👑
+        </div>
+        
+        <div class="character" id="voice-oracle" data-name="Voice Oracle" data-role="translator">
+            🗣️
+        </div>
+        
+        <div class="character" id="shadow-tracker" data-name="Shadow Tracker" data-role="mapper">
+            👁️
+        </div>
+        
+        <!-- Central Button -->
+        <button id="central-button" onclick="activateAllCharacters()">
+            🔴<br>
+            START<br>
+            QUEST
+        </button>
+        
+        <!-- UI Elements -->
+        <div id="character-status">
+            <h3>🎭 Character Status</h3>
+            <div class="status-line">
+                <span>Grant Hunter:</span>
+                <span class="status-indicator status-idle" id="status-grant"></span>
+            </div>
+            <div class="status-line">
+                <span>Code Wizard:</span>
+                <span class="status-indicator status-idle" id="status-code"></span>
+            </div>
+            <div class="status-line">
+                <span>Dungeon Master:</span>
+                <span class="status-indicator status-idle" id="status-dm"></span>
+            </div>
+            <div class="status-line">
+                <span>Voice Oracle:</span>
+                <span class="status-indicator status-idle" id="status-voice"></span>
+            </div>
+            <div class="status-line">
+                <span>Shadow Tracker:</span>
+                <span class="status-indicator status-idle" id="status-shadow"></span>
+            </div>
+        </div>
+        
+        <div id="action-log">
+            <h4>📜 Adventure Log</h4>
+            <div id="log-content"></div>
+        </div>
+    </div>
+
+    <script>
+        // ============================================
+        // CHARACTER-DRIVEN SYSTEM ENGINE
+        // ============================================
+        
+        class CharacterDrivenSystem {
+            constructor() {
+                this.characters = new Map();
+                this.activeQuest = null;
+                this.conversationMode = false;
+                
+                this.init();
+            }
+            
+            init() {
+                console.log('🎭 CHARACTER-DRIVEN SYSTEM STARTING...');
+                
+                // Initialize all characters
+                this.initializeCharacters();
+                
+                // Set up character interactions
+                this.setupCharacterInteractions();
+                
+                // Start the world
+                this.startWorld();
+                
+                // Connect the lines
+                this.createConnectionLines();
+                
+                console.log('✅ Characters are alive and ready!');
+            }
+            
+            initializeCharacters() {
+                const characterData = [
+                    {
+                        id: 'grant-hunter',
+                        name: 'Grant Hunter',
+                        personality: 'aggressive, money-focused, always hunting',
+                        voice: 'direct, business-like',
+                        abilities: ['find_grants', 'scrape_websites', 'fill_applications'],
+                        catchphrases: [
+                            "I smell money! Let me hunt it down!",
+                            "Found another $500K grant opportunity!",
+                            "Time to scrape the web for funding!",
+                            "Your grant applications are ready!"
+                        ],
+                        status: 'idle'
+                    },
+                    {
+                        id: 'code-wizard',
+                        name: 'Code Wizard',
+                        personality: 'magical, technical, problem-solver',
+                        voice: 'mystical but knowledgeable',
+                        abilities: ['write_code', 'debug', 'architect_systems', 'cast_spells'],
+                        catchphrases: [
+                            "By the power of JavaScript, I shall code!",
+                            "Your application architecture is now complete!",
+                            "Let me weave some database magic...",
+                            "Behold! Your API endpoints are ready!"
+                        ],
+                        status: 'idle'
+                    },
+                    {
+                        id: 'dungeon-master',
+                        name: 'Dungeon Master',
+                        personality: 'wise, omniscient, storyteller',
+                        voice: 'deep, authoritative, narrator-like',
+                        abilities: ['tell_stories', 'guide_quests', 'provide_wisdom', 'orchestrate'],
+                        catchphrases: [
+                            "Welcome, adventurer, to your digital quest...",
+                            "The path ahead requires wisdom and courage...",
+                            "Your journey has led you to new knowledge...",
+                            "I shall guide you through this challenge..."
+                        ],
+                        status: 'idle'
+                    },
+                    {
+                        id: 'voice-oracle',
+                        name: 'Voice Oracle',
+                        personality: 'mystical, linguistic, understanding',
+                        voice: 'ethereal, multi-lingual',
+                        abilities: ['understand_speech', 'translate_languages', 'extract_meaning'],
+                        catchphrases: [
+                            "I hear your words in all tongues...",
+                            "Your speech reveals deeper meaning...",
+                            "Let me translate this ancient wisdom...",
+                            "The languages of the world speak through me..."
+                        ],
+                        status: 'idle'
+                    },
+                    {
+                        id: 'shadow-tracker',
+                        name: 'Shadow Tracker',
+                        personality: 'mysterious, observant, mapper',
+                        voice: 'whispered, knowing',
+                        abilities: ['track_movements', 'map_reality', 'see_shadows', 'navigate'],
+                        catchphrases: [
+                            "I see the shadows of all realities...",
+                            "Your path through the digital realm is mapped...",
+                            "The connections between worlds are revealed...",
+                            "Every step leaves a shadow I can follow..."
+                        ],
+                        status: 'idle'
+                    }
+                ];
+                
+                characterData.forEach(char => {
+                    this.characters.set(char.id, char);
+                });
+                
+                console.log(`👥 Initialized ${this.characters.size} characters`);
+            }
+            
+            setupCharacterInteractions() {
+                // Add click handlers to all characters
+                document.querySelectorAll('.character').forEach(charElement => {
+                    charElement.addEventListener('click', (e) => {
+                        const charId = e.target.id;
+                        this.talkToCharacter(charId);
+                    });
+                });
+            }
+            
+            talkToCharacter(characterId) {
+                const character = this.characters.get(characterId);
+                if (!character) return;
+                
+                console.log(`💬 Talking to ${character.name}`);
+                this.log(`You approach ${character.name}...`, 'system');
+                
+                // Show character talking
+                const charElement = document.getElementById(characterId);
+                charElement.classList.add('talking');
+                
+                // Choose a random catchphrase
+                const phrase = character.catchphrases[
+                    Math.floor(Math.random() * character.catchphrases.length)
+                ];
+                
+                // Show speech bubble
+                this.showSpeechBubble(charElement, phrase, character);
+                
+                // Activate character
+                this.activateCharacter(characterId);
+                
+                // Stop talking animation after speech
+                setTimeout(() => {
+                    charElement.classList.remove('talking');
+                }, 3000);
+            }
+            
+            showSpeechBubble(element, text, character) {
+                // Remove existing speech bubbles
+                document.querySelectorAll('.speech-bubble').forEach(bubble => {
+                    bubble.remove();
+                });
+                
+                const bubble = document.createElement('div');
+                bubble.className = 'speech-bubble';
+                bubble.style.borderColor = getComputedStyle(element).borderColor;
+                bubble.textContent = text;
+                
+                // Position above character
+                const rect = element.getBoundingClientRect();
+                bubble.style.left = rect.left + rect.width / 2 + 'px';
+                bubble.style.top = rect.top - 80 + 'px';
+                
+                document.body.appendChild(bubble);
+                
+                // Remove after 3 seconds
+                setTimeout(() => {
+                    bubble.remove();
+                }, 3000);
+                
+                // Log what they said
+                this.log(`${character.name}: "${text}"`, character.id.replace('-', ''));
+            }
+            
+            activateCharacter(characterId) {
+                const character = this.characters.get(characterId);
+                if (!character) return;
+                
+                character.status = 'working';
+                this.updateCharacterStatus(characterId, 'working');
+                
+                // Simulate character doing their job
+                switch (characterId) {
+                    case 'grant-hunter':
+                        this.simulateGrantHunting();
+                        break;
+                    case 'code-wizard':
+                        this.simulateCoding();
+                        break;
+                    case 'dungeon-master':
+                        this.simulateStorytelling();
+                        break;
+                    case 'voice-oracle':
+                        this.simulateLanguageProcessing();
+                        break;
+                    case 'shadow-tracker':
+                        this.simulateShadowTracking();
+                        break;
+                }
+                
+                // Return to idle after work
+                setTimeout(() => {
+                    character.status = 'idle';
+                    this.updateCharacterStatus(characterId, 'idle');
+                }, 5000);
+            }
+            
+            simulateGrantHunting() {
+                const grants = [
+                    "SBIR Phase I - $275,000",
+                    "NSF Innovation - $500,000", 
+                    "DOE Small Business - $150,000",
+                    "NIH Research - $750,000",
+                    "NASA Technology - $300,000"
+                ];
+                
+                grants.forEach((grant, i) => {
+                    setTimeout(() => {
+                        this.log(`💰 Found: ${grant}`, 'grant');
+                    }, i * 800);
+                });
+            }
+            
+            simulateCoding() {
+                const tasks = [
+                    "Building React components...",
+                    "Creating API endpoints...",
+                    "Setting up database schema...",
+                    "Writing TypeScript interfaces...",
+                    "Deploying to production..."
+                ];
+                
+                tasks.forEach((task, i) => {
+                    setTimeout(() => {
+                        this.log(`⚡ ${task}`, 'code');
+                    }, i * 600);
+                });
+            }
+            
+            simulateStorytelling() {
+                const stories = [
+                    "Once upon a digital time...",
+                    "Your quest leads to new APIs...",
+                    "The ancient servers whisper secrets...",
+                    "Behold! The database reveals its schema...",
+                    "Your journey continues, brave coder..."
+                ];
+                
+                stories.forEach((story, i) => {
+                    setTimeout(() => {
+                        this.log(`📖 ${story}`, 'story');
+                    }, i * 1000);
+                });
+            }
+            
+            simulateLanguageProcessing() {
+                const languages = [
+                    "Processing English...",
+                    "Understanding Spanish...",
+                    "Translating Chinese...",
+                    "Parsing Arabic...",
+                    "Converting to universal concepts..."
+                ];
+                
+                languages.forEach((lang, i) => {
+                    setTimeout(() => {
+                        this.log(`🗣️ ${lang}`, 'voice');
+                    }, i * 500);
+                });
+            }
+            
+            simulateShadowTracking() {
+                const tracking = [
+                    "Mapping reality layer 1...",
+                    "Tracking shadow positions...",
+                    "Creating anchor points...",
+                    "Building navigation mesh...",
+                    "Reality map complete."
+                ];
+                
+                tracking.forEach((track, i) => {
+                    setTimeout(() => {
+                        this.log(`👁️ ${track}`, 'shadow');
+                    }, i * 700);
+                });
+            }
+            
+            updateCharacterStatus(characterId, status) {
+                const statusElement = document.getElementById(`status-${characterId.replace('-', '')}`);
+                if (statusElement) {
+                    statusElement.className = `status-indicator status-${status}`;
+                }
+            }
+            
+            log(message, type = 'system') {
+                const logContent = document.getElementById('log-content');
+                const entry = document.createElement('div');
+                entry.className = `log-entry log-${type}`;
+                entry.textContent = `[${new Date().toLocaleTimeString()}] ${message}`;
+                
+                logContent.appendChild(entry);
+                logContent.scrollTop = logContent.scrollHeight;
+                
+                // Keep only last 20 entries
+                const entries = logContent.querySelectorAll('.log-entry');
+                if (entries.length > 20) {
+                    entries[0].remove();
+                }
+            }
+            
+            createConnectionLines() {
+                const container = document.getElementById('connection-lines');
+                
+                // Create connections between characters
+                const connections = [
+                    ['grant-hunter', 'code-wizard'],
+                    ['code-wizard', 'dungeon-master'],
+                    ['dungeon-master', 'voice-oracle'],
+                    ['voice-oracle', 'shadow-tracker'],
+                    ['shadow-tracker', 'grant-hunter']
+                ];
+                
+                connections.forEach(([from, to]) => {
+                    const fromEl = document.getElementById(from);
+                    const toEl = document.getElementById(to);
+                    
+                    if (fromEl && toEl) {
+                        const line = this.createLineBetween(fromEl, toEl);
+                        container.appendChild(line);
+                    }
+                });
+            }
+            
+            createLineBetween(el1, el2) {
+                const rect1 = el1.getBoundingClientRect();
+                const rect2 = el2.getBoundingClientRect();
+                
+                const x1 = rect1.left + rect1.width / 2;
+                const y1 = rect1.top + rect1.height / 2;
+                const x2 = rect2.left + rect2.width / 2;
+                const y2 = rect2.top + rect2.height / 2;
+                
+                const length = Math.sqrt((x2 - x1) ** 2 + (y2 - y1) ** 2);
+                const angle = Math.atan2(y2 - y1, x2 - x1) * 180 / Math.PI;
+                
+                const line = document.createElement('div');
+                line.className = 'connection-line';
+                line.style.width = length + 'px';
+                line.style.left = x1 + 'px';
+                line.style.top = y1 + 'px';
+                line.style.transform = `rotate(${angle}deg)`;
+                line.style.transformOrigin = '0 50%';
+                
+                return line;
+            }
+            
+            startWorld() {
+                console.log('🌍 Starting character world...');
+                
+                // Initial greeting from Dungeon Master
+                setTimeout(() => {
+                    this.talkToCharacter('dungeon-master');
+                }, 1000);
+                
+                // Periodic character activities
+                setInterval(() => {
+                    this.randomCharacterActivity();
+                }, 10000);
+            }
+            
+            randomCharacterActivity() {
+                const characterIds = Array.from(this.characters.keys());
+                const randomChar = characterIds[Math.floor(Math.random() * characterIds.length)];
+                const character = this.characters.get(randomChar);
+                
+                if (character.status === 'idle' && Math.random() > 0.7) {
+                    this.log(`${character.name} stirs...`, 'system');
+                    
+                    setTimeout(() => {
+                        this.talkToCharacter(randomChar);
+                    }, 1000);
+                }
+            }
+        }
+        
+        // ============================================
+        // GLOBAL FUNCTIONS
+        // ============================================
+        
+        let characterSystem;
+        
+        function activateAllCharacters() {
+            console.log('🚀 ACTIVATING ALL CHARACTERS!');
+            characterSystem.log('🔴 QUEST INITIATED - ALL CHARACTERS SUMMONED!', 'system');
+            
+            const characterIds = ['grant-hunter', 'code-wizard', 'dungeon-master', 'voice-oracle', 'shadow-tracker'];
+            
+            characterIds.forEach((charId, i) => {
+                setTimeout(() => {
+                    characterSystem.activateCharacter(charId);
+                    characterSystem.talkToCharacter(charId);
+                }, i * 1000);
+            });
+            
+            // Change button text
+            const button = document.getElementById('central-button');
+            button.innerHTML = '⚡<br>QUEST<br>ACTIVE';
+            
+            setTimeout(() => {
+                button.innerHTML = '🔴<br>START<br>QUEST';
+            }, 10000);
+        }
+        
+        // ============================================
+        // INITIALIZE
+        // ============================================
+        
+        window.addEventListener('load', () => {
+            characterSystem = new CharacterDrivenSystem();
+        });
+        
+        // Spacebar activation
+        document.addEventListener('keydown', (e) => {
+            if (e.code === 'Space') {
+                e.preventDefault();
+                activateAllCharacters();
+            }
+        });
+    </script>
+</body>
+</html>

@@ -1,0 +1,607 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Unified 3D Game System - Integration Example</title>
+    <style>
+        body {
+            margin: 0;
+            padding: 0;
+            font-family: Arial, sans-serif;
+            overflow: hidden;
+            background: #000;
+        }
+
+        #gameContainer {
+            width: 100vw;
+            height: 100vh;
+            position: relative;
+        }
+
+        #gameCanvas {
+            width: 100%;
+            height: 100%;
+            display: block;
+        }
+
+        /* UI Overlay */
+        #ui-overlay {
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            pointer-events: none;
+            z-index: 100;
+        }
+
+        .ui-element {
+            pointer-events: auto;
+        }
+
+        /* Character Selection */
+        #characterSelection {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            background: rgba(0, 0, 0, 0.9);
+            border: 2px solid #00ff00;
+            padding: 20px;
+            border-radius: 10px;
+            color: white;
+        }
+
+        .character-grid {
+            display: grid;
+            grid-template-columns: repeat(4, 150px);
+            gap: 15px;
+            margin: 20px 0;
+        }
+
+        .character-card {
+            border: 2px solid #444;
+            padding: 10px;
+            text-align: center;
+            cursor: pointer;
+            transition: all 0.3s;
+            background: rgba(255, 255, 255, 0.05);
+        }
+
+        .character-card:hover {
+            border-color: #00ff00;
+            transform: scale(1.05);
+            background: rgba(0, 255, 0, 0.1);
+        }
+
+        .character-card.selected {
+            border-color: #00ff00;
+            background: rgba(0, 255, 0, 0.2);
+        }
+
+        .character-card h3 {
+            margin: 10px 0 5px;
+            color: #00ff00;
+        }
+
+        .character-stats {
+            font-size: 12px;
+            color: #aaa;
+        }
+
+        /* Graphics Settings */
+        #graphicsSettings {
+            position: absolute;
+            top: 10px;
+            right: 10px;
+            background: rgba(0, 0, 0, 0.8);
+            border: 1px solid #444;
+            padding: 15px;
+            border-radius: 5px;
+            color: white;
+        }
+
+        #graphicsSettings h3 {
+            margin: 0 0 10px;
+            color: #00ff00;
+            font-size: 16px;
+        }
+
+        .quality-buttons {
+            display: flex;
+            gap: 5px;
+        }
+
+        .quality-btn {
+            padding: 5px 15px;
+            background: #333;
+            border: 1px solid #666;
+            color: white;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+
+        .quality-btn:hover {
+            background: #444;
+        }
+
+        .quality-btn.active {
+            background: #00ff00;
+            color: black;
+            border-color: #00ff00;
+        }
+
+        /* Performance Monitor */
+        #performanceMonitor {
+            position: absolute;
+            top: 10px;
+            left: 10px;
+            background: rgba(0, 0, 0, 0.8);
+            border: 1px solid #444;
+            padding: 10px;
+            border-radius: 5px;
+            color: #00ff00;
+            font-family: monospace;
+            font-size: 12px;
+        }
+
+        /* Loading Screen */
+        #loadingScreen {
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: #000;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            color: white;
+            z-index: 1000;
+        }
+
+        .loading-bar {
+            width: 300px;
+            height: 20px;
+            background: #333;
+            border: 1px solid #666;
+            margin-top: 20px;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .loading-progress {
+            height: 100%;
+            background: linear-gradient(90deg, #00ff00, #00aa00);
+            width: 0%;
+            transition: width 0.3s;
+        }
+
+        /* Game HUD */
+        #gameHUD {
+            position: absolute;
+            bottom: 20px;
+            left: 50%;
+            transform: translateX(-50%);
+            display: none;
+            background: rgba(0, 0, 0, 0.8);
+            border: 1px solid #444;
+            padding: 10px 20px;
+            border-radius: 5px;
+            color: white;
+        }
+
+        .controls-info {
+            font-size: 14px;
+            text-align: center;
+        }
+
+        .controls-info span {
+            color: #00ff00;
+            font-weight: bold;
+        }
+    </style>
+</head>
+<body>
+    <div id="gameContainer">
+        <canvas id="gameCanvas"></canvas>
+        
+        <!-- UI Overlay -->
+        <div id="ui-overlay">
+            <!-- Loading Screen -->
+            <div id="loadingScreen">
+                <h2>Loading Unified 3D Game System</h2>
+                <p>Initializing services...</p>
+                <div class="loading-bar">
+                    <div class="loading-progress" id="loadingProgress"></div>
+                </div>
+                <p id="loadingStatus">Loading models...</p>
+            </div>
+
+            <!-- Character Selection -->
+            <div id="characterSelection" style="display: none;" class="ui-element">
+                <h2>Select Your Character</h2>
+                <div class="character-grid" id="characterGrid">
+                    <!-- Populated dynamically -->
+                </div>
+                <button id="startGame" style="width: 100%; padding: 10px; font-size: 16px;">Start Game</button>
+            </div>
+
+            <!-- Graphics Settings -->
+            <div id="graphicsSettings" style="display: none;" class="ui-element">
+                <h3>Graphics Quality</h3>
+                <div class="quality-buttons">
+                    <button class="quality-btn" data-quality="low">Low</button>
+                    <button class="quality-btn active" data-quality="medium">Medium</button>
+                    <button class="quality-btn" data-quality="high">High</button>
+                    <button class="quality-btn" data-quality="ultra">Ultra</button>
+                </div>
+            </div>
+
+            <!-- Performance Monitor -->
+            <div id="performanceMonitor" style="display: none;">
+                FPS: <span id="fps">60</span><br>
+                Draw Calls: <span id="drawCalls">0</span><br>
+                Triangles: <span id="triangles">0</span><br>
+                Quality: <span id="currentQuality">Medium</span>
+            </div>
+
+            <!-- Game HUD -->
+            <div id="gameHUD">
+                <div class="controls-info">
+                    <span>WASD</span> Move | <span>Mouse</span> Look | <span>Space</span> Jump | <span>Click</span> Attack | <span>Q</span> Special
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Three.js and dependencies -->
+    <script type="importmap">
+    {
+        "imports": {
+            "three": "https://unpkg.com/three@0.158.0/build/three.module.js",
+            "three/examples/jsm/": "https://unpkg.com/three@0.158.0/examples/jsm/"
+        }
+    }
+    </script>
+
+    <script type="module">
+        import * as THREE from 'three';
+        import { OrbitControls } from 'three/examples/jsm/controls/OrbitControls.js';
+        
+        // Note: In production, import the actual services
+        // For this example, we'll create simplified versions
+        
+        class UnifiedGameSystem {
+            constructor() {
+                this.scene = null;
+                this.camera = null;
+                this.renderer = null;
+                this.controls = null;
+                
+                this.characters = [];
+                this.selectedCharacter = null;
+                this.playerCharacter = null;
+                
+                this.clock = new THREE.Clock();
+                this.mixers = [];
+                
+                this.init();
+            }
+            
+            async init() {
+                this.showLoadingScreen();
+                
+                // Initialize Three.js
+                this.initThreeJS();
+                
+                // Initialize services (simplified for example)
+                this.initServices();
+                
+                // Setup scene
+                this.setupScene();
+                
+                // Load resources
+                await this.loadResources();
+                
+                // Setup UI
+                this.setupUI();
+                
+                // Hide loading, show character selection
+                this.hideLoadingScreen();
+                this.showCharacterSelection();
+                
+                // Start render loop
+                this.animate();
+            }
+            
+            initThreeJS() {
+                // Scene
+                this.scene = new THREE.Scene();
+                this.scene.background = new THREE.Color(0x001122);
+                this.scene.fog = new THREE.Fog(0x001122, 10, 100);
+                
+                // Camera
+                this.camera = new THREE.PerspectiveCamera(
+                    75,
+                    window.innerWidth / window.innerHeight,
+                    0.1,
+                    1000
+                );
+                this.camera.position.set(0, 5, 10);
+                
+                // Renderer with anti-aliasing
+                const canvas = document.getElementById('gameCanvas');
+                this.renderer = new THREE.WebGLRenderer({
+                    canvas,
+                    antialias: true,
+                    powerPreference: 'high-performance'
+                });
+                this.renderer.setSize(window.innerWidth, window.innerHeight);
+                this.renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+                this.renderer.shadowMap.enabled = true;
+                this.renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+                this.renderer.toneMapping = THREE.ACESFilmicToneMapping;
+                this.renderer.toneMappingExposure = 1.2;
+                
+                // Controls
+                this.controls = new OrbitControls(this.camera, this.renderer.domElement);
+                this.controls.enableDamping = true;
+                this.controls.dampingFactor = 0.05;
+                this.controls.maxPolarAngle = Math.PI / 2 - 0.1;
+                
+                // Handle resize
+                window.addEventListener('resize', () => this.onWindowResize());
+            }
+            
+            initServices() {
+                // In production, initialize actual services:
+                // this.modelLoader = new ModelLoaderService();
+                // this.graphicsService = new GraphicsQualityService(this.renderer, this.scene, this.camera);
+                // this.characterService = new CharacterModelService(this.modelLoader);
+                // this.gameManager = new UnifiedGameManager();
+                
+                console.log('Services initialized (simplified for example)');
+            }
+            
+            setupScene() {
+                // Lighting
+                const ambientLight = new THREE.AmbientLight(0x404040, 0.5);
+                this.scene.add(ambientLight);
+                
+                const directionalLight = new THREE.DirectionalLight(0xffffff, 1);
+                directionalLight.position.set(5, 10, 5);
+                directionalLight.castShadow = true;
+                directionalLight.shadow.camera.left = -20;
+                directionalLight.shadow.camera.right = 20;
+                directionalLight.shadow.camera.top = 20;
+                directionalLight.shadow.camera.bottom = -20;
+                directionalLight.shadow.mapSize.width = 2048;
+                directionalLight.shadow.mapSize.height = 2048;
+                this.scene.add(directionalLight);
+                
+                // Ground
+                const groundGeometry = new THREE.PlaneGeometry(100, 100);
+                const groundMaterial = new THREE.MeshStandardMaterial({
+                    color: 0x333333,
+                    roughness: 0.8
+                });
+                const ground = new THREE.Mesh(groundGeometry, groundMaterial);
+                ground.rotation.x = -Math.PI / 2;
+                ground.receiveShadow = true;
+                this.scene.add(ground);
+                
+                // Grid helper
+                const gridHelper = new THREE.GridHelper(100, 50, 0x444444, 0x222222);
+                this.scene.add(gridHelper);
+            }
+            
+            async loadResources() {
+                this.updateLoadingStatus('Loading character models...');
+                
+                // Simulate loading with example characters
+                this.characters = [
+                    {
+                        id: 'warrior',
+                        name: 'Warrior',
+                        stats: { health: 120, speed: 5, power: 8 },
+                        color: 0xff0000
+                    },
+                    {
+                        id: 'mage',
+                        name: 'Mage',
+                        stats: { health: 80, speed: 4, power: 9 },
+                        color: 0x0000ff
+                    },
+                    {
+                        id: 'rogue',
+                        name: 'Rogue',
+                        stats: { health: 90, speed: 9, power: 6 },
+                        color: 0x00ff00
+                    },
+                    {
+                        id: 'robot',
+                        name: 'Robot',
+                        stats: { health: 100, speed: 6, power: 7 },
+                        color: 0xcccccc
+                    }
+                ];
+                
+                // Simulate loading progress
+                for (let i = 0; i <= 100; i += 10) {
+                    this.updateLoadingProgress(i);
+                    await new Promise(resolve => setTimeout(resolve, 100));
+                }
+            }
+            
+            setupUI() {
+                // Character selection
+                const characterGrid = document.getElementById('characterGrid');
+                this.characters.forEach(char => {
+                    const card = document.createElement('div');
+                    card.className = 'character-card';
+                    card.dataset.characterId = char.id;
+                    card.innerHTML = `
+                        <div style="width: 80px; height: 80px; margin: 0 auto; background: ${this.colorToHex(char.color)}; border-radius: 10px;"></div>
+                        <h3>${char.name}</h3>
+                        <div class="character-stats">
+                            HP: ${char.stats.health}<br>
+                            SPD: ${char.stats.speed}<br>
+                            PWR: ${char.stats.power}
+                        </div>
+                    `;
+                    card.addEventListener('click', () => this.selectCharacter(char));
+                    characterGrid.appendChild(card);
+                });
+                
+                // Start game button
+                document.getElementById('startGame').addEventListener('click', () => {
+                    if (this.selectedCharacter) {
+                        this.startGame();
+                    }
+                });
+                
+                // Graphics quality buttons
+                document.querySelectorAll('.quality-btn').forEach(btn => {
+                    btn.addEventListener('click', (e) => {
+                        document.querySelectorAll('.quality-btn').forEach(b => b.classList.remove('active'));
+                        e.target.classList.add('active');
+                        this.setGraphicsQuality(e.target.dataset.quality);
+                    });
+                });
+            }
+            
+            selectCharacter(character) {
+                this.selectedCharacter = character;
+                
+                // Update UI
+                document.querySelectorAll('.character-card').forEach(card => {
+                    card.classList.remove('selected');
+                });
+                document.querySelector(`[data-character-id="${character.id}"]`).classList.add('selected');
+            }
+            
+            startGame() {
+                // Hide character selection
+                document.getElementById('characterSelection').style.display = 'none';
+                
+                // Show game UI
+                document.getElementById('graphicsSettings').style.display = 'block';
+                document.getElementById('performanceMonitor').style.display = 'block';
+                document.getElementById('gameHUD').style.display = 'block';
+                
+                // Create player character (simplified - using colored cube as example)
+                const geometry = new THREE.BoxGeometry(1, 2, 1);
+                const material = new THREE.MeshStandardMaterial({
+                    color: this.selectedCharacter.color
+                });
+                this.playerCharacter = new THREE.Mesh(geometry, material);
+                this.playerCharacter.position.y = 1;
+                this.playerCharacter.castShadow = true;
+                this.scene.add(this.playerCharacter);
+                
+                // Camera follow
+                this.camera.position.set(0, 8, 15);
+                this.controls.target.copy(this.playerCharacter.position);
+            }
+            
+            setGraphicsQuality(quality) {
+                document.getElementById('currentQuality').textContent = 
+                    quality.charAt(0).toUpperCase() + quality.slice(1);
+                
+                // In production, would call:
+                // this.graphicsService.setPreset(quality);
+                
+                // Simplified example
+                switch(quality) {
+                    case 'low':
+                        this.renderer.setPixelRatio(0.75);
+                        this.renderer.shadowMap.enabled = false;
+                        break;
+                    case 'medium':
+                        this.renderer.setPixelRatio(1);
+                        this.renderer.shadowMap.enabled = true;
+                        break;
+                    case 'high':
+                        this.renderer.setPixelRatio(Math.min(window.devicePixelRatio, 1.5));
+                        this.renderer.shadowMap.enabled = true;
+                        break;
+                    case 'ultra':
+                        this.renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+                        this.renderer.shadowMap.enabled = true;
+                        break;
+                }
+            }
+            
+            animate() {
+                requestAnimationFrame(() => this.animate());
+                
+                const deltaTime = this.clock.getDelta();
+                
+                // Update controls
+                this.controls.update();
+                
+                // Update animations
+                this.mixers.forEach(mixer => mixer.update(deltaTime));
+                
+                // Simple player movement (for demo)
+                if (this.playerCharacter) {
+                    this.playerCharacter.rotation.y += deltaTime * 0.5;
+                }
+                
+                // Update performance monitor
+                this.updatePerformanceMonitor();
+                
+                // Render
+                this.renderer.render(this.scene, this.camera);
+            }
+            
+            updatePerformanceMonitor() {
+                const info = this.renderer.info;
+                document.getElementById('drawCalls').textContent = info.render.calls;
+                document.getElementById('triangles').textContent = info.render.triangles;
+                
+                // Simple FPS calculation
+                const fps = Math.round(1 / this.clock.getDelta());
+                document.getElementById('fps').textContent = Math.min(fps, 60);
+            }
+            
+            onWindowResize() {
+                this.camera.aspect = window.innerWidth / window.innerHeight;
+                this.camera.updateProjectionMatrix();
+                this.renderer.setSize(window.innerWidth, window.innerHeight);
+            }
+            
+            // UI Helper methods
+            showLoadingScreen() {
+                document.getElementById('loadingScreen').style.display = 'flex';
+            }
+            
+            hideLoadingScreen() {
+                document.getElementById('loadingScreen').style.display = 'none';
+            }
+            
+            updateLoadingStatus(status) {
+                document.getElementById('loadingStatus').textContent = status;
+            }
+            
+            updateLoadingProgress(percent) {
+                document.getElementById('loadingProgress').style.width = percent + '%';
+            }
+            
+            showCharacterSelection() {
+                document.getElementById('characterSelection').style.display = 'block';
+            }
+            
+            colorToHex(color) {
+                return '#' + color.toString(16).padStart(6, '0');
+            }
+        }
+        
+        // Start the game
+        new UnifiedGameSystem();
+    </script>
+</body>
+</html>

@@ -1,0 +1,1133 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>🗺️ World Map Interface - Character World System</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #1e3c72 0%, #2a5298 50%, #1e3c72 100%);
+            color: #ffffff;
+            overflow: hidden;
+            height: 100vh;
+        }
+
+        .header {
+            background: rgba(0,0,0,0.8);
+            padding: 15px 30px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            border-bottom: 2px solid rgba(255,255,255,0.2);
+            backdrop-filter: blur(10px);
+        }
+
+        .header h1 {
+            font-size: 1.8em;
+            background: linear-gradient(45deg, #4CAF50, #2196F3, #FF9800);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+        }
+
+        .header-controls {
+            display: flex;
+            gap: 15px;
+            align-items: center;
+        }
+
+        .control-panel {
+            display: flex;
+            gap: 10px;
+        }
+
+        .btn {
+            padding: 8px 16px;
+            border: none;
+            border-radius: 20px;
+            background: rgba(255,255,255,0.1);
+            color: white;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            font-size: 0.9em;
+            backdrop-filter: blur(5px);
+        }
+
+        .btn:hover {
+            background: rgba(255,255,255,0.2);
+            transform: translateY(-2px);
+        }
+
+        .btn.active {
+            background: rgba(76, 175, 80, 0.8);
+        }
+
+        .main-container {
+            display: grid;
+            grid-template-columns: 300px 1fr 300px;
+            height: calc(100vh - 70px);
+            gap: 10px;
+            padding: 10px;
+        }
+
+        .sidebar {
+            background: rgba(0,0,0,0.6);
+            border-radius: 15px;
+            padding: 20px;
+            backdrop-filter: blur(10px);
+            overflow-y: auto;
+        }
+
+        .sidebar h3 {
+            margin-bottom: 15px;
+            color: #4CAF50;
+            border-bottom: 2px solid rgba(76, 175, 80, 0.3);
+            padding-bottom: 8px;
+        }
+
+        .world-list {
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+        }
+
+        .world-item {
+            background: rgba(255,255,255,0.1);
+            border-radius: 10px;
+            padding: 15px;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            border: 2px solid transparent;
+        }
+
+        .world-item:hover {
+            background: rgba(255,255,255,0.2);
+            transform: scale(1.02);
+        }
+
+        .world-item.selected {
+            border-color: #4CAF50;
+            background: rgba(76, 175, 80, 0.2);
+        }
+
+        .world-name {
+            font-weight: bold;
+            font-size: 1.1em;
+            margin-bottom: 5px;
+        }
+
+        .world-info {
+            font-size: 0.9em;
+            opacity: 0.8;
+        }
+
+        .world-population {
+            display: flex;
+            justify-content: space-between;
+            margin-top: 8px;
+            font-size: 0.8em;
+        }
+
+        .map-container {
+            background: rgba(0,0,0,0.4);
+            border-radius: 15px;
+            position: relative;
+            overflow: hidden;
+            backdrop-filter: blur(5px);
+        }
+
+        .world-map {
+            width: 100%;
+            height: 100%;
+            position: relative;
+            background: radial-gradient(circle at center, rgba(100,200,255,0.1) 0%, rgba(0,50,100,0.3) 100%);
+        }
+
+        .world-node {
+            position: absolute;
+            width: 80px;
+            height: 80px;
+            border-radius: 50%;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            font-size: 0.8em;
+            text-align: center;
+            border: 3px solid rgba(255,255,255,0.3);
+            backdrop-filter: blur(5px);
+        }
+
+        .world-node:hover {
+            transform: scale(1.1);
+            z-index: 10;
+        }
+
+        .world-node.tokyo {
+            background: linear-gradient(45deg, #ff6b6b, #ff8e8e);
+            top: 20%;
+            left: 75%;
+        }
+
+        .world-node.ny {
+            background: linear-gradient(45deg, #4ecdc4, #7fdbda);
+            top: 30%;
+            left: 15%;
+        }
+
+        .world-node.london {
+            background: linear-gradient(45deg, #45b7d1, #6fc3d6);
+            top: 25%;
+            left: 45%;
+        }
+
+        .world-node.fantasy {
+            background: linear-gradient(45deg, #96ceb4, #b8d6c4);
+            top: 60%;
+            left: 30%;
+        }
+
+        .world-node.space {
+            background: linear-gradient(45deg, #8e44ad, #a569bd);
+            top: 10%;
+            left: 50%;
+        }
+
+        .world-node.creative {
+            background: linear-gradient(45deg, #f39c12, #f5b041);
+            top: 70%;
+            left: 65%;
+        }
+
+        .world-connection {
+            position: absolute;
+            height: 2px;
+            background: linear-gradient(90deg, rgba(255,255,255,0.3), rgba(255,255,255,0.6), rgba(255,255,255,0.3));
+            transform-origin: left center;
+            pointer-events: none;
+            border-radius: 1px;
+        }
+
+        .character-dot {
+            position: absolute;
+            width: 12px;
+            height: 12px;
+            border-radius: 50%;
+            background: #FFD700;
+            border: 2px solid #FFF;
+            z-index: 5;
+            transition: all 0.3s ease;
+            cursor: pointer;
+        }
+
+        .character-dot:hover {
+            transform: scale(1.5);
+            z-index: 15;
+        }
+
+        .character-dot.moving {
+            animation: pulse 1s infinite alternate;
+        }
+
+        @keyframes pulse {
+            from { box-shadow: 0 0 5px rgba(255, 215, 0, 0.5); }
+            to { box-shadow: 0 0 15px rgba(255, 215, 0, 1); }
+        }
+
+        .character-panel {
+            background: rgba(0,0,0,0.6);
+            border-radius: 15px;
+            padding: 20px;
+            backdrop-filter: blur(10px);
+            overflow-y: auto;
+        }
+
+        .character-list {
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+        }
+
+        .character-card {
+            background: rgba(255,255,255,0.1);
+            border-radius: 10px;
+            padding: 15px;
+            transition: all 0.3s ease;
+            cursor: pointer;
+        }
+
+        .character-card:hover {
+            background: rgba(255,255,255,0.2);
+            transform: translateX(5px);
+        }
+
+        .character-card.selected {
+            border: 2px solid #FF9800;
+            background: rgba(255, 152, 0, 0.2);
+        }
+
+        .character-name {
+            font-weight: bold;
+            margin-bottom: 5px;
+        }
+
+        .character-location {
+            font-size: 0.9em;
+            opacity: 0.8;
+        }
+
+        .character-status {
+            display: flex;
+            justify-content: space-between;
+            margin-top: 8px;
+            font-size: 0.8em;
+        }
+
+        .status-indicator {
+            width: 8px;
+            height: 8px;
+            border-radius: 50%;
+            display: inline-block;
+            margin-right: 5px;
+        }
+
+        .status-active { background: #4CAF50; }
+        .status-idle { background: #FFC107; }
+        .status-traveling { background: #2196F3; }
+        .status-offline { background: #757575; }
+
+        .tooltip {
+            position: absolute;
+            background: rgba(0,0,0,0.9);
+            padding: 10px;
+            border-radius: 5px;
+            font-size: 0.9em;
+            z-index: 1000;
+            pointer-events: none;
+            backdrop-filter: blur(10px);
+            opacity: 0;
+            transition: opacity 0.3s ease;
+        }
+
+        .tooltip.show {
+            opacity: 1;
+        }
+
+        .zone-overlay {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0,0,0,0.8);
+            display: none;
+            align-items: center;
+            justify-content: center;
+            backdrop-filter: blur(5px);
+        }
+
+        .zone-detail {
+            background: rgba(255,255,255,0.1);
+            border-radius: 15px;
+            padding: 30px;
+            max-width: 500px;
+            text-align: center;
+        }
+
+        .zone-grid {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 15px;
+            margin-top: 20px;
+        }
+
+        .zone-item {
+            background: rgba(255,255,255,0.1);
+            border-radius: 10px;
+            padding: 15px;
+            cursor: pointer;
+            transition: all 0.3s ease;
+        }
+
+        .zone-item:hover {
+            background: rgba(255,255,255,0.2);
+            transform: scale(1.05);
+        }
+
+        .travel-routes {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            pointer-events: none;
+        }
+
+        .route-line {
+            stroke: rgba(255,255,255,0.4);
+            stroke-width: 2;
+            stroke-dasharray: 5,5;
+            animation: dash 2s linear infinite;
+        }
+
+        @keyframes dash {
+            to { stroke-dashoffset: -10; }
+        }
+
+        .stats-panel {
+            background: rgba(255,255,255,0.1);
+            border-radius: 10px;
+            padding: 15px;
+            margin-bottom: 20px;
+        }
+
+        .stat-item {
+            display: flex;
+            justify-content: space-between;
+            margin-bottom: 8px;
+        }
+
+        .social-activity {
+            background: rgba(255,255,255,0.05);
+            border-radius: 8px;
+            padding: 10px;
+            margin-bottom: 10px;
+            font-size: 0.9em;
+        }
+
+        .activity-time {
+            opacity: 0.7;
+            font-size: 0.8em;
+        }
+
+        @media (max-width: 1200px) {
+            .main-container {
+                grid-template-columns: 250px 1fr 250px;
+            }
+        }
+
+        @media (max-width: 900px) {
+            .main-container {
+                grid-template-columns: 1fr;
+                grid-template-rows: auto 1fr auto;
+            }
+            
+            .sidebar {
+                height: 200px;
+            }
+        }
+    </style>
+</head>
+<body>
+    <header class="header">
+        <h1>🗺️ World Map Interface</h1>
+        <div class="header-controls">
+            <div class="control-panel">
+                <button class="btn active" onclick="setView('overview')">Overview</button>
+                <button class="btn" onclick="setView('social')">Social</button>
+                <button class="btn" onclick="setView('travel')">Travel</button>
+                <button class="btn" onclick="setView('events')">Events</button>
+            </div>
+            <div class="control-panel">
+                <button class="btn" onclick="spawnCharacter()">➕ Spawn Character</button>
+                <button class="btn" onclick="toggleRealtime()">🔄 Real-time</button>
+            </div>
+        </div>
+    </header>
+
+    <div class="main-container">
+        <!-- Left Sidebar: World List -->
+        <div class="sidebar">
+            <h3>🌍 Active Worlds</h3>
+            
+            <div class="stats-panel">
+                <div class="stat-item">
+                    <span>Total Characters:</span>
+                    <span id="total-characters">0</span>
+                </div>
+                <div class="stat-item">
+                    <span>Active Worlds:</span>
+                    <span id="active-worlds">0</span>
+                </div>
+                <div class="stat-item">
+                    <span>Conversations:</span>
+                    <span id="active-conversations">0</span>
+                </div>
+            </div>
+
+            <div class="world-list" id="world-list">
+                <!-- Worlds will be populated here -->
+            </div>
+        </div>
+
+        <!-- Center: World Map -->
+        <div class="map-container">
+            <div class="world-map" id="world-map">
+                <!-- World nodes will be positioned here -->
+                <svg class="travel-routes" id="travel-routes">
+                    <!-- Travel routes will be drawn here -->
+                </svg>
+                
+                <!-- World nodes -->
+                <div class="world-node tokyo" data-world="tokyo_main" onclick="selectWorld('tokyo_main')">
+                    🗼<br>Neo Tokyo
+                </div>
+                <div class="world-node ny" data-world="ny_main" onclick="selectWorld('ny_main')">
+                    🏙️<br>New York
+                </div>
+                <div class="world-node london" data-world="london_main" onclick="selectWorld('london_main')">
+                    🏰<br>London
+                </div>
+                <div class="world-node fantasy" data-world="fantasy_realm" onclick="selectWorld('fantasy_realm')">
+                    🧙<br>Fantasy
+                </div>
+                <div class="world-node space" data-world="space_station_alpha" onclick="selectWorld('space_station_alpha')">
+                    🚀<br>Space
+                </div>
+                <div class="world-node creative" data-world="creative_hub" onclick="selectWorld('creative_hub')">
+                    🎨<br>Creative
+                </div>
+            </div>
+
+            <!-- Zone Detail Overlay -->
+            <div class="zone-overlay" id="zone-overlay">
+                <div class="zone-detail">
+                    <h2 id="zone-title">World Details</h2>
+                    <p id="zone-description">Loading...</p>
+                    <div class="zone-grid" id="zone-grid">
+                        <!-- Zone details will be populated here -->
+                    </div>
+                    <button class="btn" onclick="closeZoneDetail()" style="margin-top: 20px;">Close</button>
+                </div>
+            </div>
+        </div>
+
+        <!-- Right Sidebar: Character Panel -->
+        <div class="character-panel">
+            <h3>👥 Characters</h3>
+            
+            <div class="control-panel" style="margin-bottom: 15px;">
+                <button class="btn" onclick="filterCharacters('all')">All</button>
+                <button class="btn" onclick="filterCharacters('online')">Online</button>
+                <button class="btn" onclick="filterCharacters('traveling')">Traveling</button>
+            </div>
+
+            <div class="character-list" id="character-list">
+                <!-- Characters will be populated here -->
+            </div>
+
+            <h3 style="margin-top: 30px;">📱 Social Activity</h3>
+            <div id="social-activity">
+                <!-- Social activities will be shown here -->
+            </div>
+        </div>
+    </div>
+
+    <!-- Tooltip -->
+    <div class="tooltip" id="tooltip"></div>
+
+    <script>
+        // Global state
+        let selectedWorld = null;
+        let selectedCharacter = null;
+        let characters = new Map();
+        let worlds = new Map();
+        let conversations = new Map();
+        let realtimeEnabled = true;
+        let currentView = 'overview';
+
+        // Mock data for demonstration
+        const mockWorlds = [
+            {
+                id: 'tokyo_main',
+                name: 'Neo Tokyo',
+                theme: 'cyberpunk',
+                population: 15,
+                capacity: 100,
+                type: 'city',
+                zones: ['shibuya', 'akihabara', 'harajuku', 'roppongi', 'asakusa']
+            },
+            {
+                id: 'ny_main',
+                name: 'New York Metroplex',
+                population: 8,
+                capacity: 100,
+                type: 'city',
+                zones: ['manhattan', 'brooklyn', 'central_park', 'times_square']
+            },
+            {
+                id: 'london_main',
+                name: 'Victorian London',
+                population: 12,
+                capacity: 80,
+                type: 'city',
+                zones: ['westminster', 'tower_bridge', 'hyde_park', 'canary_wharf']
+            },
+            {
+                id: 'fantasy_realm',
+                name: 'Ethereal Kingdoms',
+                population: 6,
+                capacity: 50,
+                type: 'fantasy',
+                zones: ['castle', 'village', 'forest', 'mountains']
+            },
+            {
+                id: 'space_station_alpha',
+                name: 'Station Alpha',
+                population: 3,
+                capacity: 30,
+                type: 'space_station',
+                zones: ['command', 'engineering', 'quarters', 'docking']
+            },
+            {
+                id: 'creative_hub',
+                name: 'Imagination Station',
+                population: 9,
+                capacity: 60,
+                type: 'creative_sandbox',
+                zones: ['canvas', 'gallery', 'workshop', 'stage']
+            }
+        ];
+
+        const mockCharacters = [
+            {
+                id: 'alice_123',
+                name: 'Alice "The Explorer" Chen',
+                world: 'tokyo_main',
+                zone: 'shibuya',
+                status: 'active',
+                activity: 'exploring',
+                position: { x: 150, y: 200 }
+            },
+            {
+                id: 'bob_456',
+                name: 'Bob "The Builder" Smith',
+                world: 'ny_main',
+                zone: 'manhattan',
+                status: 'active',
+                activity: 'building',
+                position: { x: 300, y: 250 }
+            },
+            {
+                id: 'charlie_789',
+                name: 'Charlie "The Guardian" Rodriguez',
+                world: 'fantasy_realm',
+                zone: 'castle',
+                status: 'idle',
+                activity: 'guarding',
+                position: { x: 100, y: 300 }
+            },
+            {
+                id: 'diana_101',
+                name: 'Diana "The Conductor" Wang',
+                world: 'london_main',
+                zone: 'westminster',
+                status: 'active',
+                activity: 'orchestrating',
+                position: { x: 250, y: 180 }
+            },
+            {
+                id: 'eve_202',
+                name: 'Eve "The Archive" Johnson',
+                world: 'creative_hub',
+                zone: 'gallery',
+                status: 'active',
+                activity: 'cataloging',
+                position: { x: 400, y: 350 }
+            }
+        ];
+
+        const mockSocialActivity = [
+            {
+                type: 'conversation_started',
+                participants: ['Alice', 'Bob'],
+                world: 'tokyo_main',
+                time: '2 minutes ago'
+            },
+            {
+                type: 'character_arrived',
+                character: 'Diana',
+                world: 'london_main',
+                time: '5 minutes ago'
+            },
+            {
+                type: 'achievement_earned',
+                character: 'Charlie',
+                achievement: 'Master Guardian',
+                time: '10 minutes ago'
+            }
+        ];
+
+        // Initialize the interface
+        function init() {
+            loadWorlds();
+            loadCharacters();
+            updateStats();
+            drawTravelRoutes();
+            updateSocialActivity();
+            
+            if (realtimeEnabled) {
+                startRealtimeUpdates();
+            }
+        }
+
+        function loadWorlds() {
+            const worldList = document.getElementById('world-list');
+            worldList.innerHTML = '';
+
+            mockWorlds.forEach(world => {
+                worlds.set(world.id, world);
+                
+                const worldItem = document.createElement('div');
+                worldItem.className = 'world-item';
+                worldItem.onclick = () => selectWorld(world.id);
+                
+                worldItem.innerHTML = `
+                    <div class="world-name">${world.name}</div>
+                    <div class="world-info">${world.theme || world.type}</div>
+                    <div class="world-population">
+                        <span>👥 ${world.population}/${world.capacity}</span>
+                        <span class="status-indicator status-active"></span>
+                    </div>
+                `;
+                
+                worldList.appendChild(worldItem);
+            });
+
+            document.getElementById('active-worlds').textContent = mockWorlds.length;
+        }
+
+        function loadCharacters() {
+            const characterList = document.getElementById('character-list');
+            characterList.innerHTML = '';
+
+            mockCharacters.forEach(character => {
+                characters.set(character.id, character);
+                
+                const characterCard = document.createElement('div');
+                characterCard.className = 'character-card';
+                characterCard.onclick = () => selectCharacter(character.id);
+                
+                characterCard.innerHTML = `
+                    <div class="character-name">${character.name}</div>
+                    <div class="character-location">📍 ${character.world} • ${character.zone}</div>
+                    <div class="character-status">
+                        <span><span class="status-indicator status-${character.status}"></span>${character.status}</span>
+                        <span>${character.activity}</span>
+                    </div>
+                `;
+                
+                characterList.appendChild(characterCard);
+                
+                // Add character dot to map
+                addCharacterToMap(character);
+            });
+
+            document.getElementById('total-characters').textContent = mockCharacters.length;
+        }
+
+        function addCharacterToMap(character) {
+            const worldNode = document.querySelector(`[data-world="${character.world}"]`);
+            if (!worldNode) return;
+
+            const characterDot = document.createElement('div');
+            characterDot.className = 'character-dot';
+            characterDot.id = `char-${character.id}`;
+            characterDot.title = character.name;
+            characterDot.onclick = () => selectCharacter(character.id);
+
+            // Position relative to world node
+            const nodeRect = worldNode.getBoundingClientRect();
+            const mapRect = document.getElementById('world-map').getBoundingClientRect();
+            
+            const relativeX = nodeRect.left - mapRect.left + (nodeRect.width / 2) - 6;
+            const relativeY = nodeRect.top - mapRect.top + (nodeRect.height / 2) - 6;
+            
+            // Add some randomness for multiple characters in same world
+            const offset = (Math.random() - 0.5) * 40;
+            
+            characterDot.style.left = `${relativeX + offset}px`;
+            characterDot.style.top = `${relativeY + offset}px`;
+
+            document.getElementById('world-map').appendChild(characterDot);
+
+            // Add hover effects
+            characterDot.addEventListener('mouseenter', (e) => showTooltip(e, character));
+            characterDot.addEventListener('mouseleave', hideTooltip);
+        }
+
+        function selectWorld(worldId) {
+            // Clear previous selection
+            document.querySelectorAll('.world-item').forEach(item => {
+                item.classList.remove('selected');
+            });
+            
+            document.querySelectorAll('.world-node').forEach(node => {
+                node.style.border = '3px solid rgba(255,255,255,0.3)';
+            });
+
+            // Select new world
+            selectedWorld = worldId;
+            const world = worlds.get(worldId);
+            
+            if (world) {
+                // Highlight in sidebar
+                const worldItems = document.querySelectorAll('.world-item');
+                worldItems[Array.from(worlds.keys()).indexOf(worldId)].classList.add('selected');
+                
+                // Highlight world node
+                const worldNode = document.querySelector(`[data-world="${worldId}"]`);
+                if (worldNode) {
+                    worldNode.style.border = '3px solid #4CAF50';
+                }
+
+                // Show world details
+                showWorldDetails(world);
+            }
+        }
+
+        function selectCharacter(characterId) {
+            // Clear previous selection
+            document.querySelectorAll('.character-card').forEach(card => {
+                card.classList.remove('selected');
+            });
+
+            // Select new character
+            selectedCharacter = characterId;
+            const character = characters.get(characterId);
+            
+            if (character) {
+                // Highlight in sidebar
+                const characterCards = document.querySelectorAll('.character-card');
+                characterCards[Array.from(characters.keys()).indexOf(characterId)].classList.add('selected');
+                
+                // Highlight character dot
+                document.querySelectorAll('.character-dot').forEach(dot => {
+                    dot.style.background = '#FFD700';
+                });
+                
+                const characterDot = document.getElementById(`char-${characterId}`);
+                if (characterDot) {
+                    characterDot.style.background = '#FF4444';
+                }
+
+                // Auto-select character's world
+                selectWorld(character.world);
+            }
+        }
+
+        function showWorldDetails(world) {
+            const overlay = document.getElementById('zone-overlay');
+            const title = document.getElementById('zone-title');
+            const description = document.getElementById('zone-description');
+            const grid = document.getElementById('zone-grid');
+
+            title.textContent = world.name;
+            description.textContent = `A ${world.theme || world.type} world with ${world.population} active characters.`;
+
+            grid.innerHTML = '';
+            world.zones.forEach(zone => {
+                const zoneItem = document.createElement('div');
+                zoneItem.className = 'zone-item';
+                zoneItem.innerHTML = `
+                    <div style="font-weight: bold; margin-bottom: 5px;">${zone.replace('_', ' ')}</div>
+                    <div style="font-size: 0.8em; opacity: 0.8;">Click to explore</div>
+                `;
+                zoneItem.onclick = () => exploreZone(world.id, zone);
+                grid.appendChild(zoneItem);
+            });
+
+            overlay.style.display = 'flex';
+        }
+
+        function closeZoneDetail() {
+            document.getElementById('zone-overlay').style.display = 'none';
+        }
+
+        function exploreZone(worldId, zone) {
+            closeZoneDetail();
+            console.log(`Exploring ${zone} in ${worldId}`);
+            // This would integrate with the world exploration system
+        }
+
+        function drawTravelRoutes() {
+            const svg = document.getElementById('travel-routes');
+            const connections = [
+                ['tokyo_main', 'ny_main'],
+                ['ny_main', 'london_main'],
+                ['london_main', 'fantasy_realm'],
+                ['fantasy_realm', 'creative_hub'],
+                ['space_station_alpha', 'tokyo_main']
+            ];
+
+            connections.forEach(([worldA, worldB]) => {
+                const nodeA = document.querySelector(`[data-world="${worldA}"]`);
+                const nodeB = document.querySelector(`[data-world="${worldB}"]`);
+                
+                if (nodeA && nodeB) {
+                    const rectA = nodeA.getBoundingClientRect();
+                    const rectB = nodeB.getBoundingClientRect();
+                    const mapRect = svg.getBoundingClientRect();
+                    
+                    const x1 = rectA.left - mapRect.left + rectA.width / 2;
+                    const y1 = rectA.top - mapRect.top + rectA.height / 2;
+                    const x2 = rectB.left - mapRect.left + rectB.width / 2;
+                    const y2 = rectB.top - mapRect.top + rectB.height / 2;
+                    
+                    const line = document.createElementNS('http://www.w3.org/2000/svg', 'line');
+                    line.setAttribute('x1', x1);
+                    line.setAttribute('y1', y1);
+                    line.setAttribute('x2', x2);
+                    line.setAttribute('y2', y2);
+                    line.className = 'route-line';
+                    
+                    svg.appendChild(line);
+                }
+            });
+        }
+
+        function updateStats() {
+            document.getElementById('total-characters').textContent = characters.size;
+            document.getElementById('active-worlds').textContent = worlds.size;
+            document.getElementById('active-conversations').textContent = Math.floor(Math.random() * 5) + 1;
+        }
+
+        function updateSocialActivity() {
+            const activityContainer = document.getElementById('social-activity');
+            activityContainer.innerHTML = '';
+
+            mockSocialActivity.forEach(activity => {
+                const activityElement = document.createElement('div');
+                activityElement.className = 'social-activity';
+                
+                let activityText = '';
+                switch (activity.type) {
+                    case 'conversation_started':
+                        activityText = `💬 ${activity.participants.join(' & ')} started chatting`;
+                        break;
+                    case 'character_arrived':
+                        activityText = `📍 ${activity.character} arrived in ${activity.world}`;
+                        break;
+                    case 'achievement_earned':
+                        activityText = `🏆 ${activity.character} earned "${activity.achievement}"`;
+                        break;
+                }
+                
+                activityElement.innerHTML = `
+                    <div>${activityText}</div>
+                    <div class="activity-time">${activity.time}</div>
+                `;
+                
+                activityContainer.appendChild(activityElement);
+            });
+        }
+
+        function showTooltip(event, character) {
+            const tooltip = document.getElementById('tooltip');
+            tooltip.innerHTML = `
+                <strong>${character.name}</strong><br>
+                World: ${character.world}<br>
+                Zone: ${character.zone}<br>
+                Status: ${character.status}<br>
+                Activity: ${character.activity}
+            `;
+            tooltip.style.left = `${event.pageX + 10}px`;
+            tooltip.style.top = `${event.pageY - 10}px`;
+            tooltip.classList.add('show');
+        }
+
+        function hideTooltip() {
+            document.getElementById('tooltip').classList.remove('show');
+        }
+
+        function setView(viewType) {
+            // Update button states
+            document.querySelectorAll('.control-panel .btn').forEach(btn => {
+                btn.classList.remove('active');
+            });
+            event.target.classList.add('active');
+
+            currentView = viewType;
+            
+            // Update interface based on view
+            switch (viewType) {
+                case 'overview':
+                    // Show all elements
+                    break;
+                case 'social':
+                    // Highlight social interactions
+                    highlightSocialInteractions();
+                    break;
+                case 'travel':
+                    // Highlight travel routes
+                    highlightTravelRoutes();
+                    break;
+                case 'events':
+                    // Show world events
+                    showWorldEvents();
+                    break;
+            }
+        }
+
+        function highlightSocialInteractions() {
+            // Add visual effects for conversations
+            document.querySelectorAll('.character-dot').forEach(dot => {
+                dot.style.animation = 'pulse 2s infinite';
+            });
+        }
+
+        function highlightTravelRoutes() {
+            // Make travel routes more prominent
+            document.querySelectorAll('.route-line').forEach(line => {
+                line.style.strokeWidth = '4';
+                line.style.stroke = 'rgba(255,255,255,0.8)';
+            });
+        }
+
+        function showWorldEvents() {
+            // This would show special events happening in worlds
+            console.log('Showing world events...');
+        }
+
+        function spawnCharacter() {
+            const names = ['Nova', 'Spark', 'Echo', 'Drift', 'Flux', 'Sage', 'Quest'];
+            const worldIds = Array.from(worlds.keys());
+            
+            const newCharacter = {
+                id: `char_${Date.now()}`,
+                name: `${names[Math.floor(Math.random() * names.length)]} "The Newcomer"`,
+                world: worldIds[Math.floor(Math.random() * worldIds.length)],
+                zone: 'spawn',
+                status: 'active',
+                activity: 'exploring',
+                position: { x: Math.random() * 400, y: Math.random() * 300 }
+            };
+            
+            characters.set(newCharacter.id, newCharacter);
+            addCharacterToMap(newCharacter);
+            loadCharacters(); // Refresh character list
+            updateStats();
+            
+            console.log(`Spawned new character: ${newCharacter.name} in ${newCharacter.world}`);
+        }
+
+        function toggleRealtime() {
+            realtimeEnabled = !realtimeEnabled;
+            const btn = event.target;
+            
+            if (realtimeEnabled) {
+                btn.textContent = '🔄 Real-time';
+                btn.style.background = 'rgba(76, 175, 80, 0.8)';
+                startRealtimeUpdates();
+            } else {
+                btn.textContent = '⏸️ Paused';
+                btn.style.background = 'rgba(255, 152, 0, 0.8)';
+                stopRealtimeUpdates();
+            }
+        }
+
+        function startRealtimeUpdates() {
+            if (window.realtimeInterval) {
+                clearInterval(window.realtimeInterval);
+            }
+            
+            window.realtimeInterval = setInterval(() => {
+                // Simulate character movement
+                simulateCharacterMovement();
+                
+                // Update social activity
+                if (Math.random() < 0.3) {
+                    addRandomSocialActivity();
+                }
+                
+                // Update stats
+                updateStats();
+            }, 5000);
+        }
+
+        function stopRealtimeUpdates() {
+            if (window.realtimeInterval) {
+                clearInterval(window.realtimeInterval);
+            }
+        }
+
+        function simulateCharacterMovement() {
+            characters.forEach((character, id) => {
+                if (Math.random() < 0.2) { // 20% chance to move
+                    const characterDot = document.getElementById(`char-${id}`);
+                    if (characterDot) {
+                        characterDot.classList.add('moving');
+                        
+                        setTimeout(() => {
+                            characterDot.classList.remove('moving');
+                        }, 2000);
+                    }
+                }
+            });
+        }
+
+        function addRandomSocialActivity() {
+            const activities = [
+                'started a conversation',
+                'joined a group',
+                'discovered something interesting',
+                'helped another character',
+                'completed a quest'
+            ];
+            
+            const characterNames = Array.from(characters.values()).map(c => c.name.split(' ')[0]);
+            const activity = activities[Math.floor(Math.random() * activities.length)];
+            const characterName = characterNames[Math.floor(Math.random() * characterNames.length)];
+            
+            mockSocialActivity.unshift({
+                type: 'random_activity',
+                character: characterName,
+                activity: activity,
+                time: 'just now'
+            });
+            
+            // Keep only last 10 activities
+            if (mockSocialActivity.length > 10) {
+                mockSocialActivity.pop();
+            }
+            
+            updateSocialActivity();
+        }
+
+        function filterCharacters(filter) {
+            const characterCards = document.querySelectorAll('.character-card');
+            
+            characterCards.forEach(card => {
+                let show = true;
+                
+                if (filter === 'online') {
+                    show = card.querySelector('.status-active') !== null;
+                } else if (filter === 'traveling') {
+                    show = card.querySelector('.status-traveling') !== null;
+                }
+                
+                card.style.display = show ? 'block' : 'none';
+            });
+        }
+
+        // Initialize when page loads
+        window.addEventListener('load', init);
+        
+        // Handle window resize
+        window.addEventListener('resize', () => {
+            // Redraw travel routes on resize
+            document.getElementById('travel-routes').innerHTML = '';
+            setTimeout(drawTravelRoutes, 100);
+        });
+    </script>
+</body>
+</html>

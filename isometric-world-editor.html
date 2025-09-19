@@ -1,0 +1,989 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>📦 Isometric World Editor - Document Objects</title>
+    <style>
+        body {
+            margin: 0;
+            padding: 0;
+            background: #1a1a1a;
+            font-family: 'Arial', sans-serif;
+            color: #fff;
+            overflow: hidden;
+            user-select: none;
+        }
+        
+        #editor-container {
+            display: flex;
+            width: 100vw;
+            height: 100vh;
+        }
+        
+        #palette {
+            width: 200px;
+            background: #2a2a2a;
+            border-right: 2px solid #444;
+            padding: 10px;
+            overflow-y: auto;
+        }
+        
+        #world-view {
+            flex: 1;
+            position: relative;
+            background: #0a0a0a;
+            overflow: hidden;
+            cursor: grab;
+        }
+        
+        #world-view.grabbing {
+            cursor: grabbing;
+        }
+        
+        #properties {
+            width: 250px;
+            background: #2a2a2a;
+            border-left: 2px solid #444;
+            padding: 10px;
+        }
+        
+        #canvas {
+            position: absolute;
+            top: 0;
+            left: 0;
+        }
+        
+        .palette-item {
+            background: #3a3a3a;
+            border: 2px solid #555;
+            padding: 10px;
+            margin: 5px 0;
+            cursor: pointer;
+            border-radius: 5px;
+            transition: all 0.2s;
+            text-align: center;
+        }
+        
+        .palette-item:hover {
+            background: #4a4a4a;
+            border-color: #0f0;
+            transform: scale(1.05);
+        }
+        
+        .palette-item.selected {
+            background: #0f0;
+            color: #000;
+            border-color: #0f0;
+        }
+        
+        .palette-icon {
+            font-size: 30px;
+            margin-bottom: 5px;
+        }
+        
+        #controls {
+            position: absolute;
+            bottom: 20px;
+            left: 50%;
+            transform: translateX(-50%);
+            background: rgba(0,0,0,0.8);
+            padding: 15px;
+            border-radius: 10px;
+            border: 2px solid #444;
+            display: flex;
+            gap: 10px;
+            align-items: center;
+        }
+        
+        button {
+            background: #3a3a3a;
+            color: #fff;
+            border: 2px solid #555;
+            padding: 8px 15px;
+            cursor: pointer;
+            border-radius: 5px;
+            font-size: 14px;
+            transition: all 0.2s;
+        }
+        
+        button:hover {
+            background: #4a4a4a;
+            border-color: #0f0;
+        }
+        
+        button:active {
+            transform: scale(0.95);
+        }
+        
+        #drop-zone {
+            position: absolute;
+            top: 20px;
+            left: 50%;
+            transform: translateX(-50%);
+            background: rgba(0,0,0,0.8);
+            border: 2px dashed #0f0;
+            padding: 20px;
+            border-radius: 10px;
+            transition: all 0.3s;
+        }
+        
+        #drop-zone.dragover {
+            background: rgba(0,255,0,0.1);
+            transform: translateX(-50%) scale(1.05);
+        }
+        
+        input[type="file"] {
+            display: none;
+        }
+        
+        #coordinates {
+            position: absolute;
+            top: 20px;
+            right: 20px;
+            background: rgba(0,0,0,0.8);
+            padding: 10px;
+            border-radius: 5px;
+            font-size: 12px;
+            font-family: 'Courier New', monospace;
+        }
+        
+        .property-group {
+            margin: 15px 0;
+            padding: 10px;
+            background: #1a1a1a;
+            border-radius: 5px;
+        }
+        
+        .property-label {
+            font-size: 12px;
+            color: #aaa;
+            margin-bottom: 5px;
+        }
+        
+        .property-value {
+            font-size: 14px;
+            color: #0f0;
+        }
+        
+        input[type="range"] {
+            width: 100%;
+            margin: 5px 0;
+        }
+        
+        #minimap {
+            position: absolute;
+            bottom: 20px;
+            right: 20px;
+            width: 150px;
+            height: 150px;
+            background: rgba(0,0,0,0.8);
+            border: 2px solid #444;
+            border-radius: 5px;
+        }
+        
+        #export-menu {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            background: #2a2a2a;
+            padding: 30px;
+            border-radius: 10px;
+            border: 2px solid #0f0;
+            display: none;
+            z-index: 1000;
+        }
+        
+        .export-option {
+            margin: 10px 0;
+        }
+        
+        #help {
+            position: absolute;
+            top: 20px;
+            left: 220px;
+            background: rgba(0,0,0,0.8);
+            padding: 10px;
+            border-radius: 5px;
+            font-size: 11px;
+            color: #aaa;
+        }
+        
+        .grid-line {
+            stroke: #333;
+            stroke-width: 1;
+        }
+        
+        .grid-highlight {
+            fill: rgba(0,255,0,0.2);
+            stroke: #0f0;
+            stroke-width: 2;
+        }
+    </style>
+</head>
+<body>
+    <div id="editor-container">
+        <!-- Object Palette -->
+        <div id="palette">
+            <h3>📦 Objects</h3>
+            <div class="palette-item selected" data-type="block">
+                <div class="palette-icon">🧱</div>
+                <div>Block</div>
+            </div>
+            <div class="palette-item" data-type="tree">
+                <div class="palette-icon">🌳</div>
+                <div>Tree</div>
+            </div>
+            <div class="palette-item" data-type="building">
+                <div class="palette-icon">🏠</div>
+                <div>Building</div>
+            </div>
+            <div class="palette-item" data-type="water">
+                <div class="palette-icon">💧</div>
+                <div>Water</div>
+            </div>
+            <div class="palette-item" data-type="road">
+                <div class="palette-icon">🛤️</div>
+                <div>Road</div>
+            </div>
+            <div class="palette-item" data-type="document">
+                <div class="palette-icon">📄</div>
+                <div>Document</div>
+            </div>
+        </div>
+        
+        <!-- World View -->
+        <div id="world-view">
+            <canvas id="canvas"></canvas>
+            
+            <div id="drop-zone">
+                Drop document here to convert to objects
+                <input type="file" id="file-input" accept=".txt,.md,.json,.js,.html">
+            </div>
+            
+            <div id="coordinates">
+                Grid: <span id="grid-pos">0, 0</span><br>
+                Zoom: <span id="zoom-level">100%</span><br>
+                Objects: <span id="object-count">0</span>
+            </div>
+            
+            <div id="help">
+                🖱️ Click: Place | Drag: Pan | Wheel: Zoom<br>
+                ⌨️ WASD/Arrows: Move | R: Rotate | Delete: Remove<br>
+                Space: Center View | 1-6: Select Object
+            </div>
+            
+            <div id="controls">
+                <button id="btn-save">💾 Save World</button>
+                <button id="btn-load">📁 Load World</button>
+                <button id="btn-export">📷 Export</button>
+                <button id="btn-clear">🗑️ Clear All</button>
+                <button id="btn-record">🎬 Record GIF</button>
+            </div>
+            
+            <canvas id="minimap"></canvas>
+        </div>
+        
+        <!-- Properties Panel -->
+        <div id="properties">
+            <h3>🔧 Properties</h3>
+            <div class="property-group">
+                <div class="property-label">Selected Object</div>
+                <div class="property-value" id="selected-type">None</div>
+            </div>
+            <div class="property-group">
+                <div class="property-label">Position</div>
+                <div class="property-value">
+                    X: <span id="prop-x">-</span>, 
+                    Y: <span id="prop-y">-</span>
+                </div>
+            </div>
+            <div class="property-group">
+                <div class="property-label">Rotation</div>
+                <input type="range" id="rotation-slider" min="0" max="360" value="0">
+                <div class="property-value"><span id="rotation-value">0</span>°</div>
+            </div>
+            <div class="property-group">
+                <div class="property-label">Height</div>
+                <input type="range" id="height-slider" min="0" max="5" value="0">
+                <div class="property-value">Level <span id="height-value">0</span></div>
+            </div>
+            <div class="property-group">
+                <div class="property-label">Color</div>
+                <input type="color" id="color-picker" value="#00ff00">
+            </div>
+        </div>
+    </div>
+    
+    <!-- Export Menu -->
+    <div id="export-menu">
+        <h3>📤 Export Options</h3>
+        <div class="export-option">
+            <button onclick="exportImage()">🖼️ Export as PNG</button>
+        </div>
+        <div class="export-option">
+            <button onclick="exportJSON()">📄 Export as JSON</button>
+        </div>
+        <div class="export-option">
+            <button onclick="exportASCII()">📟 Export as ASCII</button>
+        </div>
+        <div class="export-option">
+            <button onclick="closeExportMenu()">❌ Cancel</button>
+        </div>
+    </div>
+
+    <script>
+        // World state
+        const world = {
+            objects: [],
+            camera: { x: 0, y: 0, zoom: 1 },
+            grid: { width: 50, height: 50, size: 40 },
+            selectedObject: null,
+            selectedType: 'block',
+            isRecording: false,
+            frames: []
+        };
+        
+        // Canvas setup
+        const canvas = document.getElementById('canvas');
+        const ctx = canvas.getContext('2d');
+        const minimap = document.getElementById('minimap');
+        const minimapCtx = minimap.getContext('2d');
+        
+        // Isometric conversion
+        function toIsometric(x, y) {
+            return {
+                x: (x - y) * world.grid.size,
+                y: (x + y) * world.grid.size * 0.5
+            };
+        }
+        
+        function fromIsometric(x, y) {
+            return {
+                x: (x / world.grid.size + y / (world.grid.size * 0.5)) / 2,
+                y: (y / (world.grid.size * 0.5) - x / world.grid.size) / 2
+            };
+        }
+        
+        // Object types
+        const OBJECT_TYPES = {
+            block: { icon: '🧱', height: 20, color: '#8B4513' },
+            tree: { icon: '🌳', height: 40, color: '#228B22' },
+            building: { icon: '🏠', height: 60, color: '#4169E1' },
+            water: { icon: '💧', height: 0, color: '#1E90FF' },
+            road: { icon: '🛤️', height: 0, color: '#696969' },
+            document: { icon: '📄', height: 10, color: '#FFD700' }
+        };
+        
+        // GameObject class
+        class GameObject {
+            constructor(type, gridX, gridY) {
+                this.id = Date.now() + Math.random();
+                this.type = type;
+                this.gridX = Math.floor(gridX);
+                this.gridY = Math.floor(gridY);
+                this.rotation = 0;
+                this.height = 0;
+                this.color = OBJECT_TYPES[type].color;
+                this.data = null;
+            }
+            
+            draw(ctx, cameraX, cameraY, zoom) {
+                const iso = toIsometric(this.gridX, this.gridY);
+                const screenX = (iso.x - cameraX) * zoom + canvas.width / 2;
+                const screenY = (iso.y - cameraY - this.height * 10) * zoom + canvas.height / 2;
+                
+                const size = world.grid.size * zoom;
+                
+                // Draw shadow
+                ctx.fillStyle = 'rgba(0,0,0,0.3)';
+                ctx.fillRect(screenX - size/2, screenY + size/4, size, size/2);
+                
+                // Draw object
+                ctx.save();
+                ctx.translate(screenX, screenY);
+                ctx.rotate((this.rotation * Math.PI) / 180);
+                
+                // Simple isometric cube
+                const h = OBJECT_TYPES[this.type].height * zoom;
+                
+                // Top face
+                ctx.fillStyle = this.color;
+                ctx.beginPath();
+                ctx.moveTo(0, -h);
+                ctx.lineTo(size/2, -h + size/4);
+                ctx.lineTo(0, -h + size/2);
+                ctx.lineTo(-size/2, -h + size/4);
+                ctx.closePath();
+                ctx.fill();
+                ctx.stroke();
+                
+                // Left face
+                ctx.fillStyle = this.adjustColor(this.color, -30);
+                ctx.beginPath();
+                ctx.moveTo(-size/2, -h + size/4);
+                ctx.lineTo(-size/2, size/4);
+                ctx.lineTo(0, size/2);
+                ctx.lineTo(0, -h + size/2);
+                ctx.closePath();
+                ctx.fill();
+                ctx.stroke();
+                
+                // Right face
+                ctx.fillStyle = this.adjustColor(this.color, -50);
+                ctx.beginPath();
+                ctx.moveTo(0, -h + size/2);
+                ctx.lineTo(0, size/2);
+                ctx.lineTo(size/2, size/4);
+                ctx.lineTo(size/2, -h + size/4);
+                ctx.closePath();
+                ctx.fill();
+                ctx.stroke();
+                
+                // Icon
+                ctx.font = `${20 * zoom}px Arial`;
+                ctx.textAlign = 'center';
+                ctx.textBaseline = 'middle';
+                ctx.fillText(OBJECT_TYPES[this.type].icon, 0, -h);
+                
+                ctx.restore();
+            }
+            
+            adjustColor(color, amount) {
+                const num = parseInt(color.slice(1), 16);
+                const r = Math.max(0, Math.min(255, (num >> 16) + amount));
+                const g = Math.max(0, Math.min(255, ((num >> 8) & 0x00FF) + amount));
+                const b = Math.max(0, Math.min(255, (num & 0x0000FF) + amount));
+                return `#${((r << 16) | (g << 8) | b).toString(16).padStart(6, '0')}`;
+            }
+        }
+        
+        // Initialize
+        function init() {
+            resizeCanvas();
+            setupEventListeners();
+            render();
+        }
+        
+        function resizeCanvas() {
+            canvas.width = world.view?.clientWidth || window.innerWidth - 450;
+            canvas.height = world.view?.clientHeight || window.innerHeight;
+            minimap.width = 150;
+            minimap.height = 150;
+        }
+        
+        // Rendering
+        function render() {
+            // Clear
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+            
+            // Draw grid
+            drawGrid();
+            
+            // Sort objects by depth
+            const sorted = [...world.objects].sort((a, b) => {
+                const depthA = a.gridX + a.gridY;
+                const depthB = b.gridX + b.gridY;
+                return depthA - depthB;
+            });
+            
+            // Draw objects
+            sorted.forEach(obj => {
+                obj.draw(ctx, world.camera.x, world.camera.y, world.camera.zoom);
+            });
+            
+            // Draw minimap
+            drawMinimap();
+            
+            // Update UI
+            updateUI();
+            
+            // Record frame if needed
+            if (world.isRecording) {
+                captureFrame();
+            }
+            
+            requestAnimationFrame(render);
+        }
+        
+        function drawGrid() {
+            ctx.strokeStyle = '#333';
+            ctx.lineWidth = 1;
+            
+            for (let x = 0; x < world.grid.width; x++) {
+                for (let y = 0; y < world.grid.height; y++) {
+                    const iso = toIsometric(x, y);
+                    const screenX = (iso.x - world.camera.x) * world.camera.zoom + canvas.width / 2;
+                    const screenY = (iso.y - world.camera.y) * world.camera.zoom + canvas.height / 2;
+                    
+                    const size = world.grid.size * world.camera.zoom;
+                    
+                    ctx.beginPath();
+                    ctx.moveTo(screenX, screenY);
+                    ctx.lineTo(screenX + size/2, screenY + size/4);
+                    ctx.lineTo(screenX, screenY + size/2);
+                    ctx.lineTo(screenX - size/2, screenY + size/4);
+                    ctx.closePath();
+                    ctx.stroke();
+                }
+            }
+        }
+        
+        function drawMinimap() {
+            minimapCtx.fillStyle = '#111';
+            minimapCtx.fillRect(0, 0, 150, 150);
+            
+            const scale = 150 / Math.max(world.grid.width, world.grid.height);
+            
+            // Draw objects
+            world.objects.forEach(obj => {
+                minimapCtx.fillStyle = obj.color;
+                minimapCtx.fillRect(
+                    obj.gridX * scale,
+                    obj.gridY * scale,
+                    scale,
+                    scale
+                );
+            });
+            
+            // Draw camera view
+            minimapCtx.strokeStyle = '#0f0';
+            minimapCtx.strokeRect(
+                75 - 20 / world.camera.zoom,
+                75 - 20 / world.camera.zoom,
+                40 / world.camera.zoom,
+                40 / world.camera.zoom
+            );
+        }
+        
+        // Event handlers
+        function setupEventListeners() {
+            // Mouse events
+            let isDragging = false;
+            let lastX = 0;
+            let lastY = 0;
+            
+            canvas.addEventListener('mousedown', (e) => {
+                if (e.button === 0 && !e.shiftKey) {
+                    // Place object
+                    const rect = canvas.getBoundingClientRect();
+                    const x = e.clientX - rect.left;
+                    const y = e.clientY - rect.top;
+                    
+                    const worldX = (x - canvas.width / 2) / world.camera.zoom + world.camera.x;
+                    const worldY = (y - canvas.height / 2) / world.camera.zoom + world.camera.y;
+                    
+                    const grid = fromIsometric(worldX, worldY);
+                    
+                    if (grid.x >= 0 && grid.x < world.grid.width &&
+                        grid.y >= 0 && grid.y < world.grid.height) {
+                        placeObject(grid.x, grid.y);
+                    }
+                } else {
+                    isDragging = true;
+                    lastX = e.clientX;
+                    lastY = e.clientY;
+                    document.getElementById('world-view').classList.add('grabbing');
+                }
+            });
+            
+            canvas.addEventListener('mousemove', (e) => {
+                if (isDragging) {
+                    const dx = e.clientX - lastX;
+                    const dy = e.clientY - lastY;
+                    
+                    world.camera.x -= dx / world.camera.zoom;
+                    world.camera.y -= dy / world.camera.zoom;
+                    
+                    lastX = e.clientX;
+                    lastY = e.clientY;
+                } else {
+                    // Update grid position
+                    const rect = canvas.getBoundingClientRect();
+                    const x = e.clientX - rect.left;
+                    const y = e.clientY - rect.top;
+                    
+                    const worldX = (x - canvas.width / 2) / world.camera.zoom + world.camera.x;
+                    const worldY = (y - canvas.height / 2) / world.camera.zoom + world.camera.y;
+                    
+                    const grid = fromIsometric(worldX, worldY);
+                    document.getElementById('grid-pos').textContent = 
+                        `${Math.floor(grid.x)}, ${Math.floor(grid.y)}`;
+                }
+            });
+            
+            canvas.addEventListener('mouseup', () => {
+                isDragging = false;
+                document.getElementById('world-view').classList.remove('grabbing');
+            });
+            
+            // Zoom
+            canvas.addEventListener('wheel', (e) => {
+                e.preventDefault();
+                const delta = e.deltaY > 0 ? 0.9 : 1.1;
+                world.camera.zoom = Math.max(0.25, Math.min(4, world.camera.zoom * delta));
+                updateUI();
+            });
+            
+            // Keyboard
+            document.addEventListener('keydown', (e) => {
+                const speed = 10 / world.camera.zoom;
+                
+                switch(e.key) {
+                    case 'w':
+                    case 'ArrowUp':
+                        world.camera.y -= speed;
+                        break;
+                    case 's':
+                    case 'ArrowDown':
+                        world.camera.y += speed;
+                        break;
+                    case 'a':
+                    case 'ArrowLeft':
+                        world.camera.x -= speed;
+                        break;
+                    case 'd':
+                    case 'ArrowRight':
+                        world.camera.x += speed;
+                        break;
+                    case ' ':
+                        world.camera.x = 0;
+                        world.camera.y = 0;
+                        world.camera.zoom = 1;
+                        break;
+                    case 'Delete':
+                        if (world.selectedObject) {
+                            world.objects = world.objects.filter(o => o !== world.selectedObject);
+                            world.selectedObject = null;
+                        }
+                        break;
+                    case 'r':
+                        if (world.selectedObject) {
+                            world.selectedObject.rotation = (world.selectedObject.rotation + 45) % 360;
+                        }
+                        break;
+                    case '1':
+                    case '2':
+                    case '3':
+                    case '4':
+                    case '5':
+                    case '6':
+                        const types = ['block', 'tree', 'building', 'water', 'road', 'document'];
+                        const index = parseInt(e.key) - 1;
+                        if (types[index]) {
+                            selectObjectType(types[index]);
+                        }
+                        break;
+                }
+            });
+            
+            // Palette selection
+            document.querySelectorAll('.palette-item').forEach(item => {
+                item.addEventListener('click', () => {
+                    selectObjectType(item.dataset.type);
+                });
+            });
+            
+            // File handling
+            const dropZone = document.getElementById('drop-zone');
+            const fileInput = document.getElementById('file-input');
+            
+            dropZone.addEventListener('click', () => fileInput.click());
+            
+            dropZone.addEventListener('dragover', (e) => {
+                e.preventDefault();
+                dropZone.classList.add('dragover');
+            });
+            
+            dropZone.addEventListener('dragleave', () => {
+                dropZone.classList.remove('dragover');
+            });
+            
+            dropZone.addEventListener('drop', (e) => {
+                e.preventDefault();
+                dropZone.classList.remove('dragover');
+                const file = e.dataTransfer.files[0];
+                if (file) processDocument(file);
+            });
+            
+            fileInput.addEventListener('change', (e) => {
+                const file = e.target.files[0];
+                if (file) processDocument(file);
+            });
+            
+            // Buttons
+            document.getElementById('btn-save').addEventListener('click', saveWorld);
+            document.getElementById('btn-load').addEventListener('click', loadWorld);
+            document.getElementById('btn-export').addEventListener('click', showExportMenu);
+            document.getElementById('btn-clear').addEventListener('click', clearWorld);
+            document.getElementById('btn-record').addEventListener('click', toggleRecording);
+            
+            // Property controls
+            document.getElementById('rotation-slider').addEventListener('input', (e) => {
+                if (world.selectedObject) {
+                    world.selectedObject.rotation = parseInt(e.target.value);
+                    document.getElementById('rotation-value').textContent = e.target.value;
+                }
+            });
+            
+            document.getElementById('height-slider').addEventListener('input', (e) => {
+                if (world.selectedObject) {
+                    world.selectedObject.height = parseInt(e.target.value);
+                    document.getElementById('height-value').textContent = e.target.value;
+                }
+            });
+            
+            document.getElementById('color-picker').addEventListener('input', (e) => {
+                if (world.selectedObject) {
+                    world.selectedObject.color = e.target.value;
+                }
+            });
+            
+            window.addEventListener('resize', resizeCanvas);
+        }
+        
+        // Object management
+        function placeObject(gridX, gridY) {
+            // Check if position is occupied
+            const existing = world.objects.find(o => 
+                o.gridX === Math.floor(gridX) && o.gridY === Math.floor(gridY)
+            );
+            
+            if (!existing) {
+                const obj = new GameObject(world.selectedType, gridX, gridY);
+                world.objects.push(obj);
+                world.selectedObject = obj;
+                updateProperties();
+            }
+        }
+        
+        function selectObjectType(type) {
+            world.selectedType = type;
+            document.querySelectorAll('.palette-item').forEach(item => {
+                item.classList.toggle('selected', item.dataset.type === type);
+            });
+        }
+        
+        function updateProperties() {
+            if (world.selectedObject) {
+                document.getElementById('selected-type').textContent = world.selectedObject.type;
+                document.getElementById('prop-x').textContent = world.selectedObject.gridX;
+                document.getElementById('prop-y').textContent = world.selectedObject.gridY;
+                document.getElementById('rotation-slider').value = world.selectedObject.rotation;
+                document.getElementById('rotation-value').textContent = world.selectedObject.rotation;
+                document.getElementById('height-slider').value = world.selectedObject.height;
+                document.getElementById('height-value').textContent = world.selectedObject.height;
+                document.getElementById('color-picker').value = world.selectedObject.color;
+            } else {
+                document.getElementById('selected-type').textContent = 'None';
+                document.getElementById('prop-x').textContent = '-';
+                document.getElementById('prop-y').textContent = '-';
+            }
+        }
+        
+        function updateUI() {
+            document.getElementById('zoom-level').textContent = 
+                Math.round(world.camera.zoom * 100) + '%';
+            document.getElementById('object-count').textContent = world.objects.length;
+        }
+        
+        // Document processing
+        function processDocument(file) {
+            const reader = new FileReader();
+            reader.onload = (e) => {
+                const content = e.target.result;
+                const lines = content.split('\n');
+                
+                // Convert document structure to objects
+                lines.forEach((line, y) => {
+                    const indent = line.search(/\S/);
+                    const trimmed = line.trim();
+                    
+                    if (trimmed) {
+                        // Determine object type based on content
+                        let type = 'block';
+                        if (trimmed.includes('function') || trimmed.includes('class')) {
+                            type = 'building';
+                        } else if (trimmed.includes('//') || trimmed.includes('#')) {
+                            type = 'tree';
+                        } else if (trimmed.includes('{') || trimmed.includes('}')) {
+                            type = 'road';
+                        }
+                        
+                        // Place objects based on indentation and line number
+                        const x = 10 + indent / 2;
+                        const obj = new GameObject(type, x, y % 30);
+                        obj.data = trimmed;
+                        world.objects.push(obj);
+                    }
+                });
+                
+                updateUI();
+            };
+            reader.readAsText(file);
+        }
+        
+        // Save/Load
+        function saveWorld() {
+            const data = {
+                version: '1.0',
+                created: new Date().toISOString(),
+                camera: world.camera,
+                objects: world.objects.map(obj => ({
+                    type: obj.type,
+                    gridX: obj.gridX,
+                    gridY: obj.gridY,
+                    rotation: obj.rotation,
+                    height: obj.height,
+                    color: obj.color,
+                    data: obj.data
+                }))
+            };
+            
+            const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = `world-${Date.now()}.json`;
+            a.click();
+        }
+        
+        function loadWorld() {
+            const input = document.createElement('input');
+            input.type = 'file';
+            input.accept = '.json';
+            input.onchange = (e) => {
+                const file = e.target.files[0];
+                const reader = new FileReader();
+                reader.onload = (e) => {
+                    const data = JSON.parse(e.target.result);
+                    world.camera = data.camera;
+                    world.objects = data.objects.map(o => {
+                        const obj = new GameObject(o.type, o.gridX, o.gridY);
+                        obj.rotation = o.rotation;
+                        obj.height = o.height;
+                        obj.color = o.color;
+                        obj.data = o.data;
+                        return obj;
+                    });
+                    updateUI();
+                };
+                reader.readAsText(file);
+            };
+            input.click();
+        }
+        
+        function clearWorld() {
+            if (confirm('Clear all objects?')) {
+                world.objects = [];
+                world.selectedObject = null;
+                updateUI();
+            }
+        }
+        
+        // Export functions
+        function showExportMenu() {
+            document.getElementById('export-menu').style.display = 'block';
+        }
+        
+        function closeExportMenu() {
+            document.getElementById('export-menu').style.display = 'none';
+        }
+        
+        function exportImage() {
+            canvas.toBlob((blob) => {
+                const url = URL.createObjectURL(blob);
+                const a = document.createElement('a');
+                a.href = url;
+                a.download = `world-${Date.now()}.png`;
+                a.click();
+            });
+            closeExportMenu();
+        }
+        
+        function exportJSON() {
+            saveWorld();
+            closeExportMenu();
+        }
+        
+        function exportASCII() {
+            let ascii = 'ISOMETRIC WORLD ASCII EXPORT\n';
+            ascii += '============================\n\n';
+            
+            // Create 2D grid
+            const grid = Array(world.grid.height).fill(null).map(() => 
+                Array(world.grid.width).fill(' ')
+            );
+            
+            // Place objects
+            world.objects.forEach(obj => {
+                const char = {
+                    block: '#',
+                    tree: 'T',
+                    building: 'H',
+                    water: '~',
+                    road: '=',
+                    document: 'D'
+                }[obj.type];
+                
+                if (grid[obj.gridY] && grid[obj.gridY][obj.gridX] !== undefined) {
+                    grid[obj.gridY][obj.gridX] = char;
+                }
+            });
+            
+            // Convert to ASCII
+            grid.forEach(row => {
+                ascii += row.join('') + '\n';
+            });
+            
+            const blob = new Blob([ascii], { type: 'text/plain' });
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = `world-ascii-${Date.now()}.txt`;
+            a.click();
+            
+            closeExportMenu();
+        }
+        
+        // GIF recording
+        function toggleRecording() {
+            if (!world.isRecording) {
+                world.isRecording = true;
+                world.frames = [];
+                document.getElementById('btn-record').textContent = '⏹️ Stop Recording';
+            } else {
+                world.isRecording = false;
+                document.getElementById('btn-record').textContent = '🎬 Record GIF';
+                generateGIF();
+            }
+        }
+        
+        function captureFrame() {
+            if (world.frames.length < 60) {
+                canvas.toBlob((blob) => {
+                    world.frames.push(blob);
+                });
+            } else {
+                toggleRecording();
+            }
+        }
+        
+        function generateGIF() {
+            // For now, just export frames as images
+            alert(`Captured ${world.frames.length} frames. GIF generation would happen here.`);
+            world.frames = [];
+        }
+        
+        // Start
+        init();
+        
+        // Window exports for export menu
+        window.exportImage = exportImage;
+        window.exportJSON = exportJSON;
+        window.exportASCII = exportASCII;
+        window.closeExportMenu = closeExportMenu;
+    </script>
+</body>
+</html>

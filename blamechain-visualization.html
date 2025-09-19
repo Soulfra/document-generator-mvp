@@ -1,0 +1,725 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>⚖️ BLAMECHAIN VISUALIZATION</title>
+    <style>
+        body {
+            margin: 0;
+            padding: 0;
+            background: #0a0a0a;
+            color: #fff;
+            font-family: 'Courier New', monospace;
+            overflow-x: hidden;
+        }
+        
+        .header {
+            background: linear-gradient(135deg, #8B0000, #DC143C);
+            padding: 20px;
+            text-align: center;
+            border-bottom: 3px solid #ff0000;
+            box-shadow: 0 4px 20px rgba(255,0,0,0.3);
+        }
+        
+        .main-grid {
+            display: grid;
+            grid-template-columns: 1fr 2fr 1fr;
+            gap: 20px;
+            padding: 20px;
+            min-height: calc(100vh - 100px);
+        }
+        
+        .panel {
+            background: rgba(255, 255, 255, 0.05);
+            border: 2px solid #333;
+            border-radius: 10px;
+            padding: 20px;
+            backdrop-filter: blur(10px);
+        }
+        
+        .blame-record {
+            background: rgba(255, 0, 0, 0.1);
+            border: 1px solid #ff0000;
+            border-radius: 8px;
+            padding: 15px;
+            margin: 10px 0;
+            transition: all 0.3s;
+        }
+        
+        .blame-record:hover {
+            transform: translateX(5px);
+            box-shadow: 0 0 20px rgba(255,0,0,0.5);
+        }
+        
+        .blame-record.guilty {
+            border-color: #ff0000;
+            background: rgba(255, 0, 0, 0.2);
+        }
+        
+        .blame-record.innocent {
+            border-color: #00ff00;
+            background: rgba(0, 255, 0, 0.1);
+        }
+        
+        .blame-record.pending {
+            border-color: #ffff00;
+            background: rgba(255, 255, 0, 0.1);
+        }
+        
+        .reputation-bar {
+            width: 100%;
+            height: 30px;
+            background: rgba(0, 0, 0, 0.5);
+            border-radius: 15px;
+            overflow: hidden;
+            margin: 10px 0;
+            position: relative;
+        }
+        
+        .reputation-fill {
+            height: 100%;
+            transition: width 1s ease, background 1s ease;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-weight: bold;
+            color: #000;
+        }
+        
+        .reputation-positive {
+            background: linear-gradient(90deg, #00ff00, #00cc00);
+        }
+        
+        .reputation-negative {
+            background: linear-gradient(90deg, #ff0000, #cc0000);
+        }
+        
+        .reputation-neutral {
+            background: linear-gradient(90deg, #ffff00, #cccc00);
+        }
+        
+        .network-visual {
+            position: relative;
+            height: 500px;
+            background: radial-gradient(ellipse at center, rgba(255,0,0,0.05) 0%, transparent 70%);
+        }
+        
+        .network-node {
+            position: absolute;
+            width: 100px;
+            height: 100px;
+            border: 3px solid #fff;
+            border-radius: 50%;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            background: rgba(0, 0, 0, 0.9);
+            font-size: 12px;
+            cursor: pointer;
+            transition: all 0.3s;
+        }
+        
+        .network-node.positive {
+            border-color: #00ff00;
+            box-shadow: 0 0 30px rgba(0,255,0,0.5);
+        }
+        
+        .network-node.negative {
+            border-color: #ff0000;
+            box-shadow: 0 0 30px rgba(255,0,0,0.5);
+        }
+        
+        .network-node.suspended {
+            border-color: #ff00ff;
+            box-shadow: 0 0 30px rgba(255,0,255,0.5);
+            animation: pulse 2s infinite;
+        }
+        
+        @keyframes pulse {
+            0%, 100% { transform: scale(1); }
+            50% { transform: scale(1.1); }
+        }
+        
+        .blame-arrow {
+            position: absolute;
+            transform-origin: left center;
+            pointer-events: none;
+        }
+        
+        .blame-arrow svg {
+            width: 100%;
+            height: 20px;
+        }
+        
+        .stats-card {
+            background: rgba(255, 255, 255, 0.1);
+            border: 1px solid #666;
+            border-radius: 8px;
+            padding: 15px;
+            margin: 10px 0;
+        }
+        
+        .stats-card h4 {
+            margin: 0 0 10px 0;
+            color: #ff8800;
+        }
+        
+        .stat-value {
+            font-size: 24px;
+            font-weight: bold;
+            color: #fff;
+        }
+        
+        .severity-indicator {
+            display: inline-block;
+            width: 20px;
+            height: 20px;
+            border-radius: 3px;
+            margin-right: 5px;
+        }
+        
+        .severity-low { background: #ffff00; }
+        .severity-medium { background: #ff8800; }
+        .severity-high { background: #ff0000; }
+        .severity-critical { background: #8B0000; }
+        
+        button {
+            background: #ff0000;
+            color: #fff;
+            border: none;
+            padding: 10px 20px;
+            font-weight: bold;
+            cursor: pointer;
+            border-radius: 5px;
+            margin: 5px;
+            transition: all 0.3s;
+        }
+        
+        button:hover {
+            background: #cc0000;
+            box-shadow: 0 0 20px rgba(255,0,0,0.5);
+            transform: scale(1.05);
+        }
+        
+        .compensation-display {
+            background: rgba(255, 215, 0, 0.1);
+            border: 2px solid #ffd700;
+            border-radius: 8px;
+            padding: 15px;
+            margin: 10px 0;
+            text-align: center;
+        }
+        
+        .log-entry {
+            font-size: 12px;
+            margin: 5px 0;
+            padding: 5px;
+            background: rgba(0, 0, 0, 0.3);
+            border-left: 3px solid #666;
+        }
+        
+        .log-entry.blame { border-left-color: #ff0000; }
+        .log-entry.praise { border-left-color: #00ff00; }
+        .log-entry.system { border-left-color: #0088ff; }
+    </style>
+</head>
+<body>
+    <div class="header">
+        <h1>⚖️ BLAMECHAIN ACCOUNTABILITY SYSTEM</h1>
+        <div>Complete Verification & Reputation Tracking</div>
+    </div>
+    
+    <div class="main-grid">
+        <!-- Blame Records -->
+        <div class="panel">
+            <h2>📋 BLAME RECORDS</h2>
+            <div id="blameRecords"></div>
+            <button onclick="recordNewBlame()">🔴 Record Blame</button>
+            <button onclick="recordPraise()">🟢 Record Praise</button>
+        </div>
+        
+        <!-- Network Visualization -->
+        <div class="panel">
+            <h2>🔗 BLAME NETWORK</h2>
+            <div class="network-visual" id="networkVisual"></div>
+            
+            <div class="stats-card">
+                <h4>📊 NETWORK STATISTICS</h4>
+                <div id="networkStats">
+                    <div>Total Blames: <span class="stat-value" id="totalBlames">0</span></div>
+                    <div>Guilty Verdicts: <span class="stat-value" id="guiltyCount">0</span></div>
+                    <div>Total Compensation: <span class="stat-value" id="totalComp">0</span> ETH</div>
+                </div>
+            </div>
+        </div>
+        
+        <!-- Reputation & System Health -->
+        <div class="panel">
+            <h2>🏆 REPUTATION SCORES</h2>
+            <div id="reputationScores"></div>
+            
+            <h3>🔧 SYSTEM HEALTH</h3>
+            <div id="systemHealth"></div>
+            
+            <div class="compensation-display">
+                <h4>💰 Compensation Pool</h4>
+                <div class="stat-value" id="compPool">0 ETH</div>
+            </div>
+            
+            <button onclick="generateReport()">📊 Generate Report</button>
+            <button onclick="exportData()">💾 Export Data</button>
+        </div>
+    </div>
+    
+    <!-- Activity Log -->
+    <div style="padding: 20px;">
+        <div class="panel">
+            <h3>📜 ACTIVITY LOG</h3>
+            <div id="activityLog" style="max-height: 200px; overflow-y: auto;"></div>
+        </div>
+    </div>
+
+    <script>
+        // System data
+        const systems = [
+            'unified_api',
+            'gaming_bridge',
+            'financial_bridge',
+            'universal_bridge',
+            'world_broadcaster'
+        ];
+        
+        let blameRecords = [];
+        let reputations = {};
+        let systemHealthData = {};
+        let blameIdCounter = 0;
+        
+        // Initialize
+        function initialize() {
+            // Initialize reputations
+            systems.forEach(system => {
+                reputations[system] = {
+                    trustLevel: 50,
+                    blameCount: 0,
+                    praiseCount: 0,
+                    netReputation: 0
+                };
+                
+                systemHealthData[system] = {
+                    isActive: true,
+                    blameScore: 0,
+                    suspended: false
+                };
+            });
+            
+            drawNetwork();
+            updateReputations();
+            updateSystemHealth();
+            
+            // Simulate some initial data
+            simulateInitialData();
+        }
+        
+        // Draw network visualization
+        function drawNetwork() {
+            const visual = document.getElementById('networkVisual');
+            visual.innerHTML = '';
+            
+            const centerX = visual.offsetWidth / 2;
+            const centerY = visual.offsetHeight / 2;
+            const radius = 150;
+            
+            // Position nodes
+            systems.forEach((system, index) => {
+                const angle = (index / systems.length) * 2 * Math.PI - Math.PI / 2;
+                const x = centerX + radius * Math.cos(angle) - 50;
+                const y = centerY + radius * Math.sin(angle) - 50;
+                
+                const node = document.createElement('div');
+                node.className = 'network-node';
+                node.id = `node-${system}`;
+                node.style.left = x + 'px';
+                node.style.top = y + 'px';
+                
+                const rep = reputations[system];
+                if (rep.netReputation > 0) {
+                    node.classList.add('positive');
+                } else if (rep.netReputation < 0) {
+                    node.classList.add('negative');
+                }
+                
+                if (systemHealthData[system].suspended) {
+                    node.classList.add('suspended');
+                }
+                
+                node.innerHTML = `
+                    <strong>${system.split('_')[0].toUpperCase()}</strong>
+                    <div>Rep: ${rep.netReputation}</div>
+                    <div>Trust: ${rep.trustLevel}%</div>
+                `;
+                
+                node.onclick = () => showSystemDetails(system);
+                visual.appendChild(node);
+            });
+            
+            // Draw blame arrows
+            drawBlameArrows();
+        }
+        
+        // Draw blame arrows between nodes
+        function drawBlameArrows() {
+            const visual = document.getElementById('networkVisual');
+            
+            // Remove old arrows
+            document.querySelectorAll('.blame-arrow').forEach(el => el.remove());
+            
+            // Group blames by pair
+            const blamePairs = {};
+            blameRecords.forEach(blame => {
+                const key = `${blame.blamer}-${blame.blamed}`;
+                if (!blamePairs[key]) {
+                    blamePairs[key] = { count: 0, severity: 0 };
+                }
+                blamePairs[key].count++;
+                blamePairs[key].severity += blame.severity;
+            });
+            
+            // Draw arrows
+            Object.entries(blamePairs).forEach(([key, data]) => {
+                const [blamer, blamed] = key.split('-');
+                const blamerNode = document.getElementById(`node-${blamer}`);
+                const blamedNode = document.getElementById(`node-${blamed}`);
+                
+                if (blamerNode && blamedNode) {
+                    const x1 = blamerNode.offsetLeft + 50;
+                    const y1 = blamerNode.offsetTop + 50;
+                    const x2 = blamedNode.offsetLeft + 50;
+                    const y2 = blamedNode.offsetTop + 50;
+                    
+                    const dx = x2 - x1;
+                    const dy = y2 - y1;
+                    const length = Math.sqrt(dx * dx + dy * dy);
+                    const angle = Math.atan2(dy, dx) * 180 / Math.PI;
+                    
+                    const arrow = document.createElement('div');
+                    arrow.className = 'blame-arrow';
+                    arrow.style.left = x1 + 'px';
+                    arrow.style.top = y1 + 'px';
+                    arrow.style.width = length + 'px';
+                    arrow.style.transform = `rotate(${angle}deg)`;
+                    
+                    const opacity = Math.min(0.3 + (data.count * 0.1), 1);
+                    const thickness = Math.min(2 + data.severity / 5, 10);
+                    
+                    arrow.innerHTML = `
+                        <svg viewBox="0 0 ${length} 20">
+                            <defs>
+                                <marker id="arrowhead-${key}" markerWidth="10" markerHeight="10" 
+                                        refX="8" refY="3" orient="auto">
+                                    <polygon points="0 0, 10 3, 0 6" fill="#ff0000" />
+                                </marker>
+                            </defs>
+                            <line x1="0" y1="10" x2="${length - 20}" y2="10" 
+                                  stroke="#ff0000" stroke-width="${thickness}" opacity="${opacity}"
+                                  marker-end="url(#arrowhead-${key})" />
+                            <text x="${length/2}" y="8" fill="#fff" font-size="10" text-anchor="middle">
+                                ${data.count}
+                            </text>
+                        </svg>
+                    `;
+                    
+                    visual.appendChild(arrow);
+                }
+            });
+        }
+        
+        // Update blame records display
+        function updateBlameRecords() {
+            const container = document.getElementById('blameRecords');
+            container.innerHTML = '';
+            
+            // Show recent blames
+            const recentBlames = blameRecords.slice(-5).reverse();
+            recentBlames.forEach(blame => {
+                const record = document.createElement('div');
+                record.className = `blame-record ${blame.status.toLowerCase()}`;
+                
+                const severityClass = blame.severity <= 3 ? 'low' : 
+                                     blame.severity <= 6 ? 'medium' : 
+                                     blame.severity <= 8 ? 'high' : 'critical';
+                
+                record.innerHTML = `
+                    <div><strong>${blame.blamer} → ${blame.blamed}</strong></div>
+                    <div>System: ${blame.system}</div>
+                    <div>Reason: ${blame.reason}</div>
+                    <div>
+                        <span class="severity-indicator severity-${severityClass}"></span>
+                        Severity: ${blame.severity}/10
+                    </div>
+                    <div>Status: <strong>${blame.status}</strong></div>
+                    ${blame.compensationAmount ? `<div>💰 ${blame.compensationAmount} ETH</div>` : ''}
+                `;
+                
+                container.appendChild(record);
+            });
+        }
+        
+        // Update reputation scores
+        function updateReputations() {
+            const container = document.getElementById('reputationScores');
+            container.innerHTML = '';
+            
+            // Sort by reputation
+            const sorted = Object.entries(reputations)
+                .sort(([,a], [,b]) => b.netReputation - a.netReputation);
+            
+            sorted.forEach(([system, rep]) => {
+                const div = document.createElement('div');
+                div.style.marginBottom = '15px';
+                
+                const fillWidth = Math.abs(rep.netReputation) * 5;
+                const fillClass = rep.netReputation > 0 ? 'reputation-positive' :
+                                 rep.netReputation < 0 ? 'reputation-negative' : 'reputation-neutral';
+                
+                div.innerHTML = `
+                    <div><strong>${system.replace('_', ' ').toUpperCase()}</strong></div>
+                    <div class="reputation-bar">
+                        <div class="reputation-fill ${fillClass}" style="width: ${Math.min(fillWidth, 100)}%">
+                            ${rep.netReputation}
+                        </div>
+                    </div>
+                    <div style="font-size: 12px;">
+                        Blames: ${rep.blameCount} | Praises: ${rep.praiseCount} | Trust: ${rep.trustLevel}%
+                    </div>
+                `;
+                
+                container.appendChild(div);
+            });
+        }
+        
+        // Update system health
+        function updateSystemHealth() {
+            const container = document.getElementById('systemHealth');
+            container.innerHTML = '';
+            
+            systems.forEach(system => {
+                const health = systemHealthData[system];
+                const statusEmoji = health.suspended ? '🔴' : health.isActive ? '🟢' : '🟡';
+                const status = health.suspended ? 'SUSPENDED' : health.isActive ? 'ACTIVE' : 'WARNING';
+                
+                const div = document.createElement('div');
+                div.className = 'stats-card';
+                div.innerHTML = `
+                    <h4>${statusEmoji} ${system.replace('_', ' ').toUpperCase()}</h4>
+                    <div>Status: <strong>${status}</strong></div>
+                    <div>Blame Score: ${health.blameScore}</div>
+                `;
+                
+                container.appendChild(div);
+            });
+        }
+        
+        // Update statistics
+        function updateStats() {
+            let guilty = 0;
+            let totalComp = 0;
+            
+            blameRecords.forEach(blame => {
+                if (blame.status === 'GUILTY') {
+                    guilty++;
+                    totalComp += blame.compensationAmount || 0;
+                }
+            });
+            
+            document.getElementById('totalBlames').textContent = blameRecords.length;
+            document.getElementById('guiltyCount').textContent = guilty;
+            document.getElementById('totalComp').textContent = totalComp.toFixed(2);
+            document.getElementById('compPool').textContent = totalComp.toFixed(2) + ' ETH';
+        }
+        
+        // Add activity log entry
+        function addLogEntry(message, type = 'system') {
+            const log = document.getElementById('activityLog');
+            const entry = document.createElement('div');
+            entry.className = `log-entry ${type}`;
+            entry.innerHTML = `[${new Date().toLocaleTimeString()}] ${message}`;
+            log.insertBefore(entry, log.firstChild);
+            
+            // Keep only last 50 entries
+            while (log.children.length > 50) {
+                log.removeChild(log.lastChild);
+            }
+        }
+        
+        // Record new blame
+        function recordNewBlame() {
+            const blamer = systems[Math.floor(Math.random() * systems.length)];
+            let blamed = systems[Math.floor(Math.random() * systems.length)];
+            while (blamed === blamer) {
+                blamed = systems[Math.floor(Math.random() * systems.length)];
+            }
+            
+            const reasons = [
+                'Failed to process request',
+                'Data integrity violation',
+                'Timeout on critical operation',
+                'Invalid response format',
+                'Security vulnerability exposed',
+                'Incorrect calculation',
+                'Service unavailable'
+            ];
+            
+            const blame = {
+                id: blameIdCounter++,
+                blamer,
+                blamed,
+                system: blamed,
+                reason: reasons[Math.floor(Math.random() * reasons.length)],
+                severity: Math.floor(Math.random() * 10) + 1,
+                status: 'PENDING',
+                timestamp: new Date().toISOString()
+            };
+            
+            blameRecords.push(blame);
+            
+            // Update reputation
+            reputations[blamed].blameCount++;
+            reputations[blamed].netReputation -= blame.severity;
+            
+            // Update system health
+            systemHealthData[blamed].blameScore += blame.severity;
+            if (systemHealthData[blamed].blameScore > 50) {
+                systemHealthData[blamed].suspended = true;
+                addLogEntry(`⚠️ SYSTEM SUSPENDED: ${blamed}`, 'system');
+            }
+            
+            addLogEntry(`⚖️ BLAME: ${blamer} → ${blamed} (Severity: ${blame.severity})`, 'blame');
+            
+            // Auto-investigate after delay
+            setTimeout(() => investigateBlame(blame), 2000);
+            
+            updateAll();
+        }
+        
+        // Investigate blame
+        function investigateBlame(blame) {
+            const guilty = Math.random() > 0.3;
+            
+            blame.status = guilty ? 'GUILTY' : 'INNOCENT';
+            
+            if (guilty) {
+                blame.compensationAmount = blame.severity * 10;
+                reputations[blame.blamed].netReputation -= blame.severity;
+                addLogEntry(`⚖️ VERDICT: ${blame.blamed} found GUILTY (${blame.compensationAmount} ETH)`, 'blame');
+            } else {
+                reputations[blame.blamer].netReputation -= 5;
+                reputations[blame.blamed].netReputation += 2;
+                addLogEntry(`⚖️ VERDICT: ${blame.blamed} found INNOCENT`, 'blame');
+            }
+            
+            updateAll();
+        }
+        
+        // Record praise
+        function recordPraise() {
+            const praiser = systems[Math.floor(Math.random() * systems.length)];
+            let praised = systems[Math.floor(Math.random() * systems.length)];
+            while (praised === praiser) {
+                praised = systems[Math.floor(Math.random() * systems.length)];
+            }
+            
+            reputations[praised].praiseCount++;
+            reputations[praised].netReputation += 3;
+            
+            addLogEntry(`🌟 PRAISE: ${praiser} → ${praised}`, 'praise');
+            updateAll();
+        }
+        
+        // Show system details
+        function showSystemDetails(system) {
+            const rep = reputations[system];
+            const health = systemHealthData[system];
+            
+            alert(`
+${system.toUpperCase()} DETAILS
+================
+Reputation: ${rep.netReputation}
+Trust Level: ${rep.trustLevel}%
+Blames Received: ${rep.blameCount}
+Praises Received: ${rep.praiseCount}
+System Status: ${health.suspended ? 'SUSPENDED' : 'ACTIVE'}
+Blame Score: ${health.blameScore}
+            `);
+        }
+        
+        // Generate report
+        function generateReport() {
+            let report = 'BLAMECHAIN REPORT\n================\n\n';
+            
+            report += `Total Blames: ${blameRecords.length}\n`;
+            report += `Guilty Verdicts: ${blameRecords.filter(b => b.status === 'GUILTY').length}\n`;
+            report += `Total Compensation: ${document.getElementById('totalComp').textContent} ETH\n\n`;
+            
+            report += 'REPUTATION SCORES:\n';
+            Object.entries(reputations)
+                .sort(([,a], [,b]) => b.netReputation - a.netReputation)
+                .forEach(([system, rep]) => {
+                    report += `${system}: ${rep.netReputation} (Trust: ${rep.trustLevel}%)\n`;
+                });
+            
+            alert(report);
+        }
+        
+        // Export data
+        function exportData() {
+            const data = {
+                blameRecords,
+                reputations,
+                systemHealthData,
+                timestamp: new Date().toISOString()
+            };
+            
+            const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = 'blamechain-export.json';
+            a.click();
+        }
+        
+        // Update all displays
+        function updateAll() {
+            updateBlameRecords();
+            updateReputations();
+            updateSystemHealth();
+            updateStats();
+            drawNetwork();
+        }
+        
+        // Simulate initial data
+        function simulateInitialData() {
+            // Add some initial blames
+            for (let i = 0; i < 5; i++) {
+                recordNewBlame();
+            }
+            
+            // Add some praises
+            for (let i = 0; i < 3; i++) {
+                recordPraise();
+            }
+        }
+        
+        // Initialize on load
+        window.onload = initialize;
+        
+        // Auto-generate activity
+        setInterval(() => {
+            if (Math.random() > 0.7) {
+                recordNewBlame();
+            } else if (Math.random() > 0.8) {
+                recordPraise();
+            }
+        }, 10000);
+    </script>
+</body>
+</html>

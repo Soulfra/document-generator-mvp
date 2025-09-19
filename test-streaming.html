@@ -1,0 +1,261 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Document Generator - Streaming Test</title>
+    <style>
+        body {
+            background: #0a0a0a;
+            color: #00ff88;
+            font-family: 'Monaco', monospace;
+            padding: 20px;
+            margin: 0;
+        }
+        
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+        }
+        
+        h1 {
+            background: linear-gradient(45deg, #00ff88, #00aaff);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            text-align: center;
+        }
+        
+        .test-section {
+            background: #1a1a1a;
+            border-radius: 10px;
+            padding: 20px;
+            margin: 20px 0;
+            border: 1px solid #333;
+        }
+        
+        .test-button {
+            background: linear-gradient(45deg, #00ff88, #00aaff);
+            color: #0a0a0a;
+            border: none;
+            padding: 10px 20px;
+            border-radius: 5px;
+            cursor: pointer;
+            font-weight: bold;
+            margin: 5px;
+        }
+        
+        .test-button:hover {
+            opacity: 0.8;
+        }
+        
+        .output {
+            background: #000;
+            padding: 10px;
+            border-radius: 5px;
+            margin-top: 10px;
+            min-height: 100px;
+            max-height: 300px;
+            overflow-y: auto;
+            font-size: 12px;
+        }
+        
+        .qr-container {
+            text-align: center;
+            margin: 20px 0;
+        }
+        
+        .status {
+            padding: 5px 10px;
+            border-radius: 20px;
+            display: inline-block;
+            font-size: 12px;
+        }
+        
+        .status.connected {
+            background: #00ff8833;
+            color: #00ff88;
+        }
+        
+        .status.disconnected {
+            background: #ff004433;
+            color: #ff0044;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🌈 Document Generator Streaming Test</h1>
+        
+        <div class="test-section">
+            <h2>Connection Status</h2>
+            <div id="status" class="status disconnected">Disconnected</div>
+            <div class="output" id="connectionLog"></div>
+        </div>
+        
+        <div class="test-section">
+            <h2>🦀 Rust Compilation Test</h2>
+            <button class="test-button" onclick="testRust()">Compile Rust Code</button>
+            <div class="output" id="rustOutput"></div>
+        </div>
+        
+        <div class="test-section">
+            <h2>💎 Solidity Deployment Test</h2>
+            <button class="test-button" onclick="testSolidity()">Deploy Contract</button>
+            <div class="output" id="solidityOutput"></div>
+        </div>
+        
+        <div class="test-section">
+            <h2>🐳 Docker Build Test</h2>
+            <button class="test-button" onclick="testDocker()">Build Docker Image</button>
+            <div class="output" id="dockerOutput"></div>
+        </div>
+        
+        <div class="test-section">
+            <h2>📱 QR Code Generation</h2>
+            <button class="test-button" onclick="testQR()">Generate QR Code</button>
+            <div class="qr-container" id="qrContainer"></div>
+        </div>
+    </div>
+    
+    <script>
+        // Check if running in Electron
+        const isElectron = window.electronAPI && window.electronAPI.platform.isElectron;
+        
+        function log(elementId, message, color = '#00ff88') {
+            const element = document.getElementById(elementId);
+            const timestamp = new Date().toLocaleTimeString();
+            element.innerHTML += `<div style="color: ${color}">[${timestamp}] ${message}</div>`;
+            element.scrollTop = element.scrollHeight;
+        }
+        
+        // Connection status
+        if (isElectron) {
+            window.addEventListener('streaming-connected', (event) => {
+                document.getElementById('status').className = 'status connected';
+                document.getElementById('status').textContent = 'Connected';
+                log('connectionLog', '✅ Connected to streaming system');
+            });
+            
+            window.addEventListener('streaming-error', (event) => {
+                log('connectionLog', `❌ Error: ${event.detail}`, '#ff0044');
+            });
+            
+            window.addEventListener('stream-data', (event) => {
+                const { type, content, color } = event.detail;
+                
+                // Route to appropriate output
+                let outputId = 'connectionLog';
+                if (type.includes('rust')) outputId = 'rustOutput';
+                else if (type.includes('solidity')) outputId = 'solidityOutput';
+                else if (type.includes('docker')) outputId = 'dockerOutput';
+                
+                log(outputId, content, color);
+            });
+        } else {
+            log('connectionLog', '⚠️ Not running in Electron - limited functionality', '#ffaa00');
+        }
+        
+        async function testRust() {
+            if (!window.streaming) {
+                log('rustOutput', '❌ Streaming API not available', '#ff0044');
+                return;
+            }
+            
+            log('rustOutput', '🦀 Compiling Rust code...');
+            
+            const rustCode = \`
+fn main() {
+    println!("Hello from Document Generator!");
+    let result = calculate(42);
+    println!("Result: {}", result);
+}
+
+fn calculate(n: i32) -> i32 {
+    n * 2
+}
+            \`;
+            
+            try {
+                await window.streaming.compileRust(rustCode);
+            } catch (error) {
+                log('rustOutput', \`❌ Error: \${error.message}\`, '#ff0044');
+            }
+        }
+        
+        async function testSolidity() {
+            if (!window.streaming) {
+                log('solidityOutput', '❌ Streaming API not available', '#ff0044');
+                return;
+            }
+            
+            log('solidityOutput', '💎 Deploying Solidity contract...');
+            
+            const contract = {
+                name: 'DocumentToken',
+                code: \`
+pragma solidity ^0.8.0;
+
+contract DocumentToken {
+    string public name = "Document Token";
+    mapping(address => uint256) public balances;
+    
+    function mint(address to, uint256 amount) public {
+        balances[to] += amount;
+    }
+}
+                \`
+            };
+            
+            try {
+                await window.streaming.deploySolidity(contract, 'localhost');
+            } catch (error) {
+                log('solidityOutput', \`❌ Error: \${error.message}\`, '#ff0044');
+            }
+        }
+        
+        async function testDocker() {
+            if (!window.streaming) {
+                log('dockerOutput', '❌ Streaming API not available', '#ff0044');
+                return;
+            }
+            
+            log('dockerOutput', '🐳 Building Docker image...');
+            
+            const dockerfile = \`
+FROM node:18-alpine
+WORKDIR /app
+COPY package*.json ./
+RUN npm install
+COPY . .
+EXPOSE 3000
+CMD ["npm", "start"]
+            \`;
+            
+            try {
+                await window.streaming.buildDocker(dockerfile, 'docgen-test:latest');
+            } catch (error) {
+                log('dockerOutput', \`❌ Error: \${error.message}\`, '#ff0044');
+            }
+        }
+        
+        async function testQR() {
+            if (!window.streaming) {
+                document.getElementById('qrContainer').innerHTML = '<p style="color: #ff0044">❌ Streaming API not available</p>';
+                return;
+            }
+            
+            const data = {
+                app: 'Document Generator',
+                timestamp: Date.now(),
+                features: ['Rust', 'Solidity', 'Docker', 'QR'],
+                url: 'http://localhost:3001'
+            };
+            
+            try {
+                await window.streaming.generateQR(JSON.stringify(data), 'test');
+                document.getElementById('qrContainer').innerHTML = '<p>✅ QR code generated - check overlay</p>';
+            } catch (error) {
+                document.getElementById('qrContainer').innerHTML = \`<p style="color: #ff0044">❌ Error: \${error.message}</p>\`;
+            }
+        }
+    </script>
+</body>
+</html>

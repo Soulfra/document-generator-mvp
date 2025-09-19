@@ -1,0 +1,190 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Tax QR Scanner</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <style>
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, sans-serif;
+            padding: 20px;
+            background: #000;
+            color: #0f0;
+        }
+        .container {
+            max-width: 600px;
+            margin: 0 auto;
+            text-align: center;
+        }
+        #qrcode {
+            background: white;
+            padding: 20px;
+            display: inline-block;
+            margin: 20px 0;
+        }
+        .url-box {
+            background: #222;
+            padding: 15px;
+            margin: 20px 0;
+            border: 1px solid #0f0;
+            word-break: break-all;
+            font-family: monospace;
+        }
+        .status {
+            background: #001100;
+            padding: 20px;
+            margin: 20px 0;
+            border: 1px solid #0f0;
+        }
+        button {
+            background: #0f0;
+            color: #000;
+            border: none;
+            padding: 15px 30px;
+            font-size: 18px;
+            cursor: pointer;
+            margin: 10px;
+        }
+        #fileList {
+            text-align: left;
+            margin-top: 20px;
+        }
+        .file-item {
+            background: #001100;
+            padding: 10px;
+            margin: 5px 0;
+            border: 1px solid #0f0;
+        }
+    </style>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
+</head>
+<body>
+    <div class="container">
+        <h1>📱 TAX TRACKER QR HANDSHAKE</h1>
+        
+        <div id="qrcode"></div>
+        
+        <div class="url-box">
+            <strong>Connection URL:</strong><br>
+            <span id="connectionUrl"></span>
+        </div>
+        
+        <div class="status">
+            <h3>📊 Tax Tracking Status</h3>
+            <p>Device ID: <span id="deviceId"></span></p>
+            <p>Status: <span id="status">Ready</span></p>
+            <p>Files: <span id="fileCount">0</span></p>
+        </div>
+        
+        <button onclick="generateNewQR()">🔄 New QR Code</button>
+        <button onclick="createTarball()">📦 Create Backup</button>
+        
+        <div id="fileList"></div>
+    </div>
+    
+    <script>
+        // Generate device ID
+        const deviceId = btoa(navigator.userAgent).substring(0, 16);
+        document.getElementById('deviceId').textContent = deviceId;
+        
+        // Tax storage
+        const taxFiles = JSON.parse(localStorage.getItem('taxFiles') || '[]');
+        
+        function generateQR() {
+            const token = Math.random().toString(36).substring(2);
+            const url = window.location.href.replace('.html', '') + '?token=' + token;
+            
+            document.getElementById('connectionUrl').textContent = url;
+            
+            // Clear old QR
+            document.getElementById('qrcode').innerHTML = '';
+            
+            // Generate new QR
+            new QRCode(document.getElementById('qrcode'), {
+                text: url,
+                width: 256,
+                height: 256,
+                colorDark: "#000000",
+                colorLight: "#ffffff",
+                correctLevel: QRCode.CorrectLevel.L
+            });
+            
+            return { token, url };
+        }
+        
+        function generateNewQR() {
+            generateQR();
+            document.getElementById('status').textContent = 'New QR Generated';
+        }
+        
+        // Handle file uploads
+        function handleFileUpload(file, category) {
+            const reader = new FileReader();
+            reader.onload = function(e) {
+                const fileData = {
+                    name: file.name,
+                    size: file.size,
+                    type: file.type,
+                    category: category || 'general',
+                    timestamp: Date.now(),
+                    data: e.target.result
+                };
+                
+                taxFiles.push(fileData);
+                localStorage.setItem('taxFiles', JSON.stringify(taxFiles));
+                
+                updateFileList();
+                document.getElementById('status').textContent = 'File uploaded: ' + file.name;
+            };
+            reader.readAsDataURL(file);
+        }
+        
+        function updateFileList() {
+            const fileList = document.getElementById('fileList');
+            const fileCount = document.getElementById('fileCount');
+            
+            fileCount.textContent = taxFiles.length;
+            
+            fileList.innerHTML = '<h3>📁 Uploaded Files:</h3>';
+            taxFiles.forEach((file, index) => {
+                const item = document.createElement('div');
+                item.className = 'file-item';
+                item.innerHTML = `
+                    📄 ${file.name} - ${file.category} - ${new Date(file.timestamp).toLocaleDateString()}
+                `;
+                fileList.appendChild(item);
+            });
+        }
+        
+        function createTarball() {
+            // Create a JSON export of all tax files
+            const exportData = {
+                deviceId: deviceId,
+                exportDate: new Date().toISOString(),
+                files: taxFiles,
+                capsules: JSON.parse(localStorage.getItem('soulfra-capsules') || '{}')
+            };
+            
+            const blob = new Blob([JSON.stringify(exportData, null, 2)], { type: 'application/json' });
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = `tax-backup-${new Date().toISOString().split('T')[0]}.json`;
+            a.click();
+            
+            document.getElementById('status').textContent = 'Backup created!';
+        }
+        
+        // Initialize
+        generateQR();
+        updateFileList();
+        
+        // Handle drag & drop
+        document.addEventListener('dragover', (e) => e.preventDefault());
+        document.addEventListener('drop', (e) => {
+            e.preventDefault();
+            const files = e.dataTransfer.files;
+            Array.from(files).forEach(file => handleFileUpload(file));
+        });
+    </script>
+</body>
+</html>

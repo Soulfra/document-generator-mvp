@@ -1,0 +1,932 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>🎮 Enhanced 3D Game Launcher - Playable Minecraft/Roblox Style</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            font-family: 'Segoe UI', Arial, sans-serif;
+            background: #0a0a0a;
+            color: #fff;
+            overflow: hidden;
+        }
+        
+        .launcher {
+            display: flex;
+            height: 100vh;
+            transition: all 0.5s cubic-bezier(0.4, 0, 0.2, 1);
+        }
+        
+        .launcher.game-active {
+            transform: translateX(-100%);
+        }
+        
+        .sidebar {
+            width: 280px;
+            background: #151515;
+            padding: 20px;
+            overflow-y: auto;
+            border-right: 1px solid #333;
+        }
+        
+        .logo {
+            font-size: 28px;
+            font-weight: bold;
+            margin-bottom: 30px;
+            background: linear-gradient(45deg, #00ff88, #00ffff);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            text-align: center;
+        }
+        
+        .game-modes {
+            margin-bottom: 30px;
+        }
+        
+        .mode-title {
+            font-size: 14px;
+            text-transform: uppercase;
+            color: #666;
+            margin-bottom: 15px;
+            letter-spacing: 1px;
+        }
+        
+        .mode-card {
+            background: #1e1e1e;
+            border: 1px solid #333;
+            border-radius: 8px;
+            padding: 15px;
+            margin-bottom: 10px;
+            cursor: pointer;
+            transition: all 0.3s;
+            position: relative;
+            overflow: hidden;
+        }
+        
+        .mode-card:hover {
+            background: #252525;
+            border-color: #00ff88;
+            transform: translateX(5px);
+        }
+        
+        .mode-card.active {
+            background: #00ff88;
+            color: #000;
+            border-color: #00ff88;
+        }
+        
+        .mode-card::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: -100%;
+            width: 100%;
+            height: 100%;
+            background: linear-gradient(90deg, transparent, rgba(255,255,255,0.1), transparent);
+            transition: left 0.5s;
+        }
+        
+        .mode-card:hover::before {
+            left: 100%;
+        }
+        
+        .mode-name {
+            font-size: 18px;
+            font-weight: bold;
+            margin-bottom: 5px;
+        }
+        
+        .mode-description {
+            font-size: 12px;
+            opacity: 0.8;
+        }
+        
+        .main-content {
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            background: #1a1a1a;
+        }
+        
+        .preview-area {
+            flex: 1;
+            position: relative;
+            overflow: hidden;
+        }
+        
+        .preview-canvas {
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+        }
+        
+        .preview-overlay {
+            position: absolute;
+            bottom: 0;
+            left: 0;
+            right: 0;
+            background: linear-gradient(to top, rgba(0,0,0,0.9), transparent);
+            padding: 30px;
+            pointer-events: none;
+        }
+        
+        .preview-title {
+            font-size: 36px;
+            font-weight: bold;
+            margin-bottom: 10px;
+        }
+        
+        .preview-info {
+            font-size: 16px;
+            opacity: 0.8;
+            margin-bottom: 20px;
+        }
+        
+        .action-bar {
+            position: absolute;
+            bottom: 30px;
+            right: 30px;
+            display: flex;
+            gap: 15px;
+            pointer-events: all;
+        }
+        
+        .btn {
+            padding: 12px 24px;
+            background: #00ff88;
+            color: #000;
+            border: none;
+            border-radius: 6px;
+            font-size: 16px;
+            font-weight: bold;
+            cursor: pointer;
+            transition: all 0.3s;
+            position: relative;
+            overflow: hidden;
+        }
+        
+        .btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 5px 20px rgba(0, 255, 136, 0.4);
+        }
+        
+        .btn:active {
+            transform: translateY(0);
+        }
+        
+        .btn-secondary {
+            background: transparent;
+            color: #fff;
+            border: 2px solid #00ff88;
+        }
+        
+        .btn-secondary:hover {
+            background: #00ff88;
+            color: #000;
+        }
+        
+        .game-container {
+            position: fixed;
+            top: 0;
+            left: 100%;
+            width: 100%;
+            height: 100%;
+            background: #000;
+            transition: left 0.5s cubic-bezier(0.4, 0, 0.2, 1);
+            z-index: 100;
+        }
+        
+        .game-container.active {
+            left: 0;
+        }
+        
+        .game-iframe {
+            width: 100%;
+            height: 100%;
+            border: none;
+        }
+        
+        .game-controls {
+            position: fixed;
+            top: 20px;
+            right: 20px;
+            display: flex;
+            gap: 10px;
+            z-index: 101;
+        }
+        
+        .control-btn {
+            width: 40px;
+            height: 40px;
+            background: rgba(0, 0, 0, 0.8);
+            border: 1px solid #00ff88;
+            color: #00ff88;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            cursor: pointer;
+            transition: all 0.3s;
+        }
+        
+        .control-btn:hover {
+            background: #00ff88;
+            color: #000;
+            transform: scale(1.1);
+        }
+        
+        .stats-panel {
+            position: fixed;
+            top: 20px;
+            left: 20px;
+            background: rgba(0, 0, 0, 0.8);
+            border: 1px solid #00ff88;
+            padding: 15px;
+            border-radius: 8px;
+            min-width: 200px;
+            z-index: 101;
+        }
+        
+        .stat-item {
+            display: flex;
+            justify-content: space-between;
+            margin-bottom: 8px;
+            font-size: 14px;
+        }
+        
+        .stat-label {
+            color: #888;
+        }
+        
+        .stat-value {
+            color: #00ff88;
+            font-weight: bold;
+        }
+        
+        .loading-screen {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: #000;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            z-index: 200;
+            opacity: 0;
+            pointer-events: none;
+            transition: opacity 0.3s;
+        }
+        
+        .loading-screen.active {
+            opacity: 1;
+            pointer-events: all;
+        }
+        
+        .loader {
+            width: 60px;
+            height: 60px;
+            border: 3px solid #333;
+            border-top-color: #00ff88;
+            border-radius: 50%;
+            animation: spin 1s linear infinite;
+            margin-bottom: 20px;
+        }
+        
+        @keyframes spin {
+            to { transform: rotate(360deg); }
+        }
+        
+        .loading-text {
+            font-size: 18px;
+            color: #00ff88;
+        }
+        
+        .features-grid {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 15px;
+            padding: 20px;
+            background: #0f0f0f;
+            border-top: 1px solid #333;
+        }
+        
+        .feature-card {
+            background: #1a1a1a;
+            border: 1px solid #333;
+            padding: 15px;
+            border-radius: 6px;
+            text-align: center;
+            transition: all 0.3s;
+        }
+        
+        .feature-card:hover {
+            background: #222;
+            border-color: #00ff88;
+            transform: translateY(-2px);
+        }
+        
+        .feature-icon {
+            font-size: 32px;
+            margin-bottom: 10px;
+        }
+        
+        .feature-name {
+            font-size: 14px;
+            font-weight: bold;
+            margin-bottom: 5px;
+        }
+        
+        .feature-desc {
+            font-size: 12px;
+            color: #888;
+        }
+        
+        .ai-chat {
+            position: fixed;
+            bottom: 20px;
+            right: 20px;
+            width: 350px;
+            height: 400px;
+            background: rgba(0, 0, 0, 0.9);
+            border: 1px solid #00ff88;
+            border-radius: 8px;
+            display: none;
+            flex-direction: column;
+            z-index: 102;
+        }
+        
+        .ai-chat.active {
+            display: flex;
+        }
+        
+        .chat-header {
+            padding: 15px;
+            background: #00ff88;
+            color: #000;
+            font-weight: bold;
+            border-radius: 8px 8px 0 0;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+        
+        .chat-messages {
+            flex: 1;
+            padding: 15px;
+            overflow-y: auto;
+        }
+        
+        .chat-message {
+            margin-bottom: 10px;
+            padding: 8px 12px;
+            border-radius: 6px;
+            background: #1a1a1a;
+            border: 1px solid #333;
+        }
+        
+        .chat-message.ai {
+            background: #00ff8820;
+            border-color: #00ff88;
+        }
+        
+        .chat-input {
+            padding: 15px;
+            border-top: 1px solid #333;
+            display: flex;
+            gap: 10px;
+        }
+        
+        .chat-input input {
+            flex: 1;
+            padding: 8px 12px;
+            background: #1a1a1a;
+            border: 1px solid #333;
+            color: #fff;
+            border-radius: 4px;
+        }
+        
+        .chat-input button {
+            padding: 8px 16px;
+            background: #00ff88;
+            color: #000;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+            font-weight: bold;
+        }
+    </style>
+</head>
+<body>
+    <!-- Loading Screen -->
+    <div class="loading-screen" id="loadingScreen">
+        <div class="loader"></div>
+        <div class="loading-text">Loading Enhanced 3D Game...</div>
+    </div>
+    
+    <!-- Main Launcher -->
+    <div class="launcher" id="launcher">
+        <!-- Sidebar -->
+        <div class="sidebar">
+            <div class="logo">🎮 3D Game Hub</div>
+            
+            <div class="game-modes">
+                <div class="mode-title">Game Modes</div>
+                
+                <div class="mode-card" data-mode="survival" onclick="selectMode('survival')">
+                    <div class="mode-name">🏝️ Survival</div>
+                    <div class="mode-description">Mine, build, and survive in a procedural world</div>
+                </div>
+                
+                <div class="mode-card" data-mode="tycoon" onclick="selectMode('tycoon')">
+                    <div class="mode-name">💰 Tycoon</div>
+                    <div class="mode-description">Build your business empire from documents</div>
+                </div>
+                
+                <div class="mode-card" data-mode="adventure" onclick="selectMode('adventure')">
+                    <div class="mode-name">⚔️ Adventure RPG</div>
+                    <div class="mode-description">Quest through AI-generated dungeons</div>
+                </div>
+                
+                <div class="mode-card" data-mode="creative" onclick="selectMode('creative')">
+                    <div class="mode-name">🎨 Creative</div>
+                    <div class="mode-description">Unlimited resources and flying</div>
+                </div>
+                
+                <div class="mode-card" data-mode="multiplayer" onclick="selectMode('multiplayer')">
+                    <div class="mode-name">👥 Multiplayer</div>
+                    <div class="mode-description">Play with friends in real-time</div>
+                </div>
+            </div>
+            
+            <div class="game-modes">
+                <div class="mode-title">Special Features</div>
+                
+                <div class="mode-card" onclick="toggleAIChat()">
+                    <div class="mode-name">🤖 AI Assistant</div>
+                    <div class="mode-description">Smart NPCs with real conversations</div>
+                </div>
+                
+                <div class="mode-card" onclick="openDocumentProcessor()">
+                    <div class="mode-name">📄 Document → Game</div>
+                    <div class="mode-description">Turn any document into game content</div>
+                </div>
+            </div>
+        </div>
+        
+        <!-- Main Content -->
+        <div class="main-content">
+            <div class="preview-area">
+                <canvas class="preview-canvas" id="previewCanvas"></canvas>
+                
+                <div class="preview-overlay">
+                    <div class="preview-title" id="previewTitle">Select a Game Mode</div>
+                    <div class="preview-info" id="previewInfo">
+                        Choose from survival, tycoon, adventure, or creative modes
+                    </div>
+                </div>
+                
+                <div class="action-bar">
+                    <button class="btn btn-secondary" onclick="showSettings()">⚙️ Settings</button>
+                    <button class="btn" id="playButton" onclick="launchGame()">🎮 Play Now</button>
+                </div>
+            </div>
+            
+            <div class="features-grid">
+                <div class="feature-card">
+                    <div class="feature-icon">🏗️</div>
+                    <div class="feature-name">Voxel Building</div>
+                    <div class="feature-desc">Minecraft-style block placement</div>
+                </div>
+                
+                <div class="feature-card">
+                    <div class="feature-icon">🧠</div>
+                    <div class="feature-name">Smart AI</div>
+                    <div class="feature-desc">NPCs with pathfinding & dialogue</div>
+                </div>
+                
+                <div class="feature-card">
+                    <div class="feature-icon">⚡</div>
+                    <div class="feature-name">Real Physics</div>
+                    <div class="feature-desc">Gravity, collision, and more</div>
+                </div>
+                
+                <div class="feature-card">
+                    <div class="feature-icon">🌍</div>
+                    <div class="feature-name">Infinite Worlds</div>
+                    <div class="feature-desc">Procedural generation</div>
+                </div>
+                
+                <div class="feature-card">
+                    <div class="feature-icon">🎨</div>
+                    <div class="feature-name">Customization</div>
+                    <div class="feature-desc">Skins, textures, mods</div>
+                </div>
+                
+                <div class="feature-card">
+                    <div class="feature-icon">📱</div>
+                    <div class="feature-name">Cross-Platform</div>
+                    <div class="feature-desc">Play on any device</div>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <!-- Game Container -->
+    <div class="game-container" id="gameContainer">
+        <div class="game-controls">
+            <div class="control-btn" onclick="toggleFullscreen()" title="Fullscreen">⛶</div>
+            <div class="control-btn" onclick="toggleStats()" title="Stats">📊</div>
+            <div class="control-btn" onclick="exitGame()" title="Exit">✕</div>
+        </div>
+        
+        <div class="stats-panel" id="statsPanel" style="display: none;">
+            <div class="stat-item">
+                <span class="stat-label">FPS:</span>
+                <span class="stat-value" id="fps">60</span>
+            </div>
+            <div class="stat-item">
+                <span class="stat-label">Players:</span>
+                <span class="stat-value" id="playerCount">1</span>
+            </div>
+            <div class="stat-item">
+                <span class="stat-label">Chunks:</span>
+                <span class="stat-value" id="chunkCount">9</span>
+            </div>
+            <div class="stat-item">
+                <span class="stat-label">Entities:</span>
+                <span class="stat-value" id="entityCount">5</span>
+            </div>
+        </div>
+        
+        <iframe class="game-iframe" id="gameFrame"></iframe>
+    </div>
+    
+    <!-- AI Chat -->
+    <div class="ai-chat" id="aiChat">
+        <div class="chat-header">
+            <span>🤖 AI Game Assistant</span>
+            <span style="cursor: pointer;" onclick="toggleAIChat()">✕</span>
+        </div>
+        <div class="chat-messages" id="chatMessages">
+            <div class="chat-message ai">
+                Hello! I'm your AI game assistant. I can help you with building, finding resources, or creating new game content from your documents. What would you like to do?
+            </div>
+        </div>
+        <div class="chat-input">
+            <input type="text" id="chatInput" placeholder="Ask me anything..." onkeypress="handleChatInput(event)">
+            <button onclick="sendChatMessage()">Send</button>
+        </div>
+    </div>
+    
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+    <script>
+        let selectedMode = null;
+        let previewScene, previewCamera, previewRenderer;
+        let previewAnimationId;
+        
+        // Initialize preview
+        function initPreview() {
+            const canvas = document.getElementById('previewCanvas');
+            
+            previewScene = new THREE.Scene();
+            previewScene.fog = new THREE.Fog(0x87CEEB, 10, 100);
+            
+            previewCamera = new THREE.PerspectiveCamera(
+                75,
+                canvas.clientWidth / canvas.clientHeight,
+                0.1,
+                1000
+            );
+            previewCamera.position.set(20, 20, 20);
+            previewCamera.lookAt(0, 0, 0);
+            
+            previewRenderer = new THREE.WebGLRenderer({ 
+                canvas: canvas,
+                antialias: true,
+                alpha: true 
+            });
+            previewRenderer.setSize(canvas.clientWidth, canvas.clientHeight);
+            previewRenderer.shadowMap.enabled = true;
+            
+            // Add lights
+            const ambientLight = new THREE.AmbientLight(0xffffff, 0.6);
+            previewScene.add(ambientLight);
+            
+            const directionalLight = new THREE.DirectionalLight(0xffffff, 0.8);
+            directionalLight.position.set(50, 100, 50);
+            directionalLight.castShadow = true;
+            previewScene.add(directionalLight);
+            
+            // Create preview world
+            createPreviewWorld();
+            
+            // Start animation
+            animatePreview();
+        }
+        
+        function createPreviewWorld() {
+            // Ground
+            const groundGeometry = new THREE.PlaneGeometry(50, 50);
+            const groundMaterial = new THREE.MeshStandardMaterial({ 
+                color: 0x3a7d44,
+                roughness: 0.8 
+            });
+            const ground = new THREE.Mesh(groundGeometry, groundMaterial);
+            ground.rotation.x = -Math.PI / 2;
+            ground.receiveShadow = true;
+            previewScene.add(ground);
+            
+            // Voxel blocks
+            const blockGeometry = new THREE.BoxGeometry(2, 2, 2);
+            const blockMaterials = [
+                new THREE.MeshStandardMaterial({ color: 0x8B4513 }), // Dirt
+                new THREE.MeshStandardMaterial({ color: 0x228B22 }), // Grass
+                new THREE.MeshStandardMaterial({ color: 0x808080 }), // Stone
+                new THREE.MeshStandardMaterial({ color: 0xFFD700 })  // Gold
+            ];
+            
+            // Create some structures
+            for (let i = 0; i < 20; i++) {
+                const material = blockMaterials[Math.floor(Math.random() * blockMaterials.length)];
+                const block = new THREE.Mesh(blockGeometry, material);
+                
+                block.position.set(
+                    Math.random() * 30 - 15,
+                    Math.random() * 10 + 1,
+                    Math.random() * 30 - 15
+                );
+                
+                block.castShadow = true;
+                block.receiveShadow = true;
+                previewScene.add(block);
+            }
+            
+            // Add some AI agents (capsules)
+            const agentGeometry = new THREE.CapsuleGeometry(0.5, 2, 4, 8);
+            const agentMaterial = new THREE.MeshStandardMaterial({ 
+                color: 0x00ff00,
+                emissive: 0x00ff00,
+                emissiveIntensity: 0.2
+            });
+            
+            for (let i = 0; i < 3; i++) {
+                const agent = new THREE.Mesh(agentGeometry, agentMaterial);
+                agent.position.set(
+                    Math.random() * 20 - 10,
+                    1.5,
+                    Math.random() * 20 - 10
+                );
+                agent.castShadow = true;
+                previewScene.add(agent);
+                
+                // Store for animation
+                agent.userData.isAgent = true;
+                agent.userData.speed = 0.02 + Math.random() * 0.02;
+                agent.userData.angle = Math.random() * Math.PI * 2;
+            }
+        }
+        
+        function animatePreview() {
+            previewAnimationId = requestAnimationFrame(animatePreview);
+            
+            // Rotate camera
+            const time = Date.now() * 0.001;
+            previewCamera.position.x = Math.cos(time * 0.2) * 30;
+            previewCamera.position.z = Math.sin(time * 0.2) * 30;
+            previewCamera.lookAt(0, 5, 0);
+            
+            // Animate agents
+            previewScene.traverse((object) => {
+                if (object.userData.isAgent) {
+                    // Move in circles (no more spinning!)
+                    object.userData.angle += object.userData.speed;
+                    const radius = 10;
+                    object.position.x = Math.cos(object.userData.angle) * radius;
+                    object.position.z = Math.sin(object.userData.angle) * radius;
+                    
+                    // Face movement direction
+                    object.rotation.y = object.userData.angle + Math.PI / 2;
+                }
+            });
+            
+            previewRenderer.render(previewScene, previewCamera);
+        }
+        
+        function selectMode(mode) {
+            selectedMode = mode;
+            
+            // Update UI
+            document.querySelectorAll('.mode-card').forEach(card => {
+                card.classList.remove('active');
+            });
+            document.querySelector(`[data-mode="${mode}"]`).classList.add('active');
+            
+            // Update preview
+            const modeInfo = {
+                survival: {
+                    title: '🏝️ Survival Mode',
+                    info: 'Mine resources, craft tools, build shelter, and survive the night!'
+                },
+                tycoon: {
+                    title: '💰 Tycoon Mode',
+                    info: 'Start with a business plan and build your empire block by block'
+                },
+                adventure: {
+                    title: '⚔️ Adventure RPG',
+                    info: 'Explore dungeons, complete quests, and level up your character'
+                },
+                creative: {
+                    title: '🎨 Creative Mode',
+                    info: 'Unlimited resources, no health, and the ability to fly'
+                },
+                multiplayer: {
+                    title: '👥 Multiplayer',
+                    info: 'Join friends in shared worlds with real-time collaboration'
+                }
+            };
+            
+            const info = modeInfo[mode];
+            document.getElementById('previewTitle').textContent = info.title;
+            document.getElementById('previewInfo').textContent = info.info;
+            
+            // Enable play button
+            document.getElementById('playButton').disabled = false;
+        }
+        
+        async function launchGame() {
+            if (!selectedMode) {
+                alert('Please select a game mode first!');
+                return;
+            }
+            
+            // Show loading screen
+            const loadingScreen = document.getElementById('loadingScreen');
+            loadingScreen.classList.add('active');
+            
+            // Prepare game URL based on mode
+            let gameUrl = '/unified-3d-game-engine.html';
+            const params = new URLSearchParams({
+                mode: selectedMode,
+                ai: 'enhanced',
+                physics: 'enabled',
+                multiplayer: selectedMode === 'multiplayer' ? 'true' : 'false'
+            });
+            
+            gameUrl += '?' + params.toString();
+            
+            // Load game
+            setTimeout(() => {
+                document.getElementById('gameFrame').src = gameUrl;
+                document.getElementById('launcher').classList.add('game-active');
+                document.getElementById('gameContainer').classList.add('active');
+                loadingScreen.classList.remove('active');
+                
+                // Stop preview animation
+                if (previewAnimationId) {
+                    cancelAnimationFrame(previewAnimationId);
+                }
+                
+                // Start stats updates
+                startStatsUpdates();
+            }, 1500);
+        }
+        
+        function exitGame() {
+            document.getElementById('launcher').classList.remove('game-active');
+            document.getElementById('gameContainer').classList.remove('active');
+            document.getElementById('gameFrame').src = '';
+            
+            // Resume preview animation
+            animatePreview();
+            
+            // Stop stats updates
+            stopStatsUpdates();
+        }
+        
+        function toggleFullscreen() {
+            if (!document.fullscreenElement) {
+                document.getElementById('gameContainer').requestFullscreen();
+            } else {
+                document.exitFullscreen();
+            }
+        }
+        
+        function toggleStats() {
+            const panel = document.getElementById('statsPanel');
+            panel.style.display = panel.style.display === 'none' ? 'block' : 'none';
+        }
+        
+        let statsInterval;
+        function startStatsUpdates() {
+            statsInterval = setInterval(() => {
+                // Update stats (would get real data from game)
+                document.getElementById('fps').textContent = 
+                    Math.round(55 + Math.random() * 10);
+                document.getElementById('chunkCount').textContent = 
+                    Math.round(9 + Math.random() * 3);
+                document.getElementById('entityCount').textContent = 
+                    Math.round(5 + Math.random() * 10);
+            }, 1000);
+        }
+        
+        function stopStatsUpdates() {
+            if (statsInterval) {
+                clearInterval(statsInterval);
+            }
+        }
+        
+        function toggleAIChat() {
+            const chat = document.getElementById('aiChat');
+            chat.classList.toggle('active');
+            
+            if (chat.classList.contains('active')) {
+                document.getElementById('chatInput').focus();
+            }
+        }
+        
+        function handleChatInput(event) {
+            if (event.key === 'Enter') {
+                sendChatMessage();
+            }
+        }
+        
+        function sendChatMessage() {
+            const input = document.getElementById('chatInput');
+            const message = input.value.trim();
+            
+            if (!message) return;
+            
+            // Add user message
+            addChatMessage(message, false);
+            input.value = '';
+            
+            // Simulate AI response
+            setTimeout(() => {
+                const responses = [
+                    "I can help you build a house! Try placing wood blocks in a 5x5 square pattern.",
+                    "Looking for diamonds? They're usually found deep underground, below Y=16.",
+                    "To create an AI companion, upload a character description document!",
+                    "Try the '/give' command to get items, or press 'E' for creative inventory.",
+                    "Want to import a business plan? Use the Document→Game feature!"
+                ];
+                
+                const response = responses[Math.floor(Math.random() * responses.length)];
+                addChatMessage(response, true);
+            }, 1000);
+        }
+        
+        function addChatMessage(message, isAI) {
+            const messagesDiv = document.getElementById('chatMessages');
+            const messageDiv = document.createElement('div');
+            messageDiv.className = `chat-message ${isAI ? 'ai' : ''}`;
+            messageDiv.textContent = message;
+            messagesDiv.appendChild(messageDiv);
+            messagesDiv.scrollTop = messagesDiv.scrollHeight;
+        }
+        
+        function showSettings() {
+            alert('Settings panel coming soon! Configure graphics, controls, and more.');
+        }
+        
+        function openDocumentProcessor() {
+            window.open('/document-processor', '_blank');
+        }
+        
+        // Initialize on load
+        window.addEventListener('load', () => {
+            initPreview();
+        });
+        
+        // Handle resize
+        window.addEventListener('resize', () => {
+            if (previewCamera && previewRenderer) {
+                const canvas = document.getElementById('previewCanvas');
+                previewCamera.aspect = canvas.clientWidth / canvas.clientHeight;
+                previewCamera.updateProjectionMatrix();
+                previewRenderer.setSize(canvas.clientWidth, canvas.clientHeight);
+            }
+        });
+        
+        // Console easter egg
+        console.log('%c🎮 Enhanced 3D Game Launcher', 'font-size: 24px; color: #00ff88;');
+        console.log('%cFeatures:', 'font-size: 16px; color: #00ffff;');
+        console.log('• Real playable 3D voxel games');
+        console.log('• AI agents with pathfinding (no more spinning!)');
+        console.log('• Context-aware NPC dialogue');
+        console.log('• Document-to-game transformation');
+        console.log('• Multiplayer support');
+        console.log('• Physics engine');
+        console.log('• And much more!');
+    </script>
+</body>
+</html>

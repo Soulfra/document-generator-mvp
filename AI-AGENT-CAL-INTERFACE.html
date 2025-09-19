@@ -1,0 +1,1342 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>AI Agent Cal - Autonomous World Builder</title>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Orbitron:wght@400;700;900&display=swap');
+        
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            background: linear-gradient(135deg, #000000, #1a0a1a, #0a1a0a);
+            color: #FFD700;
+            font-family: 'Orbitron', monospace;
+            overflow: hidden;
+        }
+
+        /* AI Interface Container */
+        .cal-interface {
+            display: grid;
+            grid-template-areas: 
+                "header header header"
+                "status console world"
+                "control console world";
+            grid-template-columns: 300px 400px 1fr;
+            grid-template-rows: 80px 1fr 200px;
+            height: 100vh;
+            gap: 15px;
+            padding: 15px;
+        }
+
+        /* Header - Cal's Brain Status */
+        .cal-header {
+            grid-area: header;
+            background: linear-gradient(45deg, #FFD700, #FFA500);
+            border-radius: 15px;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: 0 30px;
+            color: black;
+            box-shadow: 0 0 30px rgba(255, 215, 0, 0.5);
+        }
+
+        .cal-brain {
+            display: flex;
+            align-items: center;
+            gap: 15px;
+        }
+
+        .brain-avatar {
+            width: 50px;
+            height: 50px;
+            border-radius: 50%;
+            background: linear-gradient(45deg, #FF4444, #FF6666);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 1.5rem;
+            animation: brainPulse 2s ease-in-out infinite alternate;
+        }
+
+        @keyframes brainPulse {
+            0% { box-shadow: 0 0 20px rgba(255, 68, 68, 0.5); }
+            100% { box-shadow: 0 0 40px rgba(255, 68, 68, 0.8), 0 0 60px rgba(255, 215, 0, 0.3); }
+        }
+
+        .brain-info h2 {
+            font-size: 1.5rem;
+            font-weight: 900;
+        }
+
+        .brain-status {
+            font-size: 0.9rem;
+            opacity: 0.8;
+        }
+
+        .cal-stats {
+            display: flex;
+            gap: 30px;
+            align-items: center;
+        }
+
+        .stat-item {
+            text-align: center;
+        }
+
+        .stat-value {
+            font-size: 1.3rem;
+            font-weight: bold;
+        }
+
+        .stat-label {
+            font-size: 0.8rem;
+            opacity: 0.8;
+        }
+
+        /* System Status Panel */
+        .system-status {
+            grid-area: status;
+            background: rgba(26, 26, 26, 0.9);
+            border: 2px solid #FFD700;
+            border-radius: 15px;
+            padding: 20px;
+            overflow-y: auto;
+        }
+
+        .status-section {
+            margin-bottom: 20px;
+        }
+
+        .status-title {
+            color: #FFD700;
+            font-size: 1rem;
+            font-weight: bold;
+            margin-bottom: 10px;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .system-item {
+            background: rgba(42, 42, 42, 0.7);
+            border-radius: 8px;
+            padding: 10px;
+            margin-bottom: 8px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .system-name {
+            font-size: 0.9rem;
+        }
+
+        .system-indicator {
+            padding: 2px 8px;
+            border-radius: 10px;
+            font-size: 0.7rem;
+            font-weight: bold;
+        }
+
+        .indicator-active {
+            background: #00FF88;
+            color: black;
+        }
+
+        .indicator-building {
+            background: #FFFF00;
+            color: black;
+        }
+
+        .indicator-idle {
+            background: #666;
+            color: white;
+        }
+
+        /* Cal's Console */
+        .cal-console {
+            grid-area: console;
+            background: rgba(26, 26, 26, 0.9);
+            border: 2px solid #00FFFF;
+            border-radius: 15px;
+            display: flex;
+            flex-direction: column;
+            overflow: hidden;
+        }
+
+        .console-header {
+            background: linear-gradient(45deg, #00FFFF, #0088FF);
+            color: black;
+            padding: 15px;
+            font-weight: bold;
+            text-align: center;
+        }
+
+        .console-output {
+            flex: 1;
+            padding: 15px;
+            overflow-y: auto;
+            font-family: 'Courier New', monospace;
+            font-size: 0.8rem;
+            line-height: 1.4;
+        }
+
+        .console-line {
+            margin-bottom: 5px;
+            display: flex;
+            align-items: flex-start;
+            gap: 10px;
+        }
+
+        .console-timestamp {
+            color: #666;
+            font-size: 0.7rem;
+            min-width: 60px;
+        }
+
+        .console-message {
+            flex: 1;
+        }
+
+        .console-level-info {
+            color: #00FFFF;
+        }
+
+        .console-level-success {
+            color: #00FF88;
+        }
+
+        .console-level-warning {
+            color: #FFFF00;
+        }
+
+        .console-level-error {
+            color: #FF4444;
+        }
+
+        .console-level-cal {
+            color: #FFD700;
+            font-weight: bold;
+        }
+
+        /* Control Panel */
+        .control-panel {
+            grid-area: control;
+            background: rgba(26, 26, 26, 0.9);
+            border: 2px solid #8A2BE2;
+            border-radius: 15px;
+            padding: 20px;
+        }
+
+        .control-section {
+            margin-bottom: 15px;
+        }
+
+        .control-title {
+            color: #8A2BE2;
+            font-size: 1rem;
+            font-weight: bold;
+            margin-bottom: 10px;
+        }
+
+        .control-buttons {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 8px;
+        }
+
+        .control-btn {
+            background: linear-gradient(45deg, #8A2BE2, #AA4BF2);
+            border: none;
+            border-radius: 8px;
+            color: white;
+            padding: 8px 12px;
+            font-family: 'Orbitron', monospace;
+            font-size: 0.8rem;
+            cursor: pointer;
+            transition: all 0.3s;
+        }
+
+        .control-btn:hover {
+            background: linear-gradient(45deg, #AA4BF2, #CC6BF2);
+            transform: translateY(-2px);
+            box-shadow: 0 0 15px rgba(138, 43, 226, 0.6);
+        }
+
+        .control-btn.active {
+            background: linear-gradient(45deg, #00FF88, #44FFAA);
+            color: black;
+        }
+
+        /* World Visualization */
+        .world-display {
+            grid-area: world;
+            background: rgba(26, 26, 26, 0.9);
+            border: 2px solid #FF44FF;
+            border-radius: 15px;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .world-header {
+            background: linear-gradient(45deg, #FF44FF, #FF66FF);
+            color: black;
+            padding: 15px;
+            font-weight: bold;
+            text-align: center;
+        }
+
+        .world-canvas {
+            width: 100%;
+            height: calc(100% - 60px);
+            background: linear-gradient(135deg, #1a1a1a, #2a1a2a);
+            position: relative;
+        }
+
+        .world-entity {
+            position: absolute;
+            width: 20px;
+            height: 20px;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 0.8rem;
+            transition: all 0.3s;
+        }
+
+        .entity-agent {
+            background: var(--agent-color, #00FFFF);
+            box-shadow: 0 0 15px var(--agent-color, #00FFFF);
+        }
+
+        .entity-monster {
+            background: var(--monster-color, #FF4444);
+            box-shadow: 0 0 15px var(--monster-color, #FF4444);
+        }
+
+        .entity-scanner {
+            background: #FFD700;
+            box-shadow: 0 0 20px #FFD700;
+        }
+
+        /* Autonomous Indicators */
+        .autonomous-indicator {
+            position: fixed;
+            top: 50%;
+            right: 20px;
+            transform: translateY(-50%);
+            background: rgba(0, 0, 0, 0.8);
+            border: 2px solid #FFD700;
+            border-radius: 10px;
+            padding: 15px;
+            z-index: 1000;
+        }
+
+        .auto-status {
+            text-align: center;
+            margin-bottom: 15px;
+        }
+
+        .auto-switch {
+            position: relative;
+            width: 60px;
+            height: 30px;
+            background: #666;
+            border-radius: 15px;
+            cursor: pointer;
+            margin: 0 auto 15px;
+            transition: background 0.3s;
+        }
+
+        .auto-switch.active {
+            background: #00FF88;
+        }
+
+        .auto-switch-handle {
+            position: absolute;
+            top: 3px;
+            left: 3px;
+            width: 24px;
+            height: 24px;
+            background: white;
+            border-radius: 50%;
+            transition: transform 0.3s;
+        }
+
+        .auto-switch.active .auto-switch-handle {
+            transform: translateX(30px);
+        }
+
+        /* Progress Indicators */
+        .progress-container {
+            margin-bottom: 10px;
+        }
+
+        .progress-label {
+            font-size: 0.8rem;
+            margin-bottom: 5px;
+            display: flex;
+            justify-content: space-between;
+        }
+
+        .progress-bar {
+            width: 100%;
+            height: 8px;
+            background: rgba(42, 42, 42, 0.7);
+            border-radius: 4px;
+            overflow: hidden;
+        }
+
+        .progress-fill {
+            height: 100%;
+            background: linear-gradient(90deg, #FFD700, #FFA500);
+            transition: width 0.3s;
+        }
+
+        /* Responsive Design */
+        @media (max-width: 1200px) {
+            .cal-interface {
+                grid-template-areas: 
+                    "header header"
+                    "console world"
+                    "status control";
+                grid-template-columns: 1fr 1fr;
+                grid-template-rows: 80px 1fr 300px;
+            }
+        }
+
+        @media (max-width: 768px) {
+            .cal-interface {
+                grid-template-areas: 
+                    "header"
+                    "console"
+                    "world"
+                    "status"
+                    "control";
+                grid-template-columns: 1fr;
+                grid-template-rows: 80px 250px 200px 200px 150px;
+            }
+
+            .autonomous-indicator {
+                position: relative;
+                top: auto;
+                right: auto;
+                transform: none;
+                margin: 10px 0;
+            }
+        }
+    </style>
+</head>
+<body>
+    <!-- AI Agent Cal Interface -->
+    <div class="cal-interface">
+        <!-- Header -->
+        <header class="cal-header">
+            <div class="cal-brain">
+                <div class="brain-avatar">🧠</div>
+                <div class="brain-info">
+                    <h2>AI Agent Cal</h2>
+                    <div class="brain-status" id="brainStatus">Autonomous World Builder Active</div>
+                </div>
+            </div>
+            
+            <div class="cal-stats">
+                <div class="stat-item">
+                    <div class="stat-value" id="systemsActive">8</div>
+                    <div class="stat-label">Systems</div>
+                </div>
+                <div class="stat-item">
+                    <div class="stat-value" id="agentsRunning">4</div>
+                    <div class="stat-label">Agents</div>
+                </div>
+                <div class="stat-item">
+                    <div class="stat-value" id="worldsBuilt">3</div>
+                    <div class="stat-label">Worlds</div>
+                </div>
+                <div class="stat-item">
+                    <div class="stat-value" id="efficiency">97%</div>
+                    <div class="stat-label">Efficiency</div>
+                </div>
+            </div>
+        </header>
+
+        <!-- System Status -->
+        <aside class="system-status">
+            <div class="status-section">
+                <div class="status-title">🎯 Core Systems</div>
+                <div class="system-item">
+                    <span class="system-name">Reasoning Orchestrator</span>
+                    <span class="system-indicator indicator-active">ACTIVE</span>
+                </div>
+                <div class="system-item">
+                    <span class="system-name">Document Monsters</span>
+                    <span class="system-indicator indicator-active">SPAWNING</span>
+                </div>
+                <div class="system-item">
+                    <span class="system-name">Voxel Combat World</span>
+                    <span class="system-indicator indicator-active">COMBAT</span>
+                </div>
+                <div class="system-item">
+                    <span class="system-name">Storyteller Network</span>
+                    <span class="system-indicator indicator-active">NARRATING</span>
+                </div>
+            </div>
+
+            <div class="status-section">
+                <div class="status-title">🔬 Specialized Systems</div>
+                <div class="system-item">
+                    <span class="system-name">Eyeball Minimap</span>
+                    <span class="system-indicator indicator-active">SCANNING</span>
+                </div>
+                <div class="system-item">
+                    <span class="system-name">Laser Document Scanner</span>
+                    <span class="system-indicator indicator-building">PROCESSING</span>
+                </div>
+                <div class="system-item">
+                    <span class="system-name">Contract Boss Arena</span>
+                    <span class="system-indicator indicator-active">BATTLING</span>
+                </div>
+                <div class="system-item">
+                    <span class="system-name">Vibe Casting Platform</span>
+                    <span class="system-indicator indicator-active">STREAMING</span>
+                </div>
+            </div>
+
+            <div class="status-section">
+                <div class="status-title">⚡ Autonomous Progress</div>
+                <div class="progress-container">
+                    <div class="progress-label">
+                        <span>World Building</span>
+                        <span id="worldProgress">73%</span>
+                    </div>
+                    <div class="progress-bar">
+                        <div class="progress-fill" style="width: 73%"></div>
+                    </div>
+                </div>
+                <div class="progress-container">
+                    <div class="progress-label">
+                        <span>Agent Training</span>
+                        <span id="agentProgress">89%</span>
+                    </div>
+                    <div class="progress-bar">
+                        <div class="progress-fill" style="width: 89%"></div>
+                    </div>
+                </div>
+                <div class="progress-container">
+                    <div class="progress-label">
+                        <span>System Integration</span>
+                        <span id="integrationProgress">95%</span>
+                    </div>
+                    <div class="progress-bar">
+                        <div class="progress-fill" style="width: 95%"></div>
+                    </div>
+                </div>
+            </div>
+        </aside>
+
+        <!-- Cal's Console -->
+        <main class="cal-console">
+            <div class="console-header">
+                🤖 CAL'S AUTONOMOUS CONSOLE
+            </div>
+            <div class="console-output" id="consoleOutput">
+                <!-- Console messages will be populated by JavaScript -->
+            </div>
+        </main>
+
+        <!-- Control Panel -->
+        <section class="control-panel">
+            <div class="control-section">
+                <div class="control-title">🎮 Manual Controls</div>
+                <div class="control-buttons">
+                    <button class="control-btn" onclick="cal.spawnAgent()">Spawn Agent</button>
+                    <button class="control-btn" onclick="cal.scanDocument()">Scan Document</button>
+                    <button class="control-btn" onclick="cal.buildWorld()">Build World</button>
+                    <button class="control-btn" onclick="cal.startCombat()">Start Combat</button>
+                </div>
+            </div>
+
+            <div class="control-section">
+                <div class="control-title">🎭 Narrative Control</div>
+                <div class="control-buttons">
+                    <button class="control-btn" onclick="cal.changeStoryMode('combat')">Combat Stories</button>
+                    <button class="control-btn" onclick="cal.changeStoryMode('exploration')">Exploration</button>
+                    <button class="control-btn" onclick="cal.changeStoryMode('mystery')">Mystery Mode</button>
+                    <button class="control-btn active" onclick="cal.changeStoryMode('balanced')">Balanced</button>
+                </div>
+            </div>
+
+            <div class="control-section">
+                <div class="control-title">⚙️ System Control</div>
+                <div class="control-buttons">
+                    <button class="control-btn" onclick="cal.resetSystems()">Reset Systems</button>
+                    <button class="control-btn" onclick="cal.optimizePerformance()">Optimize</button>
+                    <button class="control-btn" onclick="cal.generateReport()">Gen Report</button>
+                    <button class="control-btn" onclick="cal.emergencyStop()">Emergency Stop</button>
+                </div>
+            </div>
+
+            <div class="control-section">
+                <div class="control-title">💬 Chat with Cal</div>
+                <div style="display: flex; gap: 5px;">
+                    <input type="text" id="chatInput" placeholder="Ask Cal anything..." 
+                           style="flex: 1; padding: 8px; border-radius: 5px; border: 1px solid #8A2BE2; 
+                                  background: rgba(26, 26, 26, 0.8); color: #FFD700; font-family: 'Orbitron';"
+                           onkeypress="if(event.key==='Enter') cal.sendMessage(this.value); this.value = '';">
+                    <button class="control-btn" onclick="const input = document.getElementById('chatInput'); cal.sendMessage(input.value); input.value = '';">Send</button>
+                </div>
+                <div style="font-size: 0.7rem; color: #8A2BE2; margin-top: 5px;">
+                    Try: "What's the weather?", "Help me code", "Tell me about AI"
+                </div>
+            </div>
+        </section>
+
+        <!-- World Display -->
+        <section class="world-display">
+            <div class="world-header">
+                🌍 AUTONOMOUS WORLD VISUALIZATION
+            </div>
+            <div class="world-canvas" id="worldCanvas">
+                <!-- World entities will be populated by JavaScript -->
+            </div>
+        </section>
+    </div>
+
+    <!-- Autonomous Mode Indicator -->
+    <div class="autonomous-indicator">
+        <div class="auto-status">
+            <div style="font-weight: bold; margin-bottom: 5px;">AUTONOMOUS MODE</div>
+            <div class="auto-switch active" onclick="cal.toggleAutonomous()" id="autoSwitch">
+                <div class="auto-switch-handle"></div>
+            </div>
+            <div style="font-size: 0.8rem; margin-top: 5px;">Cal is building autonomously</div>
+        </div>
+    </div>
+
+    <script>
+        class AIAgentCal {
+            constructor() {
+                this.isAutonomous = true;
+                this.systems = new Map();
+                this.agents = new Map();
+                this.worlds = [];
+                this.narrativeMode = 'balanced';
+                this.efficiency = 97;
+                this.buildingTasks = [];
+                this.lastDecision = Date.now();
+                
+                // Core system references
+                this.reasoningOrchestrator = null;
+                this.documentMonsterGenerator = null;
+                this.voxelCombatWorld = null;
+                this.storytellerNetwork = null;
+                this.eyeballScanner = null;
+                
+                this.init();
+            }
+            
+            init() {
+                this.initializeSystems();
+                this.startAutonomousLoop();
+                this.setupConsoleLogging();
+                this.initializeWorldVisualization();
+                
+                this.log('🧠 AI Agent Cal initialized and ready', 'cal');
+                this.log('⚡ Autonomous world building system online', 'success');
+                this.log('🎯 Beginning autonomous operations...', 'info');
+            }
+            
+            initializeSystems() {
+                // Initialize all integrated systems
+                this.systems.set('reasoning_orchestrator', {
+                    status: 'active',
+                    performance: 0.95,
+                    lastUpdate: Date.now()
+                });
+                
+                this.systems.set('document_monsters', {
+                    status: 'spawning',
+                    performance: 0.89,
+                    monstersActive: 0
+                });
+                
+                this.systems.set('voxel_combat', {
+                    status: 'combat',
+                    performance: 0.92,
+                    battles: 0
+                });
+                
+                this.systems.set('storyteller_network', {
+                    status: 'narrating',
+                    performance: 0.88,
+                    stories: 0
+                });
+                
+                this.systems.set('eyeball_scanner', {
+                    status: 'scanning',
+                    performance: 0.94,
+                    documents: 0
+                });
+                
+                this.systems.set('laser_scanner', {
+                    status: 'processing',
+                    performance: 0.87,
+                    quality: 'premium'
+                });
+                
+                this.systems.set('contract_arena', {
+                    status: 'battling',
+                    performance: 0.91,
+                    contracts: 0
+                });
+                
+                this.systems.set('vibe_platform', {
+                    status: 'streaming',
+                    performance: 0.93,
+                    viewers: 1247
+                });
+                
+                console.log('🎯 All systems initialized');
+            }
+            
+            startAutonomousLoop() {
+                if (!this.isAutonomous) return;
+                
+                setInterval(() => {
+                    this.autonomousDecisionCycle();
+                }, 3000); // Make decisions every 3 seconds
+                
+                setInterval(() => {
+                    this.updateSystemStatus();
+                }, 1000); // Update status every second
+                
+                setInterval(() => {
+                    this.autonomousBuildingCycle();
+                }, 10000); // Major building decisions every 10 seconds
+            }
+            
+            autonomousDecisionCycle() {
+                if (!this.isAutonomous) return;
+                
+                // Analyze current state
+                const worldState = this.analyzeWorldState();
+                
+                // Make autonomous decisions based on state
+                const decision = this.makeAutonomousDecision(worldState);
+                
+                // Execute decision
+                if (decision) {
+                    this.executeDecision(decision);
+                }
+                
+                this.lastDecision = Date.now();
+            }
+            
+            analyzeWorldState() {
+                return {
+                    agentCount: this.agents.size,
+                    systemsActive: Array.from(this.systems.values()).filter(s => s.status === 'active').length,
+                    efficiency: this.calculateEfficiency(),
+                    needsAttention: this.identifyNeedsAttention(),
+                    opportunities: this.identifyOpportunities()
+                };
+            }
+            
+            makeAutonomousDecision(worldState) {
+                const decisions = [];
+                
+                // Decide on agent spawning
+                if (worldState.agentCount < 4 && Math.random() < 0.3) {
+                    decisions.push({
+                        type: 'spawn_agent',
+                        priority: 0.7,
+                        reason: 'Insufficient agent coverage'
+                    });
+                }
+                
+                // Decide on world building
+                if (this.worlds.length < 3 && Math.random() < 0.2) {
+                    decisions.push({
+                        type: 'build_world',
+                        priority: 0.6,
+                        reason: 'Expanding world portfolio'
+                    });
+                }
+                
+                // Decide on system optimization
+                if (worldState.efficiency < 85 && Math.random() < 0.4) {
+                    decisions.push({
+                        type: 'optimize_systems',
+                        priority: 0.8,
+                        reason: 'Efficiency below threshold'
+                    });
+                }
+                
+                // Decide on document scanning
+                if (Math.random() < 0.15) {
+                    decisions.push({
+                        type: 'scan_document',
+                        priority: 0.5,
+                        reason: 'Proactive document analysis'
+                    });
+                }
+                
+                // Decide on narrative mode changes
+                if (Math.random() < 0.1) {
+                    const modes = ['combat', 'exploration', 'mystery', 'balanced'];
+                    const newMode = modes[Math.floor(Math.random() * modes.length)];
+                    decisions.push({
+                        type: 'change_narrative',
+                        mode: newMode,
+                        priority: 0.4,
+                        reason: 'Narrative diversity enhancement'
+                    });
+                }
+                
+                // Return highest priority decision
+                return decisions.sort((a, b) => b.priority - a.priority)[0];
+            }
+            
+            executeDecision(decision) {
+                this.log(`🤖 Cal decides: ${decision.reason}`, 'cal');
+                
+                switch (decision.type) {
+                    case 'spawn_agent':
+                        this.autonomousSpawnAgent();
+                        break;
+                    case 'build_world':
+                        this.autonomousBuildWorld();
+                        break;
+                    case 'optimize_systems':
+                        this.autonomousOptimize();
+                        break;
+                    case 'scan_document':
+                        this.autonomousScanDocument();
+                        break;
+                    case 'change_narrative':
+                        this.autonomousChangeNarrative(decision.mode);
+                        break;
+                }
+            }
+            
+            autonomousBuildingCycle() {
+                if (!this.isAutonomous) return;
+                
+                // Check if any major building tasks are needed
+                const buildingNeeds = this.assessBuildingNeeds();
+                
+                if (buildingNeeds.length > 0) {
+                    const task = buildingNeeds[0];
+                    this.executeBuildingTask(task);
+                }
+                
+                // Update progress indicators
+                this.updateProgressIndicators();
+            }
+            
+            assessBuildingNeeds() {
+                const needs = [];
+                
+                // Check system integration levels
+                const integrationLevel = this.calculateSystemIntegration();
+                if (integrationLevel < 0.95) {
+                    needs.push({
+                        type: 'system_integration',
+                        priority: 0.9,
+                        description: 'Improve system connections'
+                    });
+                }
+                
+                // Check agent training levels
+                const agentTraining = this.calculateAgentTraining();
+                if (agentTraining < 0.9) {
+                    needs.push({
+                        type: 'agent_training',
+                        priority: 0.8,
+                        description: 'Enhance agent capabilities'
+                    });
+                }
+                
+                // Check world completeness
+                const worldCompleteness = this.calculateWorldCompleteness();
+                if (worldCompleteness < 0.8) {
+                    needs.push({
+                        type: 'world_expansion',
+                        priority: 0.7,
+                        description: 'Expand world features'
+                    });
+                }
+                
+                return needs.sort((a, b) => b.priority - a.priority);
+            }
+            
+            executeBuildingTask(task) {
+                this.log(`🏗️ Cal building: ${task.description}`, 'cal');
+                
+                switch (task.type) {
+                    case 'system_integration':
+                        this.enhanceSystemIntegration();
+                        break;
+                    case 'agent_training':
+                        this.enhanceAgentTraining();
+                        break;
+                    case 'world_expansion':
+                        this.expandWorldFeatures();
+                        break;
+                }
+            }
+            
+            // Autonomous action implementations
+            autonomousSpawnAgent() {
+                const lineages = ['warrior', 'scholar', 'rogue', 'mage'];
+                const availableLineages = lineages.filter(lineage => 
+                    !Array.from(this.agents.values()).some(agent => agent.lineage === lineage)
+                );
+                
+                const lineage = availableLineages.length > 0 
+                    ? availableLineages[Math.floor(Math.random() * availableLineages.length)]
+                    : lineages[Math.floor(Math.random() * lineages.length)];
+                
+                const agent = {
+                    id: `agent_${Date.now()}`,
+                    name: `Cal's ${lineage} Agent`,
+                    lineage: lineage,
+                    position: this.generateRandomPosition(),
+                    autonomouslyCreated: true,
+                    createdAt: Date.now()
+                };
+                
+                this.agents.set(agent.id, agent);
+                this.createWorldEntity(agent, 'agent');
+                
+                this.log(`🤖 Spawned ${lineage} agent autonomously`, 'success');
+                this.updateStats();
+            }
+            
+            autonomousBuildWorld() {
+                const worldTypes = ['document_combat', 'exploration_realm', 'contract_arena', 'mystical_plane'];
+                const worldType = worldTypes[Math.floor(Math.random() * worldTypes.length)];
+                
+                const world = {
+                    id: `world_${Date.now()}`,
+                    type: worldType,
+                    name: `Cal's ${worldType.replace('_', ' ')} World`,
+                    createdAt: Date.now(),
+                    autonomouslyBuilt: true,
+                    features: this.generateWorldFeatures(worldType)
+                };
+                
+                this.worlds.push(world);
+                
+                this.log(`🌍 Built ${worldType} world autonomously`, 'success');
+                this.updateStats();
+            }
+            
+            autonomousOptimize() {
+                // Simulate system optimization
+                this.systems.forEach((system, name) => {
+                    if (system.performance < 0.9) {
+                        system.performance = Math.min(0.99, system.performance + 0.05);
+                        this.log(`⚡ Optimized ${name} system`, 'info');
+                    }
+                });
+                
+                this.efficiency = Math.min(99, this.efficiency + 2);
+                this.updateStats();
+            }
+            
+            autonomousScanDocument() {
+                const documentTypes = ['contract', 'research', 'business_plan', 'technical_spec'];
+                const docType = documentTypes[Math.floor(Math.random() * documentTypes.length)];
+                
+                this.log(`🔬 Autonomously scanning ${docType} document`, 'info');
+                
+                // Simulate document processing and monster spawning
+                setTimeout(() => {
+                    const monsters = Math.floor(Math.random() * 3) + 1;
+                    for (let i = 0; i < monsters; i++) {
+                        this.spawnDocumentMonster(docType);
+                    }
+                    this.log(`👾 Generated ${monsters} monsters from ${docType}`, 'success');
+                }, 2000);
+            }
+            
+            autonomousChangeNarrative(mode) {
+                this.narrativeMode = mode;
+                this.log(`🎭 Narrative mode changed to: ${mode}`, 'info');
+                
+                // Update UI
+                document.querySelectorAll('.control-btn').forEach(btn => btn.classList.remove('active'));
+                // Find and activate the corresponding button (simplified)
+                const modeButton = Array.from(document.querySelectorAll('.control-btn'))
+                    .find(btn => btn.textContent.toLowerCase().includes(mode));
+                if (modeButton) modeButton.classList.add('active');
+            }
+            
+            // World building enhancement methods
+            enhanceSystemIntegration() {
+                this.log('🔗 Enhancing system integration...', 'info');
+                
+                // Simulate integration improvements
+                setTimeout(() => {
+                    this.log('✅ System integration enhanced', 'success');
+                    this.updateProgressBar('integrationProgress', 5);
+                }, 3000);
+            }
+            
+            enhanceAgentTraining() {
+                this.log('🎓 Training agents for better performance...', 'info');
+                
+                // Simulate agent training
+                setTimeout(() => {
+                    this.log('✅ Agent capabilities enhanced', 'success');
+                    this.updateProgressBar('agentProgress', 3);
+                }, 4000);
+            }
+            
+            expandWorldFeatures() {
+                this.log('🌟 Expanding world features...', 'info');
+                
+                // Simulate world expansion
+                setTimeout(() => {
+                    this.log('✅ World features expanded', 'success');
+                    this.updateProgressBar('worldProgress', 4);
+                }, 5000);
+            }
+            
+            // Utility methods
+            generateRandomPosition() {
+                return {
+                    x: Math.floor(Math.random() * 500) + 50,
+                    y: Math.floor(Math.random() * 400) + 50
+                };
+            }
+            
+            generateWorldFeatures(worldType) {
+                const features = {
+                    document_combat: ['voxel_terrain', 'laser_systems', 'monster_spawners'],
+                    exploration_realm: ['hidden_treasures', 'discovery_zones', 'knowledge_crystals'],
+                    contract_arena: ['legal_battlegrounds', 'clause_weapons', 'negotiation_zones'],
+                    mystical_plane: ['arcane_energies', 'spell_circles', 'dimensional_rifts']
+                };
+                
+                return features[worldType] || ['basic_terrain'];
+            }
+            
+            spawnDocumentMonster(docType) {
+                const monster = {
+                    id: `monster_${Date.now()}_${Math.random().toString(36).substr(2, 5)}`,
+                    type: docType,
+                    position: this.generateRandomPosition(),
+                    health: 50 + Math.floor(Math.random() * 50),
+                    threat: Math.random() > 0.5 ? 'high' : 'medium'
+                };
+                
+                this.createWorldEntity(monster, 'monster');
+            }
+            
+            createWorldEntity(entity, type) {
+                const worldCanvas = document.getElementById('worldCanvas');
+                const entityElement = document.createElement('div');
+                entityElement.className = `world-entity entity-${type}`;
+                entityElement.style.left = entity.position.x + 'px';
+                entityElement.style.top = entity.position.y + 'px';
+                
+                const icons = {
+                    agent: '🤖',
+                    monster: '👾',
+                    scanner: '👁️'
+                };
+                
+                entityElement.textContent = icons[type] || '❓';
+                entityElement.dataset.entityId = entity.id;
+                
+                if (type === 'agent') {
+                    const colors = {
+                        warrior: '#FF4444',
+                        scholar: '#4444FF',
+                        rogue: '#44FF44',
+                        mage: '#FF44FF'
+                    };
+                    entityElement.style.setProperty('--agent-color', colors[entity.lineage] || '#00FFFF');
+                }
+                
+                worldCanvas.appendChild(entityElement);
+                
+                // Animate entity appearance
+                entityElement.style.transform = 'scale(0)';
+                setTimeout(() => {
+                    entityElement.style.transform = 'scale(1)';
+                }, 100);
+            }
+            
+            calculateEfficiency() {
+                const systemPerformances = Array.from(this.systems.values()).map(s => s.performance || 0.5);
+                const average = systemPerformances.reduce((a, b) => a + b, 0) / systemPerformances.length;
+                return Math.floor(average * 100);
+            }
+            
+            calculateSystemIntegration() {
+                return 0.95; // Placeholder - would calculate actual integration
+            }
+            
+            calculateAgentTraining() {
+                return 0.89; // Placeholder
+            }
+            
+            calculateWorldCompleteness() {
+                return 0.73; // Placeholder
+            }
+            
+            identifyNeedsAttention() {
+                return []; // Placeholder
+            }
+            
+            identifyOpportunities() {
+                return []; // Placeholder
+            }
+            
+            updateSystemStatus() {
+                // Update system indicators with some randomness
+                this.systems.forEach((system, name) => {
+                    if (Math.random() < 0.1) { // 10% chance to update
+                        system.performance = Math.max(0.7, Math.min(0.99, 
+                            system.performance + (Math.random() - 0.5) * 0.1
+                        ));
+                    }
+                });
+                
+                this.efficiency = this.calculateEfficiency();
+                document.getElementById('efficiency').textContent = this.efficiency + '%';
+            }
+            
+            updateStats() {
+                document.getElementById('systemsActive').textContent = this.systems.size;
+                document.getElementById('agentsRunning').textContent = this.agents.size;
+                document.getElementById('worldsBuilt').textContent = this.worlds.length;
+            }
+            
+            updateProgressBar(elementId, increment) {
+                const element = document.getElementById(elementId);
+                if (element) {
+                    const current = parseInt(element.textContent);
+                    const newValue = Math.min(100, current + increment);
+                    element.textContent = newValue + '%';
+                    
+                    // Update visual bar
+                    const progressBar = element.parentElement.nextElementSibling.querySelector('.progress-fill');
+                    if (progressBar) {
+                        progressBar.style.width = newValue + '%';
+                    }
+                }
+            }
+            
+            initializeWorldVisualization() {
+                // Add initial scanner entity
+                const scanner = {
+                    id: 'eyeball_scanner',
+                    position: { x: 250, y: 200 }
+                };
+                this.createWorldEntity(scanner, 'scanner');
+            }
+            
+            setupConsoleLogging() {
+                // Initial console messages
+                this.log('🧠 Cal\'s consciousness initialized', 'cal');
+                this.log('🎯 All systems nominal', 'success');
+                this.log('⚡ Autonomous mode: ACTIVE', 'info');
+                this.log('🌍 Ready for world building', 'info');
+            }
+            
+            log(message, level = 'info') {
+                const consoleOutput = document.getElementById('consoleOutput');
+                const logLine = document.createElement('div');
+                logLine.className = 'console-line';
+                
+                const timestamp = new Date().toLocaleTimeString().slice(0, 5);
+                logLine.innerHTML = `
+                    <span class="console-timestamp">${timestamp}</span>
+                    <span class="console-message console-level-${level}">${message}</span>
+                `;
+                
+                consoleOutput.appendChild(logLine);
+                consoleOutput.scrollTop = consoleOutput.scrollHeight;
+                
+                // Keep only last 50 messages
+                while (consoleOutput.children.length > 50) {
+                    consoleOutput.removeChild(consoleOutput.firstChild);
+                }
+            }
+            
+            // Manual control methods
+            spawnAgent() {
+                this.log('🎮 Manual agent spawn requested', 'info');
+                this.autonomousSpawnAgent();
+            }
+            
+            scanDocument() {
+                this.log('🎮 Manual document scan requested', 'info');
+                this.autonomousScanDocument();
+            }
+            
+            buildWorld() {
+                this.log('🎮 Manual world build requested', 'info');
+                this.autonomousBuildWorld();
+            }
+            
+            startCombat() {
+                this.log('🎮 Manual combat initiation requested', 'info');
+                this.log('⚔️ Spawning combat encounter...', 'warning');
+                
+                // Spawn some monsters for combat
+                for (let i = 0; i < 3; i++) {
+                    setTimeout(() => {
+                        this.spawnDocumentMonster(['contract', 'technical_spec', 'business_plan'][i]);
+                    }, i * 1000);
+                }
+            }
+            
+            changeStoryMode(mode) {
+                this.narrativeMode = mode;
+                this.log(`🎭 Story mode changed to: ${mode}`, 'info');
+                
+                // Update button states
+                document.querySelectorAll('.control-btn').forEach(btn => {
+                    btn.classList.remove('active');
+                    if (btn.textContent.toLowerCase().includes(mode.toLowerCase())) {
+                        btn.classList.add('active');
+                    }
+                });
+            }
+            
+            resetSystems() {
+                this.log('🔄 Resetting all systems...', 'warning');
+                
+                // Clear world entities
+                const worldCanvas = document.getElementById('worldCanvas');
+                Array.from(worldCanvas.children).forEach(child => {
+                    if (child.classList.contains('world-entity') && child.dataset.entityId !== 'eyeball_scanner') {
+                        child.remove();
+                    }
+                });
+                
+                // Reset collections
+                this.agents.clear();
+                this.worlds = [];
+                
+                setTimeout(() => {
+                    this.log('✅ Systems reset complete', 'success');
+                    this.updateStats();
+                }, 2000);
+            }
+            
+            optimizePerformance() {
+                this.log('⚡ Running performance optimization...', 'info');
+                this.autonomousOptimize();
+            }
+            
+            generateReport() {
+                this.log('📊 Generating comprehensive report...', 'info');
+                
+                setTimeout(() => {
+                    const report = `
+📋 AUTONOMOUS OPERATIONS REPORT
+• Systems Active: ${this.systems.size}
+• Agents Running: ${this.agents.size}  
+• Worlds Built: ${this.worlds.length}
+• Efficiency: ${this.efficiency}%
+• Narrative Mode: ${this.narrativeMode}
+• Autonomous Decisions: ${Math.floor((Date.now() - this.lastDecision) / 1000)}s ago
+                    `;
+                    
+                    this.log('📋 Report generated:', 'success');
+                    report.split('\n').forEach(line => {
+                        if (line.trim()) this.log(line.trim(), 'info');
+                    });
+                }, 1500);
+            }
+            
+            emergencyStop() {
+                this.log('🚨 EMERGENCY STOP ACTIVATED', 'error');
+                this.isAutonomous = false;
+                
+                document.getElementById('autoSwitch').classList.remove('active');
+                document.getElementById('brainStatus').textContent = 'Manual Control Mode';
+                
+                this.log('⏸️ Autonomous operations halted', 'warning');
+                this.log('🎮 Manual control engaged', 'info');
+            }
+            
+            // Chat functionality - Connect to our AI Assistant API
+            async sendMessage(message) {
+                if (!message.trim()) return;
+                
+                // Show user message
+                this.log(`👤 You: ${message}`, 'info');
+                this.log('🤖 Cal is thinking...', 'cal');
+                
+                try {
+                    const response = await fetch('/api/chat', {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json'
+                        },
+                        body: JSON.stringify({
+                            question: message,
+                            character: 'cal-analytical'
+                        })
+                    });
+                    
+                    const data = await response.json();
+                    
+                    if (data.success) {
+                        // Show AI response
+                        this.log(`🧠 Cal: ${data.response}`, 'success');
+                        this.log(`💰 Cost: $${data.cost.toFixed(6)} | ⏱️ ${data.responseTime}ms | 📁 ${data.cached ? 'Cached' : data.source}`, 'info');
+                    } else {
+                        this.log(`❌ Cal: ${data.fallback || data.error}`, 'error');
+                    }
+                } catch (error) {
+                    this.log(`❌ Connection error: ${error.message}`, 'error');
+                    this.log('🤖 Cal: Sorry, I\'m having trouble connecting right now. Please try again!', 'warning');
+                }
+            }
+            
+            toggleAutonomous() {
+                this.isAutonomous = !this.isAutonomous;
+                const autoSwitch = document.getElementById('autoSwitch');
+                const brainStatus = document.getElementById('brainStatus');
+                
+                if (this.isAutonomous) {
+                    autoSwitch.classList.add('active');
+                    brainStatus.textContent = 'Autonomous World Builder Active';
+                    this.log('🤖 Autonomous mode: ACTIVATED', 'cal');
+                    this.startAutonomousLoop();
+                } else {
+                    autoSwitch.classList.remove('active');
+                    brainStatus.textContent = 'Manual Control Mode';
+                    this.log('🎮 Manual mode: ACTIVATED', 'info');
+                }
+            }
+        }
+        
+        // Initialize Cal
+        let cal;
+        
+        window.addEventListener('load', () => {
+            cal = new AIAgentCal();
+        });
+        
+        console.log('🧠 AI Agent Cal interface ready!');
+        console.log('🤖 Autonomous world building system loaded!');
+    </script>
+</body>
+</html>

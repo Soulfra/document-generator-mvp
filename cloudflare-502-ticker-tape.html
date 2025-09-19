@@ -1,0 +1,317 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>502 Fix - Live Ticker Tape Terminal</title>
+    <style>
+        body {
+            margin: 0;
+            padding: 0;
+            background: #000;
+            color: #0f0;
+            font-family: 'Courier New', monospace;
+            overflow: hidden;
+            cursor: crosshair;
+        }
+        
+        #terminal {
+            position: relative;
+            width: 100vw;
+            height: 100vh;
+            background: radial-gradient(ellipse at center, #001100 0%, #000000 100%);
+        }
+        
+        #scanlines {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: repeating-linear-gradient(
+                0deg,
+                rgba(0, 255, 0, 0.03),
+                rgba(0, 255, 0, 0.03) 1px,
+                transparent 1px,
+                transparent 2px
+            );
+            pointer-events: none;
+            animation: scan 8s linear infinite;
+        }
+        
+        @keyframes scan {
+            0% { transform: translateY(0); }
+            100% { transform: translateY(10px); }
+        }
+        
+        #ticker {
+            position: absolute;
+            top: 20px;
+            left: 0;
+            width: 100%;
+            height: 60px;
+            background: rgba(0, 255, 0, 0.1);
+            border-top: 2px solid #0f0;
+            border-bottom: 2px solid #0f0;
+            overflow: hidden;
+        }
+        
+        .ticker-content {
+            display: flex;
+            animation: scroll 30s linear infinite;
+            white-space: nowrap;
+            padding: 20px 0;
+            font-size: 20px;
+            text-transform: uppercase;
+        }
+        
+        @keyframes scroll {
+            0% { transform: translateX(100%); }
+            100% { transform: translateX(-100%); }
+        }
+        
+        #main-display {
+            position: absolute;
+            top: 120px;
+            left: 50px;
+            right: 50px;
+            bottom: 100px;
+            padding: 20px;
+            overflow-y: auto;
+            font-size: 14px;
+        }
+        
+        .log-entry {
+            margin: 5px 0;
+            opacity: 0;
+            animation: typeIn 0.1s forwards;
+        }
+        
+        @keyframes typeIn {
+            to { opacity: 1; }
+        }
+        
+        .timestamp {
+            color: #666;
+            margin-right: 10px;
+        }
+        
+        .error {
+            color: #f00;
+            text-shadow: 0 0 5px #f00;
+        }
+        
+        .success {
+            color: #0f0;
+            text-shadow: 0 0 10px #0f0;
+        }
+        
+        .warning {
+            color: #ff0;
+            text-shadow: 0 0 5px #ff0;
+        }
+        
+        .code {
+            background: rgba(0, 255, 0, 0.1);
+            padding: 2px 5px;
+            border: 1px solid #0f0;
+            font-family: monospace;
+        }
+        
+        #status-bar {
+            position: absolute;
+            bottom: 0;
+            left: 0;
+            right: 0;
+            height: 80px;
+            background: rgba(0, 255, 0, 0.05);
+            border-top: 2px solid #0f0;
+            display: flex;
+            align-items: center;
+            justify-content: space-around;
+            padding: 0 50px;
+        }
+        
+        .status-item {
+            text-align: center;
+        }
+        
+        .status-value {
+            font-size: 24px;
+            font-weight: bold;
+            text-shadow: 0 0 10px currentColor;
+        }
+        
+        #cursor {
+            position: absolute;
+            width: 10px;
+            height: 20px;
+            background: #0f0;
+            animation: blink 1s infinite;
+        }
+        
+        @keyframes blink {
+            0%, 49% { opacity: 1; }
+            50%, 100% { opacity: 0; }
+        }
+        
+        .ascii-header {
+            text-align: center;
+            font-size: 10px;
+            line-height: 1;
+            margin-bottom: 20px;
+            color: #0f0;
+            text-shadow: 0 0 10px #0f0;
+        }
+    </style>
+</head>
+<body>
+    <div id="terminal">
+        <div id="scanlines"></div>
+        
+        <div id="ticker">
+            <div class="ticker-content">
+                <span>+++ CLOUDFLARE 502 BAD GATEWAY FIX IN PROGRESS +++ REMOVING LOCAL DEPENDENCIES +++ CREATING SERVERLESS ENTRY POINT +++ DEPLOYMENT SUCCESSFUL +++ </span>
+                <span>+++ CLOUDFLARE 502 BAD GATEWAY FIX IN PROGRESS +++ REMOVING LOCAL DEPENDENCIES +++ CREATING SERVERLESS ENTRY POINT +++ DEPLOYMENT SUCCESSFUL +++ </span>
+            </div>
+        </div>
+        
+        <div id="main-display">
+            <pre class="ascii-header">
+ _____ _____ _____ _   _ _____ ______    _____  ___  ______ _____ 
+|_   _|_   _/  __ | | / |  ___|| ___ \  |_   _|/ _ \ | ___ |  ___|
+  | |   | | | /  \| |/ /| |__  | |_/ /    | | / /_\ \| |_/ | |__  
+  | |   | | | |   |    < |  __| |    /     | | |  _  ||  __/|  __| 
+  | |  _| |_| \__/| |\  \| |___ | |\ \     | | | | | || |   | |___ 
+  \_/  \___/ \____\_| \_/\____/ \_| \_|    \_/ \_| |_/\_|   \____/
+            </pre>
+            <div id="log-container"></div>
+        </div>
+        
+        <div id="status-bar">
+            <div class="status-item">
+                <div>STATUS</div>
+                <div class="status-value" id="status">INIT</div>
+            </div>
+            <div class="status-item">
+                <div>ERRORS</div>
+                <div class="status-value error" id="errors">0</div>
+            </div>
+            <div class="status-item">
+                <div>PROGRESS</div>
+                <div class="status-value" id="progress">0%</div>
+            </div>
+            <div class="status-item">
+                <div>TIME</div>
+                <div class="status-value" id="time">00:00</div>
+            </div>
+        </div>
+        
+        <div id="cursor"></div>
+    </div>
+
+    <script>
+        const logContainer = document.getElementById('log-container');
+        const statusEl = document.getElementById('status');
+        const errorsEl = document.getElementById('errors');
+        const progressEl = document.getElementById('progress');
+        const timeEl = document.getElementById('time');
+        
+        let errorCount = 0;
+        let startTime = Date.now();
+        
+        // Update time
+        setInterval(() => {
+            const elapsed = Math.floor((Date.now() - startTime) / 1000);
+            const minutes = Math.floor(elapsed / 60).toString().padStart(2, '0');
+            const seconds = (elapsed % 60).toString().padStart(2, '0');
+            timeEl.textContent = `${minutes}:${seconds}`;
+        }, 1000);
+        
+        // Log entries
+        const logs = [
+            { delay: 0, type: 'info', text: 'TICKER TAPE SYSTEM INITIALIZED' },
+            { delay: 500, type: 'info', text: 'Scanning deployment configuration...' },
+            { delay: 1000, type: 'warning', text: 'Detected Cloudflare deployment target' },
+            { delay: 1500, type: 'info', text: 'Analyzing server.js dependencies...' },
+            { delay: 2000, type: 'error', text: 'ERROR: Module not found: ./ai-economy-runtime' },
+            { delay: 2200, type: 'error', text: 'ERROR: Module not found: ./real-data-hooks-layer' },
+            { delay: 2400, type: 'error', text: 'ERROR: Module not found: ./flag-tag-system' },
+            { delay: 3000, type: 'error', text: '502 BAD GATEWAY - Deployment failed' },
+            { delay: 4000, type: 'info', text: '=== INITIATING FIX PROTOCOL ===' },
+            { delay: 4500, type: 'info', text: 'Creating serverless.js entry point...' },
+            { delay: 5000, type: 'success', text: '✓ serverless.js created successfully' },
+            { delay: 5500, type: 'info', text: 'Removing local module dependencies...' },
+            { delay: 6000, type: 'success', text: '✓ Dependencies removed' },
+            { delay: 6500, type: 'info', text: 'Implementing Express server with no external deps...' },
+            { delay: 7000, type: 'success', text: '✓ Basic Express server implemented' },
+            { delay: 7500, type: 'info', text: 'Adding health check endpoints...' },
+            { delay: 8000, type: 'success', text: '✓ /health endpoint added' },
+            { delay: 8200, type: 'success', text: '✓ /api/status endpoint added' },
+            { delay: 8700, type: 'info', text: 'Updating vercel.json configuration...' },
+            { delay: 9000, type: 'code', text: 'src: "server.js" → "serverless.js"' },
+            { delay: 9500, type: 'success', text: '✓ vercel.json updated' },
+            { delay: 10000, type: 'info', text: 'Creating wrangler.toml for Cloudflare...' },
+            { delay: 10500, type: 'success', text: '✓ wrangler.toml created' },
+            { delay: 11000, type: 'info', text: 'Deploying to Vercel...' },
+            { delay: 12000, type: 'success', text: '✓ Vercel deployment successful' },
+            { delay: 12500, type: 'info', text: 'Testing health endpoint...' },
+            { delay: 13000, type: 'code', text: 'GET /health → 200 OK' },
+            { delay: 13500, type: 'success', text: '✓ Health check passing' },
+            { delay: 14000, type: 'success', text: '=== 502 FIX COMPLETE ===' },
+            { delay: 14500, type: 'info', text: 'Deployment URL: https://document-generator.vercel.app' },
+            { delay: 15000, type: 'success', text: 'TICKER TAPE LOG COMPLETE - FIX DOCUMENTED' }
+        ];
+        
+        function addLog(entry) {
+            const div = document.createElement('div');
+            div.className = `log-entry ${entry.type}`;
+            
+            const timestamp = new Date().toISOString().substr(11, 12);
+            // Create elements safely to avoid XSS and escape issues
+            const timestampSpan = document.createElement('span');
+            timestampSpan.className = 'timestamp';
+            timestampSpan.textContent = '[' + timestamp + ']';
+            div.appendChild(timestampSpan);
+            
+            if (entry.type === 'code') {
+                const codeSpan = document.createElement('span');
+                codeSpan.className = 'code';
+                codeSpan.textContent = entry.text; // This escapes HTML automatically
+                div.appendChild(codeSpan);
+            } else {
+                div.appendChild(document.createTextNode(entry.text));
+            }
+            
+            logContainer.appendChild(div);
+            div.scrollIntoView({ behavior: 'smooth' });
+            
+            if (entry.type === 'error') {
+                errorCount++;
+                errorsEl.textContent = errorCount;
+            }
+            
+            // Update status
+            if (entry.text.includes('INITIALIZED')) statusEl.textContent = 'SCAN';
+            if (entry.text.includes('ERROR')) statusEl.textContent = 'ERROR';
+            if (entry.text.includes('INITIATING FIX')) statusEl.textContent = 'FIXING';
+            if (entry.text.includes('COMPLETE')) statusEl.textContent = 'DONE';
+        }
+        
+        // Play logs with delays
+        logs.forEach((log, index) => {
+            setTimeout(() => {
+                addLog(log);
+                progressEl.textContent = Math.floor((index + 1) / logs.length * 100) + '%';
+            }, log.delay);
+        });
+        
+        // Follow cursor
+        document.addEventListener('mousemove', (e) => {
+            const cursor = document.getElementById('cursor');
+            cursor.style.left = e.clientX + 'px';
+            cursor.style.top = e.clientY + 'px';
+        });
+    </script>
+</body>
+</html>

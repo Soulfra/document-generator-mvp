@@ -1,0 +1,924 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>CAL Chat - Build Anything Through Conversation</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            background: #0d1117;
+            color: #c9d1d9;
+            height: 100vh;
+            display: flex;
+            flex-direction: column;
+        }
+        
+        /* Header */
+        .header {
+            background: #161b22;
+            border-bottom: 1px solid #30363d;
+            padding: 15px 20px;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+        }
+        
+        .header h1 {
+            font-size: 20px;
+            font-weight: 600;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+        
+        .status-indicator {
+            width: 10px;
+            height: 10px;
+            border-radius: 50%;
+            background: #3fb950;
+            display: inline-block;
+        }
+        
+        .status-indicator.offline {
+            background: #f85149;
+        }
+        
+        .header-actions {
+            display: flex;
+            gap: 15px;
+            align-items: center;
+        }
+        
+        .stats {
+            display: flex;
+            gap: 20px;
+            font-size: 14px;
+            color: #8b949e;
+        }
+        
+        .stat-item {
+            display: flex;
+            align-items: center;
+            gap: 5px;
+        }
+        
+        /* Main Layout */
+        .main-container {
+            flex: 1;
+            display: flex;
+            overflow: hidden;
+        }
+        
+        /* Sidebar */
+        .sidebar {
+            width: 260px;
+            background: #161b22;
+            border-right: 1px solid #30363d;
+            display: flex;
+            flex-direction: column;
+        }
+        
+        .sidebar-header {
+            padding: 15px;
+            border-bottom: 1px solid #30363d;
+        }
+        
+        .sidebar-title {
+            font-size: 14px;
+            font-weight: 600;
+            color: #8b949e;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+        
+        .project-list {
+            flex: 1;
+            overflow-y: auto;
+            padding: 10px;
+        }
+        
+        .project-item {
+            padding: 10px;
+            border-radius: 6px;
+            cursor: pointer;
+            margin-bottom: 5px;
+            transition: background 0.2s;
+        }
+        
+        .project-item:hover {
+            background: #262c36;
+        }
+        
+        .project-item.active {
+            background: #1f6feb;
+        }
+        
+        .project-name {
+            font-weight: 500;
+            margin-bottom: 3px;
+        }
+        
+        .project-type {
+            font-size: 12px;
+            color: #8b949e;
+        }
+        
+        /* Chat Area */
+        .chat-container {
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+        }
+        
+        .messages-container {
+            flex: 1;
+            overflow-y: auto;
+            padding: 20px;
+            display: flex;
+            flex-direction: column;
+            gap: 15px;
+        }
+        
+        .message {
+            display: flex;
+            gap: 12px;
+            animation: messageSlide 0.3s ease-out;
+        }
+        
+        @keyframes messageSlide {
+            from {
+                opacity: 0;
+                transform: translateY(10px);
+            }
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+        
+        .avatar {
+            width: 40px;
+            height: 40px;
+            border-radius: 50%;
+            background: #1f6feb;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-weight: bold;
+            flex-shrink: 0;
+        }
+        
+        .avatar.cal {
+            background: linear-gradient(135deg, #1f6feb, #58a6ff);
+        }
+        
+        .message-content {
+            flex: 1;
+        }
+        
+        .message-header {
+            display: flex;
+            align-items: baseline;
+            gap: 10px;
+            margin-bottom: 5px;
+        }
+        
+        .message-author {
+            font-weight: 600;
+            color: #58a6ff;
+        }
+        
+        .message-time {
+            font-size: 12px;
+            color: #8b949e;
+        }
+        
+        .message-text {
+            line-height: 1.5;
+            white-space: pre-wrap;
+        }
+        
+        .message-actions {
+            margin-top: 10px;
+            display: flex;
+            flex-wrap: wrap;
+            gap: 10px;
+        }
+        
+        .action-card {
+            background: #1f262e;
+            border: 1px solid #30363d;
+            border-radius: 6px;
+            padding: 12px;
+            font-size: 14px;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+        
+        .action-card:hover {
+            background: #262c36;
+            border-color: #58a6ff;
+        }
+        
+        .action-type {
+            font-size: 12px;
+            color: #8b949e;
+            margin-bottom: 3px;
+        }
+        
+        .action-name {
+            font-weight: 500;
+        }
+        
+        /* Progress Indicator */
+        .progress-message {
+            background: #1f262e;
+            border-left: 3px solid #58a6ff;
+            padding: 15px;
+            border-radius: 6px;
+            margin: 10px 0;
+        }
+        
+        .progress-header {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            margin-bottom: 10px;
+        }
+        
+        .spinner {
+            width: 16px;
+            height: 16px;
+            border: 2px solid #30363d;
+            border-top-color: #58a6ff;
+            border-radius: 50%;
+            animation: spin 1s linear infinite;
+        }
+        
+        @keyframes spin {
+            to { transform: rotate(360deg); }
+        }
+        
+        .progress-steps {
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+            margin-top: 10px;
+        }
+        
+        .progress-step {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            font-size: 14px;
+        }
+        
+        .step-icon {
+            width: 20px;
+            height: 20px;
+            border-radius: 50%;
+            background: #30363d;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 12px;
+        }
+        
+        .step-icon.completed {
+            background: #3fb950;
+            color: #0d1117;
+        }
+        
+        .step-icon.active {
+            background: #58a6ff;
+            color: #0d1117;
+        }
+        
+        /* Input Area */
+        .input-container {
+            background: #161b22;
+            border-top: 1px solid #30363d;
+            padding: 20px;
+        }
+        
+        .input-wrapper {
+            display: flex;
+            gap: 10px;
+            align-items: flex-end;
+        }
+        
+        .input-field {
+            flex: 1;
+            background: #0d1117;
+            border: 1px solid #30363d;
+            border-radius: 6px;
+            padding: 12px 15px;
+            color: #c9d1d9;
+            font-size: 14px;
+            resize: none;
+            min-height: 44px;
+            max-height: 120px;
+            font-family: inherit;
+            transition: border-color 0.2s;
+        }
+        
+        .input-field:focus {
+            outline: none;
+            border-color: #58a6ff;
+        }
+        
+        .send-button {
+            background: #1f6feb;
+            color: white;
+            border: none;
+            border-radius: 6px;
+            padding: 12px 20px;
+            font-size: 14px;
+            font-weight: 500;
+            cursor: pointer;
+            transition: background 0.2s;
+        }
+        
+        .send-button:hover {
+            background: #58a6ff;
+        }
+        
+        .send-button:disabled {
+            background: #30363d;
+            cursor: not-allowed;
+        }
+        
+        /* Right Panel */
+        .right-panel {
+            width: 300px;
+            background: #161b22;
+            border-left: 1px solid #30363d;
+            padding: 20px;
+            overflow-y: auto;
+        }
+        
+        .panel-section {
+            margin-bottom: 30px;
+        }
+        
+        .panel-title {
+            font-size: 14px;
+            font-weight: 600;
+            color: #8b949e;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            margin-bottom: 15px;
+        }
+        
+        .capability-list {
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+        }
+        
+        .capability-item {
+            background: #0d1117;
+            border: 1px solid #30363d;
+            border-radius: 6px;
+            padding: 10px;
+            font-size: 14px;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+        
+        .capability-icon {
+            font-size: 16px;
+        }
+        
+        /* Welcome Screen */
+        .welcome-screen {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            height: 100%;
+            text-align: center;
+            padding: 40px;
+        }
+        
+        .welcome-title {
+            font-size: 36px;
+            font-weight: 700;
+            margin-bottom: 15px;
+            background: linear-gradient(135deg, #58a6ff, #1f6feb);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+        }
+        
+        .welcome-subtitle {
+            font-size: 18px;
+            color: #8b949e;
+            margin-bottom: 40px;
+        }
+        
+        .example-prompts {
+            display: grid;
+            grid-template-columns: repeat(2, 1fr);
+            gap: 15px;
+            max-width: 600px;
+            width: 100%;
+        }
+        
+        .example-prompt {
+            background: #1f262e;
+            border: 1px solid #30363d;
+            border-radius: 8px;
+            padding: 20px;
+            text-align: left;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+        
+        .example-prompt:hover {
+            background: #262c36;
+            border-color: #58a6ff;
+            transform: translateY(-2px);
+        }
+        
+        .example-prompt-title {
+            font-weight: 600;
+            margin-bottom: 5px;
+            color: #58a6ff;
+        }
+        
+        .example-prompt-text {
+            font-size: 14px;
+            color: #8b949e;
+        }
+        
+        /* Responsive */
+        @media (max-width: 768px) {
+            .sidebar {
+                display: none;
+            }
+            
+            .right-panel {
+                display: none;
+            }
+        }
+    </style>
+</head>
+<body>
+    <!-- Header -->
+    <header class="header">
+        <h1>
+            <span class="status-indicator" id="connectionStatus"></span>
+            CAL Chat
+        </h1>
+        <div class="header-actions">
+            <div class="stats">
+                <div class="stat-item">
+                    <span>💬</span>
+                    <span id="messageCount">0</span>
+                    <span>messages</span>
+                </div>
+                <div class="stat-item">
+                    <span>🚀</span>
+                    <span id="projectCount">0</span>
+                    <span>projects</span>
+                </div>
+                <div class="stat-item">
+                    <span>🌐</span>
+                    <span id="domainCount">0</span>
+                    <span>domains</span>
+                </div>
+            </div>
+        </div>
+    </header>
+    
+    <!-- Main Container -->
+    <div class="main-container">
+        <!-- Sidebar -->
+        <aside class="sidebar">
+            <div class="sidebar-header">
+                <h3 class="sidebar-title">Recent Projects</h3>
+            </div>
+            <div class="project-list" id="projectList">
+                <!-- Projects will be added here -->
+            </div>
+        </aside>
+        
+        <!-- Chat Container -->
+        <main class="chat-container">
+            <!-- Messages -->
+            <div class="messages-container" id="messagesContainer">
+                <!-- Welcome Screen -->
+                <div class="welcome-screen" id="welcomeScreen">
+                    <h2 class="welcome-title">Let's Build Something Amazing</h2>
+                    <p class="welcome-subtitle">Tell me about your project idea and I'll help you build it from scratch</p>
+                    
+                    <div class="example-prompts">
+                        <div class="example-prompt" onclick="sendExample('Build me a SaaS platform for managing Discord servers with user authentication, analytics dashboard, and automated moderation features')">
+                            <div class="example-prompt-title">💼 SaaS Platform</div>
+                            <div class="example-prompt-text">"Build a SaaS for managing Discord servers"</div>
+                        </div>
+                        <div class="example-prompt" onclick="sendExample('Create a WordPress plugin for SEO optimization that analyzes content and provides real-time suggestions')">
+                            <div class="example-prompt-title">🔌 WordPress Plugin</div>
+                            <div class="example-prompt-text">"Create an SEO optimization plugin"</div>
+                        </div>
+                        <div class="example-prompt" onclick="sendExample('I need an e-commerce platform with product catalog, shopping cart, payment processing, and admin dashboard')">
+                            <div class="example-prompt-title">🛍️ E-commerce Site</div>
+                            <div class="example-prompt-text">"Build an online marketplace"</div>
+                        </div>
+                        <div class="example-prompt" onclick="sendExample('Help me create a Chrome extension that blocks distracting websites during work hours')">
+                            <div class="example-prompt-title">🌐 Chrome Extension</div>
+                            <div class="example-prompt-text">"Create a productivity extension"</div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- Input -->
+            <div class="input-container">
+                <div class="input-wrapper">
+                    <textarea 
+                        id="messageInput" 
+                        class="input-field" 
+                        placeholder="Tell me about your project idea..."
+                        rows="1"
+                    ></textarea>
+                    <button id="sendButton" class="send-button">Send</button>
+                </div>
+            </div>
+        </main>
+        
+        <!-- Right Panel -->
+        <aside class="right-panel">
+            <div class="panel-section">
+                <h3 class="panel-title">What I Can Do</h3>
+                <div class="capability-list">
+                    <div class="capability-item">
+                        <span class="capability-icon">🚀</span>
+                        <span>Create complete projects</span>
+                    </div>
+                    <div class="capability-item">
+                        <span class="capability-icon">🌐</span>
+                        <span>Manage domains & hosting</span>
+                    </div>
+                    <div class="capability-item">
+                        <span class="capability-icon">🔌</span>
+                        <span>Build plugins & extensions</span>
+                    </div>
+                    <div class="capability-item">
+                        <span class="capability-icon">📊</span>
+                        <span>Generate pitch decks</span>
+                    </div>
+                    <div class="capability-item">
+                        <span class="capability-icon">🚢</span>
+                        <span>Deploy to production</span>
+                    </div>
+                </div>
+            </div>
+            
+            <div class="panel-section">
+                <h3 class="panel-title">Quick Actions</h3>
+                <div class="capability-list">
+                    <div class="capability-item" style="cursor: pointer;" onclick="sendMessage('Show me my domains')">
+                        <span class="capability-icon">📋</span>
+                        <span>List my domains</span>
+                    </div>
+                    <div class="capability-item" style="cursor: pointer;" onclick="sendMessage('Show my active projects')">
+                        <span class="capability-icon">📁</span>
+                        <span>View projects</span>
+                    </div>
+                    <div class="capability-item" style="cursor: pointer;" onclick="sendMessage('Help me with deployment')">
+                        <span class="capability-icon">🚀</span>
+                        <span>Deploy a project</span>
+                    </div>
+                </div>
+            </div>
+        </aside>
+    </div>
+    
+    <script>
+        // WebSocket connection
+        let ws = null;
+        let conversationId = null;
+        let currentProject = null;
+        let messageCount = 0;
+        let projectCount = 0;
+        let domainCount = 0;
+        
+        // DOM elements
+        const messagesContainer = document.getElementById('messagesContainer');
+        const messageInput = document.getElementById('messageInput');
+        const sendButton = document.getElementById('sendButton');
+        const connectionStatus = document.getElementById('connectionStatus');
+        const welcomeScreen = document.getElementById('welcomeScreen');
+        const projectList = document.getElementById('projectList');
+        
+        // Connect to WebSocket
+        function connectWebSocket() {
+            ws = new WebSocket('ws://localhost:9091');
+            
+            ws.onopen = () => {
+                console.log('Connected to CAL');
+                connectionStatus.classList.remove('offline');
+                
+                // Join conversation
+                if (!conversationId) {
+                    conversationId = 'conv-' + Date.now();
+                }
+                
+                ws.send(JSON.stringify({
+                    type: 'join-conversation',
+                    data: { conversationId }
+                }));
+            };
+            
+            ws.onmessage = (event) => {
+                const message = JSON.parse(event.data);
+                handleMessage(message);
+            };
+            
+            ws.onclose = () => {
+                console.log('Disconnected from CAL');
+                connectionStatus.classList.add('offline');
+                setTimeout(connectWebSocket, 3000);
+            };
+            
+            ws.onerror = (error) => {
+                console.error('WebSocket error:', error);
+            };
+        }
+        
+        // Handle incoming messages
+        function handleMessage(message) {
+            switch (message.type) {
+                case 'welcome':
+                    console.log('Welcome message:', message.data);
+                    break;
+                    
+                case 'new-message':
+                    addMessage(message.data);
+                    break;
+                    
+                case 'action-progress':
+                    updateActionProgress(message.data);
+                    break;
+                    
+                case 'project-created':
+                    handleProjectCreated(message.data);
+                    break;
+                    
+                default:
+                    console.log('Unknown message type:', message.type);
+            }
+        }
+        
+        // Send message
+        function sendMessage(text) {
+            if (!text.trim() || !ws || ws.readyState !== WebSocket.OPEN) return;
+            
+            // Hide welcome screen
+            if (welcomeScreen) {
+                welcomeScreen.style.display = 'none';
+            }
+            
+            // Send via WebSocket
+            ws.send(JSON.stringify({
+                type: 'message',
+                data: {
+                    message: text,
+                    conversationId
+                }
+            }));
+            
+            // Clear input
+            messageInput.value = '';
+            autoResize();
+        }
+        
+        // Add message to chat
+        function addMessage(messageData) {
+            const messageEl = document.createElement('div');
+            messageEl.className = 'message';
+            
+            const isCAL = messageData.userId === 'cal';
+            
+            messageEl.innerHTML = `
+                <div class="avatar ${isCAL ? 'cal' : ''}">
+                    ${isCAL ? 'CAL' : 'YOU'}
+                </div>
+                <div class="message-content">
+                    <div class="message-header">
+                        <span class="message-author">${isCAL ? 'CAL' : 'You'}</span>
+                        <span class="message-time">${new Date(messageData.timestamp).toLocaleTimeString()}</span>
+                    </div>
+                    <div class="message-text">${escapeHtml(messageData.content)}</div>
+                    ${messageData.actions ? renderActions(messageData.actions) : ''}
+                </div>
+            `;
+            
+            messagesContainer.appendChild(messageEl);
+            messagesContainer.scrollTop = messagesContainer.scrollHeight;
+            
+            // Update stats
+            messageCount++;
+            document.getElementById('messageCount').textContent = messageCount;
+            
+            // Handle typing indicator
+            if (isCAL) {
+                sendButton.disabled = false;
+            }
+        }
+        
+        // Render action cards
+        function renderActions(actions) {
+            if (!actions || actions.length === 0) return '';
+            
+            return `
+                <div class="message-actions">
+                    ${actions.map(action => `
+                        <div class="action-card" onclick="handleAction('${action.type}', '${action.projectId || ''}')">
+                            <div class="action-type">${getActionIcon(action.type)} ${action.type}</div>
+                            <div class="action-name">${getActionDescription(action)}</div>
+                        </div>
+                    `).join('')}
+                </div>
+            `;
+        }
+        
+        // Get action icon
+        function getActionIcon(type) {
+            const icons = {
+                'create-project': '🚀',
+                'configure-domain': '🌐',
+                'scaffold-plugin': '🔌',
+                'generate-pitch': '📊',
+                'deploy': '🚢'
+            };
+            return icons[type] || '⚡';
+        }
+        
+        // Get action description
+        function getActionDescription(action) {
+            switch (action.type) {
+                case 'create-project':
+                    return `Creating ${action.projectType || 'project'}`;
+                case 'configure-domain':
+                    return `Setting up ${action.domain}`;
+                case 'scaffold-plugin':
+                    return `Building ${action.platform} plugin`;
+                case 'generate-pitch':
+                    return 'Creating pitch deck';
+                default:
+                    return action.type;
+            }
+        }
+        
+        // Handle action click
+        function handleAction(type, projectId) {
+            console.log('Action clicked:', type, projectId);
+            // Could open details panel or send follow-up message
+        }
+        
+        // Update action progress
+        function updateActionProgress(progress) {
+            // Find or create progress element
+            let progressEl = document.getElementById(`progress-${progress.action}`);
+            
+            if (!progressEl && progress.status === 'started') {
+                progressEl = document.createElement('div');
+                progressEl.id = `progress-${progress.action}`;
+                progressEl.className = 'progress-message';
+                progressEl.innerHTML = `
+                    <div class="progress-header">
+                        <div class="spinner"></div>
+                        <span>${progress.message}</span>
+                    </div>
+                    <div class="progress-steps" id="steps-${progress.action}"></div>
+                `;
+                messagesContainer.appendChild(progressEl);
+            }
+            
+            if (progress.status === 'progress') {
+                const stepsEl = document.getElementById(`steps-${progress.action}`);
+                if (stepsEl) {
+                    const stepEl = document.createElement('div');
+                    stepEl.className = 'progress-step';
+                    stepEl.innerHTML = `
+                        <span class="step-icon active">⚡</span>
+                        <span>${progress.message}</span>
+                    `;
+                    stepsEl.appendChild(stepEl);
+                    
+                    // Mark previous steps as completed
+                    const previousSteps = stepsEl.querySelectorAll('.step-icon.active');
+                    previousSteps.forEach((step, i) => {
+                        if (i < previousSteps.length - 1) {
+                            step.classList.remove('active');
+                            step.classList.add('completed');
+                            step.textContent = '✓';
+                        }
+                    });
+                }
+            }
+            
+            if (progress.status === 'completed' || progress.status === 'failed') {
+                if (progressEl) {
+                    progressEl.querySelector('.spinner').style.display = 'none';
+                    progressEl.querySelector('.progress-header span').textContent = progress.message;
+                }
+            }
+            
+            messagesContainer.scrollTop = messagesContainer.scrollHeight;
+        }
+        
+        // Handle project created
+        function handleProjectCreated(project) {
+            projectCount++;
+            document.getElementById('projectCount').textContent = projectCount;
+            
+            // Add to project list
+            const projectEl = document.createElement('div');
+            projectEl.className = 'project-item';
+            projectEl.innerHTML = `
+                <div class="project-name">${project.name}</div>
+                <div class="project-type">${project.type}</div>
+            `;
+            projectEl.onclick = () => selectProject(project);
+            
+            projectList.appendChild(projectEl);
+        }
+        
+        // Select project
+        function selectProject(project) {
+            currentProject = project;
+            
+            // Update UI
+            document.querySelectorAll('.project-item').forEach(el => {
+                el.classList.remove('active');
+            });
+            event.currentTarget.classList.add('active');
+            
+            // Load project conversation
+            sendMessage(`Show me the status of ${project.name}`);
+        }
+        
+        // Send example prompt
+        function sendExample(text) {
+            messageInput.value = text;
+            sendMessage(text);
+        }
+        
+        // Auto-resize textarea
+        function autoResize() {
+            messageInput.style.height = 'auto';
+            messageInput.style.height = messageInput.scrollHeight + 'px';
+        }
+        
+        // Escape HTML
+        function escapeHtml(text) {
+            const div = document.createElement('div');
+            div.textContent = text;
+            return div.innerHTML;
+        }
+        
+        // Event listeners
+        messageInput.addEventListener('input', autoResize);
+        
+        messageInput.addEventListener('keydown', (e) => {
+            if (e.key === 'Enter' && !e.shiftKey) {
+                e.preventDefault();
+                sendMessage(messageInput.value);
+            }
+        });
+        
+        sendButton.addEventListener('click', () => {
+            sendMessage(messageInput.value);
+        });
+        
+        // Initialize
+        connectWebSocket();
+        
+        // Update stats periodically
+        setInterval(() => {
+            fetch('http://localhost:9090/api/stats')
+                .then(res => res.json())
+                .then(stats => {
+                    if (stats.projectsCreated) {
+                        document.getElementById('projectCount').textContent = stats.projectsCreated;
+                    }
+                    if (stats.domainsManaged) {
+                        document.getElementById('domainCount').textContent = stats.domainsManaged;
+                    }
+                })
+                .catch(err => console.error('Failed to fetch stats:', err));
+        }, 30000);
+    </script>
+</body>
+</html>

@@ -1,0 +1,458 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>🎮 It Just Works</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        
+        body {
+            font-family: Arial, sans-serif;
+            background: #000;
+            color: #fff;
+            height: 100vh;
+            overflow: hidden;
+        }
+        
+        #game {
+            width: 100vw;
+            height: 100vh;
+            position: relative;
+            background: linear-gradient(45deg, #001122, #002211);
+        }
+        
+        /* Simple character */
+        #character {
+            position: absolute;
+            width: 40px;
+            height: 40px;
+            background: #00ff88;
+            border-radius: 50%;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            transition: all 0.3s ease;
+            box-shadow: 0 0 20px #00ff88;
+        }
+        
+        /* Coins scattered around */
+        .coin {
+            position: absolute;
+            width: 20px;
+            height: 20px;
+            background: #ffd700;
+            border-radius: 50%;
+            cursor: pointer;
+            animation: pulse 2s infinite;
+            box-shadow: 0 0 10px #ffd700;
+        }
+        
+        @keyframes pulse {
+            0%, 100% { transform: scale(1); }
+            50% { transform: scale(1.2); }
+        }
+        
+        /* UI */
+        #ui {
+            position: absolute;
+            top: 20px;
+            left: 20px;
+            font-size: 24px;
+            font-weight: bold;
+        }
+        
+        /* Touch controls */
+        #controls {
+            position: absolute;
+            bottom: 20px;
+            left: 50%;
+            transform: translateX(-50%);
+            display: flex;
+            gap: 10px;
+        }
+        
+        .btn {
+            width: 60px;
+            height: 60px;
+            background: rgba(0, 255, 136, 0.3);
+            border: 2px solid #00ff88;
+            border-radius: 50%;
+            color: #fff;
+            font-size: 20px;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+        
+        .btn:active {
+            transform: scale(0.9);
+            background: rgba(0, 255, 136, 0.6);
+        }
+        
+        /* Drop zone for images */
+        #dropZone {
+            position: absolute;
+            top: 20px;
+            right: 20px;
+            width: 150px;
+            height: 100px;
+            border: 2px dashed #00ff88;
+            border-radius: 10px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 12px;
+            text-align: center;
+            cursor: pointer;
+            transition: all 0.3s;
+        }
+        
+        #dropZone:hover {
+            background: rgba(0, 255, 136, 0.1);
+            border-color: #fff;
+        }
+        
+        /* Notifications */
+        .notification {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            background: rgba(0, 0, 0, 0.9);
+            color: #00ff88;
+            padding: 20px 40px;
+            border-radius: 10px;
+            font-size: 18px;
+            font-weight: bold;
+            opacity: 0;
+            transition: opacity 0.3s;
+            z-index: 1000;
+        }
+        
+        .notification.show {
+            opacity: 1;
+        }
+    </style>
+</head>
+<body>
+    <div id="game">
+        <div id="character"></div>
+        
+        <div id="ui">
+            <div>💰 <span id="score">0</span></div>
+            <div style="font-size: 14px; margin-top: 5px;">
+                <span id="playerName">Player</span>
+            </div>
+        </div>
+        
+        <div id="dropZone" onclick="document.getElementById('fileInput').click()">
+            📸 Drop image<br>to create character
+        </div>
+        <input type="file" id="fileInput" accept="image/*" style="display: none;">
+        
+        <div id="controls">
+            <button class="btn" onclick="moveCharacter(-50, 0)">←</button>
+            <button class="btn" onclick="moveCharacter(0, -50)">↑</button>
+            <button class="btn" onclick="moveCharacter(0, 50)">↓</button>
+            <button class="btn" onclick="moveCharacter(50, 0)">→</button>
+            <button class="btn" onclick="scanQR()" style="background: rgba(255, 215, 0, 0.3); border-color: #ffd700;">📷</button>
+        </div>
+        
+        <div class="notification" id="notification"></div>
+    </div>
+    
+    <script>
+        let score = 0;
+        let character = document.getElementById('character');
+        let coins = [];
+        let playerName = 'Player';
+        
+        // Initialize game
+        function init() {
+            // Create random coins
+            for (let i = 0; i < 10; i++) {
+                createCoin();
+            }
+            
+            // Keyboard controls
+            document.addEventListener('keydown', (e) => {
+                switch(e.key) {
+                    case 'w':
+                    case 'ArrowUp':
+                        moveCharacter(0, -50);
+                        break;
+                    case 's':
+                    case 'ArrowDown':
+                        moveCharacter(0, 50);
+                        break;
+                    case 'a':
+                    case 'ArrowLeft':
+                        moveCharacter(-50, 0);
+                        break;
+                    case 'd':
+                    case 'ArrowRight':
+                        moveCharacter(50, 0);
+                        break;
+                    case ' ':
+                        scanQR();
+                        e.preventDefault();
+                        break;
+                }
+            });
+            
+            // Image drop handling
+            setupImageDrop();
+            
+            console.log('🎮 Game initialized - Use WASD or arrow keys to move, Space to scan');
+        }
+        
+        function createCoin() {
+            const coin = document.createElement('div');
+            coin.className = 'coin';
+            coin.innerHTML = '💰';
+            coin.style.left = Math.random() * (window.innerWidth - 40) + 'px';
+            coin.style.top = Math.random() * (window.innerHeight - 40) + 'px';
+            coin.onclick = () => collectCoin(coin);
+            document.getElementById('game').appendChild(coin);
+            coins.push(coin);
+        }
+        
+        function moveCharacter(deltaX, deltaY) {
+            const rect = character.getBoundingClientRect();
+            let newX = rect.left + deltaX;
+            let newY = rect.top + deltaY;
+            
+            // Keep character on screen
+            newX = Math.max(20, Math.min(window.innerWidth - 60, newX));
+            newY = Math.max(20, Math.min(window.innerHeight - 60, newY));
+            
+            character.style.left = newX + 'px';
+            character.style.top = newY + 'px';
+            character.style.transform = 'none';
+            
+            // Check for coin collisions
+            checkCoinCollisions();
+        }
+        
+        function checkCoinCollisions() {
+            const charRect = character.getBoundingClientRect();
+            
+            coins.forEach((coin, index) => {
+                if (!coin.parentNode) return;
+                
+                const coinRect = coin.getBoundingClientRect();
+                const distance = Math.sqrt(
+                    Math.pow(charRect.left - coinRect.left, 2) + 
+                    Math.pow(charRect.top - coinRect.top, 2)
+                );
+                
+                if (distance < 40) {
+                    collectCoin(coin);
+                }
+            });
+        }
+        
+        function collectCoin(coin) {
+            if (!coin.parentNode) return;
+            
+            score += 10;
+            document.getElementById('score').textContent = score;
+            
+            // Visual effect
+            coin.style.transform = 'scale(2)';
+            coin.style.opacity = '0';
+            
+            setTimeout(() => {
+                if (coin.parentNode) {
+                    coin.remove();
+                }
+                // Create new coin
+                createCoin();
+            }, 300);
+            
+            showNotification('+10 coins!');
+            
+            // Character grows slightly
+            character.style.transform = 'scale(1.1)';
+            setTimeout(() => {
+                character.style.transform = 'scale(1)';
+            }, 200);
+        }
+        
+        function scanQR() {
+            showNotification('📷 Scanning...');
+            
+            // Simulate finding treasure
+            setTimeout(() => {
+                const bonus = Math.floor(Math.random() * 50) + 10;
+                score += bonus;
+                document.getElementById('score').textContent = score;
+                
+                showNotification('🏴‍☠️ Found treasure! +' + bonus + ' coins!');
+                
+                // Create bonus coins effect
+                for (let i = 0; i < 3; i++) {
+                    setTimeout(() => createCoin(), i * 200);
+                }
+                
+                // Character glows
+                character.style.boxShadow = '0 0 40px #ffd700';
+                setTimeout(() => {
+                    character.style.boxShadow = '0 0 20px #00ff88';
+                }, 1000);
+                
+            }, 1500);
+        }
+        
+        function setupImageDrop() {
+            const dropZone = document.getElementById('dropZone');
+            const fileInput = document.getElementById('fileInput');
+            
+            dropZone.addEventListener('dragover', (e) => {
+                e.preventDefault();
+                dropZone.style.background = 'rgba(0, 255, 136, 0.2)';
+            });
+            
+            dropZone.addEventListener('dragleave', () => {
+                dropZone.style.background = '';
+            });
+            
+            dropZone.addEventListener('drop', (e) => {
+                e.preventDefault();
+                dropZone.style.background = '';
+                
+                const files = e.dataTransfer.files;
+                if (files.length > 0) {
+                    processImage(files[0]);
+                }
+            });
+            
+            fileInput.addEventListener('change', (e) => {
+                if (e.target.files.length > 0) {
+                    processImage(e.target.files[0]);
+                }
+            });
+        }
+        
+        function processImage(file) {
+            if (!file.type.startsWith('image/')) {
+                showNotification('⚠️ Please drop an image file');
+                return;
+            }
+            
+            const reader = new FileReader();
+            reader.onload = (e) => {
+                // Ask for character name
+                const name = prompt('Name your character:', 'Hero') || 'Hero';
+                playerName = name.substring(0, 15);
+                document.getElementById('playerName').textContent = playerName;
+                
+                // Change character appearance based on image colors
+                const img = new Image();
+                img.onload = () => {
+                    const canvas = document.createElement('canvas');
+                    const ctx = canvas.getContext('2d');
+                    canvas.width = img.width;
+                    canvas.height = img.height;
+                    ctx.drawImage(img, 0, 0);
+                    
+                    // Sample colors from image
+                    const imageData = ctx.getImageData(0, 0, img.width, img.height);
+                    const colors = extractColors(imageData);
+                    
+                    // Apply dominant color to character
+                    character.style.background = colors[0] || '#00ff88';
+                    character.style.boxShadow = '0 0 20px ' + (colors[0] || '#00ff88');
+                    
+                    showNotification('✨ Character created: ' + playerName + '!');
+                    
+                    // Bonus coins for creating character
+                    score += 50;
+                    document.getElementById('score').textContent = score;
+                    
+                    for (let i = 0; i < 5; i++) {
+                        setTimeout(() => createCoin(), i * 100);
+                    }
+                };
+                img.src = e.target.result;
+            };
+            reader.readAsDataURL(file);
+        }
+        
+        function extractColors(imageData) {
+            const data = imageData.data;
+            const colorCount = {};
+            
+            // Sample every 10th pixel for performance
+            for (let i = 0; i < data.length; i += 40) {
+                const r = data[i];
+                const g = data[i + 1];
+                const b = data[i + 2];
+                const color = '#' + ((1 << 24) + (r << 16) + (g << 8) + b).toString(16).slice(1);
+                colorCount[color] = (colorCount[color] || 0) + 1;
+            }
+            
+            // Return top colors
+            return Object.keys(colorCount)
+                .sort((a, b) => colorCount[b] - colorCount[a])
+                .slice(0, 3);
+        }
+        
+        function showNotification(message) {
+            const notification = document.getElementById('notification');
+            notification.textContent = message;
+            notification.classList.add('show');
+            
+            setTimeout(() => {
+                notification.classList.remove('show');
+            }, 2000);
+        }
+        
+        // Touch handling for mobile
+        let touchStartX = 0;
+        let touchStartY = 0;
+        
+        document.addEventListener('touchstart', (e) => {
+            touchStartX = e.touches[0].clientX;
+            touchStartY = e.touches[0].clientY;
+        });
+        
+        document.addEventListener('touchend', (e) => {
+            if (!touchStartX || !touchStartY) return;
+            
+            const touchEndX = e.changedTouches[0].clientX;
+            const touchEndY = e.changedTouches[0].clientY;
+            
+            const deltaX = touchEndX - touchStartX;
+            const deltaY = touchEndY - touchStartY;
+            
+            // Swipe detection
+            if (Math.abs(deltaX) > Math.abs(deltaY)) {
+                if (Math.abs(deltaX) > 30) {
+                    moveCharacter(deltaX > 0 ? 50 : -50, 0);
+                }
+            } else {
+                if (Math.abs(deltaY) > 30) {
+                    moveCharacter(0, deltaY > 0 ? 50 : -50);
+                }
+            }
+            
+            touchStartX = 0;
+            touchStartY = 0;
+        });
+        
+        // Auto-generate coins
+        setInterval(() => {
+            if (coins.filter(c => c.parentNode).length < 8) {
+                createCoin();
+            }
+        }, 3000);
+        
+        // Initialize game
+        init();
+        
+        console.log('🎮 Simple game that just works!');
+        console.log('📱 Move: WASD/Arrows/Swipe | Scan: Space/Camera button');
+        console.log('📸 Drop images to customize your character');
+    </script>
+</body>
+</html>

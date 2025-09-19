@@ -1,0 +1,1311 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>🎯 Meta-Orchestrator Hub - Unified Character Network</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        
+        body {
+            background: #0a0a0a;
+            color: #e0e0e0;
+            font-family: 'Courier New', monospace;
+            overflow: hidden;
+            height: 100vh;
+        }
+        
+        /* Main Layout with Pannable Canvas */
+        .meta-orchestrator {
+            display: grid;
+            grid-template-rows: 50px 1fr 30px;
+            height: 100vh;
+            position: relative;
+        }
+        
+        /* Header Bar */
+        .header-bar {
+            background: #111;
+            border-bottom: 2px solid #333;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 0 20px;
+            z-index: 1000;
+        }
+        
+        .header-title {
+            font-size: 18px;
+            font-weight: bold;
+            color: #00ff00;
+        }
+        
+        .connection-status {
+            display: flex;
+            gap: 15px;
+            align-items: center;
+        }
+        
+        .status-indicator {
+            display: flex;
+            align-items: center;
+            gap: 5px;
+            font-size: 12px;
+        }
+        
+        .status-dot {
+            width: 8px;
+            height: 8px;
+            border-radius: 50%;
+            background: #ff0000;
+            transition: all 0.3s;
+        }
+        
+        .status-dot.connecting { background: #ffaa00; animation: pulse 1s infinite; }
+        .status-dot.online { background: #00ff00; }
+        .status-dot.offline { background: #ff0000; }
+        
+        @keyframes pulse {
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0.5; }
+        }
+        
+        /* Canvas Container */
+        .canvas-container {
+            position: relative;
+            overflow: hidden;
+            background: #0a0a0a;
+            background-image: 
+                radial-gradient(circle at 50% 50%, rgba(138, 43, 226, 0.1) 0%, transparent 50%),
+                linear-gradient(0deg, rgba(0, 255, 0, 0.03) 50%, transparent 50%),
+                linear-gradient(90deg, rgba(0, 255, 0, 0.03) 50%, transparent 50%);
+            background-size: 100% 100%, 20px 20px, 20px 20px;
+        }
+        
+        /* Pannable Canvas */
+        .orchestrator-canvas {
+            position: absolute;
+            width: 300%;
+            height: 300%;
+            transform-origin: center center;
+            transition: transform 0.1s ease-out;
+            cursor: grab;
+        }
+        
+        .orchestrator-canvas.dragging {
+            cursor: grabbing;
+            transition: none;
+        }
+        
+        /* Character Nodes */
+        .character-node {
+            position: absolute;
+            background: rgba(17, 17, 17, 0.95);
+            border: 2px solid #333;
+            border-radius: 12px;
+            padding: 20px;
+            min-width: 250px;
+            box-shadow: 0 4px 20px rgba(0, 0, 0, 0.5);
+            transition: all 0.3s;
+            cursor: move;
+        }
+        
+        .character-node:hover {
+            border-color: #00ff00;
+            box-shadow: 0 0 30px rgba(0, 255, 0, 0.3);
+            transform: translateY(-2px);
+        }
+        
+        .character-node.selected {
+            border-color: #8a2be2;
+            box-shadow: 0 0 40px rgba(138, 43, 226, 0.5);
+        }
+        
+        .node-header {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            margin-bottom: 15px;
+            padding-bottom: 10px;
+            border-bottom: 1px solid #333;
+        }
+        
+        .node-emoji {
+            font-size: 24px;
+        }
+        
+        .node-info {
+            flex: 1;
+        }
+        
+        .node-name {
+            font-weight: bold;
+            color: #00ff00;
+            font-size: 16px;
+        }
+        
+        .node-role {
+            font-size: 12px;
+            color: #888;
+        }
+        
+        .node-status {
+            width: 10px;
+            height: 10px;
+            border-radius: 50%;
+            background: #666;
+        }
+        
+        .node-status.active { background: #00ff00; }
+        .node-status.busy { background: #ffaa00; }
+        .node-status.error { background: #ff0000; }
+        
+        /* Node Content */
+        .node-content {
+            font-size: 12px;
+            max-height: 200px;
+            overflow-y: auto;
+            padding-right: 10px;
+        }
+        
+        .node-content::-webkit-scrollbar {
+            width: 6px;
+        }
+        
+        .node-content::-webkit-scrollbar-track {
+            background: #222;
+        }
+        
+        .node-content::-webkit-scrollbar-thumb {
+            background: #444;
+            border-radius: 3px;
+        }
+        
+        .node-metrics {
+            margin-top: 10px;
+            padding-top: 10px;
+            border-top: 1px solid #333;
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 5px;
+            font-size: 11px;
+        }
+        
+        .metric {
+            display: flex;
+            justify-content: space-between;
+        }
+        
+        .metric-label {
+            color: #666;
+        }
+        
+        .metric-value {
+            color: #00ff00;
+            font-weight: bold;
+        }
+        
+        /* Connection Lines */
+        .connection-line {
+            position: absolute;
+            pointer-events: none;
+            z-index: 0;
+        }
+        
+        .connection-svg {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            pointer-events: none;
+        }
+        
+        .connection-path {
+            fill: none;
+            stroke: #00ff00;
+            stroke-width: 2;
+            stroke-dasharray: 5, 5;
+            opacity: 0.5;
+            animation: dash 1s linear infinite;
+        }
+        
+        .connection-path.active {
+            stroke: #8a2be2;
+            stroke-width: 3;
+            opacity: 0.8;
+        }
+        
+        @keyframes dash {
+            to { stroke-dashoffset: -10; }
+        }
+        
+        /* Floating Panels */
+        .floating-panel {
+            position: absolute;
+            background: rgba(17, 17, 17, 0.95);
+            border: 1px solid #444;
+            border-radius: 8px;
+            box-shadow: 0 4px 20px rgba(0, 0, 0, 0.8);
+            resize: both;
+            overflow: auto;
+            min-width: 300px;
+            min-height: 200px;
+            z-index: 100;
+        }
+        
+        .panel-header {
+            background: #1a1a1a;
+            padding: 10px;
+            border-bottom: 1px solid #333;
+            cursor: move;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            user-select: none;
+        }
+        
+        .panel-title {
+            font-weight: bold;
+            color: #00ff00;
+            font-size: 14px;
+        }
+        
+        .panel-controls {
+            display: flex;
+            gap: 10px;
+        }
+        
+        .panel-btn {
+            background: none;
+            border: none;
+            color: #666;
+            cursor: pointer;
+            font-size: 16px;
+            padding: 0 5px;
+            transition: color 0.2s;
+        }
+        
+        .panel-btn:hover {
+            color: #00ff00;
+        }
+        
+        .panel-content {
+            padding: 15px;
+            max-height: 400px;
+            overflow-y: auto;
+        }
+        
+        /* Query Terminal */
+        .query-terminal {
+            top: 70px;
+            right: 20px;
+            width: 400px;
+            height: 300px;
+        }
+        
+        .terminal-input {
+            background: #000;
+            border: 1px solid #333;
+            color: #00ff00;
+            font-family: 'Courier New', monospace;
+            padding: 10px;
+            width: 100%;
+            font-size: 12px;
+            outline: none;
+        }
+        
+        .terminal-output {
+            background: #000;
+            padding: 10px;
+            margin-top: 10px;
+            height: 200px;
+            overflow-y: auto;
+            font-size: 12px;
+            font-family: 'Courier New', monospace;
+            white-space: pre-wrap;
+        }
+        
+        /* Dependency Map */
+        .dependency-map {
+            bottom: 50px;
+            right: 20px;
+            width: 350px;
+            height: 250px;
+        }
+        
+        /* Task Flow */
+        .task-flow {
+            top: 70px;
+            left: 20px;
+            width: 350px;
+            height: 400px;
+        }
+        
+        /* Minimap */
+        .minimap {
+            position: absolute;
+            bottom: 50px;
+            left: 20px;
+            width: 200px;
+            height: 150px;
+            background: rgba(17, 17, 17, 0.9);
+            border: 1px solid #444;
+            border-radius: 4px;
+            overflow: hidden;
+            cursor: pointer;
+        }
+        
+        .minimap-content {
+            position: relative;
+            width: 100%;
+            height: 100%;
+            transform: scale(0.1);
+            transform-origin: top left;
+        }
+        
+        .minimap-viewport {
+            position: absolute;
+            border: 2px solid #00ff00;
+            background: rgba(0, 255, 0, 0.1);
+            pointer-events: none;
+        }
+        
+        /* Controls */
+        .zoom-controls {
+            position: absolute;
+            top: 70px;
+            left: 20px;
+            background: rgba(17, 17, 17, 0.9);
+            border: 1px solid #333;
+            border-radius: 4px;
+            padding: 5px;
+            display: flex;
+            flex-direction: column;
+            gap: 5px;
+        }
+        
+        .zoom-btn {
+            background: #222;
+            border: 1px solid #444;
+            color: #888;
+            width: 30px;
+            height: 30px;
+            cursor: pointer;
+            border-radius: 4px;
+            font-size: 16px;
+            transition: all 0.2s;
+        }
+        
+        .zoom-btn:hover {
+            background: #333;
+            color: #00ff00;
+            border-color: #00ff00;
+        }
+        
+        /* Status Bar */
+        .status-bar {
+            background: #111;
+            border-top: 1px solid #333;
+            padding: 5px 20px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            font-size: 11px;
+            color: #666;
+        }
+        
+        .status-item {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+        
+        /* Offline Overlay */
+        .offline-overlay {
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: rgba(0, 0, 0, 0.8);
+            display: none;
+            align-items: center;
+            justify-content: center;
+            z-index: 2000;
+        }
+        
+        .offline-overlay.show {
+            display: flex;
+        }
+        
+        .offline-message {
+            background: #1a1a1a;
+            border: 2px solid #ff0000;
+            border-radius: 8px;
+            padding: 30px;
+            text-align: center;
+            max-width: 400px;
+        }
+        
+        .offline-title {
+            color: #ff0000;
+            font-size: 20px;
+            margin-bottom: 10px;
+        }
+        
+        .offline-text {
+            color: #888;
+            margin-bottom: 20px;
+        }
+        
+        .reconnect-btn {
+            background: #ff0000;
+            color: white;
+            border: none;
+            padding: 10px 20px;
+            border-radius: 4px;
+            cursor: pointer;
+            font-weight: bold;
+            transition: all 0.2s;
+        }
+        
+        .reconnect-btn:hover {
+            background: #ff3333;
+            transform: translateY(-1px);
+        }
+    </style>
+</head>
+<body>
+    <div class="meta-orchestrator">
+        <!-- Header Bar -->
+        <div class="header-bar">
+            <div class="header-title">🎯 META-ORCHESTRATOR HUB</div>
+            <div class="connection-status">
+                <div class="status-indicator">
+                    <span class="status-dot" id="domingoStatus"></span>
+                    <span>Domingo</span>
+                </div>
+                <div class="status-indicator">
+                    <span class="status-dot" id="calStatus"></span>
+                    <span>Cal</span>
+                </div>
+                <div class="status-indicator">
+                    <span class="status-dot" id="ralphStatus"></span>
+                    <span>Ralph</span>
+                </div>
+                <div class="status-indicator">
+                    <span class="status-dot" id="systemStatus"></span>
+                    <span>System</span>
+                </div>
+            </div>
+        </div>
+        
+        <!-- Main Canvas -->
+        <div class="canvas-container" id="canvasContainer">
+            <svg class="connection-svg" id="connectionSvg"></svg>
+            <div class="orchestrator-canvas" id="orchestratorCanvas">
+                <!-- Character Nodes will be added here -->
+            </div>
+        </div>
+        
+        <!-- Floating Panels -->
+        
+        <!-- Query Terminal -->
+        <div class="floating-panel query-terminal" id="queryTerminal">
+            <div class="panel-header">
+                <span class="panel-title">🔍 Semantic Query Terminal</span>
+                <div class="panel-controls">
+                    <button class="panel-btn" onclick="minimizePanel('queryTerminal')">_</button>
+                    <button class="panel-btn" onclick="closePanel('queryTerminal')">×</button>
+                </div>
+            </div>
+            <div class="panel-content">
+                <input type="text" class="terminal-input" id="queryInput" 
+                       placeholder="Query orchestrators semantically (e.g., 'find all websocket errors')" />
+                <div class="terminal-output" id="queryOutput">
+> System ready for semantic queries...
+> Type 'help' for available commands
+                </div>
+            </div>
+        </div>
+        
+        <!-- Task Flow Panel -->
+        <div class="floating-panel task-flow" id="taskFlow">
+            <div class="panel-header">
+                <span class="panel-title">📋 Task Flow</span>
+                <div class="panel-controls">
+                    <button class="panel-btn" onclick="minimizePanel('taskFlow')">_</button>
+                    <button class="panel-btn" onclick="closePanel('taskFlow')">×</button>
+                </div>
+            </div>
+            <div class="panel-content" id="taskFlowContent">
+                <!-- Task flow visualization will be added here -->
+            </div>
+        </div>
+        
+        <!-- Dependency Map -->
+        <div class="floating-panel dependency-map" id="dependencyMap">
+            <div class="panel-header">
+                <span class="panel-title">🕸️ Dependency Map</span>
+                <div class="panel-controls">
+                    <button class="panel-btn" onclick="minimizePanel('dependencyMap')">_</button>
+                    <button class="panel-btn" onclick="closePanel('dependencyMap')">×</button>
+                </div>
+            </div>
+            <div class="panel-content" id="dependencyContent">
+                <!-- Dependency visualization will be added here -->
+            </div>
+        </div>
+        
+        <!-- Minimap -->
+        <div class="minimap" id="minimap">
+            <div class="minimap-content" id="minimapContent"></div>
+            <div class="minimap-viewport" id="minimapViewport"></div>
+        </div>
+        
+        <!-- Zoom Controls -->
+        <div class="zoom-controls">
+            <button class="zoom-btn" onclick="zoomIn()">+</button>
+            <button class="zoom-btn" onclick="zoomOut()">−</button>
+            <button class="zoom-btn" onclick="resetZoom()">⟲</button>
+        </div>
+        
+        <!-- Status Bar -->
+        <div class="status-bar">
+            <div class="status-item">
+                <span id="activeConnections">Connections: 0/3</span>
+                <span>|</span>
+                <span id="activeTasks">Active Tasks: 0</span>
+                <span>|</span>
+                <span id="systemHealth">Health: 100%</span>
+            </div>
+            <div class="status-item">
+                <span id="zoomLevel">Zoom: 100%</span>
+                <span>|</span>
+                <span id="mousePosition">X: 0 Y: 0</span>
+            </div>
+        </div>
+        
+        <!-- Offline Overlay -->
+        <div class="offline-overlay" id="offlineOverlay">
+            <div class="offline-message">
+                <div class="offline-title">⚠️ Orchestrators Offline</div>
+                <div class="offline-text">
+                    Unable to connect to orchestrator services. 
+                    Make sure the servers are running.
+                </div>
+                <button class="reconnect-btn" onclick="attemptReconnection()">
+                    Try to Reconnect
+                </button>
+            </div>
+        </div>
+    </div>
+    
+    <script>
+        // Global state management
+        const metaState = {
+            orchestrators: new Map(),
+            connections: new Map(),
+            canvas: {
+                x: 0,
+                y: 0,
+                zoom: 1,
+                isDragging: false,
+                startX: 0,
+                startY: 0
+            },
+            webSockets: new Map(),
+            selectedNode: null,
+            connectionStatus: {
+                domingo: 'offline',
+                cal: 'offline',
+                ralph: 'offline',
+                system: 'offline'
+            }
+        };
+        
+        // Character definitions with positions
+        const orchestratorConfigs = [
+            {
+                id: 'domingo',
+                name: 'Domingo',
+                role: 'Backend Orchestrator',
+                emoji: '🎭',
+                port: 7777,
+                wsPort: 7778,
+                position: { x: 600, y: 300 },
+                specializations: ['task-management', 'character-delegation', 'backend-systems'],
+                color: '#8a2be2'
+            },
+            {
+                id: 'cal',
+                name: 'Cal',
+                role: 'Educational Orchestrator',
+                emoji: '🧠',
+                port: 3336,
+                wsPort: 8082,
+                position: { x: 300, y: 200 },
+                specializations: ['education', 'documentation', 'query-systems'],
+                color: '#00ff00'
+            },
+            {
+                id: 'ralph',
+                name: 'Ralph',
+                role: 'Service Bridge',
+                emoji: '🌉',
+                port: 4444,
+                wsPort: 4445,
+                position: { x: 900, y: 200 },
+                specializations: ['integration', 'api-bridging', 'service-discovery'],
+                color: '#ff6600'
+            }
+        ];
+        
+        // Initialize the meta-orchestrator
+        function initializeMetaOrchestrator() {
+            console.log('🎯 Initializing Meta-Orchestrator Hub...');
+            
+            // Create character nodes
+            orchestratorConfigs.forEach(config => {
+                createCharacterNode(config);
+                attemptWebSocketConnection(config);
+            });
+            
+            // Set up canvas interactions
+            setupCanvasInteractions();
+            
+            // Set up panel dragging
+            setupPanelDragging();
+            
+            // Set up query terminal
+            setupQueryTerminal();
+            
+            // Update minimap
+            updateMinimap();
+            
+            // Start health monitoring
+            startHealthMonitoring();
+            
+            console.log('✅ Meta-Orchestrator initialized');
+        }
+        
+        // Create character node on canvas
+        function createCharacterNode(config) {
+            const canvas = document.getElementById('orchestratorCanvas');
+            
+            const node = document.createElement('div');
+            node.className = 'character-node';
+            node.id = `node-${config.id}`;
+            node.style.left = `${config.position.x}px`;
+            node.style.top = `${config.position.y}px`;
+            
+            node.innerHTML = `
+                <div class="node-header">
+                    <span class="node-emoji">${config.emoji}</span>
+                    <div class="node-info">
+                        <div class="node-name">${config.name}</div>
+                        <div class="node-role">${config.role}</div>
+                    </div>
+                    <div class="node-status" id="status-${config.id}"></div>
+                </div>
+                <div class="node-content" id="content-${config.id}">
+                    <div>Port: ${config.port}</div>
+                    <div>WebSocket: ${config.wsPort}</div>
+                    <div>Specializations: ${config.specializations.join(', ')}</div>
+                    <div style="margin-top: 10px; color: #666;">
+                        Waiting for connection...
+                    </div>
+                </div>
+                <div class="node-metrics">
+                    <div class="metric">
+                        <span class="metric-label">Tasks:</span>
+                        <span class="metric-value" id="tasks-${config.id}">0</span>
+                    </div>
+                    <div class="metric">
+                        <span class="metric-label">Health:</span>
+                        <span class="metric-value" id="health-${config.id}">-</span>
+                    </div>
+                    <div class="metric">
+                        <span class="metric-label">Uptime:</span>
+                        <span class="metric-value" id="uptime-${config.id}">-</span>
+                    </div>
+                    <div class="metric">
+                        <span class="metric-label">Load:</span>
+                        <span class="metric-value" id="load-${config.id}">-</span>
+                    </div>
+                </div>
+            `;
+            
+            // Make node draggable
+            setupNodeDragging(node, config);
+            
+            canvas.appendChild(node);
+            metaState.orchestrators.set(config.id, { config, node, status: 'offline' });
+        }
+        
+        // WebSocket connection with auto-reconnect
+        function attemptWebSocketConnection(config) {
+            const wsUrl = `ws://localhost:${config.wsPort}/ws`;
+            
+            console.log(`🔌 Attempting to connect to ${config.name} at ${wsUrl}`);
+            updateConnectionStatus(config.id, 'connecting');
+            
+            try {
+                const ws = new WebSocket(wsUrl);
+                
+                ws.onopen = () => {
+                    console.log(`✅ Connected to ${config.name}`);
+                    updateConnectionStatus(config.id, 'online');
+                    metaState.webSockets.set(config.id, ws);
+                    
+                    // Send initial query
+                    ws.send(JSON.stringify({
+                        type: 'status_request',
+                        from: 'meta-orchestrator'
+                    }));
+                };
+                
+                ws.onmessage = (event) => {
+                    handleWebSocketMessage(config.id, JSON.parse(event.data));
+                };
+                
+                ws.onerror = (error) => {
+                    console.error(`❌ WebSocket error for ${config.name}:`, error);
+                    updateConnectionStatus(config.id, 'offline');
+                };
+                
+                ws.onclose = () => {
+                    console.log(`❌ Disconnected from ${config.name}`);
+                    updateConnectionStatus(config.id, 'offline');
+                    metaState.webSockets.delete(config.id);
+                    
+                    // Auto-reconnect after 5 seconds
+                    setTimeout(() => {
+                        if (!metaState.webSockets.has(config.id)) {
+                            attemptWebSocketConnection(config);
+                        }
+                    }, 5000);
+                };
+                
+            } catch (error) {
+                console.error(`❌ Failed to create WebSocket for ${config.name}:`, error);
+                updateConnectionStatus(config.id, 'offline');
+                
+                // Retry after 5 seconds
+                setTimeout(() => attemptWebSocketConnection(config), 5000);
+            }
+        }
+        
+        // Update connection status
+        function updateConnectionStatus(orchestratorId, status) {
+            metaState.connectionStatus[orchestratorId] = status;
+            
+            // Update UI
+            const statusDot = document.getElementById(`${orchestratorId}Status`);
+            if (statusDot) {
+                statusDot.className = `status-dot ${status}`;
+            }
+            
+            const nodeStatus = document.getElementById(`status-${orchestratorId}`);
+            if (nodeStatus) {
+                nodeStatus.className = `node-status ${status === 'online' ? 'active' : status === 'connecting' ? 'busy' : 'error'}`;
+            }
+            
+            // Update connection count
+            updateSystemStatus();
+            
+            // Show/hide offline overlay
+            checkOverallConnection();
+        }
+        
+        // Handle incoming WebSocket messages
+        function handleWebSocketMessage(orchestratorId, data) {
+            console.log(`📨 Message from ${orchestratorId}:`, data);
+            
+            switch (data.type) {
+                case 'status_response':
+                    updateOrchestratorStatus(orchestratorId, data.status);
+                    break;
+                case 'task_update':
+                    updateTaskCount(orchestratorId, data.tasks);
+                    break;
+                case 'query_response':
+                    displayQueryResponse(orchestratorId, data.response);
+                    break;
+                case 'health_update':
+                    updateHealthMetrics(orchestratorId, data.health);
+                    break;
+            }
+        }
+        
+        // Canvas pan and zoom
+        function setupCanvasInteractions() {
+            const container = document.getElementById('canvasContainer');
+            const canvas = document.getElementById('orchestratorCanvas');
+            
+            // Mouse drag to pan
+            container.addEventListener('mousedown', (e) => {
+                if (e.target === container || e.target === canvas) {
+                    metaState.canvas.isDragging = true;
+                    metaState.canvas.startX = e.clientX - metaState.canvas.x;
+                    metaState.canvas.startY = e.clientY - metaState.canvas.y;
+                    canvas.classList.add('dragging');
+                }
+            });
+            
+            document.addEventListener('mousemove', (e) => {
+                if (metaState.canvas.isDragging) {
+                    metaState.canvas.x = e.clientX - metaState.canvas.startX;
+                    metaState.canvas.y = e.clientY - metaState.canvas.startY;
+                    updateCanvasTransform();
+                }
+                
+                // Update mouse position
+                updateMousePosition(e);
+            });
+            
+            document.addEventListener('mouseup', () => {
+                metaState.canvas.isDragging = false;
+                canvas.classList.remove('dragging');
+            });
+            
+            // Mouse wheel to zoom
+            container.addEventListener('wheel', (e) => {
+                e.preventDefault();
+                const delta = e.deltaY > 0 ? 0.9 : 1.1;
+                metaState.canvas.zoom *= delta;
+                metaState.canvas.zoom = Math.max(0.1, Math.min(3, metaState.canvas.zoom));
+                updateCanvasTransform();
+                updateZoomDisplay();
+            });
+        }
+        
+        // Update canvas transform
+        function updateCanvasTransform() {
+            const canvas = document.getElementById('orchestratorCanvas');
+            canvas.style.transform = `translate(${metaState.canvas.x}px, ${metaState.canvas.y}px) scale(${metaState.canvas.zoom})`;
+            updateMinimap();
+        }
+        
+        // Node dragging
+        function setupNodeDragging(node, config) {
+            let isDragging = false;
+            let startX, startY, offsetX, offsetY;
+            
+            node.addEventListener('mousedown', (e) => {
+                isDragging = true;
+                startX = e.clientX;
+                startY = e.clientY;
+                offsetX = node.offsetLeft;
+                offsetY = node.offsetTop;
+                node.classList.add('selected');
+                metaState.selectedNode = config.id;
+                e.stopPropagation();
+            });
+            
+            document.addEventListener('mousemove', (e) => {
+                if (isDragging) {
+                    const dx = (e.clientX - startX) / metaState.canvas.zoom;
+                    const dy = (e.clientY - startY) / metaState.canvas.zoom;
+                    node.style.left = `${offsetX + dx}px`;
+                    node.style.top = `${offsetY + dy}px`;
+                    
+                    // Update position in config
+                    config.position.x = offsetX + dx;
+                    config.position.y = offsetY + dy;
+                    
+                    // Update connections
+                    updateConnections();
+                }
+            });
+            
+            document.addEventListener('mouseup', () => {
+                isDragging = false;
+            });
+            
+            node.addEventListener('click', (e) => {
+                // Deselect other nodes
+                document.querySelectorAll('.character-node').forEach(n => n.classList.remove('selected'));
+                node.classList.add('selected');
+                metaState.selectedNode = config.id;
+                e.stopPropagation();
+            });
+        }
+        
+        // Panel dragging
+        function setupPanelDragging() {
+            document.querySelectorAll('.floating-panel').forEach(panel => {
+                const header = panel.querySelector('.panel-header');
+                let isDragging = false;
+                let startX, startY, offsetX, offsetY;
+                
+                header.addEventListener('mousedown', (e) => {
+                    if (e.target.tagName !== 'BUTTON') {
+                        isDragging = true;
+                        startX = e.clientX;
+                        startY = e.clientY;
+                        offsetX = panel.offsetLeft;
+                        offsetY = panel.offsetTop;
+                        panel.style.zIndex = 1000;
+                    }
+                });
+                
+                document.addEventListener('mousemove', (e) => {
+                    if (isDragging) {
+                        panel.style.left = `${offsetX + e.clientX - startX}px`;
+                        panel.style.top = `${offsetY + e.clientY - startY}px`;
+                    }
+                });
+                
+                document.addEventListener('mouseup', () => {
+                    isDragging = false;
+                    panel.style.zIndex = 100;
+                });
+            });
+        }
+        
+        // Query terminal setup
+        function setupQueryTerminal() {
+            const input = document.getElementById('queryInput');
+            const output = document.getElementById('queryOutput');
+            
+            input.addEventListener('keypress', async (e) => {
+                if (e.key === 'Enter') {
+                    const query = input.value.trim();
+                    if (query) {
+                        appendToTerminal(`> ${query}`, output);
+                        await executeSemanticQuery(query);
+                        input.value = '';
+                    }
+                }
+            });
+        }
+        
+        // Execute semantic query across orchestrators
+        async function executeSemanticQuery(query) {
+            const output = document.getElementById('queryOutput');
+            
+            // Special commands
+            if (query === 'help') {
+                appendToTerminal(`
+Available commands:
+  status              - Show all orchestrator statuses
+  tasks               - List all active tasks
+  errors              - Find all errors/issues
+  websocket status    - Check WebSocket connections
+  fix [issue]         - Attempt to fix specified issue
+  connect [service]   - Force reconnection to service
+  clear               - Clear terminal
+                `, output);
+                return;
+            }
+            
+            if (query === 'clear') {
+                output.textContent = '> System ready for semantic queries...\n';
+                return;
+            }
+            
+            if (query === 'status') {
+                const statuses = Array.from(metaState.orchestrators.entries())
+                    .map(([id, data]) => `${data.config.name}: ${metaState.connectionStatus[id]}`)
+                    .join('\n');
+                appendToTerminal(`System Status:\n${statuses}`, output);
+                return;
+            }
+            
+            // Semantic query routing
+            appendToTerminal('Querying orchestrators...', output);
+            
+            // Send query to all connected orchestrators
+            metaState.webSockets.forEach((ws, id) => {
+                if (ws.readyState === WebSocket.OPEN) {
+                    ws.send(JSON.stringify({
+                        type: 'semantic_query',
+                        query: query,
+                        from: 'meta-orchestrator'
+                    }));
+                }
+            });
+            
+            // If no connections, provide local response
+            if (metaState.webSockets.size === 0) {
+                appendToTerminal('⚠️ No orchestrators connected. Attempting local analysis...', output);
+                
+                // Analyze query intent
+                if (query.includes('websocket') || query.includes('connection')) {
+                    appendToTerminal(`
+WebSocket Analysis:
+- All orchestrators are currently offline
+- This typically means the backend servers are not running
+- To fix: Run ./start-domingo-orchestrator-fixed.sh
+                    `, output);
+                } else if (query.includes('fix')) {
+                    appendToTerminal(`
+Self-Healing Attempt:
+- Initiating reconnection sequence...
+- Checking service availability...
+                    `, output);
+                    attemptReconnection();
+                }
+            }
+        }
+        
+        // Terminal output helper
+        function appendToTerminal(text, output) {
+            output.textContent += '\n' + text;
+            output.scrollTop = output.scrollHeight;
+        }
+        
+        // Display query response
+        function displayQueryResponse(orchestratorId, response) {
+            const output = document.getElementById('queryOutput');
+            const orchestrator = metaState.orchestrators.get(orchestratorId);
+            
+            appendToTerminal(`\n[${orchestrator.config.name}] ${response}`, output);
+        }
+        
+        // Update connections visualization
+        function updateConnections() {
+            const svg = document.getElementById('connectionSvg');
+            svg.innerHTML = '';
+            
+            // Draw connections between orchestrators
+            const orchestrators = Array.from(metaState.orchestrators.values());
+            
+            orchestrators.forEach((source, i) => {
+                orchestrators.slice(i + 1).forEach(target => {
+                    const path = document.createElementNS('http://www.w3.org/2000/svg', 'path');
+                    const sourcePos = source.config.position;
+                    const targetPos = target.config.position;
+                    
+                    // Calculate path
+                    const d = `M ${sourcePos.x + 125} ${sourcePos.y + 50} 
+                               C ${sourcePos.x + 200} ${sourcePos.y + 50}, 
+                                 ${targetPos.x - 75} ${targetPos.y + 50}, 
+                                 ${targetPos.x + 125} ${targetPos.y + 50}`;
+                    
+                    path.setAttribute('d', d);
+                    path.setAttribute('class', 'connection-path');
+                    
+                    // Active connection if both are online
+                    if (metaState.connectionStatus[source.config.id] === 'online' && 
+                        metaState.connectionStatus[target.config.id] === 'online') {
+                        path.classList.add('active');
+                    }
+                    
+                    svg.appendChild(path);
+                });
+            });
+        }
+        
+        // Update minimap
+        function updateMinimap() {
+            const minimapContent = document.getElementById('minimapContent');
+            const minimapViewport = document.getElementById('minimapViewport');
+            const canvasContainer = document.getElementById('canvasContainer');
+            
+            // Clone canvas content for minimap
+            minimapContent.innerHTML = document.getElementById('orchestratorCanvas').innerHTML;
+            
+            // Update viewport indicator
+            const containerRect = canvasContainer.getBoundingClientRect();
+            const scale = 0.1;
+            
+            minimapViewport.style.left = `${-metaState.canvas.x * scale}px`;
+            minimapViewport.style.top = `${-metaState.canvas.y * scale}px`;
+            minimapViewport.style.width = `${containerRect.width * scale / metaState.canvas.zoom}px`;
+            minimapViewport.style.height = `${containerRect.height * scale / metaState.canvas.zoom}px`;
+        }
+        
+        // Minimap click to navigate
+        document.getElementById('minimap').addEventListener('click', (e) => {
+            const rect = e.currentTarget.getBoundingClientRect();
+            const x = (e.clientX - rect.left) / 0.1;
+            const y = (e.clientY - rect.top) / 0.1;
+            
+            metaState.canvas.x = -x + window.innerWidth / 2;
+            metaState.canvas.y = -y + window.innerHeight / 2;
+            
+            updateCanvasTransform();
+        });
+        
+        // Zoom controls
+        function zoomIn() {
+            metaState.canvas.zoom *= 1.2;
+            metaState.canvas.zoom = Math.min(3, metaState.canvas.zoom);
+            updateCanvasTransform();
+            updateZoomDisplay();
+        }
+        
+        function zoomOut() {
+            metaState.canvas.zoom *= 0.8;
+            metaState.canvas.zoom = Math.max(0.1, metaState.canvas.zoom);
+            updateCanvasTransform();
+            updateZoomDisplay();
+        }
+        
+        function resetZoom() {
+            metaState.canvas.zoom = 1;
+            metaState.canvas.x = 0;
+            metaState.canvas.y = 0;
+            updateCanvasTransform();
+            updateZoomDisplay();
+        }
+        
+        function updateZoomDisplay() {
+            document.getElementById('zoomLevel').textContent = `Zoom: ${Math.round(metaState.canvas.zoom * 100)}%`;
+        }
+        
+        // Update system status
+        function updateSystemStatus() {
+            const connected = Object.values(metaState.connectionStatus).filter(s => s === 'online').length;
+            const total = Object.keys(metaState.connectionStatus).length - 1; // Exclude 'system'
+            
+            document.getElementById('activeConnections').textContent = `Connections: ${connected}/${total}`;
+            
+            // Update connections visualization
+            updateConnections();
+        }
+        
+        // Check overall connection
+        function checkOverallConnection() {
+            const anyOnline = Object.entries(metaState.connectionStatus)
+                .filter(([key]) => key !== 'system')
+                .some(([, status]) => status === 'online');
+            
+            const overlay = document.getElementById('offlineOverlay');
+            if (anyOnline) {
+                overlay.classList.remove('show');
+                metaState.connectionStatus.system = 'online';
+            } else {
+                overlay.classList.add('show');
+                metaState.connectionStatus.system = 'offline';
+            }
+            
+            // Update system status dot
+            const systemDot = document.getElementById('systemStatus');
+            if (systemDot) {
+                systemDot.className = `status-dot ${anyOnline ? 'online' : 'offline'}`;
+            }
+        }
+        
+        // Attempt reconnection
+        function attemptReconnection() {
+            console.log('🔄 Attempting to reconnect all orchestrators...');
+            
+            orchestratorConfigs.forEach(config => {
+                if (!metaState.webSockets.has(config.id)) {
+                    attemptWebSocketConnection(config);
+                }
+            });
+        }
+        
+        // Update orchestrator status
+        function updateOrchestratorStatus(id, status) {
+            const content = document.getElementById(`content-${id}`);
+            if (content && status) {
+                content.innerHTML = `
+                    <div>Port: ${status.port || '-'}</div>
+                    <div>WebSocket: ${status.wsPort || '-'}</div>
+                    <div>Status: ${status.status || 'unknown'}</div>
+                    <div>Tasks: ${status.tasks || 0}</div>
+                    <div>Uptime: ${status.uptime || '-'}</div>
+                `;
+            }
+        }
+        
+        // Update task count
+        function updateTaskCount(id, tasks) {
+            const taskElement = document.getElementById(`tasks-${id}`);
+            if (taskElement) {
+                taskElement.textContent = tasks.length || 0;
+            }
+            
+            // Update total active tasks
+            let totalTasks = 0;
+            metaState.orchestrators.forEach((data, orchestratorId) => {
+                const count = document.getElementById(`tasks-${orchestratorId}`)?.textContent || '0';
+                totalTasks += parseInt(count);
+            });
+            
+            document.getElementById('activeTasks').textContent = `Active Tasks: ${totalTasks}`;
+        }
+        
+        // Update health metrics
+        function updateHealthMetrics(id, health) {
+            const healthElement = document.getElementById(`health-${id}`);
+            const uptimeElement = document.getElementById(`uptime-${id}`);
+            const loadElement = document.getElementById(`load-${id}`);
+            
+            if (healthElement) healthElement.textContent = `${health.score || 0}%`;
+            if (uptimeElement) uptimeElement.textContent = health.uptime || '-';
+            if (loadElement) loadElement.textContent = `${health.load || 0}%`;
+            
+            // Update overall system health
+            updateOverallHealth();
+        }
+        
+        // Update overall health
+        function updateOverallHealth() {
+            const healths = [];
+            metaState.orchestrators.forEach((data, id) => {
+                const health = document.getElementById(`health-${id}`)?.textContent;
+                if (health && health !== '-') {
+                    healths.push(parseInt(health));
+                }
+            });
+            
+            const avgHealth = healths.length > 0 
+                ? Math.round(healths.reduce((a, b) => a + b, 0) / healths.length)
+                : 0;
+            
+            document.getElementById('systemHealth').textContent = `Health: ${avgHealth}%`;
+        }
+        
+        // Update mouse position
+        function updateMousePosition(e) {
+            const canvas = document.getElementById('canvasContainer');
+            const rect = canvas.getBoundingClientRect();
+            const x = Math.round((e.clientX - rect.left - metaState.canvas.x) / metaState.canvas.zoom);
+            const y = Math.round((e.clientY - rect.top - metaState.canvas.y) / metaState.canvas.zoom);
+            
+            document.getElementById('mousePosition').textContent = `X: ${x} Y: ${y}`;
+        }
+        
+        // Panel controls
+        function minimizePanel(panelId) {
+            const panel = document.getElementById(panelId);
+            panel.style.display = 'none';
+        }
+        
+        function closePanel(panelId) {
+            const panel = document.getElementById(panelId);
+            panel.remove();
+        }
+        
+        // Start health monitoring
+        function startHealthMonitoring() {
+            setInterval(() => {
+                // Request health updates from connected orchestrators
+                metaState.webSockets.forEach((ws, id) => {
+                    if (ws.readyState === WebSocket.OPEN) {
+                        ws.send(JSON.stringify({
+                            type: 'health_request',
+                            from: 'meta-orchestrator'
+                        }));
+                    }
+                });
+            }, 5000); // Every 5 seconds
+        }
+        
+        // Initialize on load
+        window.addEventListener('load', initializeMetaOrchestrator);
+        
+        // Handle window resize
+        window.addEventListener('resize', () => {
+            updateMinimap();
+        });
+    </script>
+</body>
+</html>

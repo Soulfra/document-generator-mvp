@@ -1,0 +1,846 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>🌊 Fluid Ecosystem Mapper</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            background: radial-gradient(ellipse at center, #001122 0%, #000000 70%);
+            color: #00ff00;
+            font-family: 'Courier New', monospace;
+            overflow: hidden;
+            height: 100vh;
+            position: relative;
+        }
+        
+        .ecosystem-container {
+            width: 100vw;
+            height: 100vh;
+            position: relative;
+            perspective: 1000px;
+        }
+        
+        .flow-layer {
+            position: absolute;
+            width: 100%;
+            height: 100%;
+            opacity: 0.3;
+            pointer-events: none;
+        }
+        
+        .flow-stream {
+            position: absolute;
+            background: linear-gradient(45deg, transparent, #00ff00, transparent);
+            border-radius: 50px;
+            animation: flow-pulse 3s ease-in-out infinite;
+            box-shadow: 0 0 20px #00ff00;
+        }
+        
+        @keyframes flow-pulse {
+            0%, 100% { opacity: 0.3; transform: scale(1); }
+            50% { opacity: 0.8; transform: scale(1.1); }
+        }
+        
+        .ecosystem-node {
+            position: absolute;
+            min-width: 120px;
+            min-height: 120px;
+            border: 3px solid #00ff00;
+            border-radius: 50%;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            cursor: pointer;
+            transition: all 0.5s cubic-bezier(0.4, 0, 0.2, 1);
+            background: radial-gradient(circle, rgba(0,255,0,0.1) 0%, rgba(0,255,0,0.05) 50%, transparent 100%);
+            backdrop-filter: blur(10px);
+            z-index: 10;
+        }
+        
+        .ecosystem-node:hover {
+            transform: scale(1.2) translateZ(50px);
+            border-color: #ffd700;
+            box-shadow: 0 0 40px #ffd700, inset 0 0 20px rgba(255,215,0,0.2);
+            background: radial-gradient(circle, rgba(255,215,0,0.15) 0%, rgba(255,215,0,0.1) 50%, transparent 100%);
+        }
+        
+        .node-icon {
+            font-size: 2rem;
+            margin-bottom: 5px;
+            filter: drop-shadow(0 0 10px currentColor);
+        }
+        
+        .node-label {
+            font-size: 0.7rem;
+            text-align: center;
+            font-weight: bold;
+            text-shadow: 0 0 10px currentColor;
+        }
+        
+        .node-connections {
+            position: absolute;
+            font-size: 0.6rem;
+            bottom: -15px;
+            color: #888;
+        }
+        
+        /* Organic flowing connections */
+        .connection-line {
+            position: absolute;
+            height: 2px;
+            background: linear-gradient(90deg, #00ff00, #ffd700, #00ff00);
+            border-radius: 1px;
+            opacity: 0.6;
+            z-index: 1;
+            animation: connection-flow 2s linear infinite;
+        }
+        
+        @keyframes connection-flow {
+            0% { background-position: 0% 50%; }
+            100% { background-position: 200% 50%; }
+        }
+        
+        .connection-curve {
+            position: absolute;
+            border: 2px solid #00ff00;
+            border-radius: 50px;
+            background: none;
+            opacity: 0.4;
+            z-index: 1;
+            animation: curve-pulse 4s ease-in-out infinite;
+        }
+        
+        @keyframes curve-pulse {
+            0%, 100% { opacity: 0.2; transform: scale(1); }
+            50% { opacity: 0.6; transform: scale(1.05); }
+        }
+        
+        /* Tier-based depth system */
+        .tier-0 { 
+            transform: translateZ(300px) scale(1.2);
+            opacity: 1;
+            z-index: 50;
+        }
+        
+        .tier-1 { 
+            transform: translateZ(200px) scale(1.1);
+            opacity: 0.9;
+            z-index: 40;
+        }
+        
+        .tier-2 { 
+            transform: translateZ(100px) scale(1);
+            opacity: 0.8;
+            z-index: 30;
+        }
+        
+        .tier-3 { 
+            transform: translateZ(0px) scale(0.9);
+            opacity: 0.7;
+            z-index: 20;
+        }
+        
+        .tier-4 { 
+            transform: translateZ(-100px) scale(0.8);
+            opacity: 0.6;
+            z-index: 10;
+        }
+        
+        .control-panel {
+            position: fixed;
+            top: 20px;
+            left: 20px;
+            background: rgba(0,0,0,0.8);
+            border: 2px solid #00ff00;
+            border-radius: 15px;
+            padding: 20px;
+            z-index: 100;
+            backdrop-filter: blur(10px);
+        }
+        
+        .ecosystem-stats {
+            position: fixed;
+            top: 20px;
+            right: 20px;
+            background: rgba(0,0,0,0.8);
+            border: 2px solid #00ff00;
+            border-radius: 15px;
+            padding: 20px;
+            z-index: 100;
+            backdrop-filter: blur(10px);
+            min-width: 250px;
+        }
+        
+        .flow-indicator {
+            position: fixed;
+            bottom: 20px;
+            left: 50%;
+            transform: translateX(-50%);
+            background: rgba(0,0,0,0.9);
+            border: 2px solid #ffd700;
+            border-radius: 25px;
+            padding: 15px 30px;
+            z-index: 100;
+            text-align: center;
+            animation: pulse 2s infinite;
+        }
+        
+        button {
+            background: #00ff00;
+            color: #000;
+            border: none;
+            padding: 8px 15px;
+            margin: 5px;
+            border-radius: 5px;
+            cursor: pointer;
+            font-weight: bold;
+            transition: all 0.3s;
+        }
+        
+        button:hover {
+            background: #ffd700;
+            transform: scale(1.05);
+        }
+        
+        button.active {
+            background: #ffd700;
+            color: #000;
+        }
+        
+        .data-stream {
+            position: absolute;
+            width: 4px;
+            height: 30px;
+            background: linear-gradient(180deg, #00ff00, transparent);
+            border-radius: 2px;
+            animation: data-flow 1s linear infinite;
+        }
+        
+        @keyframes data-flow {
+            0% { opacity: 1; transform: translateY(0); }
+            100% { opacity: 0; transform: translateY(100px); }
+        }
+        
+        .ecosystem-info {
+            position: fixed;
+            bottom: 20px;
+            right: 20px;
+            background: rgba(0,0,0,0.9);
+            border: 2px solid #00ff00;
+            border-radius: 15px;
+            padding: 20px;
+            max-width: 300px;
+            z-index: 100;
+            display: none;
+        }
+        
+        .particle {
+            position: absolute;
+            width: 2px;
+            height: 2px;
+            background: #00ff00;
+            border-radius: 50%;
+            pointer-events: none;
+            animation: particle-float 5s linear infinite;
+        }
+        
+        @keyframes particle-float {
+            0% { opacity: 0; transform: translateY(100vh) scale(0); }
+            10% { opacity: 1; transform: translateY(90vh) scale(1); }
+            90% { opacity: 1; transform: translateY(10vh) scale(1); }
+            100% { opacity: 0; transform: translateY(0vh) scale(0); }
+        }
+    </style>
+</head>
+<body>
+    <div class="ecosystem-container" id="ecosystemContainer">
+        <!-- Flowing background layer -->
+        <div class="flow-layer" id="flowLayer"></div>
+        
+        <!-- Ecosystem nodes will be dynamically positioned -->
+        <div class="ecosystem-node tier-0" id="core-hub" style="top: 50%; left: 50%; transform: translate(-50%, -50%);">
+            <div class="node-icon">🌊</div>
+            <div class="node-label">CORE HUB</div>
+            <div class="node-connections">∞ connections</div>
+        </div>
+    </div>
+    
+    <div class="control-panel">
+        <h3>🎛️ Ecosystem Controls</h3>
+        <div>
+            <button onclick="toggleFlow()" id="flowBtn">🌊 Flow</button>
+            <button onclick="toggleTiers()" id="tierBtn">📏 Tiers</button>
+            <button onclick="toggleConnections()" id="connectBtn">🔗 Links</button>
+        </div>
+        <div style="margin-top: 10px;">
+            <button onclick="addRandomNode()">➕ Add Node</button>
+            <button onclick="organicLayout()">🌱 Organic</button>
+            <button onclick="resetEcosystem()">🔄 Reset</button>
+        </div>
+        <div style="margin-top: 10px;">
+            <label>Speed: </label>
+            <input type="range" id="speedControl" min="0.1" max="3" step="0.1" value="1" onchange="updateSpeed(this.value)">
+        </div>
+    </div>
+    
+    <div class="ecosystem-stats">
+        <h3>📊 Ecosystem Stats</h3>
+        <div>Nodes: <span id="nodeCount">1</span></div>
+        <div>Connections: <span id="connectionCount">0</span></div>
+        <div>Flow Rate: <span id="flowRate">1.0x</span></div>
+        <div>Active Tiers: <span id="activeTiers">5</span></div>
+        <div>Data Streams: <span id="dataStreams">0</span></div>
+        <div style="margin-top: 10px; padding-top: 10px; border-top: 1px solid #00ff00;">
+            <div style="font-size: 0.8rem; color: #888;">
+                Click nodes to explore<br>
+                Hover for details<br>
+                Drag to reposition
+            </div>
+        </div>
+    </div>
+    
+    <div class="flow-indicator">
+        <div>🌊 FLUID ECOSYSTEM ACTIVE</div>
+        <div style="font-size: 0.8rem; margin-top: 5px;">
+            Organic connections flowing between <span id="totalNodes">1</span> nodes
+        </div>
+    </div>
+    
+    <div class="ecosystem-info" id="ecosystemInfo">
+        <h4 id="infoTitle">Node Information</h4>
+        <div id="infoContent"></div>
+    </div>
+    
+    <script>
+        let ecosystemState = {
+            nodes: new Map(),
+            connections: new Set(),
+            flowActive: true,
+            tiersVisible: true,
+            connectionsVisible: true,
+            speed: 1.0,
+            nodeIdCounter: 1
+        };
+        
+        // Your actual ecosystem components
+        const ecosystemComponents = {
+            'domain-empire': {
+                icon: '🌐',
+                label: 'Domain Empire',
+                description: 'All your domains as playable games',
+                connections: ['game-hub', 'credit-system', 'player-network'],
+                tier: 0,
+                color: '#ffd700'
+            },
+            
+            'game-hub': {
+                icon: '🎮',
+                label: 'Game Hub',
+                description: 'Unified gaming interface and world selector',
+                connections: ['ai-agents', 'blockchain-layer', 'document-gen'],
+                tier: 1,
+                color: '#00ff00'
+            },
+            
+            'credit-system': {
+                icon: '💰',
+                label: 'Credit System',
+                description: 'Work credits that convert to real rewards',
+                connections: ['player-network', 'redemption-engine'],
+                tier: 1,
+                color: '#ffd700'
+            },
+            
+            'ai-agents': {
+                icon: '🤖',
+                label: 'AI Agents',
+                description: '123 AI systems for automation and analysis',
+                connections: ['document-gen', 'audit-system'],
+                tier: 2,
+                color: '#ff6600'
+            },
+            
+            'blockchain-layer': {
+                icon: '⛓️',
+                label: 'Blockchain',
+                description: 'Blamechain and crypto systems',
+                connections: ['sovereign-economy', 'audit-system'],
+                tier: 2,
+                color: '#6600ff'
+            },
+            
+            'document-gen': {
+                icon: '📄',
+                label: 'Doc Generator',
+                description: 'Transform documents into MVPs and games',
+                connections: ['template-system', 'ai-agents'],
+                tier: 2,
+                color: '#00ffff'
+            },
+            
+            'player-network': {
+                icon: '👥',
+                label: 'Player Network',
+                description: 'Your brother, friends, and community builders',
+                connections: ['social-layer', 'qr-system'],
+                tier: 1,
+                color: '#ff0066'
+            },
+            
+            'empire-systems': {
+                icon: '🏰',
+                label: 'Empire Systems',
+                description: '1,187 JS files powering the infrastructure',
+                connections: ['revenue-engine', 'integration-hub'],
+                tier: 3,
+                color: '#009900'
+            },
+            
+            'audit-system': {
+                icon: '🕵️',
+                label: 'Audit Firm',
+                description: 'Gamified security auditing business',
+                connections: ['revenue-engine', 'client-interface'],
+                tier: 2,
+                color: '#ff3300'
+            },
+            
+            'sovereign-economy': {
+                icon: '👑',
+                label: 'Sovereign Economy',
+                description: 'Human verification → Real crypto bridge',
+                connections: ['verification-layer', 'real-economy'],
+                tier: 1,
+                color: '#ffaa00'
+            },
+            
+            'social-layer': {
+                icon: '📱',
+                label: 'Social Layer',
+                description: 'Snapchat sharing, location battles, QR codes',
+                connections: ['qr-system', 'location-system'],
+                tier: 3,
+                color: '#aa00ff'
+            },
+            
+            'integration-hub': {
+                icon: '🔗',
+                label: 'Integration Hub',
+                description: 'Connects all systems and data flows',
+                connections: ['wormhole-verifier', 'ecosystem-mapper'],
+                tier: 4,
+                color: '#00aa99'
+            }
+        };
+        
+        function initializeEcosystem() {
+            const container = document.getElementById('ecosystemContainer');
+            
+            // Create flowing background
+            createFlowingBackground();
+            
+            // Position nodes organically
+            Object.entries(ecosystemComponents).forEach(([id, component], index) => {
+                createEcosystemNode(id, component, index);
+            });
+            
+            // Create organic connections
+            createOrganicConnections();
+            
+            // Start particle system
+            startParticleSystem();
+            
+            // Update stats
+            updateEcosystemStats();
+        }
+        
+        function createFlowingBackground() {
+            const flowLayer = document.getElementById('flowLayer');
+            
+            // Create flowing streams
+            for (let i = 0; i < 8; i++) {
+                const stream = document.createElement('div');
+                stream.className = 'flow-stream';
+                
+                // Random positioning and sizing
+                const angle = (i / 8) * 360;
+                const radius = 200 + Math.random() * 300;
+                const x = 50 + Math.cos(angle * Math.PI / 180) * radius / 10;
+                const y = 50 + Math.sin(angle * Math.PI / 180) * radius / 10;
+                
+                stream.style.left = x + '%';
+                stream.style.top = y + '%';
+                stream.style.width = (50 + Math.random() * 200) + 'px';
+                stream.style.height = (3 + Math.random() * 8) + 'px';
+                stream.style.transform = `rotate(${angle}deg)`;
+                stream.style.animationDelay = (i * 0.3) + 's';
+                
+                flowLayer.appendChild(stream);
+            }
+        }
+        
+        function createEcosystemNode(id, component, index) {
+            const container = document.getElementById('ecosystemContainer');
+            const node = document.createElement('div');
+            
+            node.className = `ecosystem-node tier-${component.tier}`;
+            node.id = id;
+            node.style.borderColor = component.color;
+            
+            // Organic positioning using golden ratio spiral
+            const angle = index * 137.5; // Golden angle
+            const radius = Math.sqrt(index + 1) * 40;
+            const x = 50 + Math.cos(angle * Math.PI / 180) * radius / 8;
+            const y = 50 + Math.sin(angle * Math.PI / 180) * radius / 8;
+            
+            node.style.left = Math.max(5, Math.min(95, x)) + '%';
+            node.style.top = Math.max(5, Math.min(95, y)) + '%';
+            
+            node.innerHTML = `
+                <div class="node-icon" style="color: ${component.color};">${component.icon}</div>
+                <div class="node-label">${component.label}</div>
+                <div class="node-connections">${component.connections.length} links</div>
+            `;
+            
+            // Add interaction handlers
+            node.addEventListener('click', () => showNodeInfo(id, component));
+            node.addEventListener('mouseenter', () => highlightConnections(id));
+            node.addEventListener('mouseleave', () => clearHighlights());
+            
+            // Make draggable
+            makeDraggable(node);
+            
+            container.appendChild(node);
+            ecosystemState.nodes.set(id, { element: node, component, x, y });
+        }
+        
+        function createOrganicConnections() {
+            Object.entries(ecosystemComponents).forEach(([nodeId, component]) => {
+                component.connections.forEach(targetId => {
+                    if (ecosystemComponents[targetId]) {
+                        createConnection(nodeId, targetId);
+                    }
+                });
+            });
+        }
+        
+        function createConnection(fromId, toId) {
+            const fromNode = document.getElementById(fromId);
+            const toNode = document.getElementById(toId);
+            
+            if (!fromNode || !toNode) return;
+            
+            const container = document.getElementById('ecosystemContainer');
+            
+            // Calculate positions
+            const fromRect = fromNode.getBoundingClientRect();
+            const toRect = toNode.getBoundingClientRect();
+            const containerRect = container.getBoundingClientRect();
+            
+            const fromX = (fromRect.left + fromRect.width / 2 - containerRect.left) / containerRect.width * 100;
+            const fromY = (fromRect.top + fromRect.height / 2 - containerRect.top) / containerRect.height * 100;
+            const toX = (toRect.left + toRect.width / 2 - containerRect.left) / containerRect.width * 100;
+            const toY = (toRect.top + toRect.height / 2 - containerRect.top) / containerRect.height * 100;
+            
+            // Create curved connection
+            const curve = document.createElement('div');
+            curve.className = 'connection-curve';
+            curve.id = `connection-${fromId}-${toId}`;
+            
+            // Calculate curve parameters
+            const dx = toX - fromX;
+            const dy = toY - fromY;
+            const distance = Math.sqrt(dx * dx + dy * dy);
+            const angle = Math.atan2(dy, dx) * 180 / Math.PI;
+            
+            curve.style.left = fromX + '%';
+            curve.style.top = fromY + '%';
+            curve.style.width = distance + '%';
+            curve.style.height = '20px';
+            curve.style.transform = `rotate(${angle}deg)`;
+            curve.style.transformOrigin = '0 50%';
+            
+            container.appendChild(curve);
+            ecosystemState.connections.add(`${fromId}-${toId}`);
+            
+            // Add data stream
+            setTimeout(() => createDataStream(fromId, toId), Math.random() * 3000);
+        }
+        
+        function createDataStream(fromId, toId) {
+            const connection = document.getElementById(`connection-${fromId}-${toId}`);
+            if (!connection) return;
+            
+            const stream = document.createElement('div');
+            stream.className = 'data-stream';
+            
+            const rect = connection.getBoundingClientRect();
+            stream.style.left = rect.left + 'px';
+            stream.style.top = rect.top + 'px';
+            
+            document.body.appendChild(stream);
+            
+            // Animate along connection path
+            const animation = stream.animate([
+                { transform: 'translateX(0) translateY(0)' },
+                { transform: `translateX(${rect.width}px) translateY(0)` }
+            ], {
+                duration: 2000 / ecosystemState.speed,
+                easing: 'ease-in-out'
+            });
+            
+            animation.onfinish = () => stream.remove();
+        }
+        
+        function startParticleSystem() {
+            setInterval(() => {
+                if (ecosystemState.flowActive) {
+                    createParticle();
+                }
+            }, 200);
+        }
+        
+        function createParticle() {
+            const particle = document.createElement('div');
+            particle.className = 'particle';
+            particle.style.left = Math.random() * 100 + '%';
+            particle.style.animationDuration = (3 + Math.random() * 4) + 's';
+            particle.style.animationDelay = Math.random() * 2 + 's';
+            
+            document.body.appendChild(particle);
+            
+            setTimeout(() => particle.remove(), 8000);
+        }
+        
+        function showNodeInfo(nodeId, component) {
+            const infoPanel = document.getElementById('ecosystemInfo');
+            const infoTitle = document.getElementById('infoTitle');
+            const infoContent = document.getElementById('infoContent');
+            
+            infoTitle.textContent = component.label;
+            infoContent.innerHTML = `
+                <div><strong>Description:</strong> ${component.description}</div>
+                <div style="margin-top: 10px;"><strong>Tier:</strong> ${component.tier}</div>
+                <div><strong>Connections:</strong> ${component.connections.join(', ')}</div>
+                <div style="margin-top: 10px;"><strong>Status:</strong> <span style="color: #00ff00;">Active</span></div>
+                <div><strong>Data Flow:</strong> <span style="color: #ffd700;">High</span></div>
+            `;
+            
+            infoPanel.style.display = 'block';
+            
+            // Auto-hide after 5 seconds
+            setTimeout(() => {
+                infoPanel.style.display = 'none';
+            }, 5000);
+        }
+        
+        function highlightConnections(nodeId) {
+            const component = ecosystemComponents[nodeId];
+            if (!component) return;
+            
+            // Highlight connected nodes
+            component.connections.forEach(connectedId => {
+                const connectedNode = document.getElementById(connectedId);
+                if (connectedNode) {
+                    connectedNode.style.borderColor = '#ffd700';
+                    connectedNode.style.boxShadow = '0 0 20px #ffd700';
+                }
+                
+                // Highlight connection lines
+                const connection = document.getElementById(`connection-${nodeId}-${connectedId}`) ||
+                                 document.getElementById(`connection-${connectedId}-${nodeId}`);
+                if (connection) {
+                    connection.style.borderColor = '#ffd700';
+                    connection.style.opacity = '0.8';
+                }
+            });
+        }
+        
+        function clearHighlights() {
+            // Reset all node colors
+            Object.entries(ecosystemComponents).forEach(([nodeId, component]) => {
+                const node = document.getElementById(nodeId);
+                if (node) {
+                    node.style.borderColor = component.color;
+                    node.style.boxShadow = '';
+                }
+            });
+            
+            // Reset connection colors
+            document.querySelectorAll('.connection-curve').forEach(connection => {
+                connection.style.borderColor = '#00ff00';
+                connection.style.opacity = '0.4';
+            });
+        }
+        
+        function makeDraggable(element) {
+            let isDragging = false;
+            let startX, startY, startLeft, startTop;
+            
+            element.addEventListener('mousedown', (e) => {
+                isDragging = true;
+                startX = e.clientX;
+                startY = e.clientY;
+                startLeft = parseFloat(element.style.left);
+                startTop = parseFloat(element.style.top);
+                element.style.cursor = 'grabbing';
+            });
+            
+            document.addEventListener('mousemove', (e) => {
+                if (!isDragging) return;
+                
+                const dx = (e.clientX - startX) / window.innerWidth * 100;
+                const dy = (e.clientY - startY) / window.innerHeight * 100;
+                
+                const newLeft = Math.max(0, Math.min(100, startLeft + dx));
+                const newTop = Math.max(0, Math.min(100, startTop + dy));
+                
+                element.style.left = newLeft + '%';
+                element.style.top = newTop + '%';
+            });
+            
+            document.addEventListener('mouseup', () => {
+                isDragging = false;
+                element.style.cursor = 'pointer';
+            });
+        }
+        
+        function toggleFlow() {
+            ecosystemState.flowActive = !ecosystemState.flowActive;
+            const btn = document.getElementById('flowBtn');
+            btn.classList.toggle('active', ecosystemState.flowActive);
+            
+            const flowLayer = document.getElementById('flowLayer');
+            flowLayer.style.display = ecosystemState.flowActive ? 'block' : 'none';
+        }
+        
+        function toggleTiers() {
+            ecosystemState.tiersVisible = !ecosystemState.tiersVisible;
+            const btn = document.getElementById('tierBtn');
+            btn.classList.toggle('active', ecosystemState.tiersVisible);
+            
+            // Toggle tier-based transforms
+            document.querySelectorAll('.ecosystem-node').forEach(node => {
+                if (ecosystemState.tiersVisible) {
+                    node.classList.forEach(cls => {
+                        if (cls.startsWith('tier-')) {
+                            node.classList.add(cls);
+                        }
+                    });
+                } else {
+                    node.style.transform = 'none';
+                    node.style.opacity = '1';
+                }
+            });
+        }
+        
+        function toggleConnections() {
+            ecosystemState.connectionsVisible = !ecosystemState.connectionsVisible;
+            const btn = document.getElementById('connectBtn');
+            btn.classList.toggle('active', ecosystemState.connectionsVisible);
+            
+            document.querySelectorAll('.connection-curve').forEach(connection => {
+                connection.style.display = ecosystemState.connectionsVisible ? 'block' : 'none';
+            });
+        }
+        
+        function addRandomNode() {
+            const nodeId = `custom-node-${ecosystemState.nodeIdCounter++}`;
+            const icons = ['🔥', '⚡', '🌟', '💎', '🚀', '🌈', '⚗️', '🔮'];
+            const colors = ['#ff6600', '#6600ff', '#ff0066', '#00ffff', '#ffaa00'];
+            
+            const component = {
+                icon: icons[Math.floor(Math.random() * icons.length)],
+                label: `Node ${ecosystemState.nodeIdCounter}`,
+                description: 'Dynamically created ecosystem component',
+                connections: [],
+                tier: Math.floor(Math.random() * 5),
+                color: colors[Math.floor(Math.random() * colors.length)]
+            };
+            
+            ecosystemComponents[nodeId] = component;
+            createEcosystemNode(nodeId, component, Object.keys(ecosystemComponents).length - 1);
+            updateEcosystemStats();
+        }
+        
+        function organicLayout() {
+            // Rearrange nodes in organic spiral pattern
+            const nodes = Array.from(ecosystemState.nodes.keys());
+            
+            nodes.forEach((nodeId, index) => {
+                const node = document.getElementById(nodeId);
+                if (!node) return;
+                
+                const angle = index * 137.5; // Golden angle
+                const radius = Math.sqrt(index + 1) * 50;
+                const x = 50 + Math.cos(angle * Math.PI / 180) * radius / 10;
+                const y = 50 + Math.sin(angle * Math.PI / 180) * radius / 10;
+                
+                node.style.transition = 'all 1s cubic-bezier(0.4, 0, 0.2, 1)';
+                node.style.left = Math.max(5, Math.min(95, x)) + '%';
+                node.style.top = Math.max(5, Math.min(95, y)) + '%';
+            });
+            
+            // Recreate connections after layout
+            setTimeout(() => {
+                document.querySelectorAll('.connection-curve').forEach(c => c.remove());
+                createOrganicConnections();
+            }, 1000);
+        }
+        
+        function resetEcosystem() {
+            // Clear dynamic nodes
+            Object.keys(ecosystemComponents).forEach(nodeId => {
+                if (nodeId.startsWith('custom-node-')) {
+                    const node = document.getElementById(nodeId);
+                    if (node) node.remove();
+                    delete ecosystemComponents[nodeId];
+                }
+            });
+            
+            // Reset to original layout
+            organicLayout();
+            ecosystemState.nodeIdCounter = 1;
+            updateEcosystemStats();
+        }
+        
+        function updateSpeed(newSpeed) {
+            ecosystemState.speed = parseFloat(newSpeed);
+            document.getElementById('flowRate').textContent = newSpeed + 'x';
+            
+            // Update animation speeds
+            document.documentElement.style.setProperty('--flow-speed', newSpeed);
+        }
+        
+        function updateEcosystemStats() {
+            document.getElementById('nodeCount').textContent = Object.keys(ecosystemComponents).length;
+            document.getElementById('connectionCount').textContent = ecosystemState.connections.size;
+            document.getElementById('totalNodes').textContent = Object.keys(ecosystemComponents).length;
+            document.getElementById('dataStreams').textContent = Math.floor(ecosystemState.connections.size * ecosystemState.speed);
+        }
+        
+        // Initialize the ecosystem
+        window.addEventListener('load', () => {
+            initializeEcosystem();
+            console.log('🌊 Fluid Ecosystem Mapper loaded');
+            console.log('Your ecosystem is now flowing organically!');
+        });
+        
+        // Handle window resize
+        window.addEventListener('resize', () => {
+            setTimeout(() => {
+                document.querySelectorAll('.connection-curve').forEach(c => c.remove());
+                createOrganicConnections();
+            }, 100);
+        });
+    </script>
+</body>
+</html>

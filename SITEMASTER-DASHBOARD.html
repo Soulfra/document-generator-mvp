@@ -1,0 +1,684 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Sitemaster Dashboard - Web Architecture D&D</title>
+    <style>
+        body {
+            margin: 0;
+            font-family: 'Courier New', monospace;
+            background: #0a0a0a;
+            color: #00ff00;
+            overflow-x: auto;
+        }
+        
+        .dashboard {
+            display: grid;
+            grid-template-columns: 1fr 1fr 1fr;
+            grid-template-rows: auto auto 1fr;
+            gap: 20px;
+            padding: 20px;
+            min-height: 100vh;
+        }
+        
+        .panel {
+            background: rgba(0, 255, 0, 0.05);
+            border: 2px solid #00ff00;
+            border-radius: 10px;
+            padding: 20px;
+            position: relative;
+            overflow: auto;
+        }
+        
+        .panel h2 {
+            margin-top: 0;
+            color: #00ff00;
+            text-shadow: 0 0 10px #00ff00;
+        }
+        
+        .site-map {
+            grid-column: 1 / -1;
+            font-family: monospace;
+            font-size: 12px;
+            line-height: 1.2;
+            white-space: pre;
+            background: #000;
+            color: #0f0;
+            border: 3px solid #0f0;
+            padding: 20px;
+        }
+        
+        .reasoning-flow {
+            grid-column: 1 / 3;
+            grid-row: 2;
+        }
+        
+        .agent-status {
+            grid-column: 3;
+            grid-row: 2;
+        }
+        
+        .code-generation {
+            grid-column: 1;
+            grid-row: 3;
+        }
+        
+        .html-structure {
+            grid-column: 2;
+            grid-row: 3;
+        }
+        
+        .deployment-status {
+            grid-column: 3;
+            grid-row: 3;
+        }
+        
+        .agent {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin: 10px 0;
+            padding: 10px;
+            background: rgba(255, 255, 255, 0.05);
+            border-radius: 5px;
+            border-left: 4px solid;
+        }
+        
+        .agent.html { border-color: #ff4444; }
+        .agent.css { border-color: #4444ff; }
+        .agent.js { border-color: #ffff44; color: #ffff44; }
+        .agent.design { border-color: #ff44ff; color: #ff44ff; }
+        .agent.seo { border-color: #44ffff; color: #44ffff; }
+        .agent.db { border-color: #44ff44; }
+        
+        .status-indicator {
+            width: 12px;
+            height: 12px;
+            border-radius: 50%;
+            background: #333;
+            animation: pulse 2s infinite;
+        }
+        
+        .status-indicator.active {
+            background: #00ff00;
+            box-shadow: 0 0 10px #00ff00;
+        }
+        
+        .status-indicator.working {
+            background: #ffff00;
+            box-shadow: 0 0 10px #ffff00;
+        }
+        
+        @keyframes pulse {
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0.5; }
+        }
+        
+        .code-preview {
+            background: #111;
+            border: 1px solid #333;
+            border-radius: 5px;
+            padding: 10px;
+            margin: 10px 0;
+            font-size: 11px;
+            max-height: 150px;
+            overflow-y: auto;
+            color: #ccc;
+        }
+        
+        .html-tag { color: #ff6b6b; }
+        .css-property { color: #4ecdc4; }
+        .js-keyword { color: #ffe66d; }
+        
+        .reasoning-step {
+            background: rgba(0, 255, 255, 0.1);
+            border-left: 3px solid #00ffff;
+            padding: 10px;
+            margin: 10px 0;
+            border-radius: 0 5px 5px 0;
+        }
+        
+        .decision-tree {
+            font-size: 11px;
+            color: #aaa;
+        }
+        
+        .connection-status {
+            position: absolute;
+            top: 10px;
+            right: 10px;
+            padding: 5px 10px;
+            background: rgba(0, 0, 0, 0.8);
+            border-radius: 15px;
+            font-size: 12px;
+        }
+        
+        .connected { color: #00ff00; }
+        .disconnected { color: #ff0000; }
+        
+        .progress-bar {
+            width: 100%;
+            height: 8px;
+            background: #333;
+            border-radius: 4px;
+            overflow: hidden;
+            margin: 10px 0;
+        }
+        
+        .progress-fill {
+            height: 100%;
+            background: linear-gradient(90deg, #00ff00, #ffff00, #ff0000);
+            transition: width 0.5s ease;
+        }
+        
+        .file-tree {
+            font-family: monospace;
+            font-size: 12px;
+            line-height: 1.4;
+        }
+        
+        .file-tree .folder { color: #ffff00; }
+        .file-tree .file { color: #00ff00; }
+        .file-tree .generated { color: #ff6b6b; animation: glow 2s infinite; }
+        
+        @keyframes glow {
+            0%, 100% { text-shadow: none; }
+            50% { text-shadow: 0 0 5px currentColor; }
+        }
+        
+        button {
+            background: #003300;
+            color: #00ff00;
+            border: 1px solid #00ff00;
+            padding: 8px 15px;
+            border-radius: 5px;
+            cursor: pointer;
+            font-family: inherit;
+            margin: 5px;
+        }
+        
+        button:hover {
+            background: #00ff00;
+            color: #000;
+            box-shadow: 0 0 10px #00ff00;
+        }
+    </style>
+</head>
+<body>
+    <div class="dashboard">
+        <!-- Site Architecture Map -->
+        <div class="panel site-map">
+            <h2>🗺️ Site Architecture Map</h2>
+            <div id="site-map-content">
+Document Generator Web Application
+├── 🏠 Frontend (React/HTML5)
+│   ├── 📱 Mobile PWA Interface
+│   ├── 💻 Desktop Electron App
+│   ├── 🎨 Layer Rider Visualization
+│   └── 🌍 3D API World Viewer
+│
+├── 🔄 Backend Services
+│   ├── 🏰 Dungeon Master Router (Port 7777)
+│   │   ├── ⚔️ HTML Master Agent (Port 7001)
+│   │   ├── 🔮 CSS Mage Agent (Port 7002)
+│   │   ├── ⚡ JS Wizard Agent (Port 7003)
+│   │   ├── 🛡️ Design Paladin Agent (Port 7004)
+│   │   ├── 🗡️ SEO Rogue Agent (Port 7005)
+│   │   └── 🏺 DB Cleric Agent (Port 7006)
+│   │
+│   ├── 🌐 MCP Connector (Port 6666)
+│   │   ├── 🎮 Game Engine Integration
+│   │   ├── 🤖 AI Player System
+│   │   └── 📦 Packet Processing
+│   │
+│   └── 🔌 WebSocket Network
+│       ├── ws://localhost:6667 (MCP)
+│       └── ws://localhost:7778 (DM Reasoning)
+│
+├── 💾 Data Layer
+│   ├── 📄 Document Parser Service
+│   ├── 🗃️ Template Management
+│   ├── 💼 Generated Code Storage
+│   └── 🎯 Campaign Progress Tracking
+│
+└── 🚀 Deployment Pipeline
+    ├── 🥧 Virtual Raspberry Pi
+    ├── 📱 PWA Manifest
+    ├── 🐳 Docker Containers
+    └── ☁️ Cloud Deployment Ready
+
+Status: <span id="overall-status">🟡 Initializing...</span>
+            </div>
+        </div>
+        
+        <!-- Reasoning Flow -->
+        <div class="panel reasoning-flow">
+            <h2>🧠 Dungeon Master Reasoning</h2>
+            <div class="connection-status" id="dm-connection">🔄 Connecting...</div>
+            
+            <div id="current-thought">
+                <strong>Current Thought:</strong>
+                <div id="thought-content">Initializing reasoning engine...</div>
+            </div>
+            
+            <div id="decision-process">
+                <strong>Decision Process:</strong>
+                <div id="decisions-list">
+                    <!-- Decisions will be populated here -->
+                </div>
+            </div>
+            
+            <div id="active-quest">
+                <strong>Current Quest:</strong>
+                <div id="quest-content">Initialize campaign</div>
+                <div class="progress-bar">
+                    <div class="progress-fill" id="quest-progress" style="width: 0%"></div>
+                </div>
+            </div>
+        </div>
+        
+        <!-- Agent Status -->
+        <div class="panel agent-status">
+            <h2>⚔️ Agent Party Status</h2>
+            <div class="connection-status" id="agent-connection">🔄 Connecting...</div>
+            
+            <div id="agents-list">
+                <div class="agent html">
+                    <div>
+                        <strong>HTML Master</strong><br>
+                        <small>Level <span id="html-level">1</span> • Semantic Structure</small>
+                    </div>
+                    <div class="status-indicator" id="html-status"></div>
+                </div>
+                
+                <div class="agent css">
+                    <div>
+                        <strong>CSS Mage</strong><br>
+                        <small>Level <span id="css-level">1</span> • Responsive Styling</small>
+                    </div>
+                    <div class="status-indicator" id="css-status"></div>
+                </div>
+                
+                <div class="agent js">
+                    <div>
+                        <strong>JS Wizard</strong><br>
+                        <small>Level <span id="js-level">1</span> • Interactive Logic</small>
+                    </div>
+                    <div class="status-indicator" id="js-status"></div>
+                </div>
+                
+                <div class="agent design">
+                    <div>
+                        <strong>Design Paladin</strong><br>
+                        <small>Level <span id="design-level">1</span> • UX/UI Excellence</small>
+                    </div>
+                    <div class="status-indicator" id="design-status"></div>
+                </div>
+                
+                <div class="agent seo">
+                    <div>
+                        <strong>SEO Rogue</strong><br>
+                        <small>Level <span id="seo-level">1</span> • Search Optimization</small>
+                    </div>
+                    <div class="status-indicator" id="seo-status"></div>
+                </div>
+                
+                <div class="agent db">
+                    <div>
+                        <strong>DB Cleric</strong><br>
+                        <small>Level <span id="db-level">1</span> • Data Architecture</small>
+                    </div>
+                    <div class="status-indicator" id="db-status"></div>
+                </div>
+            </div>
+            
+            <div style="margin-top: 20px;">
+                <button onclick="forceAgentWork()">⚡ Force Agent Work</button>
+                <button onclick="levelUpAgents()">⬆️ Level Up All</button>
+            </div>
+        </div>
+        
+        <!-- Code Generation -->
+        <div class="panel code-generation">
+            <h2>🔨 Live Code Generation</h2>
+            
+            <div id="latest-artifacts">
+                <strong>Latest Artifacts:</strong>
+                <div id="artifacts-list">
+                    <!-- Generated code will appear here -->
+                </div>
+            </div>
+            
+            <div style="margin-top: 20px;">
+                <button onclick="generateCode()">🚀 Generate Code</button>
+                <button onclick="exportProject()">📦 Export Project</button>
+            </div>
+        </div>
+        
+        <!-- HTML Structure -->
+        <div class="panel html-structure">
+            <h2>🏗️ HTML Structure Builder</h2>
+            
+            <div class="file-tree" id="file-structure">
+<span class="folder">📁 src/</span>
+├── <span class="file">📄 index.html</span>
+├── <span class="file">📄 app.js</span>
+├── <span class="file">📄 styles.css</span>
+├── <span class="folder">📁 components/</span>
+│   ├── <span class="file">📄 Header.js</span>
+│   ├── <span class="file">📄 DocumentProcessor.js</span>
+│   └── <span class="file">📄 Dashboard.js</span>
+├── <span class="folder">📁 assets/</span>
+│   ├── <span class="file">🖼️ logo.svg</span>
+│   └── <span class="file">🎨 icons.png</span>
+└── <span class="folder">📁 api/</span>
+    ├── <span class="file">📄 routes.js</span>
+    └── <span class="file">📄 middleware.js</span>
+            </div>
+            
+            <div style="margin-top: 20px;">
+                <strong>Component Dependencies:</strong>
+                <div class="code-preview">
+                    <span class="html-tag">&lt;DocumentProcessor/&gt;</span><br>
+                    ├── <span class="js-keyword">useState</span> (file upload)<br>
+                    ├── <span class="js-keyword">useEffect</span> (process docs)<br>
+                    └── <span class="css-property">responsive grid</span>
+                </div>
+            </div>
+        </div>
+        
+        <!-- Deployment Status -->
+        <div class="panel deployment-status">
+            <h2>🚀 Deployment Pipeline</h2>
+            
+            <div id="deployment-stages">
+                <div class="reasoning-step">
+                    <strong>🔍 Code Analysis</strong>
+                    <div class="decision-tree">Validating generated artifacts...</div>
+                </div>
+                
+                <div class="reasoning-step">
+                    <strong>🧪 Testing Phase</strong>
+                    <div class="decision-tree">Running automated tests...</div>
+                </div>
+                
+                <div class="reasoning-step">
+                    <strong>📦 Build Process</strong>
+                    <div class="decision-tree">Bundling for production...</div>
+                </div>
+                
+                <div class="reasoning-step">
+                    <strong>🥧 Pi Deployment</strong>
+                    <div class="decision-tree">Ready for Raspberry Pi...</div>
+                </div>
+            </div>
+            
+            <div style="margin-top: 20px;">
+                <button onclick="deployToPi()">🥧 Deploy to Pi</button>
+                <button onclick="deployToPWA()">📱 Deploy PWA</button>
+                <button onclick="deployToCloud()">☁️ Deploy Cloud</button>
+            </div>
+        </div>
+    </div>
+    
+    <script>
+        // WebSocket connections
+        let dmWs = null;
+        let mcpWs = null;
+        
+        // State
+        let campaignData = null;
+        let agentsData = null;
+        let artifacts = [];
+        
+        // Connect to Dungeon Master reasoning
+        function connectToDM() {
+            try {
+                dmWs = new WebSocket('ws://localhost:7778');
+                
+                dmWs.onopen = () => {
+                    console.log('🏰 Connected to Dungeon Master');
+                    document.getElementById('dm-connection').innerHTML = '<span class="connected">🟢 DM Connected</span>';
+                    dmWs.send(JSON.stringify({ type: 'sitemaster-connected' }));
+                };
+                
+                dmWs.onmessage = (event) => {
+                    const data = JSON.parse(event.data);
+                    handleDMMessage(data);
+                };
+                
+                dmWs.onerror = () => {
+                    document.getElementById('dm-connection').innerHTML = '<span class="disconnected">🔴 DM Error</span>';
+                };
+                
+                dmWs.onclose = () => {
+                    document.getElementById('dm-connection').innerHTML = '<span class="disconnected">🟡 DM Reconnecting...</span>';
+                    setTimeout(connectToDM, 3000);
+                };
+            } catch (e) {
+                console.error('Failed to connect to DM:', e);
+            }
+        }
+        
+        // Connect to MCP
+        function connectToMCP() {
+            try {
+                mcpWs = new WebSocket('ws://localhost:6667');
+                
+                mcpWs.onopen = () => {
+                    console.log('🔌 Connected to MCP');
+                    document.getElementById('agent-connection').innerHTML = '<span class="connected">🟢 MCP Connected</span>';
+                    mcpWs.send(JSON.stringify({ type: 'sitemaster-connected' }));
+                };
+                
+                mcpWs.onmessage = (event) => {
+                    const data = JSON.parse(event.data);
+                    handleMCPMessage(data);
+                };
+                
+                mcpWs.onerror = () => {
+                    document.getElementById('agent-connection').innerHTML = '<span class="disconnected">🔴 MCP Error</span>';
+                };
+                
+                mcpWs.onclose = () => {
+                    document.getElementById('agent-connection').innerHTML = '<span class="disconnected">🟡 MCP Reconnecting...</span>';
+                    setTimeout(connectToMCP, 3000);
+                };
+            } catch (e) {
+                console.error('Failed to connect to MCP:', e);
+            }
+        }
+        
+        // Handle Dungeon Master messages
+        function handleDMMessage(data) {
+            switch (data.type) {
+                case 'dm-welcome':
+                    campaignData = data.campaign;
+                    agentsData = data.agents;
+                    updateCampaignDisplay();
+                    updateAgentsDisplay();
+                    break;
+                    
+                case 'reasoning-update':
+                    updateReasoningDisplay(data.reasoning);
+                    updateCampaignProgress(data.campaign);
+                    updateAgentStatus(data.agents);
+                    updateArtifacts(data.campaign.artifacts);
+                    break;
+            }
+        }
+        
+        // Handle MCP messages
+        function handleMCPMessage(data) {
+            // Handle MCP-specific updates
+            console.log('MCP message:', data.type);
+        }
+        
+        // Update reasoning display
+        function updateReasoningDisplay(reasoning) {
+            document.getElementById('thought-content').textContent = reasoning.currentThought;
+            
+            const decisionsList = document.getElementById('decisions-list');
+            decisionsList.innerHTML = '';
+            
+            reasoning.decisionTree.slice(-3).forEach(decision => {
+                const div = document.createElement('div');
+                div.className = 'reasoning-step';
+                div.innerHTML = `
+                    <strong>${decision.selectedOption || 'Analyzing...'}</strong>
+                    <div class="decision-tree">${decision.reasoning || 'Processing options...'}</div>
+                `;
+                decisionsList.appendChild(div);
+            });
+        }
+        
+        // Update campaign progress
+        function updateCampaignProgress(campaign) {
+            document.getElementById('quest-content').textContent = campaign.currentQuest;
+            document.getElementById('quest-progress').style.width = campaign.progress + '%';
+            
+            const statusElement = document.getElementById('overall-status');
+            if (campaign.progress < 25) {
+                statusElement.textContent = '🟡 Planning Phase';
+            } else if (campaign.progress < 50) {
+                statusElement.textContent = '🟠 Development Phase';
+            } else if (campaign.progress < 75) {
+                statusElement.textContent = '🔵 Testing Phase';
+            } else if (campaign.progress < 100) {
+                statusElement.textContent = '🟣 Deployment Phase';
+            } else {
+                statusElement.textContent = '🟢 Campaign Complete!';
+            }
+        }
+        
+        // Update agent status
+        function updateAgentStatus(agents) {
+            Object.entries(agents).forEach(([agentName, agent]) => {
+                const levelElement = document.getElementById(agentName.replace('Master', '').replace('Mage', '').replace('Wizard', '').replace('Paladin', '').replace('Rogue', '').replace('Cleric', '').toLowerCase() + '-level');
+                const statusElement = document.getElementById(agentName.replace('Master', '').replace('Mage', '').replace('Wizard', '').replace('Paladin', '').replace('Rogue', '').replace('Cleric', '').toLowerCase() + '-status');
+                
+                if (levelElement) levelElement.textContent = agent.level;
+                if (statusElement) {
+                    statusElement.className = 'status-indicator ' + (agent.currentTask ? 'working' : 'active');
+                }
+            });
+        }
+        
+        // Update artifacts
+        function updateArtifacts(newArtifacts) {
+            if (!newArtifacts) return;
+            
+            artifacts = newArtifacts;
+            const artifactsList = document.getElementById('artifacts-list');
+            artifactsList.innerHTML = '';
+            
+            artifacts.slice(-5).forEach(artifact => {
+                const div = document.createElement('div');
+                div.className = 'code-preview';
+                div.innerHTML = `
+                    <strong>${artifact.filename}</strong> (${artifact.type})<br>
+                    <div style="max-height: 80px; overflow: auto; font-size: 10px;">
+                        ${escapeHtml(artifact.content.substring(0, 200))}...
+                    </div>
+                `;
+                artifactsList.appendChild(div);
+            });
+        }
+        
+        // Update displays
+        function updateCampaignDisplay() {
+            if (campaignData) {
+                document.getElementById('quest-content').textContent = campaignData.currentQuest;
+            }
+        }
+        
+        function updateAgentsDisplay() {
+            if (agentsData) {
+                updateAgentStatus(agentsData);
+            }
+        }
+        
+        // Control functions
+        function forceAgentWork() {
+            if (dmWs && dmWs.readyState === WebSocket.OPEN) {
+                dmWs.send(JSON.stringify({
+                    type: 'force-agent-work'
+                }));
+            }
+        }
+        
+        function levelUpAgents() {
+            if (dmWs && dmWs.readyState === WebSocket.OPEN) {
+                dmWs.send(JSON.stringify({
+                    type: 'level-up-agents'
+                }));
+            }
+        }
+        
+        function generateCode() {
+            if (dmWs && dmWs.readyState === WebSocket.OPEN) {
+                dmWs.send(JSON.stringify({
+                    type: 'generate-code'
+                }));
+            }
+        }
+        
+        function exportProject() {
+            const projectData = {
+                campaign: campaignData,
+                agents: agentsData,
+                artifacts: artifacts,
+                timestamp: Date.now()
+            };
+            
+            const blob = new Blob([JSON.stringify(projectData, null, 2)], { type: 'application/json' });
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = 'generated-project.json';
+            a.click();
+        }
+        
+        function deployToPi() {
+            alert('🥧 Deploying to Raspberry Pi...\n\nThis would compile the generated code for ARM architecture and deploy to your Pi device.');
+        }
+        
+        function deployToPWA() {
+            alert('📱 Deploying as PWA...\n\nThis would bundle the application as a Progressive Web App with offline capabilities.');
+        }
+        
+        function deployToCloud() {
+            alert('☁️ Deploying to Cloud...\n\nThis would deploy to Vercel, Netlify, or your preferred cloud platform.');
+        }
+        
+        // Utility function
+        function escapeHtml(text) {
+            const div = document.createElement('div');
+            div.textContent = text;
+            return div.innerHTML;
+        }
+        
+        // Initialize connections
+        connectToDM();
+        connectToMCP();
+        
+        // Simulate some activity for demo
+        setTimeout(() => {
+            const fileStructure = document.getElementById('file-structure');
+            const lines = fileStructure.innerHTML.split('\n');
+            
+            setInterval(() => {
+                const randomLine = Math.floor(Math.random() * lines.length);
+                if (lines[randomLine].includes('📄') && Math.random() < 0.1) {
+                    lines[randomLine] = lines[randomLine].replace('file">', 'file generated">');
+                    fileStructure.innerHTML = lines.join('\n');
+                    
+                    setTimeout(() => {
+                        lines[randomLine] = lines[randomLine].replace('file generated">', 'file">');
+                        fileStructure.innerHTML = lines.join('\n');
+                    }, 3000);
+                }
+            }, 2000);
+        }, 5000);
+    </script>
+</body>
+</html>

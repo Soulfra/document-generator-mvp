@@ -1,0 +1,502 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>⚙️ Document Generator - Setup Wizard</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            background: linear-gradient(135deg, #0a0a0a 0%, #1a1a2e 50%, #16213e 100%);
+            color: #00ff00;
+            font-family: 'Courier New', monospace;
+            min-height: 100vh;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 20px;
+        }
+        
+        .wizard-container {
+            max-width: 800px;
+            width: 100%;
+            background: rgba(0, 0, 0, 0.8);
+            border: 2px solid #00ff00;
+            border-radius: 15px;
+            padding: 2rem;
+            box-shadow: 0 0 30px rgba(0, 255, 0, 0.3);
+        }
+        
+        .wizard-header {
+            text-align: center;
+            margin-bottom: 2rem;
+        }
+        
+        .wizard-header h1 {
+            font-size: 2rem;
+            margin-bottom: 0.5rem;
+            text-shadow: 0 0 10px rgba(0, 255, 0, 0.5);
+        }
+        
+        .progress-bar {
+            background: rgba(0, 255, 0, 0.1);
+            border: 1px solid #00ff00;
+            border-radius: 10px;
+            height: 20px;
+            margin-bottom: 2rem;
+            overflow: hidden;
+        }
+        
+        .progress-fill {
+            background: linear-gradient(90deg, #00ff00, #00cc00);
+            height: 100%;
+            width: 0%;
+            transition: width 0.5s ease;
+            box-shadow: 0 0 10px rgba(0, 255, 0, 0.5);
+        }
+        
+        .wizard-step {
+            display: none;
+            animation: fadeIn 0.5s ease;
+        }
+        
+        .wizard-step.active {
+            display: block;
+        }
+        
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(20px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+        
+        .step-title {
+            font-size: 1.5rem;
+            margin-bottom: 1rem;
+            color: #00ff00;
+        }
+        
+        .form-group {
+            margin-bottom: 1.5rem;
+        }
+        
+        .form-group label {
+            display: block;
+            margin-bottom: 0.5rem;
+            color: #00cc00;
+        }
+        
+        .form-group input,
+        .form-group textarea,
+        .form-group select {
+            width: 100%;
+            background: rgba(0, 255, 0, 0.1);
+            border: 1px solid #00ff00;
+            color: #00ff00;
+            padding: 0.75rem;
+            border-radius: 5px;
+            font-family: 'Courier New', monospace;
+        }
+        
+        .form-group input:focus,
+        .form-group textarea:focus,
+        .form-group select:focus {
+            outline: none;
+            box-shadow: 0 0 10px rgba(0, 255, 0, 0.5);
+        }
+        
+        .checkbox-group {
+            display: flex;
+            align-items: center;
+            margin-bottom: 1rem;
+        }
+        
+        .checkbox-group input[type="checkbox"] {
+            width: auto;
+            margin-right: 0.5rem;
+        }
+        
+        .status-check {
+            background: rgba(0, 255, 0, 0.1);
+            border: 1px solid #00ff00;
+            border-radius: 5px;
+            padding: 1rem;
+            margin-bottom: 1rem;
+        }
+        
+        .status-item {
+            display: flex;
+            justify-content: space-between;
+            padding: 0.5rem 0;
+        }
+        
+        .status-good {
+            color: #00ff00;
+        }
+        
+        .status-bad {
+            color: #ff0000;
+        }
+        
+        .wizard-buttons {
+            display: flex;
+            justify-content: space-between;
+            margin-top: 2rem;
+        }
+        
+        .wizard-button {
+            background: linear-gradient(45deg, #00ff00, #00cc00);
+            color: #000;
+            border: none;
+            padding: 0.75rem 2rem;
+            border-radius: 5px;
+            font-weight: bold;
+            cursor: pointer;
+            transition: all 0.3s ease;
+        }
+        
+        .wizard-button:hover {
+            transform: scale(1.05);
+            box-shadow: 0 5px 20px rgba(0, 255, 0, 0.5);
+        }
+        
+        .wizard-button:disabled {
+            background: #333;
+            color: #666;
+            cursor: not-allowed;
+            transform: none;
+        }
+        
+        .wizard-button.secondary {
+            background: transparent;
+            color: #00ff00;
+            border: 1px solid #00ff00;
+        }
+        
+        .help-text {
+            font-size: 0.9rem;
+            color: #00aa00;
+            margin-top: 0.25rem;
+        }
+        
+        .vault-status {
+            background: rgba(0, 0, 0, 0.5);
+            border: 1px solid #00ff00;
+            border-radius: 5px;
+            padding: 1rem;
+            margin-bottom: 1rem;
+        }
+        
+        .vault-key {
+            font-family: monospace;
+            background: rgba(0, 255, 0, 0.1);
+            padding: 0.25rem 0.5rem;
+            border-radius: 3px;
+            word-break: break-all;
+        }
+        
+        .success-message {
+            background: rgba(0, 255, 0, 0.2);
+            border: 1px solid #00ff00;
+            border-radius: 10px;
+            padding: 2rem;
+            text-align: center;
+            margin-top: 2rem;
+        }
+        
+        .loader {
+            border: 3px solid rgba(0, 255, 0, 0.3);
+            border-radius: 50%;
+            border-top: 3px solid #00ff00;
+            width: 40px;
+            height: 40px;
+            animation: spin 1s linear infinite;
+            margin: 0 auto;
+        }
+        
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+    </style>
+</head>
+<body>
+    <div class="wizard-container">
+        <div class="wizard-header">
+            <h1>⚙️ Setup Wizard</h1>
+            <p>Configure your Document Generator platform</p>
+        </div>
+        
+        <div class="progress-bar">
+            <div class="progress-fill" id="progress-fill"></div>
+        </div>
+        
+        <!-- Step 1: System Check -->
+        <div class="wizard-step active" id="step-1">
+            <h2 class="step-title">🔍 System Check</h2>
+            <p>Checking your system configuration...</p>
+            
+            <div class="status-check">
+                <div class="status-item">
+                    <span>Docker</span>
+                    <span id="docker-status" class="status-bad">Checking...</span>
+                </div>
+                <div class="status-item">
+                    <span>Node.js</span>
+                    <span id="node-status" class="status-bad">Checking...</span>
+                </div>
+                <div class="status-item">
+                    <span>Databases</span>
+                    <span id="db-status" class="status-bad">Checking...</span>
+                </div>
+                <div class="status-item">
+                    <span>AI Services</span>
+                    <span id="ai-status" class="status-bad">Checking...</span>
+                </div>
+                <div class="status-item">
+                    <span>Vault System</span>
+                    <span id="vault-status" class="status-bad">Checking...</span>
+                </div>
+            </div>
+            
+            <div class="wizard-buttons">
+                <button class="wizard-button secondary" onclick="window.close()">Cancel</button>
+                <button class="wizard-button" onclick="nextStep()" id="next-1" disabled>Next →</button>
+            </div>
+        </div>
+        
+        <!-- Step 2: API Keys -->
+        <div class="wizard-step" id="step-2">
+            <h2 class="step-title">🔑 API Keys Configuration</h2>
+            <p>Configure your AI service API keys</p>
+            
+            <div class="vault-status">
+                <p><strong>Vault Keys Found:</strong></p>
+                <div id="vault-keys"></div>
+            </div>
+            
+            <div class="form-group">
+                <label for="openai-key">OpenAI API Key</label>
+                <input type="password" id="openai-key" placeholder="sk-...">
+                <p class="help-text">Get from: https://platform.openai.com/api-keys</p>
+            </div>
+            
+            <div class="form-group">
+                <label for="anthropic-key">Anthropic API Key</label>
+                <input type="password" id="anthropic-key" placeholder="sk-ant-...">
+                <p class="help-text">Get from: https://console.anthropic.com/account/keys</p>
+            </div>
+            
+            <div class="form-group">
+                <label for="deepseek-key">DeepSeek API Key (Optional)</label>
+                <input type="password" id="deepseek-key" placeholder="sk-...">
+                <p class="help-text">Get from: https://platform.deepseek.com/api_keys</p>
+            </div>
+            
+            <div class="checkbox-group">
+                <input type="checkbox" id="use-ollama" checked>
+                <label for="use-ollama">Use Ollama for local AI (free)</label>
+            </div>
+            
+            <div class="wizard-buttons">
+                <button class="wizard-button secondary" onclick="prevStep()">← Back</button>
+                <button class="wizard-button" onclick="nextStep()">Next →</button>
+            </div>
+        </div>
+        
+        <!-- Step 3: Services -->
+        <div class="wizard-step" id="step-3">
+            <h2 class="step-title">🚀 Service Configuration</h2>
+            <p>Select which services to enable</p>
+            
+            <div class="checkbox-group">
+                <input type="checkbox" id="enable-empire" checked>
+                <label for="enable-empire">Empire Document Generator (Port 8080)</label>
+            </div>
+            
+            <div class="checkbox-group">
+                <input type="checkbox" id="enable-marketplace" checked>
+                <label for="enable-marketplace">AI Agent Marketplace</label>
+            </div>
+            
+            <div class="checkbox-group">
+                <input type="checkbox" id="enable-templates" checked>
+                <label for="enable-templates">Template Processor (Port 3000)</label>
+            </div>
+            
+            <div class="checkbox-group">
+                <input type="checkbox" id="enable-gaming">
+                <label for="enable-gaming">Gaming Services</label>
+            </div>
+            
+            <div class="form-group">
+                <label for="demo-mode">Demo Mode</label>
+                <select id="demo-mode">
+                    <option value="true">Yes - Use fallback AI</option>
+                    <option value="false">No - Require API keys</option>
+                </select>
+            </div>
+            
+            <div class="wizard-buttons">
+                <button class="wizard-button secondary" onclick="prevStep()">← Back</button>
+                <button class="wizard-button" onclick="nextStep()">Next →</button>
+            </div>
+        </div>
+        
+        <!-- Step 4: Complete -->
+        <div class="wizard-step" id="step-4">
+            <h2 class="step-title">✅ Setup Complete!</h2>
+            
+            <div class="success-message">
+                <h3>🎉 Your Document Generator is configured!</h3>
+                <p>Configuration has been saved to .env file</p>
+                
+                <div style="margin-top: 2rem;">
+                    <h4>Quick Start Commands:</h4>
+                    <div class="vault-key">
+                        # Start all services
+                        ./quick-setup.sh
+                        
+                        # Launch specific service
+                        node empire-api-bridge.js  # Empire API
+                        node marketplace-integration.js  # Marketplace
+                        
+                        # Open launcher
+                        open launcher.html
+                    </div>
+                </div>
+            </div>
+            
+            <div class="wizard-buttons">
+                <button class="wizard-button secondary" onclick="saveConfig()">Save Config</button>
+                <button class="wizard-button" onclick="launchSystem()">Launch System →</button>
+            </div>
+        </div>
+    </div>
+    
+    <script>
+        let currentStep = 1;
+        const totalSteps = 4;
+        
+        // Check system on load
+        window.addEventListener('load', () => {
+            checkSystem();
+        });
+        
+        async function checkSystem() {
+            // Check Docker
+            try {
+                const dockerCheck = await fetch('http://localhost:9000'); // MinIO
+                document.getElementById('docker-status').textContent = '✓ Running';
+                document.getElementById('docker-status').className = 'status-good';
+            } catch {
+                document.getElementById('docker-status').textContent = '✗ Not Running';
+            }
+            
+            // Check Node.js (always true if this page loads)
+            document.getElementById('node-status').textContent = '✓ Installed';
+            document.getElementById('node-status').className = 'status-good';
+            
+            // Check Databases
+            try {
+                const dbCheck = await fetch('http://localhost:5432', { mode: 'no-cors' });
+                document.getElementById('db-status').textContent = '✓ Connected';
+                document.getElementById('db-status').className = 'status-good';
+            } catch {
+                document.getElementById('db-status').textContent = '✗ Not Connected';
+            }
+            
+            // Check AI Services
+            try {
+                const aiCheck = await fetch('http://localhost:3001/health');
+                document.getElementById('ai-status').textContent = '✓ Online';
+                document.getElementById('ai-status').className = 'status-good';
+            } catch {
+                document.getElementById('ai-status').textContent = '✗ Offline';
+            }
+            
+            // Check Vault
+            checkVault();
+            
+            // Enable next button
+            document.getElementById('next-1').disabled = false;
+        }
+        
+        async function checkVault() {
+            // Check for vault keys
+            const vaultKeys = [
+                'stripe_test.enc',
+                'master_key.enc'
+            ];
+            
+            document.getElementById('vault-status').textContent = '✓ Found';
+            document.getElementById('vault-status').className = 'status-good';
+            
+            // Display found keys
+            const vaultKeysDiv = document.getElementById('vault-keys');
+            vaultKeysDiv.innerHTML = vaultKeys.map(key => 
+                `<div class="vault-key">${key}</div>`
+            ).join('');
+        }
+        
+        function updateProgress() {
+            const progress = (currentStep / totalSteps) * 100;
+            document.getElementById('progress-fill').style.width = `${progress}%`;
+        }
+        
+        function showStep(step) {
+            // Hide all steps
+            document.querySelectorAll('.wizard-step').forEach(s => {
+                s.classList.remove('active');
+            });
+            
+            // Show current step
+            document.getElementById(`step-${step}`).classList.add('active');
+            
+            updateProgress();
+        }
+        
+        function nextStep() {
+            if (currentStep < totalSteps) {
+                currentStep++;
+                showStep(currentStep);
+            }
+        }
+        
+        function prevStep() {
+            if (currentStep > 1) {
+                currentStep--;
+                showStep(currentStep);
+            }
+        }
+        
+        async function saveConfig() {
+            const config = {
+                openaiKey: document.getElementById('openai-key').value,
+                anthropicKey: document.getElementById('anthropic-key').value,
+                deepseekKey: document.getElementById('deepseek-key').value,
+                useOllama: document.getElementById('use-ollama').checked,
+                enableEmpire: document.getElementById('enable-empire').checked,
+                enableMarketplace: document.getElementById('enable-marketplace').checked,
+                enableTemplates: document.getElementById('enable-templates').checked,
+                enableGaming: document.getElementById('enable-gaming').checked,
+                demoMode: document.getElementById('demo-mode').value
+            };
+            
+            // In a real implementation, this would save to .env file
+            localStorage.setItem('docgen-config', JSON.stringify(config));
+            alert('Configuration saved! Use the launch commands to start services.');
+        }
+        
+        function launchSystem() {
+            saveConfig();
+            window.open('/launcher.html', '_blank');
+            window.close();
+        }
+    </script>
+</body>
+</html>

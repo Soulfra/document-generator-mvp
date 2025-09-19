@@ -1,0 +1,698 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Layer Rider Pi - OSS/MIT Text Layering System</title>
+    <style>
+        body {
+            margin: 0;
+            overflow: hidden;
+            background: #000;
+            font-family: 'Courier New', monospace;
+        }
+        
+        #canvas {
+            position: absolute;
+            top: 0;
+            left: 0;
+            cursor: crosshair;
+        }
+        
+        #layers-panel {
+            position: absolute;
+            right: 20px;
+            top: 20px;
+            width: 300px;
+            background: rgba(0, 0, 0, 0.9);
+            border: 2px solid #0f0;
+            border-radius: 10px;
+            padding: 20px;
+            color: #0f0;
+            max-height: 80vh;
+            overflow-y: auto;
+        }
+        
+        .layer {
+            background: rgba(0, 255, 0, 0.1);
+            border: 1px solid #0f0;
+            margin: 10px 0;
+            padding: 10px;
+            border-radius: 5px;
+            position: relative;
+        }
+        
+        .layer.active {
+            background: rgba(0, 255, 0, 0.3);
+            box-shadow: 0 0 10px #0f0;
+        }
+        
+        .layer-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 5px;
+        }
+        
+        .license-badge {
+            background: #333;
+            color: #fff;
+            padding: 2px 8px;
+            border-radius: 3px;
+            font-size: 10px;
+        }
+        
+        .license-badge.mit { background: #4CAF50; }
+        .license-badge.gpl { background: #2196F3; }
+        .license-badge.apache { background: #FF9800; }
+        .license-badge.bsd { background: #9C27B0; }
+        
+        #pi-terminal {
+            position: absolute;
+            left: 20px;
+            bottom: 20px;
+            width: 400px;
+            height: 300px;
+            background: #000;
+            border: 2px solid #f00;
+            border-radius: 10px;
+            padding: 10px;
+            color: #0f0;
+            font-size: 12px;
+            overflow-y: auto;
+        }
+        
+        .pi-header {
+            color: #f00;
+            margin-bottom: 10px;
+        }
+        
+        #tools {
+            position: absolute;
+            left: 20px;
+            top: 20px;
+            background: rgba(0, 0, 0, 0.9);
+            border: 2px solid #0f0;
+            border-radius: 10px;
+            padding: 15px;
+        }
+        
+        button {
+            background: #001100;
+            color: #0f0;
+            border: 1px solid #0f0;
+            padding: 8px 15px;
+            margin: 5px;
+            cursor: pointer;
+            border-radius: 5px;
+            font-family: inherit;
+        }
+        
+        button:hover {
+            background: #0f0;
+            color: #000;
+            box-shadow: 0 0 10px #0f0;
+        }
+        
+        .mode-indicator {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            font-size: 48px;
+            color: rgba(0, 255, 0, 0.3);
+            pointer-events: none;
+            animation: pulse 2s infinite;
+        }
+        
+        @keyframes pulse {
+            0%, 100% { opacity: 0.3; transform: translate(-50%, -50%) scale(1); }
+            50% { opacity: 0.6; transform: translate(-50%, -50%) scale(1.1); }
+        }
+        
+        #code-overlay {
+            position: absolute;
+            top: 0;
+            left: 0;
+            pointer-events: none;
+            width: 100%;
+            height: 100%;
+        }
+        
+        .code-particle {
+            position: absolute;
+            color: #0f0;
+            font-size: 10px;
+            opacity: 0.8;
+            animation: float 5s infinite;
+        }
+        
+        @keyframes float {
+            0% { transform: translateY(0) rotate(0deg); opacity: 0; }
+            10% { opacity: 0.8; }
+            90% { opacity: 0.8; }
+            100% { transform: translateY(-100px) rotate(360deg); opacity: 0; }
+        }
+    </style>
+</head>
+<body>
+    <canvas id="canvas"></canvas>
+    <div id="code-overlay"></div>
+    
+    <div id="tools">
+        <h3 style="margin-top: 0; color: #0f0;">🎨 Layer Rider Tools</h3>
+        <button onclick="setMode('draw')">✏️ Draw</button>
+        <button onclick="setMode('text')">📝 Text</button>
+        <button onclick="setMode('code')">💻 Code</button>
+        <button onclick="setMode('circuit')">⚡ Circuit</button>
+        <button onclick="clearCanvas()">🗑️ Clear</button>
+        <button onclick="exportLayers()">💾 Export</button>
+        <button onclick="deployToPi()">🥧 Deploy to Pi</button>
+    </div>
+    
+    <div id="layers-panel">
+        <h3 style="margin-top: 0;">📚 Layer Stack</h3>
+        <button onclick="addLayer()">➕ New Layer</button>
+        <div id="layers-list"></div>
+    </div>
+    
+    <div id="pi-terminal">
+        <div class="pi-header">🥧 Raspberry Pi Emulator v4.0</div>
+        <div id="pi-output">
+pi@layerrider:~ $ initializing virtual ARM processor...
+Loading kernel modules...
+Starting Layer Rider OS...
+Ready for deployment.
+
+pi@layerrider:~ $ 
+        </div>
+        <input type="text" id="pi-input" style="background: transparent; border: none; color: #0f0; width: 100%; outline: none;" placeholder="Enter command...">
+    </div>
+    
+    <div class="mode-indicator" id="mode-indicator"></div>
+    
+    <script>
+        const canvas = document.getElementById('canvas');
+        const ctx = canvas.getContext('2d');
+        const codeOverlay = document.getElementById('code-overlay');
+        
+        canvas.width = window.innerWidth;
+        canvas.height = window.innerHeight;
+        
+        // Layer system
+        const layers = [];
+        let currentLayer = null;
+        let currentMode = 'draw';
+        let isDrawing = false;
+        let lastX = 0;
+        let lastY = 0;
+        
+        // OSS Licenses
+        const licenses = {
+            MIT: {
+                name: 'MIT',
+                color: '#4CAF50',
+                permissions: ['commercial', 'modification', 'distribution', 'private'],
+                code: `/*
+ * MIT License
+ * Permission is hereby granted, free of charge...
+ */`
+            },
+            GPL: {
+                name: 'GPL-3.0',
+                color: '#2196F3',
+                permissions: ['commercial', 'modification', 'distribution'],
+                code: `/*
+ * GNU General Public License v3.0
+ * This program is free software...
+ */`
+            },
+            Apache: {
+                name: 'Apache-2.0',
+                color: '#FF9800',
+                permissions: ['commercial', 'modification', 'distribution', 'patent'],
+                code: `/*
+ * Apache License 2.0
+ * Licensed under the Apache License...
+ */`
+            },
+            BSD: {
+                name: 'BSD-3',
+                color: '#9C27B0',
+                permissions: ['commercial', 'modification', 'distribution'],
+                code: `/*
+ * BSD 3-Clause License
+ * Redistribution and use in source...
+ */`
+            }
+        };
+        
+        // Layer class
+        class Layer {
+            constructor(name, license = 'MIT') {
+                this.id = Date.now();
+                this.name = name;
+                this.license = licenses[license];
+                this.visible = true;
+                this.opacity = 1;
+                this.elements = [];
+                this.canvas = document.createElement('canvas');
+                this.canvas.width = canvas.width;
+                this.canvas.height = canvas.height;
+                this.ctx = this.canvas.getContext('2d');
+            }
+            
+            draw(x, y, prevX, prevY, mode) {
+                this.ctx.globalAlpha = this.opacity;
+                
+                switch (mode) {
+                    case 'draw':
+                        this.ctx.strokeStyle = this.license.color;
+                        this.ctx.lineWidth = 3;
+                        this.ctx.lineCap = 'round';
+                        this.ctx.beginPath();
+                        this.ctx.moveTo(prevX, prevY);
+                        this.ctx.lineTo(x, y);
+                        this.ctx.stroke();
+                        break;
+                        
+                    case 'text':
+                        this.ctx.fillStyle = this.license.color;
+                        this.ctx.font = '16px Courier New';
+                        this.ctx.fillText(this.license.name, x, y);
+                        break;
+                        
+                    case 'code':
+                        const codeLines = this.license.code.split('\n');
+                        this.ctx.fillStyle = this.license.color;
+                        this.ctx.font = '12px Courier New';
+                        codeLines.forEach((line, i) => {
+                            this.ctx.fillText(line, x, y + i * 15);
+                        });
+                        break;
+                        
+                    case 'circuit':
+                        this.drawCircuit(x, y);
+                        break;
+                }
+                
+                this.elements.push({ x, y, prevX, prevY, mode, timestamp: Date.now() });
+            }
+            
+            drawCircuit(x, y) {
+                this.ctx.strokeStyle = this.license.color;
+                this.ctx.lineWidth = 2;
+                
+                // Draw circuit symbol (simple resistor)
+                this.ctx.beginPath();
+                this.ctx.moveTo(x - 20, y);
+                this.ctx.lineTo(x - 10, y);
+                
+                // Zigzag pattern
+                for (let i = 0; i < 4; i++) {
+                    this.ctx.lineTo(x - 10 + i * 5, y + (i % 2 ? -5 : 5));
+                }
+                
+                this.ctx.lineTo(x + 10, y);
+                this.ctx.lineTo(x + 20, y);
+                this.ctx.stroke();
+                
+                // Connection points
+                this.ctx.beginPath();
+                this.ctx.arc(x - 20, y, 3, 0, Math.PI * 2);
+                this.ctx.arc(x + 20, y, 3, 0, Math.PI * 2);
+                this.ctx.fill();
+            }
+        }
+        
+        // Initialize with base layer
+        function initLayers() {
+            const baseLayer = new Layer('Base Layer', 'MIT');
+            layers.push(baseLayer);
+            currentLayer = baseLayer;
+            updateLayersList();
+        }
+        
+        // Add new layer
+        function addLayer() {
+            const licenses = ['MIT', 'GPL', 'Apache', 'BSD'];
+            const randomLicense = licenses[Math.floor(Math.random() * licenses.length)];
+            const layer = new Layer(`Layer ${layers.length + 1}`, randomLicense);
+            layers.push(layer);
+            currentLayer = layer;
+            updateLayersList();
+            
+            // Add floating code particles
+            addCodeParticle(layer.license.name);
+        }
+        
+        // Update layers panel
+        function updateLayersList() {
+            const list = document.getElementById('layers-list');
+            list.innerHTML = '';
+            
+            layers.slice().reverse().forEach(layer => {
+                const div = document.createElement('div');
+                div.className = 'layer' + (layer === currentLayer ? ' active' : '');
+                div.innerHTML = `
+                    <div class="layer-header">
+                        <span>${layer.name}</span>
+                        <span class="license-badge ${layer.license.name.toLowerCase()}">${layer.license.name}</span>
+                    </div>
+                    <div style="font-size: 12px; opacity: 0.7;">
+                        ${layer.elements.length} elements
+                    </div>
+                    <div style="margin-top: 5px;">
+                        <button onclick="selectLayer(${layer.id})" style="padding: 3px 8px; font-size: 12px;">Select</button>
+                        <button onclick="toggleLayer(${layer.id})" style="padding: 3px 8px; font-size: 12px;">
+                            ${layer.visible ? 'Hide' : 'Show'}
+                        </button>
+                        <button onclick="deleteLayer(${layer.id})" style="padding: 3px 8px; font-size: 12px;">Delete</button>
+                    </div>
+                `;
+                list.appendChild(div);
+            });
+        }
+        
+        // Layer operations
+        function selectLayer(id) {
+            currentLayer = layers.find(l => l.id === id);
+            updateLayersList();
+        }
+        
+        function toggleLayer(id) {
+            const layer = layers.find(l => l.id === id);
+            if (layer) {
+                layer.visible = !layer.visible;
+                updateLayersList();
+                redraw();
+            }
+        }
+        
+        function deleteLayer(id) {
+            if (layers.length > 1) {
+                layers = layers.filter(l => l.id !== id);
+                if (currentLayer.id === id) {
+                    currentLayer = layers[layers.length - 1];
+                }
+                updateLayersList();
+                redraw();
+            }
+        }
+        
+        // Drawing functions
+        function setMode(mode) {
+            currentMode = mode;
+            document.getElementById('mode-indicator').textContent = 
+                mode === 'draw' ? '✏️' :
+                mode === 'text' ? '📝' :
+                mode === 'code' ? '💻' :
+                mode === 'circuit' ? '⚡' : '';
+        }
+        
+        function clearCanvas() {
+            if (currentLayer) {
+                currentLayer.ctx.clearRect(0, 0, canvas.width, canvas.height);
+                currentLayer.elements = [];
+                redraw();
+            }
+        }
+        
+        function redraw() {
+            ctx.fillStyle = '#000';
+            ctx.fillRect(0, 0, canvas.width, canvas.height);
+            
+            // Draw grid
+            ctx.strokeStyle = 'rgba(0, 255, 0, 0.1)';
+            ctx.lineWidth = 1;
+            for (let x = 0; x < canvas.width; x += 50) {
+                ctx.beginPath();
+                ctx.moveTo(x, 0);
+                ctx.lineTo(x, canvas.height);
+                ctx.stroke();
+            }
+            for (let y = 0; y < canvas.height; y += 50) {
+                ctx.beginPath();
+                ctx.moveTo(0, y);
+                ctx.lineTo(canvas.width, y);
+                ctx.stroke();
+            }
+            
+            // Draw all visible layers
+            layers.forEach(layer => {
+                if (layer.visible) {
+                    ctx.globalAlpha = layer.opacity;
+                    ctx.drawImage(layer.canvas, 0, 0);
+                }
+            });
+            ctx.globalAlpha = 1;
+        }
+        
+        // Mouse events
+        canvas.addEventListener('mousedown', (e) => {
+            isDrawing = true;
+            lastX = e.offsetX;
+            lastY = e.offsetY;
+            
+            if (currentMode !== 'draw') {
+                currentLayer.draw(lastX, lastY, lastX, lastY, currentMode);
+                redraw();
+            }
+        });
+        
+        canvas.addEventListener('mousemove', (e) => {
+            if (!isDrawing || currentMode !== 'draw') return;
+            
+            currentLayer.draw(e.offsetX, e.offsetY, lastX, lastY, currentMode);
+            lastX = e.offsetX;
+            lastY = e.offsetY;
+            redraw();
+        });
+        
+        canvas.addEventListener('mouseup', () => {
+            isDrawing = false;
+        });
+        
+        // Code particles
+        function addCodeParticle(text) {
+            const particle = document.createElement('div');
+            particle.className = 'code-particle';
+            particle.textContent = text;
+            particle.style.left = Math.random() * window.innerWidth + 'px';
+            particle.style.top = window.innerHeight + 'px';
+            particle.style.animationDelay = Math.random() * 5 + 's';
+            codeOverlay.appendChild(particle);
+            
+            setTimeout(() => particle.remove(), 5000);
+        }
+        
+        // Pi Terminal
+        const piOutput = document.getElementById('pi-output');
+        const piInput = document.getElementById('pi-input');
+        
+        piInput.addEventListener('keypress', (e) => {
+            if (e.key === 'Enter') {
+                const command = piInput.value;
+                piOutput.innerHTML += `pi@layerrider:~ $ ${command}\n`;
+                
+                // Process commands
+                switch (command.split(' ')[0]) {
+                    case 'ls':
+                        piOutput.innerHTML += `layers/  circuits/  licenses/  deploy/\n`;
+                        break;
+                    case 'deploy':
+                        deployToPi();
+                        break;
+                    case 'gpio':
+                        piOutput.innerHTML += `GPIO pins configured for Layer Rider interface\n`;
+                        break;
+                    case 'compile':
+                        piOutput.innerHTML += `Compiling layers to ARM binary...\n✅ Compilation successful\n`;
+                        break;
+                    case 'help':
+                        piOutput.innerHTML += `Available commands: ls, deploy, gpio, compile, clear\n`;
+                        break;
+                    case 'clear':
+                        piOutput.innerHTML = `pi@layerrider:~ $ `;
+                        break;
+                    default:
+                        piOutput.innerHTML += `Command not found: ${command}\n`;
+                }
+                
+                piOutput.innerHTML += `pi@layerrider:~ $ `;
+                piInput.value = '';
+                piOutput.scrollTop = piOutput.scrollHeight;
+            }
+        });
+        
+        // Export layers
+        function exportLayers() {
+            const exportData = {
+                timestamp: Date.now(),
+                layers: layers.map(layer => ({
+                    name: layer.name,
+                    license: layer.license.name,
+                    elements: layer.elements,
+                    permissions: layer.license.permissions
+                }))
+            };
+            
+            const blob = new Blob([JSON.stringify(exportData, null, 2)], { type: 'application/json' });
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = 'layer-rider-export.json';
+            a.click();
+            
+            piOutput.innerHTML += `✅ Exported ${layers.length} layers with licenses\n`;
+            piOutput.innerHTML += `pi@layerrider:~ $ `;
+        }
+        
+        // Deploy to Pi
+        function deployToPi() {
+            piOutput.innerHTML += `🚀 Deploying to Raspberry Pi...\n`;
+            piOutput.innerHTML += `📦 Packaging layers...\n`;
+            
+            layers.forEach(layer => {
+                piOutput.innerHTML += `  ✅ ${layer.name} (${layer.license.name})\n`;
+            });
+            
+            piOutput.innerHTML += `🔧 Configuring GPIO pins...\n`;
+            piOutput.innerHTML += `💾 Writing to /boot partition...\n`;
+            piOutput.innerHTML += `🎉 Deployment successful!\n`;
+            piOutput.innerHTML += `🥧 Your Layer Rider Pi is ready!\n`;
+            piOutput.innerHTML += `pi@layerrider:~ $ `;
+            
+            // Visual feedback
+            canvas.style.animation = 'pulse 0.5s';
+            setTimeout(() => canvas.style.animation = '', 500);
+        }
+        
+        // WebSocket connections to MCP and Dungeon Master
+        function connectToMCP() {
+            try {
+                // Connect to MCP
+                const mcpWs = new WebSocket('ws://localhost:6667');
+                
+                mcpWs.onopen = () => {
+                    console.log('🔌 Connected to MCP');
+                    mcpWs.send(JSON.stringify({ type: 'layer-rider-online' }));
+                };
+                
+                mcpWs.onmessage = (event) => {
+                    const data = JSON.parse(event.data);
+                    if (data.type === 'game-update') {
+                        addCodeParticle(`+${data.state?.player?.gold || 0} gold`);
+                    }
+                };
+                
+                // Connect to Dungeon Master reasoning
+                const dmWs = new WebSocket('ws://localhost:7778');
+                
+                dmWs.onopen = () => {
+                    console.log('🏰 Connected to Dungeon Master reasoning');
+                    dmWs.send(JSON.stringify({ type: 'layer-rider-connected' }));
+                };
+                
+                dmWs.onmessage = (event) => {
+                    const data = JSON.parse(event.data);
+                    handleReasoningUpdate(data);
+                };
+                
+            } catch (e) {
+                console.log('🔄 Running standalone - routers not available');
+            }
+        }
+        
+        // Handle reasoning updates from Dungeon Master
+        function handleReasoningUpdate(data) {
+            if (data.type === 'reasoning-update') {
+                const reasoning = data.reasoning;
+                const agents = data.agents;
+                
+                // Create layers based on agent work
+                Object.entries(agents).forEach(([agentName, agent]) => {
+                    if (agent.currentTask && Math.random() < 0.3) {
+                        // Determine license based on agent type
+                        const agentLicenses = {
+                            htmlMaster: 'MIT',
+                            cssMage: 'Apache',
+                            jsWizard: 'MIT',
+                            designPaladin: 'BSD',
+                            seoRogue: 'GPL',
+                            dbCleric: 'Apache'
+                        };
+                        
+                        const license = agentLicenses[agentName] || 'MIT';
+                        const layer = new Layer(`${agentName} Work`, license);
+                        
+                        // Add some visual representation of the agent's work
+                        const x = Math.random() * canvas.width;
+                        const y = Math.random() * canvas.height;
+                        
+                        layer.draw(x, y, x - 50, y - 50, 'code');
+                        
+                        layers.push(layer);
+                        updateLayersList();
+                        redraw();
+                        
+                        // Add particle for the new layer
+                        addCodeParticle(`${agentName}: ${agent.currentTask}`);
+                        
+                        // Update Pi terminal
+                        piOutput.innerHTML += `🤖 ${agentName} generated code layer (${license})\\n`;
+                        piOutput.innerHTML += `pi@layerrider:~ $ `;
+                        piOutput.scrollTop = piOutput.scrollHeight;
+                    }
+                });
+                
+                // Show current reasoning as code particles
+                if (reasoning.currentThought) {
+                    addCodeParticle(reasoning.currentThought.substring(0, 30) + '...');
+                }
+                
+                // Update terminal with reasoning
+                if (Math.random() < 0.1) {
+                    piOutput.innerHTML += `🧠 DM: ${reasoning.currentThought}\\n`;
+                    piOutput.innerHTML += `pi@layerrider:~ $ `;
+                    piOutput.scrollTop = piOutput.scrollHeight;
+                }
+            }
+            
+            if (data.type === 'dm-welcome') {
+                piOutput.innerHTML += `🏰 Connected to campaign: ${data.campaign.name}\\n`;
+                piOutput.innerHTML += `📜 Current quest: ${data.campaign.currentQuest}\\n`;
+                piOutput.innerHTML += `pi@layerrider:~ $ `;
+                piOutput.scrollTop = piOutput.scrollHeight;
+            }
+        }
+        
+        // Initialize
+        initLayers();
+        redraw();
+        setMode('draw');
+        connectToMCP();
+        
+        // Add periodic code particles
+        setInterval(() => {
+            const symbols = ['<>', '{}', '[]', '()', '/*', '*/', '=>', '::'];
+            addCodeParticle(symbols[Math.floor(Math.random() * symbols.length)]);
+        }, 3000);
+        
+        // Handle resize
+        window.addEventListener('resize', () => {
+            canvas.width = window.innerWidth;
+            canvas.height = window.innerHeight;
+            layers.forEach(layer => {
+                const tempCanvas = document.createElement('canvas');
+                tempCanvas.width = canvas.width;
+                tempCanvas.height = canvas.height;
+                const tempCtx = tempCanvas.getContext('2d');
+                tempCtx.drawImage(layer.canvas, 0, 0);
+                layer.canvas.width = canvas.width;
+                layer.canvas.height = canvas.height;
+                layer.ctx.drawImage(tempCanvas, 0, 0);
+            });
+            redraw();
+        });
+    </script>
+</body>
+</html>

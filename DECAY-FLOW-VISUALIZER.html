@@ -1,0 +1,662 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Knowledge Decay Flow Visualizer - Escape the Boss Rooms</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Courier New', monospace;
+            background: #000;
+            color: #0f0;
+            overflow: hidden;
+            height: 100vh;
+        }
+
+        .main-container {
+            display: grid;
+            grid-template-areas: 
+                "flow-viz stats"
+                "timeline controls";
+            grid-template-rows: 70% 30%;
+            grid-template-columns: 70% 30%;
+            height: 100vh;
+            gap: 2px;
+            background: #111;
+            padding: 10px;
+        }
+
+        .flow-visualizer {
+            grid-area: flow-viz;
+            background: #000;
+            border: 1px solid #0f0;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .stats-panel {
+            grid-area: stats;
+            background: #000;
+            border: 1px solid #0f0;
+            padding: 10px;
+            overflow-y: auto;
+        }
+
+        .timeline-panel {
+            grid-area: timeline;
+            background: #000;
+            border: 1px solid #0f0;
+            padding: 10px;
+            overflow-x: auto;
+        }
+
+        .controls-panel {
+            grid-area: controls;
+            background: #000;
+            border: 1px solid #0f0;
+            padding: 10px;
+        }
+
+        .knowledge-particle {
+            position: absolute;
+            width: 10px;
+            height: 10px;
+            border-radius: 50%;
+            transition: all 0.3s ease;
+            cursor: pointer;
+        }
+
+        .stage-fresh { background: #00ff00; box-shadow: 0 0 10px #00ff00; }
+        .stage-active { background: #ffff00; box-shadow: 0 0 8px #ffff00; }
+        .stage-decaying { background: #ff8800; box-shadow: 0 0 6px #ff8800; }
+        .stage-archived { background: #8888ff; box-shadow: 0 0 4px #8888ff; }
+        .stage-purged { background: #444; box-shadow: none; }
+
+        .flow-stage {
+            position: absolute;
+            border: 1px dashed #0f0;
+            text-align: center;
+            padding: 10px;
+            opacity: 0.3;
+        }
+
+        .decay-stream {
+            position: absolute;
+            width: 2px;
+            background: linear-gradient(180deg, #00ff00, #ffff00, #ff8800, #8888ff, #444);
+            opacity: 0.5;
+            animation: flow 3s linear infinite;
+        }
+
+        @keyframes flow {
+            0% { transform: translateY(-100%); }
+            100% { transform: translateY(100%); }
+        }
+
+        .boss-room-detector {
+            position: absolute;
+            top: 10px;
+            right: 10px;
+            padding: 10px;
+            background: rgba(255, 0, 0, 0.2);
+            border: 1px solid #ff0000;
+            border-radius: 5px;
+            animation: pulse 2s infinite;
+        }
+
+        @keyframes pulse {
+            0%, 100% { opacity: 0.5; }
+            50% { opacity: 1; }
+        }
+
+        .stat-item {
+            margin: 5px 0;
+            padding: 5px;
+            border-left: 3px solid #0f0;
+            padding-left: 10px;
+        }
+
+        .control-button {
+            background: #0f0;
+            color: #000;
+            border: none;
+            padding: 8px 15px;
+            margin: 5px;
+            cursor: pointer;
+            font-family: inherit;
+            transition: all 0.3s;
+        }
+
+        .control-button:hover {
+            background: #00ff00;
+            box-shadow: 0 0 10px #0f0;
+        }
+
+        .cycle-warning {
+            color: #ff0000;
+            font-weight: bold;
+            animation: blink 1s infinite;
+        }
+
+        @keyframes blink {
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0.3; }
+        }
+
+        .timeline-bar {
+            height: 50px;
+            background: linear-gradient(90deg, #00ff00 0%, #ffff00 25%, #ff8800 50%, #8888ff 75%, #444 100%);
+            border-radius: 25px;
+            position: relative;
+            margin: 20px 0;
+        }
+
+        .knowledge-marker {
+            position: absolute;
+            width: 10px;
+            height: 10px;
+            background: #fff;
+            border-radius: 50%;
+            top: 50%;
+            transform: translateY(-50%);
+            cursor: pointer;
+        }
+
+        .matrix-text {
+            position: absolute;
+            font-size: 10px;
+            color: #0f0;
+            opacity: 0.3;
+            animation: matrix-fall 5s linear infinite;
+        }
+
+        @keyframes matrix-fall {
+            0% { transform: translateY(-100vh); opacity: 0; }
+            10% { opacity: 0.3; }
+            90% { opacity: 0.3; }
+            100% { transform: translateY(100vh); opacity: 0; }
+        }
+
+        .panel-title {
+            color: #00ff00;
+            font-size: 14px;
+            margin-bottom: 10px;
+            border-bottom: 1px solid #0f0;
+            padding-bottom: 5px;
+        }
+
+        #cycleCount {
+            font-size: 24px;
+            color: #ff0000;
+            text-align: center;
+            margin: 10px 0;
+        }
+    </style>
+</head>
+<body>
+    <div class="main-container">
+        <!-- Flow Visualizer -->
+        <div class="flow-visualizer" id="flowViz">
+            <div class="flow-stage" style="left: 5%; top: 10%; width: 15%; height: 80%;">FRESH</div>
+            <div class="flow-stage" style="left: 25%; top: 10%; width: 15%; height: 80%;">ACTIVE</div>
+            <div class="flow-stage" style="left: 45%; top: 10%; width: 15%; height: 80%;">DECAYING</div>
+            <div class="flow-stage" style="left: 65%; top: 10%; width: 15%; height: 80%;">ARCHIVED</div>
+            <div class="flow-stage" style="left: 85%; top: 10%; width: 10%; height: 80%;">PURGED</div>
+            
+            <div class="decay-stream" style="left: 12%; height: 80%; top: 10%;"></div>
+            <div class="decay-stream" style="left: 32%; height: 80%; top: 10%;"></div>
+            <div class="decay-stream" style="left: 52%; height: 80%; top: 10%;"></div>
+            <div class="decay-stream" style="left: 72%; height: 80%; top: 10%;"></div>
+            
+            <div class="boss-room-detector" id="bossRoomDetector" style="display: none;">
+                <div class="cycle-warning">⚠️ BOSS ROOM DETECTED!</div>
+                <div>Cycle Count: <span id="cycleCount">0</span></div>
+            </div>
+        </div>
+
+        <!-- Stats Panel -->
+        <div class="stats-panel">
+            <div class="panel-title">📊 DECAY STATISTICS</div>
+            <div class="stat-item">
+                <div>Fresh Knowledge: <span id="freshCount">0</span></div>
+                <div style="font-size: 10px; color: #888;">New discoveries</div>
+            </div>
+            <div class="stat-item">
+                <div>Active Knowledge: <span id="activeCount">0</span></div>
+                <div style="font-size: 10px; color: #888;">Currently useful</div>
+            </div>
+            <div class="stat-item">
+                <div>Decaying Knowledge: <span id="decayingCount">0</span></div>
+                <div style="font-size: 10px; color: #888;">Losing relevance</div>
+            </div>
+            <div class="stat-item">
+                <div>Archived Knowledge: <span id="archivedCount">0</span></div>
+                <div style="font-size: 10px; color: #888;">Compressed storage</div>
+            </div>
+            <div class="stat-item">
+                <div>Purged Knowledge: <span id="purgedCount">0</span></div>
+                <div style="font-size: 10px; color: #888;">Freed memory</div>
+            </div>
+            <div class="stat-item" style="margin-top: 20px; border-color: #ff0;">
+                <div>Memory Usage: <span id="memoryUsage">0</span> MB</div>
+                <div>Compression Ratio: <span id="compressionRatio">0</span>%</div>
+            </div>
+            <div class="stat-item" style="border-color: #ff0000;">
+                <div>Boss Rooms Broken: <span id="bossRoomsBroken">0</span></div>
+                <div>Cycles Prevented: <span id="cyclesPrevented">0</span></div>
+            </div>
+        </div>
+
+        <!-- Timeline Panel -->
+        <div class="timeline-panel">
+            <div class="panel-title">⏱️ KNOWLEDGE TIMELINE</div>
+            <div class="timeline-bar" id="timeline"></div>
+            <div style="display: flex; justify-content: space-between; font-size: 10px; margin-top: 10px;">
+                <span>0h (Fresh)</span>
+                <span>24h (Active)</span>
+                <span>72h (Decaying)</span>
+                <span>168h (Archive)</span>
+                <span>∞ (Purged)</span>
+            </div>
+        </div>
+
+        <!-- Controls Panel -->
+        <div class="controls-panel">
+            <div class="panel-title">🎮 DECAY CONTROLS</div>
+            <button class="control-button" onclick="addKnowledge()">+ Add Knowledge</button>
+            <button class="control-button" onclick="forceDecay()">⚡ Force Decay</button>
+            <button class="control-button" onclick="breakCycles()">💥 Break Cycles</button>
+            <button class="control-button" onclick="resurrectKnowledge()">🔮 Resurrect</button>
+            <button class="control-button" onclick="emergencyCleanup()">🧹 Emergency Cleanup</button>
+            <button class="control-button" onclick="toggleSimulation()">▶️ Start Simulation</button>
+        </div>
+    </div>
+
+    <script>
+        class DecayFlowVisualizer {
+            constructor() {
+                this.knowledge = new Map();
+                this.cycles = new Map();
+                this.stats = {
+                    fresh: 0,
+                    active: 0,
+                    decaying: 0,
+                    archived: 0,
+                    purged: 0
+                };
+                this.bossRoomsBroken = 0;
+                this.cyclesPrevented = 0;
+                this.simulationRunning = false;
+                this.knowledgeId = 0;
+                
+                this.init();
+            }
+            
+            init() {
+                // Add matrix effect
+                this.addMatrixEffect();
+                
+                // Start animation loop
+                this.animate();
+                
+                // Update stats every second
+                setInterval(() => this.updateStats(), 1000);
+                
+                // Process decay every 5 seconds
+                setInterval(() => this.processDecay(), 5000);
+                
+                // Detect cycles every 10 seconds
+                setInterval(() => this.detectCycles(), 10000);
+            }
+            
+            addKnowledge(type = 'grant') {
+                const id = `k_${this.knowledgeId++}`;
+                const knowledge = {
+                    id,
+                    type,
+                    stage: 'fresh',
+                    relevance: 100,
+                    decayRate: Math.random() * 0.5 + 0.1,
+                    created: Date.now(),
+                    lastAccessed: Date.now(),
+                    accessCount: 0,
+                    position: { x: 0, y: 0 },
+                    velocity: { x: 0, y: 0 }
+                };
+                
+                this.knowledge.set(id, knowledge);
+                this.createParticle(knowledge);
+                this.stats.fresh++;
+                
+                // Simulate content
+                knowledge.content = this.generateContent(type);
+                knowledge.hash = this.hashContent(knowledge.content);
+                
+                return knowledge;
+            }
+            
+            createParticle(knowledge) {
+                const particle = document.createElement('div');
+                particle.className = `knowledge-particle stage-${knowledge.stage}`;
+                particle.id = knowledge.id;
+                particle.title = `${knowledge.type} - Relevance: ${knowledge.relevance.toFixed(1)}%`;
+                
+                // Position based on stage
+                const stagePositions = {
+                    fresh: { x: 10, y: 50 },
+                    active: { x: 30, y: 50 },
+                    decaying: { x: 50, y: 50 },
+                    archived: { x: 70, y: 50 },
+                    purged: { x: 90, y: 50 }
+                };
+                
+                const pos = stagePositions[knowledge.stage];
+                knowledge.position.x = pos.x + (Math.random() - 0.5) * 10;
+                knowledge.position.y = pos.y + (Math.random() - 0.5) * 20;
+                
+                particle.style.left = knowledge.position.x + '%';
+                particle.style.top = knowledge.position.y + '%';
+                
+                particle.onclick = () => this.accessKnowledge(knowledge.id);
+                
+                document.getElementById('flowViz').appendChild(particle);
+            }
+            
+            processDecay() {
+                const now = Date.now();
+                
+                this.knowledge.forEach((k, id) => {
+                    if (k.stage === 'purged') return;
+                    
+                    // Calculate hours elapsed
+                    const hoursElapsed = (now - k.lastAccessed) / (1000 * 60 * 60);
+                    
+                    // Apply decay
+                    const decayFactor = Math.pow(1 - k.decayRate, hoursElapsed / 24);
+                    const accessBoost = 1 + (Math.log(k.accessCount + 1) * 0.1);
+                    k.relevance = Math.min(100, k.relevance * decayFactor * accessBoost);
+                    
+                    // Update stage based on relevance
+                    const oldStage = k.stage;
+                    if (k.relevance > 80) k.stage = 'active';
+                    else if (k.relevance > 50) k.stage = 'active';
+                    else if (k.relevance > 20) k.stage = 'decaying';
+                    else if (k.relevance > 5) k.stage = 'archived';
+                    else k.stage = 'purged';
+                    
+                    // Update particle if stage changed
+                    if (oldStage !== k.stage) {
+                        this.updateParticle(k);
+                        this.stats[oldStage]--;
+                        this.stats[k.stage]++;
+                    }
+                });
+            }
+            
+            updateParticle(knowledge) {
+                const particle = document.getElementById(knowledge.id);
+                if (!particle) return;
+                
+                particle.className = `knowledge-particle stage-${knowledge.stage}`;
+                particle.title = `${knowledge.type} - Relevance: ${knowledge.relevance.toFixed(1)}%`;
+                
+                // Animate movement to new stage
+                const stagePositions = {
+                    fresh: 10,
+                    active: 30,
+                    decaying: 50,
+                    archived: 70,
+                    purged: 90
+                };
+                
+                const targetX = stagePositions[knowledge.stage] + (Math.random() - 0.5) * 10;
+                knowledge.position.x = targetX;
+                
+                particle.style.left = knowledge.position.x + '%';
+                
+                // Remove if purged
+                if (knowledge.stage === 'purged') {
+                    setTimeout(() => particle.remove(), 1000);
+                }
+            }
+            
+            detectCycles() {
+                // Look for repeating patterns
+                const recentHashes = [];
+                const cycleThreshold = 3;
+                
+                this.knowledge.forEach(k => {
+                    if (k.stage === 'fresh' || k.stage === 'active') {
+                        recentHashes.push(k.hash);
+                    }
+                });
+                
+                // Check for duplicates (boss room pattern)
+                const hashCounts = {};
+                recentHashes.forEach(hash => {
+                    hashCounts[hash] = (hashCounts[hash] || 0) + 1;
+                });
+                
+                let cyclesDetected = 0;
+                Object.entries(hashCounts).forEach(([hash, count]) => {
+                    if (count >= cycleThreshold) {
+                        cyclesDetected++;
+                        this.breakCycle(hash);
+                    }
+                });
+                
+                if (cyclesDetected > 0) {
+                    this.showBossRoomWarning(cyclesDetected);
+                }
+            }
+            
+            breakCycle(hash) {
+                // Force decay on duplicates
+                this.knowledge.forEach(k => {
+                    if (k.hash === hash && k.stage !== 'purged') {
+                        k.decayRate *= 10;
+                        k.relevance = Math.max(1, k.relevance * 0.1);
+                        this.updateParticle(k);
+                    }
+                });
+                
+                this.bossRoomsBroken++;
+                this.cyclesPrevented += 3;
+            }
+            
+            showBossRoomWarning(count) {
+                const detector = document.getElementById('bossRoomDetector');
+                detector.style.display = 'block';
+                document.getElementById('cycleCount').textContent = count;
+                
+                setTimeout(() => {
+                    detector.style.display = 'none';
+                }, 5000);
+            }
+            
+            accessKnowledge(id) {
+                const k = this.knowledge.get(id);
+                if (!k || k.stage === 'purged') return;
+                
+                k.lastAccessed = Date.now();
+                k.accessCount++;
+                k.relevance = Math.min(100, k.relevance + 5);
+                
+                // Flash particle
+                const particle = document.getElementById(id);
+                if (particle) {
+                    particle.style.transform = 'scale(2)';
+                    setTimeout(() => {
+                        particle.style.transform = 'scale(1)';
+                    }, 300);
+                }
+            }
+            
+            generateContent(type) {
+                const contents = {
+                    grant: ['SBIR Phase I $275k', 'NSF Innovation Grant $500k', 'DOE Clean Energy $200k'],
+                    api: ['grants.gov API v2', 'sam.gov REST endpoint', 'usaspending GraphQL'],
+                    contact: ['program.officer@nsf.gov', 'grants@sbir.gov', 'admin@doe.gov'],
+                    pattern: ['deadline approaching', 'high compatibility', 'auto-fill ready']
+                };
+                
+                return contents[type][Math.floor(Math.random() * contents[type].length)];
+            }
+            
+            hashContent(content) {
+                // Simple hash for demo
+                let hash = 0;
+                for (let i = 0; i < content.length; i++) {
+                    hash = ((hash << 5) - hash) + content.charCodeAt(i);
+                    hash = hash & hash;
+                }
+                return hash.toString(16);
+            }
+            
+            updateStats() {
+                document.getElementById('freshCount').textContent = this.stats.fresh;
+                document.getElementById('activeCount').textContent = this.stats.active;
+                document.getElementById('decayingCount').textContent = this.stats.decaying;
+                document.getElementById('archivedCount').textContent = this.stats.archived;
+                document.getElementById('purgedCount').textContent = this.stats.purged;
+                
+                // Calculate memory usage
+                let memoryUsage = 0;
+                this.knowledge.forEach(k => {
+                    if (k.stage !== 'archived' && k.stage !== 'purged') {
+                        memoryUsage += (k.content ? k.content.length : 0) * 0.001;
+                    }
+                });
+                document.getElementById('memoryUsage').textContent = memoryUsage.toFixed(2);
+                
+                // Compression ratio
+                const totalKnowledge = this.knowledge.size;
+                const activeKnowledge = this.stats.fresh + this.stats.active;
+                const compressionRatio = totalKnowledge > 0 ? 
+                    ((1 - activeKnowledge / totalKnowledge) * 100).toFixed(1) : 0;
+                document.getElementById('compressionRatio').textContent = compressionRatio;
+                
+                document.getElementById('bossRoomsBroken').textContent = this.bossRoomsBroken;
+                document.getElementById('cyclesPrevented').textContent = this.cyclesPrevented;
+            }
+            
+            addMatrixEffect() {
+                setInterval(() => {
+                    const text = document.createElement('div');
+                    text.className = 'matrix-text';
+                    text.textContent = Math.random() > 0.5 ? '1' : '0';
+                    text.style.left = Math.random() * 100 + '%';
+                    text.style.animationDelay = Math.random() * 5 + 's';
+                    document.getElementById('flowViz').appendChild(text);
+                    
+                    setTimeout(() => text.remove(), 5000);
+                }, 200);
+            }
+            
+            animate() {
+                // Particle physics
+                this.knowledge.forEach(k => {
+                    const particle = document.getElementById(k.id);
+                    if (!particle) return;
+                    
+                    // Add slight movement
+                    k.velocity.y = Math.sin(Date.now() * 0.001 + k.position.x) * 0.1;
+                    k.position.y += k.velocity.y;
+                    
+                    particle.style.top = k.position.y + '%';
+                });
+                
+                requestAnimationFrame(() => this.animate());
+            }
+            
+            runSimulation() {
+                if (!this.simulationRunning) return;
+                
+                // Add random knowledge
+                if (Math.random() > 0.7) {
+                    const types = ['grant', 'api', 'contact', 'pattern'];
+                    this.addKnowledge(types[Math.floor(Math.random() * types.length)]);
+                }
+                
+                // Random access
+                if (Math.random() > 0.8 && this.knowledge.size > 0) {
+                    const keys = Array.from(this.knowledge.keys());
+                    const randomKey = keys[Math.floor(Math.random() * keys.length)];
+                    this.accessKnowledge(randomKey);
+                }
+                
+                // Create cycles occasionally (boss rooms)
+                if (Math.random() > 0.95) {
+                    // Add duplicate knowledge
+                    for (let i = 0; i < 3; i++) {
+                        const k = this.addKnowledge('grant');
+                        k.content = 'DUPLICATE_GRANT_DATA';
+                        k.hash = 'duplicate123';
+                    }
+                }
+                
+                setTimeout(() => this.runSimulation(), 1000);
+            }
+        }
+
+        // Initialize visualizer
+        const visualizer = new DecayFlowVisualizer();
+
+        // Control functions
+        function addKnowledge() {
+            visualizer.addKnowledge();
+        }
+
+        function forceDecay() {
+            visualizer.processDecay();
+        }
+
+        function breakCycles() {
+            visualizer.detectCycles();
+        }
+
+        function resurrectKnowledge() {
+            // Find oldest archived knowledge and restore it
+            let oldest = null;
+            visualizer.knowledge.forEach(k => {
+                if (k.stage === 'archived' && (!oldest || k.created < oldest.created)) {
+                    oldest = k;
+                }
+            });
+            
+            if (oldest) {
+                oldest.relevance = 75;
+                oldest.stage = 'active';
+                oldest.lastAccessed = Date.now();
+                visualizer.updateParticle(oldest);
+            }
+        }
+
+        function emergencyCleanup() {
+            // Force purge low relevance items
+            visualizer.knowledge.forEach(k => {
+                if (k.relevance < 10 && k.stage !== 'purged') {
+                    k.stage = 'purged';
+                    visualizer.updateParticle(k);
+                }
+            });
+        }
+
+        function toggleSimulation() {
+            visualizer.simulationRunning = !visualizer.simulationRunning;
+            if (visualizer.simulationRunning) {
+                visualizer.runSimulation();
+                event.target.textContent = '⏸️ Pause Simulation';
+            } else {
+                event.target.textContent = '▶️ Start Simulation';
+            }
+        }
+    </script>
+</body>
+</html>

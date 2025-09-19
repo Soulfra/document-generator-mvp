@@ -1,0 +1,1201 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Viking/Pirate Ship 3D Decoder - Binary to Interactive World</title>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <style>
+        body {
+            margin: 0;
+            padding: 0;
+            background: linear-gradient(135deg, #0a0a0a 0%, #1a1a2e 25%, #0f3460 50%, #16213e 75%, #0a0a0a 100%);
+            color: #00ff00;
+            font-family: 'Courier New', monospace;
+            overflow: hidden;
+            height: 100vh;
+        }
+        
+        .main-container {
+            display: grid;
+            grid-template-columns: 300px 1fr 300px;
+            height: 100vh;
+            gap: 10px;
+            padding: 10px;
+        }
+        
+        .decoder-panel {
+            background: rgba(0, 0, 0, 0.8);
+            border: 2px solid #ff6600;
+            border-radius: 10px;
+            padding: 15px;
+            overflow-y: auto;
+            box-shadow: 0 0 20px rgba(255, 102, 0, 0.5);
+        }
+        
+        .viewer-container {
+            background: rgba(0, 0, 0, 0.9);
+            border: 2px solid #00ffff;
+            border-radius: 10px;
+            position: relative;
+            box-shadow: 0 0 30px rgba(0, 255, 255, 0.5);
+        }
+        
+        .crew-panel {
+            background: rgba(0, 0, 0, 0.8);
+            border: 2px solid #00ff00;
+            border-radius: 10px;
+            padding: 15px;
+            overflow-y: auto;
+            box-shadow: 0 0 20px rgba(0, 255, 0, 0.5);
+        }
+        
+        h2 {
+            margin: 0 0 15px 0;
+            text-align: center;
+            text-shadow: 0 0 10px currentColor;
+        }
+        
+        .decoder-panel h2 { color: #ff6600; }
+        .viewer-container h2 { color: #00ffff; position: absolute; top: 10px; left: 50%; transform: translateX(-50%); z-index: 10; }
+        .crew-panel h2 { color: #00ff00; }
+        
+        #canvas3d {
+            width: 100%;
+            height: 100%;
+            border-radius: 8px;
+        }
+        
+        .input-section {
+            margin-bottom: 20px;
+        }
+        
+        textarea {
+            width: 100%;
+            height: 100px;
+            background: #000;
+            border: 1px solid #ff6600;
+            color: #00ff00;
+            padding: 10px;
+            font-family: monospace;
+            font-size: 12px;
+            border-radius: 5px;
+            resize: vertical;
+        }
+        
+        button {
+            background: linear-gradient(45deg, #ff6600, #ff8800);
+            border: none;
+            color: #000;
+            padding: 10px 20px;
+            margin: 5px 0;
+            cursor: pointer;
+            border-radius: 5px;
+            font-weight: bold;
+            font-family: monospace;
+            width: 100%;
+            transition: all 0.3s;
+        }
+        
+        button:hover {
+            transform: scale(1.05);
+            box-shadow: 0 0 20px #ff6600;
+        }
+        
+        .format-selector {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 5px;
+            margin: 10px 0;
+        }
+        
+        .format-btn {
+            padding: 8px;
+            font-size: 12px;
+            background: rgba(255, 102, 0, 0.2);
+            border: 1px solid #ff6600;
+        }
+        
+        .format-btn.active {
+            background: #ff6600;
+            color: #000;
+        }
+        
+        .crew-member {
+            background: rgba(0, 255, 0, 0.1);
+            border: 1px solid #00ff00;
+            border-radius: 5px;
+            padding: 10px;
+            margin: 10px 0;
+            cursor: pointer;
+            transition: all 0.3s;
+        }
+        
+        .crew-member:hover {
+            background: rgba(0, 255, 0, 0.2);
+            transform: translateX(5px);
+        }
+        
+        .crew-member.active {
+            background: rgba(0, 255, 0, 0.3);
+            box-shadow: 0 0 15px #00ff00;
+        }
+        
+        .chat-interface {
+            position: absolute;
+            bottom: 20px;
+            left: 50%;
+            transform: translateX(-50%);
+            width: 600px;
+            background: rgba(0, 0, 0, 0.9);
+            border: 2px solid #ffff00;
+            border-radius: 10px;
+            padding: 15px;
+            display: none;
+            z-index: 100;
+        }
+        
+        .chat-log {
+            height: 200px;
+            overflow-y: auto;
+            background: #000;
+            border: 1px solid #333;
+            padding: 10px;
+            margin-bottom: 10px;
+            font-size: 12px;
+            border-radius: 5px;
+        }
+        
+        .chat-input {
+            display: flex;
+            gap: 10px;
+        }
+        
+        .chat-input input {
+            flex: 1;
+            background: #111;
+            border: 1px solid #ffff00;
+            color: #ffff00;
+            padding: 10px;
+            font-family: monospace;
+            border-radius: 5px;
+        }
+        
+        .reasoning-display {
+            background: rgba(255, 255, 0, 0.1);
+            border: 1px solid #ffff00;
+            border-radius: 5px;
+            padding: 10px;
+            margin: 10px 0;
+            font-size: 11px;
+            display: none;
+        }
+        
+        .feedback-buttons {
+            display: flex;
+            gap: 10px;
+            margin-top: 10px;
+        }
+        
+        .feedback-btn {
+            background: rgba(0, 255, 0, 0.2);
+            border: 1px solid #00ff00;
+            color: #00ff00;
+            padding: 5px 15px;
+            cursor: pointer;
+            border-radius: 20px;
+            transition: all 0.3s;
+        }
+        
+        .feedback-btn:hover {
+            background: rgba(0, 255, 0, 0.4);
+        }
+        
+        .feedback-btn.negative {
+            background: rgba(255, 0, 0, 0.2);
+            border-color: #ff0000;
+            color: #ff0000;
+        }
+        
+        .status-bar {
+            position: absolute;
+            top: 10px;
+            right: 10px;
+            background: rgba(0, 0, 0, 0.8);
+            padding: 10px;
+            border-radius: 5px;
+            font-size: 12px;
+            z-index: 10;
+        }
+        
+        .loading-overlay {
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: rgba(0, 0, 0, 0.8);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 24px;
+            display: none;
+            z-index: 1000;
+        }
+        
+        @keyframes pulse {
+            0% { opacity: 0.5; }
+            50% { opacity: 1; }
+            100% { opacity: 0.5; }
+        }
+        
+        .loading-overlay.active {
+            display: flex;
+            animation: pulse 2s infinite;
+        }
+    </style>
+</head>
+<body>
+    <div class="main-container">
+        <!-- Left Panel: Decoder Input -->
+        <div class="decoder-panel">
+            <h2>⚓ Ship Schematic Decoder</h2>
+            
+            <div class="input-section">
+                <label style="color: #ff6600;">Input Format:</label>
+                <div class="format-selector">
+                    <button class="format-btn active" data-format="binary">Binary</button>
+                    <button class="format-btn" data-format="ascii">ASCII</button>
+                    <button class="format-btn" data-format="fortran">Fortran</button>
+                    <button class="format-btn" data-format="hex">Hex</button>
+                    <button class="format-btn" data-format="base64">Base64</button>
+                    <button class="format-btn" data-format="cobol">COBOL</button>
+                </div>
+            </div>
+            
+            <div class="input-section">
+                <label style="color: #ff6600;">Schematic Data:</label>
+                <textarea id="schematicInput" placeholder="Paste encoded ship schematics here...
+
+Example (Binary):
+01010011 01001000 01001001 01010000
+
+Example (ASCII):
+SHIP:VIKING:LONGBOAT:L30:W8:H5
+
+Example (Fortran):
+      PROGRAM VIKING_SHIP
+      REAL LENGTH, WIDTH, HEIGHT
+      DATA LENGTH/30.0/, WIDTH/8.0/, HEIGHT/5.0/"></textarea>
+            </div>
+            
+            <button onclick="decodeSchematic()">🔓 Decode Schematic</button>
+            <button onclick="loadExampleData()">📜 Load Example Viking Ship</button>
+            <button onclick="generateRandomShip()">🎲 Generate Random Ship</button>
+            
+            <div id="decoderOutput" style="margin-top: 20px; font-size: 12px; color: #ffaa00;"></div>
+        </div>
+        
+        <!-- Center: 3D Viewer -->
+        <div class="viewer-container">
+            <h2>🚢 3D Ship Visualization</h2>
+            <canvas id="canvas3d"></canvas>
+            
+            <div class="status-bar">
+                <div>FPS: <span id="fps">60</span></div>
+                <div>Polygons: <span id="polycount">0</span></div>
+                <div>Crew: <span id="crewcount">0</span></div>
+            </div>
+            
+            <div class="loading-overlay" id="loadingOverlay">
+                ⚓ Materializing Ship...
+            </div>
+        </div>
+        
+        <!-- Right Panel: Crew Interaction -->
+        <div class="crew-panel">
+            <h2>👥 Ship Crew</h2>
+            
+            <div id="crewList">
+                <div class="crew-member" data-role="captain">
+                    <strong>🎖️ Captain Cal</strong><br>
+                    <small>Navigator & Strategic Commander</small><br>
+                    <small style="color: #888;">Click to interact</small>
+                </div>
+                
+                <div class="crew-member" data-role="warlord">
+                    <strong>⚔️ Warlord Ragnar</strong><br>
+                    <small>Combat Specialist</small>
+                </div>
+                
+                <div class="crew-member" data-role="admiral">
+                    <strong>🌊 Admiral Storm</strong><br>
+                    <small>Fleet Operations</small>
+                </div>
+                
+                <div class="crew-member" data-role="navigator">
+                    <strong>🧭 Navigator Astrid</strong><br>
+                    <small>Route Planning</small>
+                </div>
+                
+                <div class="crew-member" data-role="shipwright">
+                    <strong>🔨 Shipwright Bjorn</strong><br>
+                    <small>Ship Construction Expert</small>
+                </div>
+            </div>
+            
+            <div style="margin-top: 20px;">
+                <h3 style="color: #00ff00; font-size: 14px;">Crew Status</h3>
+                <div id="crewStatus" style="font-size: 12px; color: #88ff88;">
+                    All crew members standing by...
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <!-- Chat Interface (Hidden by default) -->
+    <div class="chat-interface" id="chatInterface">
+        <h3 style="color: #ffff00; margin: 0 0 10px 0; font-size: 16px;">
+            <span id="chattingWith">Captain Cal</span> - Interactive Reasoning
+        </h3>
+        
+        <div class="chat-log" id="chatLog"></div>
+        
+        <div class="reasoning-display" id="reasoningDisplay">
+            <strong>🧠 Reasoning Process:</strong>
+            <div id="reasoningSteps"></div>
+        </div>
+        
+        <div class="chat-input">
+            <input type="text" id="chatInput" placeholder="Ask about ship design, navigation, combat strategy..." onkeypress="if(event.key==='Enter') sendMessage()">
+            <button onclick="sendMessage()" style="width: auto; padding: 10px 20px;">Send</button>
+            <button onclick="closeChat()" style="width: auto; padding: 10px 20px; background: #ff4444;">Close</button>
+        </div>
+        
+        <div class="feedback-buttons">
+            <button class="feedback-btn" onclick="provideFeedback('positive')">👍 Helpful</button>
+            <button class="feedback-btn negative" onclick="provideFeedback('negative')">👎 Not Helpful</button>
+            <button class="feedback-btn" onclick="provideFeedback('clarify')">🤔 Need Clarification</button>
+        </div>
+    </div>
+
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/controls/OrbitControls.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/loaders/GLTFLoader.js"></script>
+    <script>
+        // Global variables
+        let scene, camera, renderer, controls;
+        let shipModel, crewModels = [];
+        let selectedFormat = 'binary';
+        let currentCrew = null;
+        let ws = null;
+        let animationFrameId;
+        let clock = new THREE.Clock();
+        
+        // Ship data structure
+        let shipData = {
+            type: 'viking_longboat',
+            dimensions: { length: 30, width: 8, height: 5 },
+            crew: [],
+            materials: [],
+            features: []
+        };
+        
+        // Initialize Three.js
+        function initThreeJS() {
+            const container = document.querySelector('.viewer-container');
+            const canvas = document.getElementById('canvas3d');
+            
+            // Scene setup
+            scene = new THREE.Scene();
+            scene.background = new THREE.Color(0x001a33);
+            scene.fog = new THREE.Fog(0x001a33, 10, 100);
+            
+            // Camera setup
+            camera = new THREE.PerspectiveCamera(
+                75,
+                container.clientWidth / container.clientHeight,
+                0.1,
+                1000
+            );
+            camera.position.set(20, 15, 20);
+            
+            // Renderer setup
+            renderer = new THREE.WebGLRenderer({ 
+                canvas: canvas,
+                antialias: true,
+                alpha: true
+            });
+            renderer.setSize(container.clientWidth, container.clientHeight - 60);
+            renderer.shadowMap.enabled = true;
+            renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+            
+            // Controls
+            controls = new THREE.OrbitControls(camera, renderer.domElement);
+            controls.enableDamping = true;
+            controls.dampingFactor = 0.05;
+            controls.maxDistance = 50;
+            controls.minDistance = 5;
+            
+            // Lighting
+            const ambientLight = new THREE.AmbientLight(0x404040, 1.5);
+            scene.add(ambientLight);
+            
+            const directionalLight = new THREE.DirectionalLight(0xffffff, 1);
+            directionalLight.position.set(10, 20, 10);
+            directionalLight.castShadow = true;
+            directionalLight.shadow.camera.near = 0.1;
+            directionalLight.shadow.camera.far = 100;
+            directionalLight.shadow.camera.left = -30;
+            directionalLight.shadow.camera.right = 30;
+            directionalLight.shadow.camera.top = 30;
+            directionalLight.shadow.camera.bottom = -30;
+            scene.add(directionalLight);
+            
+            // Ocean plane
+            const oceanGeometry = new THREE.PlaneGeometry(200, 200, 32, 32);
+            const oceanMaterial = new THREE.MeshStandardMaterial({
+                color: 0x006994,
+                roughness: 0.3,
+                metalness: 0.5,
+                transparent: true,
+                opacity: 0.8
+            });
+            const ocean = new THREE.Mesh(oceanGeometry, oceanMaterial);
+            ocean.rotation.x = -Math.PI / 2;
+            ocean.position.y = -2;
+            ocean.receiveShadow = true;
+            scene.add(ocean);
+            
+            // Start animation
+            animate();
+            
+            // Handle resize
+            window.addEventListener('resize', onWindowResize, false);
+        }
+        
+        function onWindowResize() {
+            const container = document.querySelector('.viewer-container');
+            camera.aspect = container.clientWidth / container.clientHeight;
+            camera.updateProjectionMatrix();
+            renderer.setSize(container.clientWidth, container.clientHeight - 60);
+        }
+        
+        function animate() {
+            animationFrameId = requestAnimationFrame(animate);
+            
+            const delta = clock.getDelta();
+            controls.update();
+            
+            // Animate ocean waves
+            const ocean = scene.children.find(child => child.geometry && child.geometry.type === 'PlaneGeometry');
+            if (ocean) {
+                ocean.material.opacity = 0.8 + Math.sin(Date.now() * 0.001) * 0.1;
+            }
+            
+            // Animate ship bobbing
+            if (shipModel) {
+                shipModel.position.y = Math.sin(Date.now() * 0.0005) * 0.5;
+                shipModel.rotation.z = Math.sin(Date.now() * 0.0007) * 0.05;
+            }
+            
+            // Update FPS
+            document.getElementById('fps').textContent = Math.round(1 / delta);
+            
+            renderer.render(scene, camera);
+        }
+        
+        // Format selector
+        document.querySelectorAll('.format-btn').forEach(btn => {
+            btn.addEventListener('click', function() {
+                document.querySelectorAll('.format-btn').forEach(b => b.classList.remove('active'));
+                this.classList.add('active');
+                selectedFormat = this.dataset.format;
+            });
+        });
+        
+        // Crew interaction
+        document.querySelectorAll('.crew-member').forEach(member => {
+            member.addEventListener('click', function() {
+                document.querySelectorAll('.crew-member').forEach(m => m.classList.remove('active'));
+                this.classList.add('active');
+                
+                const role = this.dataset.role;
+                const name = this.querySelector('strong').textContent;
+                
+                currentCrew = { role, name };
+                document.getElementById('chattingWith').textContent = name;
+                document.getElementById('chatInterface').style.display = 'block';
+                
+                addChatMessage(`You are now talking to ${name}. Ask me anything about the ship, our journey, or my expertise!`, 'system');
+            });
+        });
+        
+        function closeChat() {
+            document.getElementById('chatInterface').style.display = 'none';
+            document.querySelectorAll('.crew-member').forEach(m => m.classList.remove('active'));
+        }
+        
+        async function decodeSchematic() {
+            const input = document.getElementById('schematicInput').value.trim();
+            if (!input) {
+                document.getElementById('decoderOutput').innerHTML = '<span style="color: #ff4444;">⚠️ Please enter schematic data</span>';
+                return;
+            }
+            
+            showLoading(true);
+            document.getElementById('decoderOutput').innerHTML = '<span style="color: #ffaa00;">🔄 Decoding ' + selectedFormat + ' data...</span>';
+            
+            try {
+                // Decode based on format
+                let decoded = await decodeFormat(input, selectedFormat);
+                
+                // Update ship data
+                shipData = decoded;
+                
+                // Display decoded info
+                document.getElementById('decoderOutput').innerHTML = `
+                    <strong style="color: #00ff00;">✅ Decoded Successfully!</strong><br><br>
+                    <strong>Ship Type:</strong> ${decoded.type}<br>
+                    <strong>Dimensions:</strong> ${decoded.dimensions.length}m x ${decoded.dimensions.width}m x ${decoded.dimensions.height}m<br>
+                    <strong>Crew Capacity:</strong> ${decoded.crew.length}<br>
+                    <strong>Special Features:</strong> ${decoded.features.join(', ')}
+                `;
+                
+                // Generate 3D model
+                await generateShipModel(decoded);
+                
+            } catch (error) {
+                document.getElementById('decoderOutput').innerHTML = '<span style="color: #ff4444;">❌ Decoding failed: ' + error.message + '</span>';
+            } finally {
+                showLoading(false);
+            }
+        }
+        
+        async function decodeFormat(input, format) {
+            switch (format) {
+                case 'binary':
+                    return decodeBinary(input);
+                case 'ascii':
+                    return decodeASCII(input);
+                case 'fortran':
+                    return decodeFortran(input);
+                case 'hex':
+                    return decodeHex(input);
+                case 'base64':
+                    return decodeBase64(input);
+                case 'cobol':
+                    return decodeCOBOL(input);
+                default:
+                    throw new Error('Unknown format: ' + format);
+            }
+        }
+        
+        function decodeBinary(input) {
+            // Convert binary to ASCII and parse
+            const cleaned = input.replace(/[^01]/g, '');
+            let ascii = '';
+            
+            for (let i = 0; i < cleaned.length; i += 8) {
+                const byte = cleaned.substr(i, 8);
+                if (byte.length === 8) {
+                    ascii += String.fromCharCode(parseInt(byte, 2));
+                }
+            }
+            
+            // Parse ship data from ASCII
+            return parseShipData(ascii);
+        }
+        
+        function decodeASCII(input) {
+            return parseShipData(input);
+        }
+        
+        function decodeFortran(input) {
+            // Extract data from Fortran-style format
+            const lengthMatch = input.match(/LENGTH[\s\/=]*(\d+\.?\d*)/i);
+            const widthMatch = input.match(/WIDTH[\s\/=]*(\d+\.?\d*)/i);
+            const heightMatch = input.match(/HEIGHT[\s\/=]*(\d+\.?\d*)/i);
+            const typeMatch = input.match(/SHIP[_\s]*TYPE[\s=]*['"]?([^'"\s]+)/i);
+            
+            return {
+                type: typeMatch ? typeMatch[1].toLowerCase() : 'viking_longboat',
+                dimensions: {
+                    length: lengthMatch ? parseFloat(lengthMatch[1]) : 30,
+                    width: widthMatch ? parseFloat(widthMatch[1]) : 8,
+                    height: heightMatch ? parseFloat(heightMatch[1]) : 5
+                },
+                crew: generateCrewFromSize(lengthMatch ? parseFloat(lengthMatch[1]) : 30),
+                materials: ['wood', 'iron', 'cloth'],
+                features: ['oars', 'sail', 'shields']
+            };
+        }
+        
+        function decodeHex(input) {
+            const cleaned = input.replace(/[^0-9A-Fa-f]/g, '');
+            let ascii = '';
+            
+            for (let i = 0; i < cleaned.length; i += 2) {
+                const hex = cleaned.substr(i, 2);
+                if (hex.length === 2) {
+                    ascii += String.fromCharCode(parseInt(hex, 16));
+                }
+            }
+            
+            return parseShipData(ascii);
+        }
+        
+        function decodeBase64(input) {
+            try {
+                const decoded = atob(input.replace(/[^A-Za-z0-9+/]/g, ''));
+                return parseShipData(decoded);
+            } catch (e) {
+                throw new Error('Invalid Base64 data');
+            }
+        }
+        
+        function decodeCOBOL(input) {
+            // Parse COBOL-style data definitions
+            const shipTypeMatch = input.match(/SHIP-TYPE\s+PIC\s+[AX]+.*VALUE\s+['"]([^'"]+)/i);
+            const lengthMatch = input.match(/SHIP-LENGTH\s+PIC\s+9+.*VALUE\s+(\d+)/i);
+            const widthMatch = input.match(/SHIP-WIDTH\s+PIC\s+9+.*VALUE\s+(\d+)/i);
+            
+            return {
+                type: shipTypeMatch ? shipTypeMatch[1].toLowerCase() : 'viking_longboat',
+                dimensions: {
+                    length: lengthMatch ? parseInt(lengthMatch[1]) : 30,
+                    width: widthMatch ? parseInt(widthMatch[1]) : 8,
+                    height: 5
+                },
+                crew: generateCrewFromSize(lengthMatch ? parseInt(lengthMatch[1]) : 30),
+                materials: ['wood', 'iron', 'rope'],
+                features: ['dragon_head', 'shields', 'oars']
+            };
+        }
+        
+        function parseShipData(text) {
+            // Try to parse structured data
+            const parts = text.split(/[:;,\s]+/);
+            
+            let type = 'viking_longboat';
+            let length = 30, width = 8, height = 5;
+            
+            // Look for keywords
+            parts.forEach((part, i) => {
+                const lower = part.toLowerCase();
+                if (lower.includes('viking') || lower.includes('longboat') || lower.includes('ship')) {
+                    type = lower;
+                }
+                if (lower === 'l' && i < parts.length - 1) {
+                    length = parseFloat(parts[i + 1]) || length;
+                }
+                if (lower === 'w' && i < parts.length - 1) {
+                    width = parseFloat(parts[i + 1]) || width;
+                }
+                if (lower === 'h' && i < parts.length - 1) {
+                    height = parseFloat(parts[i + 1]) || height;
+                }
+            });
+            
+            return {
+                type: type,
+                dimensions: { length, width, height },
+                crew: generateCrewFromSize(length),
+                materials: ['oak_wood', 'iron_nails', 'wool_sail'],
+                features: ['dragon_figurehead', 'shields', 'oars', 'mast']
+            };
+        }
+        
+        function generateCrewFromSize(length) {
+            const crewCount = Math.floor(length / 2); // Rough estimate
+            const crew = [];
+            
+            const roles = ['warrior', 'rower', 'archer', 'shield_maiden', 'berserker'];
+            for (let i = 0; i < crewCount; i++) {
+                crew.push({
+                    id: `crew_${i}`,
+                    role: roles[i % roles.length],
+                    position: { x: (i % 2) * 2 - 1, y: 0, z: (i / 2) * 1.5 - length / 4 }
+                });
+            }
+            
+            return crew;
+        }
+        
+        async function generateShipModel(data) {
+            // Clear existing ship
+            if (shipModel) {
+                scene.remove(shipModel);
+            }
+            crewModels.forEach(model => scene.remove(model));
+            crewModels = [];
+            
+            // Create ship group
+            shipModel = new THREE.Group();
+            
+            // Hull
+            const hullGeometry = new THREE.BoxGeometry(
+                data.dimensions.width,
+                data.dimensions.height,
+                data.dimensions.length
+            );
+            
+            // Custom hull shape with Viking curves
+            const hullVertices = hullGeometry.attributes.position.array;
+            for (let i = 0; i < hullVertices.length; i += 3) {
+                const z = hullVertices[i + 2];
+                const y = hullVertices[i + 1];
+                
+                // Curve the bow and stern
+                if (Math.abs(z) > data.dimensions.length * 0.4) {
+                    hullVertices[i + 1] = y + Math.pow(Math.abs(z) / (data.dimensions.length * 0.5), 2) * 2;
+                }
+                
+                // Narrow the bow and stern
+                if (Math.abs(z) > data.dimensions.length * 0.3) {
+                    const narrowFactor = 1 - (Math.abs(z) - data.dimensions.length * 0.3) / (data.dimensions.length * 0.2) * 0.7;
+                    hullVertices[i] *= narrowFactor;
+                }
+            }
+            hullGeometry.attributes.position.needsUpdate = true;
+            hullGeometry.computeVertexNormals();
+            
+            const hullMaterial = new THREE.MeshStandardMaterial({
+                color: 0x4a3c28,
+                roughness: 0.8,
+                metalness: 0.1
+            });
+            
+            const hull = new THREE.Mesh(hullGeometry, hullMaterial);
+            hull.castShadow = true;
+            hull.receiveShadow = true;
+            shipModel.add(hull);
+            
+            // Add dragon figurehead
+            if (data.features.includes('dragon_figurehead') || data.features.includes('dragon_head')) {
+                const dragonGeometry = new THREE.ConeGeometry(1, 3, 6);
+                const dragonMaterial = new THREE.MeshStandardMaterial({
+                    color: 0xffd700,
+                    metalness: 0.8,
+                    roughness: 0.2
+                });
+                const dragon = new THREE.Mesh(dragonGeometry, dragonMaterial);
+                dragon.position.set(0, data.dimensions.height * 0.8, data.dimensions.length * 0.5);
+                dragon.rotation.x = Math.PI / 2;
+                dragon.castShadow = true;
+                shipModel.add(dragon);
+            }
+            
+            // Add mast
+            if (data.features.includes('mast') || data.features.includes('sail')) {
+                const mastGeometry = new THREE.CylinderGeometry(0.3, 0.3, data.dimensions.height * 3);
+                const mastMaterial = new THREE.MeshStandardMaterial({
+                    color: 0x3e2723,
+                    roughness: 0.9
+                });
+                const mast = new THREE.Mesh(mastGeometry, mastMaterial);
+                mast.position.y = data.dimensions.height * 1.5;
+                mast.castShadow = true;
+                shipModel.add(mast);
+                
+                // Add sail
+                const sailGeometry = new THREE.PlaneGeometry(data.dimensions.width * 0.8, data.dimensions.height * 2);
+                const sailMaterial = new THREE.MeshStandardMaterial({
+                    color: 0xffebcd,
+                    side: THREE.DoubleSide,
+                    transparent: true,
+                    opacity: 0.9
+                });
+                const sail = new THREE.Mesh(sailGeometry, sailMaterial);
+                sail.position.y = data.dimensions.height * 2;
+                sail.position.z = -1;
+                shipModel.add(sail);
+            }
+            
+            // Add shields along the sides
+            if (data.features.includes('shields')) {
+                const shieldCount = Math.floor(data.dimensions.length / 2);
+                for (let i = 0; i < shieldCount; i++) {
+                    for (let side = -1; side <= 1; side += 2) {
+                        const shieldGeometry = new THREE.CircleGeometry(0.5, 8);
+                        const shieldMaterial = new THREE.MeshStandardMaterial({
+                            color: Math.random() > 0.5 ? 0xff0000 : 0x0000ff,
+                            metalness: 0.5,
+                            roughness: 0.3
+                        });
+                        const shield = new THREE.Mesh(shieldGeometry, shieldMaterial);
+                        shield.position.set(
+                            side * (data.dimensions.width * 0.5 + 0.1),
+                            data.dimensions.height * 0.3,
+                            (i - shieldCount / 2) * 1.5
+                        );
+                        shield.rotation.y = side * Math.PI / 2;
+                        shield.castShadow = true;
+                        shipModel.add(shield);
+                    }
+                }
+            }
+            
+            // Add crew
+            data.crew.forEach((member, index) => {
+                const crewGeometry = new THREE.CapsuleGeometry(0.3, 1.5, 4, 8);
+                const crewMaterial = new THREE.MeshStandardMaterial({
+                    color: new THREE.Color().setHSL(Math.random(), 0.5, 0.5),
+                    roughness: 0.7
+                });
+                const crewMember = new THREE.Mesh(crewGeometry, crewMaterial);
+                crewMember.position.set(
+                    member.position.x,
+                    data.dimensions.height * 0.5 + 1,
+                    member.position.z
+                );
+                crewMember.castShadow = true;
+                crewMember.userData = member;
+                shipModel.add(crewMember);
+                crewModels.push(crewMember);
+            });
+            
+            // Position ship
+            shipModel.position.y = 0;
+            scene.add(shipModel);
+            
+            // Update UI
+            document.getElementById('polycount').textContent = countPolygons(shipModel);
+            document.getElementById('crewcount').textContent = data.crew.length;
+            
+            // Focus camera on ship
+            controls.target.copy(shipModel.position);
+            camera.position.set(20, 15, 20);
+            controls.update();
+        }
+        
+        function countPolygons(object) {
+            let count = 0;
+            object.traverse(child => {
+                if (child.geometry) {
+                    if (child.geometry.index) {
+                        count += child.geometry.index.count / 3;
+                    } else {
+                        count += child.geometry.attributes.position.count / 3;
+                    }
+                }
+            });
+            return Math.floor(count);
+        }
+        
+        function loadExampleData() {
+            const exampleData = {
+                binary: '01010110 01001001 01001011 01001001 01001110 01000111 00111010 01001100 00110011 00110000 00111010 01010111 00111000 00111010 01001000 00110101',
+                ascii: 'SHIP:VIKING:LONGBOAT:L30:W8:H5:CREW24:DRAGON:SHIELDS:OARS:SAIL',
+                fortran: `      PROGRAM VIKING_SHIP
+      CHARACTER*20 SHIP_TYPE
+      REAL LENGTH, WIDTH, HEIGHT
+      INTEGER CREW_COUNT
+      DATA SHIP_TYPE/'VIKING_LONGBOAT'/
+      DATA LENGTH/30.0/, WIDTH/8.0/, HEIGHT/5.0/
+      DATA CREW_COUNT/24/`,
+                hex: '534849503a56494b494e473a4c4f4e47424f41543a4c33303a57383a4835',
+                base64: 'U0hJUDpWSUtJTkc6TE9OR0JPQVQ6TDMwOlc4Okg1OkNSRVcyNDpEUkFHT046U0hJRUxEUzpPQVJTOlNBSUw=',
+                cobol: `       IDENTIFICATION DIVISION.
+       PROGRAM-ID. VIKING-SHIP-SPEC.
+       DATA DIVISION.
+       WORKING-STORAGE SECTION.
+       01 SHIP-RECORD.
+          05 SHIP-TYPE    PIC X(20) VALUE 'VIKING_LONGBOAT'.
+          05 SHIP-LENGTH  PIC 999   VALUE 030.
+          05 SHIP-WIDTH   PIC 99    VALUE 08.
+          05 SHIP-HEIGHT  PIC 99    VALUE 05.`
+            };
+            
+            document.getElementById('schematicInput').value = exampleData[selectedFormat];
+        }
+        
+        function generateRandomShip() {
+            const types = ['VIKING', 'PIRATE', 'NORSE', 'RAIDER'];
+            const type = types[Math.floor(Math.random() * types.length)];
+            const length = 20 + Math.floor(Math.random() * 20);
+            const width = 6 + Math.floor(Math.random() * 6);
+            const height = 4 + Math.floor(Math.random() * 4);
+            
+            let data = '';
+            switch (selectedFormat) {
+                case 'binary':
+                    const text = `SHIP:${type}:L${length}:W${width}:H${height}`;
+                    data = text.split('').map(c => c.charCodeAt(0).toString(2).padStart(8, '0')).join(' ');
+                    break;
+                case 'ascii':
+                    data = `SHIP:${type}:WARSHIP:L${length}:W${width}:H${height}:CREW${length-6}:CANNONS:FLAGS`;
+                    break;
+                case 'hex':
+                    const hexText = `SHIP:${type}:L${length}:W${width}:H${height}`;
+                    data = hexText.split('').map(c => c.charCodeAt(0).toString(16).padStart(2, '0')).join('');
+                    break;
+                default:
+                    data = `SHIP:${type}:L${length}:W${width}:H${height}`;
+            }
+            
+            document.getElementById('schematicInput').value = data;
+        }
+        
+        function showLoading(show) {
+            document.getElementById('loadingOverlay').classList.toggle('active', show);
+        }
+        
+        // Chat functions
+        function addChatMessage(message, sender = 'user') {
+            const chatLog = document.getElementById('chatLog');
+            const messageDiv = document.createElement('div');
+            messageDiv.style.marginBottom = '10px';
+            
+            let color = '#00ff00';
+            let prefix = 'You';
+            
+            if (sender === 'crew') {
+                color = '#00ffff';
+                prefix = currentCrew.name;
+            } else if (sender === 'system') {
+                color = '#ffff00';
+                prefix = 'System';
+            }
+            
+            messageDiv.innerHTML = `<span style="color: ${color};">[${prefix}]:</span> ${message}`;
+            chatLog.appendChild(messageDiv);
+            chatLog.scrollTop = chatLog.scrollHeight;
+        }
+        
+        async function sendMessage() {
+            const input = document.getElementById('chatInput');
+            const message = input.value.trim();
+            
+            if (!message || !currentCrew) return;
+            
+            addChatMessage(message, 'user');
+            input.value = '';
+            
+            // Show reasoning
+            document.getElementById('reasoningDisplay').style.display = 'block';
+            document.getElementById('reasoningSteps').innerHTML = '🤔 Thinking...';
+            
+            // Simulate crew response with reasoning
+            setTimeout(() => {
+                const response = generateCrewResponse(currentCrew.role, message);
+                
+                // Show reasoning steps
+                document.getElementById('reasoningSteps').innerHTML = response.reasoning
+                    .map(step => `• ${step}`)
+                    .join('<br>');
+                
+                // Add response
+                addChatMessage(response.message, 'crew');
+            }, 1000 + Math.random() * 1000);
+        }
+        
+        function generateCrewResponse(role, question) {
+            const responses = {
+                captain: {
+                    navigation: {
+                        message: "Based on the stars and currents, we should head north-northwest. The wind patterns favor this route, and we'll avoid the dangerous reefs near the eastern shores.",
+                        reasoning: [
+                            "Analyzing current star positions for navigation",
+                            "Considering prevailing wind patterns this season",
+                            "Factoring in known hazards along potential routes",
+                            "Calculating optimal speed vs safety balance"
+                        ]
+                    },
+                    strategy: {
+                        message: "Our ship's design gives us speed and maneuverability. We should use hit-and-run tactics, striking at dawn when the enemy is least prepared.",
+                        reasoning: [
+                            "Evaluating our ship's speed advantage",
+                            "Considering crew morale and combat readiness",
+                            "Analyzing enemy patrol patterns",
+                            "Optimizing for surprise and minimal casualties"
+                        ]
+                    },
+                    default: {
+                        message: "A good question! As captain, I consider all aspects - crew safety, mission success, and honor. What specific guidance do you seek?",
+                        reasoning: [
+                            "Interpreting the question's intent",
+                            "Drawing on years of command experience",
+                            "Balancing multiple leadership priorities",
+                            "Encouraging more specific inquiries"
+                        ]
+                    }
+                },
+                warlord: {
+                    combat: {
+                        message: "With our current crew of berserkers and shield maidens, we can overwhelm a force twice our size. Form a shield wall on the beach, then release the berserkers!",
+                        reasoning: [
+                            "Assessing current warrior composition",
+                            "Calculating force multiplication tactics",
+                            "Planning terrain advantage usage",
+                            "Maximizing psychological warfare impact"
+                        ]
+                    },
+                    default: {
+                        message: "Battle is won in preparation! Our warriors are ready, our weapons sharp. Victory will be ours!",
+                        reasoning: [
+                            "Evaluating crew combat readiness",
+                            "Checking weapon and armor status",
+                            "Boosting warrior morale",
+                            "Projecting confidence in victory"
+                        ]
+                    }
+                },
+                admiral: {
+                    fleet: {
+                        message: "Our longboat design allows us to navigate both rivers and open ocean. We can outmaneuver larger vessels and beach where they cannot follow.",
+                        reasoning: [
+                            "Analyzing ship draft and maneuverability",
+                            "Comparing against enemy vessel capabilities",
+                            "Identifying tactical advantages",
+                            "Planning amphibious operations"
+                        ]
+                    },
+                    default: {
+                        message: "The sea is our domain. With proper coordination, our fleet moves as one deadly force.",
+                        reasoning: [
+                            "Assessing fleet coordination status",
+                            "Evaluating communication methods",
+                            "Planning synchronized movements",
+                            "Ensuring tactical flexibility"
+                        ]
+                    }
+                },
+                navigator: {
+                    route: {
+                        message: "The safest route follows the coastline for three days, then we cross open water at the narrowest point. We'll need favorable winds on day four.",
+                        reasoning: [
+                            "Calculating distance vs supply consumption",
+                            "Predicting weather patterns",
+                            "Identifying safe harbors along route",
+                            "Planning for contingencies"
+                        ]
+                    },
+                    default: {
+                        message: "By the stars and sun, I guide us true. The sea speaks to those who listen.",
+                        reasoning: [
+                            "Reading celestial navigation markers",
+                            "Interpreting sea and weather signs",
+                            "Drawing on generational knowledge",
+                            "Maintaining course accuracy"
+                        ]
+                    }
+                },
+                shipwright: {
+                    construction: {
+                        message: "This ship uses overlapping planks in the clinker style, making her flexible yet strong. The dragon keel provides stability in rough seas.",
+                        reasoning: [
+                            "Explaining construction techniques",
+                            "Analyzing structural integrity",
+                            "Describing design advantages",
+                            "Noting maintenance requirements"
+                        ]
+                    },
+                    default: {
+                        message: "Every plank tells a story, every joint serves a purpose. This ship is built to conquer seas and time itself.",
+                        reasoning: [
+                            "Evaluating overall ship condition",
+                            "Identifying areas needing maintenance",
+                            "Appreciating craftsmanship quality",
+                            "Planning future improvements"
+                        ]
+                    }
+                }
+            };
+            
+            const roleResponses = responses[role] || responses.captain;
+            
+            // Simple keyword matching
+            if (question.toLowerCase().includes('navigation') || question.toLowerCase().includes('route')) {
+                return roleResponses.navigation || roleResponses.route || roleResponses.default;
+            } else if (question.toLowerCase().includes('combat') || question.toLowerCase().includes('fight')) {
+                return roleResponses.combat || roleResponses.default;
+            } else if (question.toLowerCase().includes('build') || question.toLowerCase().includes('construction')) {
+                return roleResponses.construction || roleResponses.default;
+            } else if (question.toLowerCase().includes('strategy') || question.toLowerCase().includes('plan')) {
+                return roleResponses.strategy || roleResponses.default;
+            } else if (question.toLowerCase().includes('fleet') || question.toLowerCase().includes('ships')) {
+                return roleResponses.fleet || roleResponses.default;
+            }
+            
+            return roleResponses.default;
+        }
+        
+        function provideFeedback(type) {
+            let message = '';
+            switch (type) {
+                case 'positive':
+                    message = 'Thank you for the positive feedback! The crew member will remember this interaction.';
+                    break;
+                case 'negative':
+                    message = 'Thank you for the feedback. The crew member will try to provide better responses.';
+                    break;
+                case 'clarify':
+                    message = 'Please ask a follow-up question for clarification.';
+                    break;
+            }
+            
+            addChatMessage(message, 'system');
+            
+            // In a real system, this would send feedback to the learning system
+            console.log('Feedback provided:', type, currentCrew, document.getElementById('chatLog').textContent);
+        }
+        
+        // WebSocket connection for streaming
+        function connectToStream() {
+            try {
+                ws = new WebSocket('ws://localhost:8116/stream');
+                
+                ws.onopen = () => {
+                    console.log('Connected to streaming service');
+                    document.getElementById('crewStatus').innerHTML = '<span style="color: #00ff00;">✅ Connected to command stream</span>';
+                };
+                
+                ws.onmessage = (event) => {
+                    const data = JSON.parse(event.data);
+                    if (data.type === 'ship_update') {
+                        updateShipFromStream(data);
+                    }
+                };
+                
+                ws.onerror = () => {
+                    console.log('Stream connection error');
+                    document.getElementById('crewStatus').innerHTML = '<span style="color: #ff4444;">❌ Stream offline</span>';
+                };
+                
+            } catch (error) {
+                console.error('WebSocket error:', error);
+            }
+        }
+        
+        function updateShipFromStream(data) {
+            // Update ship based on streaming data
+            if (data.position && shipModel) {
+                shipModel.position.set(data.position.x, data.position.y, data.position.z);
+            }
+            
+            if (data.crew) {
+                document.getElementById('crewcount').textContent = data.crew.length;
+            }
+        }
+        
+        // Initialize on load
+        window.addEventListener('load', () => {
+            initThreeJS();
+            connectToStream();
+            loadExampleData();
+            
+            // Add some initial atmosphere
+            setTimeout(() => {
+                document.getElementById('crewStatus').innerHTML = 
+                    '<span style="color: #88ff88;">⚓ Crew ready for orders<br>🌊 Sea conditions: Moderate<br>💨 Wind: Favorable</span>';
+            }, 2000);
+        });
+        
+        // Cleanup on unload
+        window.addEventListener('beforeunload', () => {
+            if (ws) ws.close();
+            if (animationFrameId) cancelAnimationFrame(animationFrameId);
+        });
+    </script>
+</body>
+</html>

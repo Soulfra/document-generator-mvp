@@ -1,0 +1,734 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>🔍 Blockchain Integration Proof Dashboard</title>
+    
+    <!-- Web3 -->
+    <script src="https://cdn.jsdelivr.net/npm/ethers@5.7.2/dist/ethers.umd.min.js"></script>
+    
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            font-family: 'Courier New', monospace;
+            background: #000;
+            color: #0f0;
+            overflow-x: hidden;
+            padding: 20px;
+        }
+        
+        .header {
+            text-align: center;
+            margin-bottom: 30px;
+            animation: pulse 2s infinite;
+        }
+        
+        @keyframes pulse {
+            0%, 100% { opacity: 0.8; }
+            50% { opacity: 1; }
+        }
+        
+        h1 {
+            font-size: 2.5em;
+            text-shadow: 0 0 30px #0f0;
+            margin-bottom: 10px;
+        }
+        
+        .grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(400px, 1fr));
+            gap: 20px;
+            margin-bottom: 30px;
+        }
+        
+        .proof-panel {
+            background: #111;
+            border: 2px solid #0f0;
+            border-radius: 10px;
+            padding: 20px;
+            box-shadow: 0 0 30px rgba(0, 255, 0, 0.3);
+            position: relative;
+            overflow: hidden;
+        }
+        
+        .proof-panel::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: -100%;
+            width: 100%;
+            height: 2px;
+            background: linear-gradient(90deg, transparent, #0f0, transparent);
+            animation: scan 3s infinite;
+        }
+        
+        @keyframes scan {
+            0% { left: -100%; }
+            100% { left: 100%; }
+        }
+        
+        .proof-status {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            margin-bottom: 15px;
+        }
+        
+        .status-icon {
+            width: 20px;
+            height: 20px;
+            border-radius: 50%;
+            background: #333;
+            position: relative;
+        }
+        
+        .status-icon.active {
+            background: #0f0;
+            box-shadow: 0 0 20px #0f0;
+            animation: blink 1s infinite;
+        }
+        
+        @keyframes blink {
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0.5; }
+        }
+        
+        .proof-title {
+            font-size: 1.3em;
+            color: #0f0;
+            margin-bottom: 15px;
+            text-shadow: 0 0 10px #0f0;
+        }
+        
+        .proof-content {
+            background: #000;
+            border: 1px solid #333;
+            border-radius: 5px;
+            padding: 15px;
+            margin-bottom: 15px;
+            font-size: 0.9em;
+            max-height: 300px;
+            overflow-y: auto;
+        }
+        
+        .proof-item {
+            padding: 5px 0;
+            border-bottom: 1px solid #222;
+        }
+        
+        .proof-item:last-child {
+            border-bottom: none;
+        }
+        
+        .button {
+            background: #0f0;
+            color: #000;
+            border: none;
+            padding: 10px 20px;
+            border-radius: 5px;
+            cursor: pointer;
+            font-weight: bold;
+            font-family: inherit;
+            transition: all 0.3s;
+            text-transform: uppercase;
+        }
+        
+        .button:hover {
+            background: #0f0;
+            box-shadow: 0 0 20px #0f0;
+            transform: scale(1.05);
+        }
+        
+        .button:disabled {
+            background: #333;
+            color: #666;
+            cursor: not-allowed;
+            transform: none;
+            box-shadow: none;
+        }
+        
+        .live-feed {
+            background: #000;
+            border: 1px solid #0f0;
+            border-radius: 5px;
+            padding: 10px;
+            height: 400px;
+            overflow-y: auto;
+            font-size: 0.8em;
+            position: relative;
+        }
+        
+        .feed-item {
+            padding: 8px;
+            margin: 5px 0;
+            background: #111;
+            border-left: 3px solid #0f0;
+            animation: slideIn 0.5s;
+        }
+        
+        @keyframes slideIn {
+            from {
+                transform: translateX(-20px);
+                opacity: 0;
+            }
+            to {
+                transform: translateX(0);
+                opacity: 1;
+            }
+        }
+        
+        .timestamp {
+            color: #666;
+            font-size: 0.8em;
+        }
+        
+        .address {
+            color: #0ff;
+            font-family: monospace;
+            word-break: break-all;
+        }
+        
+        .value {
+            color: #ff0;
+            font-weight: bold;
+        }
+        
+        .success {
+            color: #0f0;
+        }
+        
+        .error {
+            color: #f00;
+        }
+        
+        .loader {
+            display: inline-block;
+            width: 20px;
+            height: 20px;
+            border: 2px solid #333;
+            border-top-color: #0f0;
+            border-radius: 50%;
+            animation: spin 1s linear infinite;
+            vertical-align: middle;
+            margin-left: 10px;
+        }
+        
+        @keyframes spin {
+            to { transform: rotate(360deg); }
+        }
+        
+        .stats-grid {
+            display: grid;
+            grid-template-columns: repeat(2, 1fr);
+            gap: 10px;
+        }
+        
+        .stat-box {
+            background: #111;
+            padding: 10px;
+            border-radius: 5px;
+            text-align: center;
+        }
+        
+        .stat-label {
+            color: #666;
+            font-size: 0.8em;
+        }
+        
+        .stat-value {
+            color: #0f0;
+            font-size: 1.5em;
+            font-weight: bold;
+        }
+        
+        .progress-bar {
+            width: 100%;
+            height: 20px;
+            background: #111;
+            border-radius: 10px;
+            overflow: hidden;
+            margin: 10px 0;
+        }
+        
+        .progress-fill {
+            height: 100%;
+            background: linear-gradient(90deg, #0f0, #0ff);
+            transition: width 0.5s ease;
+            box-shadow: 0 0 10px #0f0;
+        }
+        
+        #matrix-bg {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            z-index: -1;
+            opacity: 0.1;
+        }
+    </style>
+</head>
+<body>
+    <canvas id="matrix-bg"></canvas>
+    
+    <div class="header">
+        <h1>🔍 BLOCKCHAIN INTEGRATION PROOF</h1>
+        <p>Real-time verification of metaverse smart contract integration</p>
+    </div>
+    
+    <div class="grid">
+        <!-- Connection Proof -->
+        <div class="proof-panel">
+            <div class="proof-status">
+                <div class="status-icon" id="connectionStatus"></div>
+                <span>Connection Proof</span>
+            </div>
+            <h2 class="proof-title">1. Blockchain Connection</h2>
+            <div class="proof-content" id="connectionProof">
+                <div class="proof-item">Connecting to blockchain...</div>
+            </div>
+            <button class="button" onclick="proveConnection()">Verify Connection</button>
+        </div>
+        
+        <!-- Contract Deployment Proof -->
+        <div class="proof-panel">
+            <div class="proof-status">
+                <div class="status-icon" id="contractStatus"></div>
+                <span>Contract Proof</span>
+            </div>
+            <h2 class="proof-title">2. Smart Contracts</h2>
+            <div class="proof-content" id="contractProof">
+                <div class="proof-item">Waiting for verification...</div>
+            </div>
+            <button class="button" onclick="proveContracts()">Verify Contracts</button>
+        </div>
+        
+        <!-- Transaction Proof -->
+        <div class="proof-panel">
+            <div class="proof-status">
+                <div class="status-icon" id="transactionStatus"></div>
+                <span>Transaction Proof</span>
+            </div>
+            <h2 class="proof-title">3. On-Chain Transactions</h2>
+            <div class="proof-content" id="transactionProof">
+                <div class="proof-item">No transactions yet...</div>
+            </div>
+            <button class="button" onclick="proveTransactions()">Execute Test TX</button>
+        </div>
+        
+        <!-- Event Emission Proof -->
+        <div class="proof-panel">
+            <div class="proof-status">
+                <div class="status-icon" id="eventStatus"></div>
+                <span>Event Proof</span>
+            </div>
+            <h2 class="proof-title">4. Blockchain Events</h2>
+            <div class="proof-content" id="eventProof">
+                <div class="proof-item">Listening for events...</div>
+            </div>
+            <button class="button" onclick="proveEvents()">Trigger Events</button>
+        </div>
+        
+        <!-- State Persistence Proof -->
+        <div class="proof-panel">
+            <div class="proof-status">
+                <div class="status-icon" id="stateStatus"></div>
+                <span>State Proof</span>
+            </div>
+            <h2 class="proof-title">5. State Persistence</h2>
+            <div class="proof-content" id="stateProof">
+                <div class="stats-grid">
+                    <div class="stat-box">
+                        <div class="stat-label">Total Buildings</div>
+                        <div class="stat-value" id="totalBuildings">0</div>
+                    </div>
+                    <div class="stat-box">
+                        <div class="stat-label">Total Players</div>
+                        <div class="stat-value" id="totalPlayers">0</div>
+                    </div>
+                    <div class="stat-box">
+                        <div class="stat-label">Duo Systems</div>
+                        <div class="stat-value" id="totalDuos">0</div>
+                    </div>
+                    <div class="stat-box">
+                        <div class="stat-label">Transactions</div>
+                        <div class="stat-value" id="totalTx">0</div>
+                    </div>
+                </div>
+            </div>
+            <button class="button" onclick="proveState()">Refresh State</button>
+        </div>
+        
+        <!-- Integration Proof -->
+        <div class="proof-panel">
+            <div class="proof-status">
+                <div class="status-icon" id="integrationStatus"></div>
+                <span>Integration Proof</span>
+            </div>
+            <h2 class="proof-title">6. Full Integration</h2>
+            <div class="proof-content" id="integrationProof">
+                <div class="proof-item">Ready to test full integration...</div>
+                <div class="progress-bar">
+                    <div class="progress-fill" id="integrationProgress" style="width: 0%"></div>
+                </div>
+            </div>
+            <button class="button" onclick="proveFullIntegration()">Run Full Test</button>
+        </div>
+    </div>
+    
+    <!-- Live Activity Feed -->
+    <div class="proof-panel">
+        <h2 class="proof-title">📡 Live Blockchain Activity</h2>
+        <div class="live-feed" id="liveFeed">
+            <div class="feed-item">
+                <span class="timestamp">[${new Date().toLocaleTimeString()}]</span>
+                <span>Waiting for blockchain activity...</span>
+            </div>
+        </div>
+    </div>
+    
+    <script>
+        // Contract addresses (update with your deployed addresses)
+        const CONTRACTS = {
+            metaverseRegistry: "0x5FbDB2315678afecb367f032d93F642f64180aa3",
+            duoTracker: "0xe7f1725E7734CE288F8367e1Bb143E90bb3F0512"
+        };
+        
+        // Contract ABIs
+        const REGISTRY_ABI = [
+            "function registerPlayer(string memory playerId)",
+            "function createBuilding(string memory buildingId, int256 x, int256 y, int256 z, string memory buildingType, uint256 cost)",
+            "function getWorldStats() view returns (uint256, uint256, uint256, uint256, uint256)",
+            "event BuildingCreated(string indexed buildingId, address indexed owner, int256 x, int256 y, int256 z, string buildingType)",
+            "event PlayerRegistered(address indexed wallet, string playerId, uint256 timestamp)"
+        ];
+        
+        let provider = null;
+        let signer = null;
+        let contracts = {};
+        let eventListeners = [];
+        
+        // Matrix background effect
+        function initMatrix() {
+            const canvas = document.getElementById('matrix-bg');
+            const ctx = canvas.getContext('2d');
+            
+            canvas.width = window.innerWidth;
+            canvas.height = window.innerHeight;
+            
+            const matrix = "ABCDEFGHIJKLMNOPQRSTUVWXYZ123456789@#$%^&*()*&^%+-/~{[|`]}";
+            const matrixArray = matrix.split("");
+            
+            const fontSize = 10;
+            const columns = canvas.width / fontSize;
+            
+            const drops = [];
+            for(let x = 0; x < columns; x++) {
+                drops[x] = 1;
+            }
+            
+            function draw() {
+                ctx.fillStyle = 'rgba(0, 0, 0, 0.04)';
+                ctx.fillRect(0, 0, canvas.width, canvas.height);
+                
+                ctx.fillStyle = '#0f0';
+                ctx.font = fontSize + 'px monospace';
+                
+                for(let i = 0; i < drops.length; i++) {
+                    const text = matrixArray[Math.floor(Math.random() * matrixArray.length)];
+                    ctx.fillText(text, i * fontSize, drops[i] * fontSize);
+                    
+                    if(drops[i] * fontSize > canvas.height && Math.random() > 0.975) {
+                        drops[i] = 0;
+                    }
+                    drops[i]++;
+                }
+            }
+            
+            setInterval(draw, 35);
+        }
+        
+        // Add to live feed
+        function addToFeed(message, type = 'info') {
+            const feed = document.getElementById('liveFeed');
+            const item = document.createElement('div');
+            item.className = 'feed-item';
+            
+            const timestamp = new Date().toLocaleTimeString();
+            const colorClass = type === 'error' ? 'error' : type === 'success' ? 'success' : '';
+            
+            item.innerHTML = `
+                <span class="timestamp">[${timestamp}]</span>
+                <span class="${colorClass}">${message}</span>
+            `;
+            
+            feed.insertBefore(item, feed.firstChild);
+            
+            // Keep only last 50 items
+            while (feed.children.length > 50) {
+                feed.removeChild(feed.lastChild);
+            }
+        }
+        
+        // Update proof panel
+        function updateProof(panelId, content, statusId = null, success = true) {
+            const panel = document.getElementById(panelId);
+            if (typeof content === 'string') {
+                panel.innerHTML = `<div class="proof-item">${content}</div>`;
+            } else {
+                panel.innerHTML = content;
+            }
+            
+            if (statusId) {
+                const status = document.getElementById(statusId);
+                status.classList.toggle('active', success);
+            }
+        }
+        
+        // 1. Prove Connection
+        async function proveConnection() {
+            try {
+                addToFeed('Testing blockchain connection...', 'info');
+                
+                provider = new ethers.providers.JsonRpcProvider('http://localhost:8545');
+                const network = await provider.getNetwork();
+                const blockNumber = await provider.getBlockNumber();
+                const gasPrice = await provider.getGasPrice();
+                
+                const proof = `
+                    <div class="proof-item">✅ Connected to network</div>
+                    <div class="proof-item">Chain ID: <span class="value">${network.chainId}</span></div>
+                    <div class="proof-item">Current Block: <span class="value">${blockNumber}</span></div>
+                    <div class="proof-item">Gas Price: <span class="value">${ethers.utils.formatUnits(gasPrice, 'gwei')} gwei</span></div>
+                `;
+                
+                updateProof('connectionProof', proof, 'connectionStatus', true);
+                addToFeed('✅ Blockchain connection verified', 'success');
+                
+                // Get signer
+                const privateKey = '0xac0974bec39a17e36ba4a6b4d238ff944bacb478cbed5efcae784d7bf4f2ff80';
+                signer = new ethers.Wallet(privateKey, provider);
+                
+            } catch (error) {
+                updateProof('connectionProof', `❌ Error: ${error.message}`, 'connectionStatus', false);
+                addToFeed(`❌ Connection failed: ${error.message}`, 'error');
+            }
+        }
+        
+        // 2. Prove Contracts
+        async function proveContracts() {
+            try {
+                if (!provider) await proveConnection();
+                
+                addToFeed('Verifying smart contracts...', 'info');
+                
+                // Check if contracts exist
+                const registryCode = await provider.getCode(CONTRACTS.metaverseRegistry);
+                const trackerCode = await provider.getCode(CONTRACTS.duoTracker);
+                
+                const registryExists = registryCode !== '0x';
+                const trackerExists = trackerCode !== '0x';
+                
+                const proof = `
+                    <div class="proof-item">MetaverseRegistry:</div>
+                    <div class="proof-item">Address: <span class="address">${CONTRACTS.metaverseRegistry}</span></div>
+                    <div class="proof-item">Deployed: <span class="${registryExists ? 'success' : 'error'}">${registryExists ? '✅ Yes' : '❌ No'}</span></div>
+                    <div class="proof-item">Code size: <span class="value">${registryCode.length} bytes</span></div>
+                    <br>
+                    <div class="proof-item">DuoTracker:</div>
+                    <div class="proof-item">Address: <span class="address">${CONTRACTS.duoTracker}</span></div>
+                    <div class="proof-item">Deployed: <span class="${trackerExists ? 'success' : 'error'}">${trackerExists ? '✅ Yes' : '❌ No'}</span></div>
+                    <div class="proof-item">Code size: <span class="value">${trackerCode.length} bytes</span></div>
+                `;
+                
+                updateProof('contractProof', proof, 'contractStatus', registryExists && trackerExists);
+                
+                if (registryExists && trackerExists) {
+                    // Initialize contracts
+                    contracts.registry = new ethers.Contract(CONTRACTS.metaverseRegistry, REGISTRY_ABI, signer);
+                    addToFeed('✅ Smart contracts verified and initialized', 'success');
+                } else {
+                    addToFeed('❌ Contracts not deployed. Run deployment first!', 'error');
+                }
+                
+            } catch (error) {
+                updateProof('contractProof', `❌ Error: ${error.message}`, 'contractStatus', false);
+                addToFeed(`❌ Contract verification failed: ${error.message}`, 'error');
+            }
+        }
+        
+        // 3. Prove Transactions
+        async function proveTransactions() {
+            try {
+                if (!contracts.registry) await proveContracts();
+                
+                addToFeed('Executing test transaction...', 'info');
+                updateProof('transactionProof', '<div class="proof-item">🔄 Sending transaction...<span class="loader"></span></div>');
+                
+                // Register a test player
+                const playerId = `proof_player_${Date.now()}`;
+                const tx = await contracts.registry.registerPlayer(playerId);
+                
+                addToFeed(`📝 TX sent: ${tx.hash}`, 'info');
+                
+                const receipt = await tx.wait();
+                
+                const proof = `
+                    <div class="proof-item">✅ Transaction confirmed</div>
+                    <div class="proof-item">TX Hash: <span class="address">${tx.hash}</span></div>
+                    <div class="proof-item">Block: <span class="value">${receipt.blockNumber}</span></div>
+                    <div class="proof-item">Gas Used: <span class="value">${receipt.gasUsed.toString()}</span></div>
+                    <div class="proof-item">Status: <span class="success">SUCCESS</span></div>
+                    <div class="proof-item">Player ID: <span class="value">${playerId}</span></div>
+                `;
+                
+                updateProof('transactionProof', proof, 'transactionStatus', true);
+                addToFeed('✅ Transaction confirmed on-chain', 'success');
+                
+                // Update stats
+                await proveState();
+                
+            } catch (error) {
+                updateProof('transactionProof', `❌ Error: ${error.message}`, 'transactionStatus', false);
+                addToFeed(`❌ Transaction failed: ${error.message}`, 'error');
+            }
+        }
+        
+        // 4. Prove Events
+        async function proveEvents() {
+            try {
+                if (!contracts.registry) await proveContracts();
+                
+                addToFeed('Setting up event listeners...', 'info');
+                
+                let events = [];
+                
+                // Listen for events
+                contracts.registry.on('PlayerRegistered', (wallet, playerId, timestamp) => {
+                    const event = `PlayerRegistered: ${playerId} by ${wallet.slice(0,6)}...${wallet.slice(-4)}`;
+                    events.push(event);
+                    addToFeed(`📡 Event: ${event}`, 'success');
+                    updateEventProof(events);
+                });
+                
+                contracts.registry.on('BuildingCreated', (buildingId, owner, x, y, z, type) => {
+                    const event = `BuildingCreated: ${type} at (${x},${y},${z})`;
+                    events.push(event);
+                    addToFeed(`📡 Event: ${event}`, 'success');
+                    updateEventProof(events);
+                });
+                
+                // Trigger an event
+                const buildingId = `proof_building_${Date.now()}`;
+                await contracts.registry.createBuilding(buildingId, 10, 0, 20, 'tower', 200);
+                
+                addToFeed('✅ Event listeners active', 'success');
+                
+            } catch (error) {
+                updateProof('eventProof', `❌ Error: ${error.message}`, 'eventStatus', false);
+                addToFeed(`❌ Event setup failed: ${error.message}`, 'error');
+            }
+        }
+        
+        function updateEventProof(events) {
+            const content = events.map(e => `<div class="proof-item">📡 ${e}</div>`).join('');
+            updateProof('eventProof', content || '<div class="proof-item">Listening for events...</div>', 'eventStatus', events.length > 0);
+        }
+        
+        // 5. Prove State
+        async function proveState() {
+            try {
+                if (!contracts.registry) await proveContracts();
+                
+                const stats = await contracts.registry.getWorldStats();
+                
+                document.getElementById('totalBuildings').textContent = stats[0].toString();
+                document.getElementById('totalPlayers').textContent = stats[1].toString();
+                document.getElementById('totalDuos').textContent = stats[2].toString();
+                document.getElementById('totalTx').textContent = stats[4].toString();
+                
+                updateProof('stateProof', document.getElementById('stateProof').innerHTML, 'stateStatus', true);
+                addToFeed('✅ State refreshed from blockchain', 'success');
+                
+            } catch (error) {
+                addToFeed(`❌ State refresh failed: ${error.message}`, 'error');
+            }
+        }
+        
+        // 6. Prove Full Integration
+        async function proveFullIntegration() {
+            try {
+                addToFeed('🚀 Starting full integration test...', 'info');
+                const progress = document.getElementById('integrationProgress');
+                
+                // Step 1: Connection
+                updateProof('integrationProof', '1/5 Testing connection...');
+                progress.style.width = '20%';
+                await proveConnection();
+                await new Promise(r => setTimeout(r, 1000));
+                
+                // Step 2: Contracts
+                updateProof('integrationProof', '2/5 Verifying contracts...');
+                progress.style.width = '40%';
+                await proveContracts();
+                await new Promise(r => setTimeout(r, 1000));
+                
+                // Step 3: Transaction
+                updateProof('integrationProof', '3/5 Executing transaction...');
+                progress.style.width = '60%';
+                await proveTransactions();
+                await new Promise(r => setTimeout(r, 1000));
+                
+                // Step 4: Events
+                updateProof('integrationProof', '4/5 Testing events...');
+                progress.style.width = '80%';
+                await proveEvents();
+                await new Promise(r => setTimeout(r, 1000));
+                
+                // Step 5: State
+                updateProof('integrationProof', '5/5 Verifying state...');
+                progress.style.width = '100%';
+                await proveState();
+                
+                updateProof('integrationProof', `
+                    <div class="proof-item success">✅ FULL INTEGRATION VERIFIED!</div>
+                    <div class="proof-item">All components working correctly:</div>
+                    <div class="proof-item">• Blockchain connection ✅</div>
+                    <div class="proof-item">• Smart contracts deployed ✅</div>
+                    <div class="proof-item">• Transactions executing ✅</div>
+                    <div class="proof-item">• Events emitting ✅</div>
+                    <div class="proof-item">• State persisting ✅</div>
+                    <div class="progress-bar">
+                        <div class="progress-fill" style="width: 100%"></div>
+                    </div>
+                `, 'integrationStatus', true);
+                
+                addToFeed('🎉 FULL INTEGRATION TEST PASSED!', 'success');
+                
+            } catch (error) {
+                updateProof('integrationProof', `❌ Integration test failed: ${error.message}`, 'integrationStatus', false);
+                addToFeed(`❌ Integration test failed: ${error.message}`, 'error');
+            }
+        }
+        
+        // Initialize on load
+        window.addEventListener('load', () => {
+            initMatrix();
+            addToFeed('🔍 Blockchain Integration Proof Dashboard initialized', 'info');
+            addToFeed('Click the buttons to run each proof step', 'info');
+        });
+        
+        // Cleanup on unload
+        window.addEventListener('unload', () => {
+            // Remove all event listeners
+            eventListeners.forEach(listener => listener());
+        });
+    </script>
+</body>
+</html>

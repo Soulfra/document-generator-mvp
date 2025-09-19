@@ -1,0 +1,804 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Eyeball Minimap World Builder</title>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Orbitron:wght@400;700;900&display=swap');
+        
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            background: #000;
+            color: #0ff;
+            font-family: 'Orbitron', monospace;
+            overflow: hidden;
+            cursor: none;
+        }
+
+        /* Main container */
+        #world-container {
+            position: relative;
+            width: 100vw;
+            height: 100vh;
+            background: #000;
+        }
+
+        /* The Eyeball Minimap */
+        #eyeball-minimap {
+            position: fixed;
+            width: 200px;
+            height: 200px;
+            border-radius: 50%;
+            border: 4px solid #0ff;
+            background: radial-gradient(circle at 30% 30%, #fff, #ddd, #999, #333);
+            top: 20px;
+            right: 20px;
+            z-index: 1000;
+            cursor: pointer;
+            transition: all 0.3s;
+            box-shadow: 
+                0 0 30px #0ff,
+                inset 0 0 20px rgba(0, 0, 0, 0.3);
+        }
+
+        #eyeball-minimap:hover {
+            transform: scale(1.1);
+            box-shadow: 
+                0 0 50px #0ff,
+                inset 0 0 20px rgba(0, 0, 0, 0.3);
+        }
+
+        /* Pupil that tracks mouse */
+        .pupil {
+            position: absolute;
+            width: 60px;
+            height: 60px;
+            background: radial-gradient(circle at 30% 30%, #333, #000);
+            border-radius: 50%;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            transition: all 0.1s;
+        }
+
+        .iris {
+            position: absolute;
+            width: 100px;
+            height: 100px;
+            background: radial-gradient(circle at 40% 40%, #0ff, #008cc8, #004c66);
+            border-radius: 50%;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            transition: all 0.1s;
+        }
+
+        /* Vision cone from eyeball */
+        #vision-cone {
+            position: absolute;
+            width: 0;
+            height: 0;
+            border-left: 30px solid transparent;
+            border-right: 30px solid transparent;
+            border-top: 100px solid rgba(0, 255, 255, 0.3);
+            transform-origin: 50% 100%;
+            transition: all 0.3s;
+            z-index: 500;
+        }
+
+        /* World sections that build progressively */
+        .world-section {
+            position: absolute;
+            opacity: 0;
+            transform: scale(0);
+            transition: all 0.5s cubic-bezier(0.25, 0.46, 0.45, 0.94);
+            border: 2px solid #0ff;
+            background: rgba(0, 255, 255, 0.1);
+        }
+
+        .world-section.revealed {
+            opacity: 1;
+            transform: scale(1);
+        }
+
+        .world-section.building {
+            animation: buildingPulse 1s ease-in-out;
+        }
+
+        @keyframes buildingPulse {
+            0%, 100% { 
+                box-shadow: 0 0 10px #0ff;
+                border-color: #0ff;
+            }
+            50% { 
+                box-shadow: 0 0 30px #0ff, 0 0 50px #0ff;
+                border-color: #fff;
+            }
+        }
+
+        /* Film reel sections */
+        .film-section {
+            position: absolute;
+            background: linear-gradient(45deg, #1a1a1a, #2a2a2a);
+            border: 3px solid #333;
+            border-radius: 10px;
+            padding: 20px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            text-align: center;
+            box-shadow: inset 0 0 20px rgba(0, 0, 0, 0.5);
+        }
+
+        .film-section h3 {
+            color: #0ff;
+            font-size: 1.2rem;
+            margin-bottom: 10px;
+        }
+
+        .film-section p {
+            color: #ccc;
+            font-size: 0.9rem;
+        }
+
+        /* App showcase areas */
+        .app-showcase {
+            background: linear-gradient(135deg, #2a2a2a, #1a1a1a);
+            border: 2px solid #00ff88;
+            border-radius: 15px;
+            padding: 15px;
+            text-align: center;
+        }
+
+        .app-icon {
+            font-size: 2rem;
+            margin-bottom: 10px;
+        }
+
+        .app-title {
+            color: #00ff88;
+            font-size: 1rem;
+            margin-bottom: 5px;
+        }
+
+        .app-earnings {
+            color: #fff;
+            font-size: 1.2rem;
+            font-weight: bold;
+        }
+
+        /* Construction beams */
+        .construction-beam {
+            position: absolute;
+            width: 2px;
+            background: linear-gradient(0deg, transparent, #0ff, transparent);
+            opacity: 0;
+            animation: beamSweep 2s ease-in-out;
+            z-index: 600;
+        }
+
+        @keyframes beamSweep {
+            0% { 
+                opacity: 0;
+                transform: scaleY(0);
+            }
+            50% { 
+                opacity: 1;
+                transform: scaleY(1);
+            }
+            100% { 
+                opacity: 0;
+                transform: scaleY(0);
+            }
+        }
+
+        /* Scanning grid overlay */
+        #scanning-grid {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background-image: 
+                linear-gradient(rgba(0, 255, 255, 0.1) 1px, transparent 1px),
+                linear-gradient(90deg, rgba(0, 255, 255, 0.1) 1px, transparent 1px);
+            background-size: 50px 50px;
+            opacity: 0;
+            transition: opacity 0.5s;
+            pointer-events: none;
+            z-index: 100;
+        }
+
+        #scanning-grid.active {
+            opacity: 0.3;
+        }
+
+        /* World info panel */
+        #world-info {
+            position: fixed;
+            bottom: 20px;
+            left: 20px;
+            background: rgba(0, 0, 0, 0.9);
+            border: 1px solid #0ff;
+            padding: 15px;
+            backdrop-filter: blur(10px);
+            border-radius: 10px;
+            min-width: 250px;
+        }
+
+        .info-item {
+            display: flex;
+            justify-content: space-between;
+            margin: 5px 0;
+            font-size: 14px;
+        }
+
+        .info-label {
+            color: #0ff;
+        }
+
+        .info-value {
+            color: #fff;
+            font-weight: bold;
+        }
+
+        /* Eye tracking indicator */
+        .eye-crosshair {
+            position: absolute;
+            width: 20px;
+            height: 20px;
+            border: 2px solid #ff0080;
+            border-radius: 50%;
+            pointer-events: none;
+            z-index: 800;
+            transform: translate(-50%, -50%);
+            transition: all 0.1s;
+        }
+
+        .eye-crosshair::before,
+        .eye-crosshair::after {
+            content: '';
+            position: absolute;
+            background: #ff0080;
+        }
+
+        .eye-crosshair::before {
+            width: 2px;
+            height: 10px;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+        }
+
+        .eye-crosshair::after {
+            width: 10px;
+            height: 2px;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+        }
+
+        /* Progress indicators */
+        .progress-ring {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            width: 100px;
+            height: 100px;
+        }
+
+        .progress-ring__circle {
+            stroke: #0ff;
+            stroke-linecap: round;
+            transition: stroke-dashoffset 0.35s;
+            transform: rotate(-90deg);
+            transform-origin: 50% 50%;
+        }
+
+        /* Control instructions */
+        #instructions {
+            position: fixed;
+            top: 20px;
+            left: 20px;
+            background: rgba(0, 0, 0, 0.9);
+            border: 1px solid #0ff;
+            padding: 15px;
+            border-radius: 10px;
+            max-width: 300px;
+        }
+
+        #instructions h3 {
+            color: #0ff;
+            margin-bottom: 10px;
+        }
+
+        #instructions ul {
+            list-style: none;
+            color: #ccc;
+        }
+
+        #instructions li {
+            margin: 5px 0;
+            font-size: 12px;
+        }
+
+        #instructions li::before {
+            content: '▶ ';
+            color: #0ff;
+        }
+    </style>
+</head>
+<body>
+    <div id="world-container">
+        <div id="scanning-grid"></div>
+        
+        <!-- The Eyeball Minimap -->
+        <div id="eyeball-minimap">
+            <div class="iris">
+                <div class="pupil"></div>
+            </div>
+        </div>
+        
+        <!-- Vision cone -->
+        <div id="vision-cone"></div>
+        
+        <!-- Eye tracking crosshair -->
+        <div class="eye-crosshair" id="crosshair"></div>
+        
+        <!-- Instructions -->
+        <div id="instructions">
+            <h3>👁️ EYE CONTROL</h3>
+            <ul>
+                <li>Move mouse to control eye</li>
+                <li>Click eyeball to scan area</li>
+                <li>Hold SPACE for rapid build</li>
+                <li>Press R to reset world</li>
+                <li>ESC for full screen view</li>
+            </ul>
+        </div>
+        
+        <!-- World info panel -->
+        <div id="world-info">
+            <h3 style="color: #0ff; margin-bottom: 10px;">WORLD STATUS</h3>
+            <div class="info-item">
+                <span class="info-label">Sections Built:</span>
+                <span class="info-value" id="sections-built">0/12</span>
+            </div>
+            <div class="info-item">
+                <span class="info-label">Eye Position:</span>
+                <span class="info-value" id="eye-position">0, 0</span>
+            </div>
+            <div class="info-item">
+                <span class="info-label">Build Progress:</span>
+                <span class="info-value" id="build-progress">0%</span>
+            </div>
+            <div class="info-item">
+                <span class="info-label">Current Focus:</span>
+                <span class="info-value" id="current-focus">None</span>
+            </div>
+        </div>
+        
+        <!-- World sections to be built -->
+        <!-- These will be dynamically positioned and revealed -->
+    </div>
+
+    <script>
+        class EyeballMinimapBuilder {
+            constructor() {
+                this.eyeball = document.getElementById('eyeball-minimap');
+                this.pupil = this.eyeball.querySelector('.pupil');
+                this.iris = this.eyeball.querySelector('.iris');
+                this.visionCone = document.getElementById('vision-cone');
+                this.crosshair = document.getElementById('crosshair');
+                this.scanningGrid = document.getElementById('scanning-grid');
+                
+                this.mouseX = 0;
+                this.mouseY = 0;
+                this.eyeX = 0;
+                this.eyeY = 0;
+                
+                this.worldSections = [];
+                this.builtSections = 0;
+                this.totalSections = 12;
+                this.buildingMode = false;
+                this.rapidBuild = false;
+                
+                this.init();
+            }
+            
+            init() {
+                // Create world sections
+                this.createWorldSections();
+                
+                // Setup event listeners
+                this.setupEventListeners();
+                
+                // Start eye tracking
+                this.startEyeTracking();
+                
+                // Initial UI update
+                this.updateUI();
+                
+                console.log('👁️ Eyeball Minimap Builder initialized');
+            }
+            
+            createWorldSections() {
+                const sections = [
+                    // Film reel sections
+                    { type: 'film', title: 'HollowTown Intro', content: 'Privacy-first digital economy', x: 10, y: 10, w: 280, h: 150 },
+                    { type: 'film', title: 'Device Recognition', content: 'Anonymous fingerprinting', x: 320, y: 10, w: 280, h: 150 },
+                    { type: 'film', title: 'Privacy Guarantee', content: 'Zero data collection', x: 630, y: 10, w: 280, h: 150 },
+                    
+                    // App showcase sections
+                    { type: 'app', title: 'AI Storybook', icon: '📖', earnings: '$23', x: 50, y: 200, w: 200, h: 180 },
+                    { type: 'app', title: 'AI Game World', icon: '🎮', earnings: '$31', x: 280, y: 200, w: 200, h: 180 },
+                    { type: 'app', title: 'Character Engine', icon: '🎭', earnings: '$18', x: 510, y: 200, w: 200, h: 180 },
+                    { type: 'app', title: 'Swarm Orchestrator', icon: '⚡', earnings: '$45', x: 740, y: 200, w: 200, h: 180 },
+                    
+                    // Earnings sections
+                    { type: 'earnings', title: 'Monthly Content', content: '$67/month', x: 100, y: 420, w: 220, h: 120 },
+                    { type: 'earnings', title: 'AI Collaboration', content: '$89/month', x: 350, y: 420, w: 220, h: 120 },
+                    { type: 'earnings', title: 'Data Sovereignty', content: '$52/month', x: 600, y: 420, w: 220, h: 120 },
+                    
+                    // Summary sections
+                    { type: 'summary', title: 'Annual Earnings', content: '$2,496/year', x: 200, y: 580, w: 250, h: 100 },
+                    { type: 'summary', title: 'Total Value', content: '$2,883/year', x: 500, y: 580, w: 250, h: 100 }
+                ];
+                
+                sections.forEach((section, index) => {
+                    const element = this.createSectionElement(section, index);
+                    document.getElementById('world-container').appendChild(element);
+                    this.worldSections.push({
+                        element: element,
+                        data: section,
+                        built: false,
+                        index: index
+                    });
+                });
+            }
+            
+            createSectionElement(section, index) {
+                const element = document.createElement('div');
+                element.className = 'world-section';
+                element.style.left = section.x + 'px';
+                element.style.top = section.y + 'px';
+                element.style.width = section.w + 'px';
+                element.style.height = section.h + 'px';
+                element.id = `section-${index}`;
+                
+                let innerHTML = '';
+                
+                switch (section.type) {
+                    case 'film':
+                        element.classList.add('film-section');
+                        innerHTML = `
+                            <div>
+                                <h3>${section.title}</h3>
+                                <p>${section.content}</p>
+                            </div>
+                        `;
+                        break;
+                        
+                    case 'app':
+                        element.classList.add('app-showcase');
+                        innerHTML = `
+                            <div class="app-icon">${section.icon}</div>
+                            <div class="app-title">${section.title}</div>
+                            <div class="app-earnings">${section.earnings}</div>
+                        `;
+                        break;
+                        
+                    case 'earnings':
+                    case 'summary':
+                        element.classList.add('film-section');
+                        innerHTML = `
+                            <div>
+                                <h3>${section.title}</h3>
+                                <p style="font-size: 1.5rem; color: #00ff88; font-weight: bold;">${section.content}</p>
+                            </div>
+                        `;
+                        break;
+                }
+                
+                element.innerHTML = innerHTML;
+                return element;
+            }
+            
+            setupEventListeners() {
+                // Mouse movement for eye tracking
+                document.addEventListener('mousemove', (e) => {
+                    this.mouseX = e.clientX;
+                    this.mouseY = e.clientY;
+                    this.updateEyePosition();
+                });
+                
+                // Eyeball click for area scan
+                this.eyeball.addEventListener('click', () => {
+                    this.scanArea();
+                });
+                
+                // Keyboard controls
+                document.addEventListener('keydown', (e) => {
+                    switch (e.code) {
+                        case 'Space':
+                            e.preventDefault();
+                            this.rapidBuild = true;
+                            this.startRapidBuild();
+                            break;
+                        case 'KeyR':
+                            this.resetWorld();
+                            break;
+                        case 'Escape':
+                            this.toggleFullscreen();
+                            break;
+                    }
+                });
+                
+                document.addEventListener('keyup', (e) => {
+                    if (e.code === 'Space') {
+                        this.rapidBuild = false;
+                    }
+                });
+                
+                // Window resize
+                window.addEventListener('resize', () => {
+                    this.updateEyePosition();
+                });
+            }
+            
+            startEyeTracking() {
+                setInterval(() => {
+                    this.updateEyeTracking();
+                    this.checkForBuildTargets();
+                    this.updateUI();
+                }, 16); // 60 FPS
+            }
+            
+            updateEyePosition() {
+                // Calculate eye position relative to screen
+                const eyeRect = this.eyeball.getBoundingClientRect();
+                const eyeCenterX = eyeRect.left + eyeRect.width / 2;
+                const eyeCenterY = eyeRect.top + eyeRect.height / 2;
+                
+                // Calculate pupil offset
+                const deltaX = this.mouseX - eyeCenterX;
+                const deltaY = this.mouseY - eyeCenterY;
+                const distance = Math.sqrt(deltaX * deltaX + deltaY * deltaY);
+                const maxDistance = 30; // Maximum pupil displacement
+                
+                const clampedDistance = Math.min(distance, maxDistance);
+                const angle = Math.atan2(deltaY, deltaX);
+                
+                const pupilX = Math.cos(angle) * clampedDistance;
+                const pupilY = Math.sin(angle) * clampedDistance;
+                
+                // Update pupil position
+                this.pupil.style.transform = `translate(calc(-50% + ${pupilX}px), calc(-50% + ${pupilY}px))`;
+                this.iris.style.transform = `translate(calc(-50% + ${pupilX * 0.3}px), calc(-50% + ${pupilY * 0.3}px))`;
+                
+                // Update vision cone
+                this.updateVisionCone(deltaX, deltaY);
+                
+                // Update crosshair
+                this.crosshair.style.left = this.mouseX + 'px';
+                this.crosshair.style.top = this.mouseY + 'px';
+                
+                this.eyeX = this.mouseX;
+                this.eyeY = this.mouseY;
+            }
+            
+            updateVisionCone(deltaX, deltaY) {
+                const angle = Math.atan2(deltaY, deltaX) * (180 / Math.PI);
+                const eyeRect = this.eyeball.getBoundingClientRect();
+                
+                this.visionCone.style.left = (eyeRect.left + eyeRect.width / 2) + 'px';
+                this.visionCone.style.top = (eyeRect.top + eyeRect.height / 2) + 'px';
+                this.visionCone.style.transform = `rotate(${angle - 90}deg)`;
+            }
+            
+            updateEyeTracking() {
+                // Smooth eye movement
+                const targetPupilX = (this.mouseX - window.innerWidth / 2) / 20;
+                const targetPupilY = (this.mouseY - window.innerHeight / 2) / 20;
+                
+                // Update crosshair with slight lag for realism
+                const crosshairX = this.mouseX;
+                const crosshairY = this.mouseY;
+                
+                this.crosshair.style.left = crosshairX + 'px';
+                this.crosshair.style.top = crosshairY + 'px';
+            }
+            
+            checkForBuildTargets() {
+                // Check if eye is looking at any unbuild sections
+                const eyeRect = {
+                    x: this.eyeX - 50,
+                    y: this.eyeY - 50,
+                    width: 100,
+                    height: 100
+                };
+                
+                let focusedSection = null;
+                
+                this.worldSections.forEach((section) => {
+                    if (!section.built) {
+                        const sectionRect = {
+                            x: section.data.x,
+                            y: section.data.y,
+                            width: section.data.w,
+                            height: section.data.h
+                        };
+                        
+                        if (this.rectanglesOverlap(eyeRect, sectionRect)) {
+                            focusedSection = section;
+                            
+                            // Auto-build if looking for long enough
+                            if (!section.buildTimer) {
+                                section.buildTimer = Date.now();
+                            } else if (Date.now() - section.buildTimer > 2000) {
+                                this.buildSection(section);
+                            }
+                        } else {
+                            section.buildTimer = null;
+                        }
+                    }
+                });
+                
+                // Update current focus
+                this.currentFocus = focusedSection ? focusedSection.data.title : 'None';
+            }
+            
+            rectanglesOverlap(rect1, rect2) {
+                return !(rect1.x + rect1.width < rect2.x || 
+                        rect2.x + rect2.width < rect1.x || 
+                        rect1.y + rect1.height < rect2.y || 
+                        rect2.y + rect2.height < rect1.y);
+            }
+            
+            scanArea() {
+                // Activate scanning grid
+                this.scanningGrid.classList.add('active');
+                
+                // Find sections in scan area
+                const scanRadius = 150;
+                const sectionsInRange = this.worldSections.filter(section => {
+                    if (section.built) return false;
+                    
+                    const sectionCenterX = section.data.x + section.data.w / 2;
+                    const sectionCenterY = section.data.y + section.data.h / 2;
+                    const distance = Math.sqrt(
+                        Math.pow(this.eyeX - sectionCenterX, 2) + 
+                        Math.pow(this.eyeY - sectionCenterY, 2)
+                    );
+                    
+                    return distance <= scanRadius;
+                });
+                
+                // Build sections with delay
+                sectionsInRange.forEach((section, index) => {
+                    setTimeout(() => {
+                        this.buildSection(section);
+                    }, index * 300);
+                });
+                
+                // Deactivate scanning grid
+                setTimeout(() => {
+                    this.scanningGrid.classList.remove('active');
+                }, 2000);
+                
+                console.log('🔍 Scanned area, building', sectionsInRange.length, 'sections');
+            }
+            
+            buildSection(section) {
+                if (section.built) return;
+                
+                // Mark as building
+                section.element.classList.add('building');
+                
+                // Create construction beam
+                this.createConstructionBeam(section);
+                
+                // Reveal section after delay
+                setTimeout(() => {
+                    section.element.classList.remove('building');
+                    section.element.classList.add('revealed');
+                    section.built = true;
+                    this.builtSections++;
+                    
+                    console.log('🏧 Built section:', section.data.title);
+                }, 500);
+            }
+            
+            createConstructionBeam(section) {
+                const beam = document.createElement('div');
+                beam.className = 'construction-beam';
+                
+                const eyeRect = this.eyeball.getBoundingClientRect();
+                const sectionCenterX = section.data.x + section.data.w / 2;
+                const sectionCenterY = section.data.y + section.data.h / 2;
+                
+                const deltaX = sectionCenterX - (eyeRect.left + eyeRect.width / 2);
+                const deltaY = sectionCenterY - (eyeRect.top + eyeRect.height / 2);
+                const distance = Math.sqrt(deltaX * deltaX + deltaY * deltaY);
+                const angle = Math.atan2(deltaY, deltaX) * (180 / Math.PI);
+                
+                beam.style.left = (eyeRect.left + eyeRect.width / 2) + 'px';
+                beam.style.top = (eyeRect.top + eyeRect.height / 2) + 'px';
+                beam.style.height = distance + 'px';
+                beam.style.transform = `rotate(${angle + 90}deg)`;
+                beam.style.transformOrigin = 'top center';
+                
+                document.body.appendChild(beam);
+                
+                // Remove beam after animation
+                setTimeout(() => {
+                    document.body.removeChild(beam);
+                }, 2000);
+            }
+            
+            startRapidBuild() {
+                if (!this.rapidBuild) return;
+                
+                const unbuiltSections = this.worldSections.filter(s => !s.built);
+                if (unbuiltSections.length === 0) return;
+                
+                const randomSection = unbuiltSections[Math.floor(Math.random() * unbuiltSections.length)];
+                this.buildSection(randomSection);
+                
+                setTimeout(() => {
+                    if (this.rapidBuild) {
+                        this.startRapidBuild();
+                    }
+                }, 200);
+            }
+            
+            resetWorld() {
+                this.worldSections.forEach(section => {
+                    section.element.classList.remove('revealed', 'building');
+                    section.built = false;
+                    section.buildTimer = null;
+                });
+                
+                this.builtSections = 0;
+                this.currentFocus = 'None';
+                
+                console.log('🔄 World reset');
+            }
+            
+            toggleFullscreen() {
+                const instructions = document.getElementById('instructions');
+                const worldInfo = document.getElementById('world-info');
+                
+                if (instructions.style.display === 'none') {
+                    instructions.style.display = 'block';
+                    worldInfo.style.display = 'block';
+                } else {
+                    instructions.style.display = 'none';
+                    worldInfo.style.display = 'none';
+                }
+            }
+            
+            updateUI() {
+                // Update world info
+                document.getElementById('sections-built').textContent = `${this.builtSections}/${this.totalSections}`;
+                document.getElementById('eye-position').textContent = `${Math.round(this.eyeX)}, ${Math.round(this.eyeY)}`;
+                document.getElementById('build-progress').textContent = `${Math.round((this.builtSections / this.totalSections) * 100)}%`;
+                document.getElementById('current-focus').textContent = this.currentFocus || 'None';
+            }
+        }
+        
+        // Initialize the eyeball minimap builder
+        const eyeballBuilder = new EyeballMinimapBuilder();
+        
+        console.log('👁️ Eyeball Minimap World Builder ready!');
+        console.log('🏧 Look around to build the HollowTown world!');
+    </script>
+</body>
+</html>

@@ -1,0 +1,677 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>🎮 Actually Working 3D Game</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+    <style>
+        body { 
+            margin: 0; 
+            padding: 0; 
+            overflow: hidden; 
+            background: #000; 
+            font-family: Arial, sans-serif;
+        }
+        canvas { display: block; }
+        
+        #ui { 
+            position: absolute; 
+            top: 10px; 
+            left: 10px; 
+            color: white; 
+            z-index: 100;
+            background: rgba(0,0,0,0.7);
+            padding: 15px;
+            border-radius: 10px;
+            border: 1px solid #00ff88;
+        }
+        
+        #controls {
+            position: absolute;
+            bottom: 10px;
+            left: 10px;
+            color: white;
+            background: rgba(0,0,0,0.7);
+            padding: 10px;
+            border-radius: 8px;
+            font-size: 12px;
+        }
+        
+        #performance {
+            position: absolute;
+            top: 10px;
+            right: 10px;
+            color: #00ff88;
+            background: rgba(0,0,0,0.7);
+            padding: 10px;
+            border-radius: 8px;
+            font-size: 12px;
+        }
+    </style>
+</head>
+<body>
+    <div id="ui">
+        <h2>🎮 Actually Working Game</h2>
+        <div>Score: <span id="score">0</span></div>
+        <div>Level: <span id="level">1</span></div>
+        <div>Health: <span id="health">100</span></div>
+        <div>FPS: <span id="fps">60</span></div>
+    </div>
+    
+    <div id="controls">
+        <div><strong>Controls:</strong></div>
+        <div>WASD - Move</div>
+        <div>Mouse - Look around</div>
+        <div>SPACE - Jump</div>
+        <div>Click - Collect items</div>
+    </div>
+    
+    <div id="performance">
+        <div>Objects: <span id="objectCount">0</span></div>
+        <div>Draw calls: <span id="drawCalls">0</span></div>
+        <div>Memory: <span id="memory">0</span>MB</div>
+    </div>
+    
+    <script>
+        // Learning-Enhanced 3D Game Engine
+        class OptimizedGameEngine {
+            constructor() {
+                this.scene = null;
+                this.camera = null;
+                this.renderer = null;
+                this.player = null;
+                this.gameObjects = [];
+                this.collectibles = [];
+                this.learningNPCs = new Map();
+                
+                // Game state
+                this.gameState = {
+                    score: 0,
+                    level: 1,
+                    health: 100,
+                    paused: false
+                };
+                
+                // Learning integration
+                this.learningData = new Map();
+                this.characterConnections = {
+                    controller: null,
+                    database: false
+                };
+                
+                // Performance tracking
+                this.performance = {
+                    fps: 0,
+                    frameCount: 0,
+                    lastTime: 0,
+                    objectCount: 0,
+                    drawCalls: 0
+                };
+                
+                // Controls
+                this.keys = {};
+                this.mouse = { x: 0, y: 0, sensitivity: 0.002 };
+                this.playerVelocity = new THREE.Vector3();
+                
+                // Fixed spawn rate to prevent lag
+                this.lastSpawn = 0;
+                this.spawnRate = 3000; // 3 seconds between spawns
+                this.maxCollectibles = 5; // Maximum collectibles at once
+                
+                console.log('🎮 Learning-Enhanced 3D Game Engine initializing...');
+            }
+            
+            init() {
+                this.setupScene();
+                this.setupCamera();
+                this.setupRenderer();
+                this.setupLighting();
+                this.setupPlayer();
+                this.setupWorld();
+                this.setupControls();
+                this.setupUI();
+                this.connectToLearningSystem();
+                
+                // Start game loop
+                this.animate();
+                
+                console.log('✅ Learning-Enhanced Game engine ready!');
+            }
+            
+            setupScene() {
+                this.scene = new THREE.Scene();
+                this.scene.fog = new THREE.Fog(0x001122, 10, 100);
+                this.scene.background = new THREE.Color(0x001122);
+            }
+            
+            setupCamera() {
+                this.camera = new THREE.PerspectiveCamera(
+                    75, 
+                    window.innerWidth / window.innerHeight, 
+                    0.1, 
+                    1000
+                );
+                this.camera.position.set(0, 5, 10);
+            }
+            
+            setupRenderer() {
+                this.renderer = new THREE.WebGLRenderer({ 
+                    antialias: false, // Disable for performance
+                    powerPreference: "high-performance"
+                });
+                this.renderer.setSize(window.innerWidth, window.innerHeight);
+                this.renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2)); // Limit pixel ratio
+                this.renderer.shadowMap.enabled = true;
+                this.renderer.shadowMap.type = THREE.PCFShadowMap; // Use faster shadow type
+                document.body.appendChild(this.renderer.domElement);
+            }
+            
+            setupLighting() {
+                // Optimized lighting setup
+                const ambientLight = new THREE.AmbientLight(0x404040, 0.4);
+                this.scene.add(ambientLight);
+                
+                const directionalLight = new THREE.DirectionalLight(0xffffff, 0.6);
+                directionalLight.position.set(10, 10, 5);
+                directionalLight.castShadow = true;
+                
+                // Optimize shadow map
+                directionalLight.shadow.mapSize.width = 1024; // Smaller shadow map
+                directionalLight.shadow.mapSize.height = 1024;
+                directionalLight.shadow.camera.near = 0.5;
+                directionalLight.shadow.camera.far = 50;
+                directionalLight.shadow.camera.left = -20;
+                directionalLight.shadow.camera.right = 20;
+                directionalLight.shadow.camera.top = 20;
+                directionalLight.shadow.camera.bottom = -20;
+                
+                this.scene.add(directionalLight);
+            }
+            
+            setupPlayer() {
+                // Simple optimized player
+                const playerGeometry = new THREE.BoxGeometry(1, 2, 1);
+                const playerMaterial = new THREE.MeshLambertMaterial({ color: 0x00ff88 });
+                this.player = new THREE.Mesh(playerGeometry, playerMaterial);
+                this.player.position.set(0, 1, 0);
+                this.player.castShadow = true;
+                this.scene.add(this.player);
+            }
+            
+            setupWorld() {
+                // Ground plane
+                const groundGeometry = new THREE.PlaneGeometry(50, 50);
+                const groundMaterial = new THREE.MeshLambertMaterial({ color: 0x228833 });
+                const ground = new THREE.Mesh(groundGeometry, groundMaterial);
+                ground.rotation.x = -Math.PI / 2;
+                ground.receiveShadow = true;
+                this.scene.add(ground);
+                
+                // Some static obstacles
+                for (let i = 0; i < 3; i++) {
+                    const obstacleGeometry = new THREE.BoxGeometry(2, 3, 2);
+                    const obstacleMaterial = new THREE.MeshLambertMaterial({ color: 0x666666 });
+                    const obstacle = new THREE.Mesh(obstacleGeometry, obstacleMaterial);
+                    obstacle.position.set(
+                        (Math.random() - 0.5) * 30,
+                        1.5,
+                        (Math.random() - 0.5) * 30
+                    );
+                    obstacle.castShadow = true;
+                    obstacle.receiveShadow = true;
+                    this.scene.add(obstacle);
+                }
+            }
+            
+            setupControls() {
+                // Keyboard controls
+                document.addEventListener('keydown', (e) => {
+                    this.keys[e.code] = true;
+                    
+                    // Prevent default for game keys
+                    if (['KeyW', 'KeyA', 'KeyS', 'KeyD', 'Space'].includes(e.code)) {
+                        e.preventDefault();
+                    }
+                });
+                
+                document.addEventListener('keyup', (e) => {
+                    this.keys[e.code] = false;
+                });
+                
+                // Mouse controls
+                document.addEventListener('mousemove', (e) => {
+                    if (document.pointerLockElement === this.renderer.domElement) {
+                        this.mouse.x += e.movementX * this.mouse.sensitivity;
+                        this.mouse.y += e.movementY * this.mouse.sensitivity;
+                        this.mouse.y = Math.max(-Math.PI/2, Math.min(Math.PI/2, this.mouse.y));
+                    }
+                });
+                
+                // Click to lock pointer
+                this.renderer.domElement.addEventListener('click', () => {
+                    this.renderer.domElement.requestPointerLock();
+                });
+                
+                // Window resize
+                window.addEventListener('resize', () => {
+                    this.camera.aspect = window.innerWidth / window.innerHeight;
+                    this.camera.updateProjectionMatrix();
+                    this.renderer.setSize(window.innerWidth, window.innerHeight);
+                });
+            }
+            
+            setupUI() {
+                this.updateUI();
+            }
+            
+            async connectToLearningSystem() {
+                console.log('🔗 Connecting to learning systems...');
+                
+                // Connect to NPC Controller WebSocket for real-time NPC updates
+                try {
+                    this.characterConnections.controller = new WebSocket('ws://localhost:4501');
+                    
+                    this.characterConnections.controller.onopen = () => {
+                        console.log('✅ Connected to NPC Controller');
+                    };
+                    
+                    this.characterConnections.controller.onmessage = (event) => {
+                        const data = JSON.parse(event.data);
+                        this.handleLearningUpdate(data);
+                    };
+                    
+                    this.characterConnections.controller.onclose = () => {
+                        console.log('❌ NPC Controller disconnected');
+                        // Reconnect after 5 seconds
+                        setTimeout(() => this.connectToLearningSystem(), 5000);
+                    };
+                    
+                } catch (error) {
+                    console.error('Failed to connect to NPC Controller:', error);
+                }
+                
+                // Check character database connection
+                try {
+                    const response = await fetch('http://localhost:9902/health').catch(() => null);
+                    this.characterConnections.database = response && response.ok;
+                    console.log(`📊 Character Database: ${this.characterConnections.database ? 'Connected' : 'Disconnected'}`);
+                } catch (error) {
+                    console.log('📊 Character Database: Disconnected');
+                }
+            }
+            
+            handleLearningUpdate(data) {
+                switch (data.type) {
+                    case 'initial-state':
+                        if (data.npcs) {
+                            this.spawnLearningNPCs(data.npcs);
+                        }
+                        break;
+                    case 'game-tick':
+                        if (data.npcs) {
+                            this.updateLearningNPCs(data.npcs);
+                        }
+                        break;
+                }
+            }
+            
+            spawnLearningNPCs(npcs) {
+                npcs.forEach(npcData => {
+                    this.createLearningNPC(npcData);
+                });
+                console.log(`🤖 Spawned ${npcs.length} learning NPCs in 3D world`);
+            }
+            
+            createLearningNPC(npcData) {
+                // Create 3D NPC based on learning data
+                const geometry = new THREE.ConeGeometry(0.5, 1.5, 8);
+                const color = this.getNPCColor(npcData.id);
+                const material = new THREE.MeshLambertMaterial({ 
+                    color: color,
+                    emissive: color,
+                    emissiveIntensity: 0.3
+                });
+                
+                const npc = new THREE.Mesh(geometry, material);
+                
+                // Position based on learning or random if no position data
+                const pos = npcData.position || {
+                    x: (Math.random() - 0.5) * 30,
+                    y: 2,
+                    z: (Math.random() - 0.5) * 30
+                };
+                
+                npc.position.set(pos.x, pos.y, pos.z);
+                npc.castShadow = true;
+                npc.userData = {
+                    type: 'learning-npc',
+                    npcId: npcData.id,
+                    data: npcData,
+                    targetPosition: { ...pos },
+                    trail: []
+                };
+                
+                // Add learning indicator
+                const indicatorGeometry = new THREE.SphereGeometry(0.2, 8, 6);
+                const indicatorMaterial = new THREE.MeshBasicMaterial({
+                    color: 0x00ffff,
+                    transparent: true,
+                    opacity: 0.8
+                });
+                const indicator = new THREE.Mesh(indicatorGeometry, indicatorMaterial);
+                indicator.position.set(0, 2, 0);
+                indicator.userData = { type: 'learning-indicator' };
+                npc.add(indicator);
+                
+                this.scene.add(npc);
+                this.learningNPCs.set(npcData.id, npc);
+            }
+            
+            updateLearningNPCs(npcs) {
+                npcs.forEach(npcData => {
+                    const npc = this.learningNPCs.get(npcData.id);
+                    if (!npc) {
+                        this.createLearningNPC(npcData);
+                        return;
+                    }
+                    
+                    // Update NPC based on learning data
+                    const learningScore = npcData.learningScore || 0;
+                    
+                    // Update position with learning-influenced movement
+                    if (npcData.position) {
+                        npc.userData.targetPosition = npcData.position;
+                    }
+                    
+                    // Smooth movement towards target
+                    npc.position.lerp(
+                        new THREE.Vector3(
+                            npc.userData.targetPosition.x,
+                            npc.userData.targetPosition.y || 2,
+                            npc.userData.targetPosition.z
+                        ),
+                        0.02 + (learningScore * 0.08) // Higher learning = faster movement
+                    );
+                    
+                    // Update learning indicator
+                    const indicator = npc.children.find(child => 
+                        child.userData.type === 'learning-indicator'
+                    );
+                    
+                    if (indicator) {
+                        // Scale and animate based on learning
+                        const scale = 0.5 + (learningScore * 1.5);
+                        indicator.scale.setScalar(scale);
+                        indicator.rotation.y += 0.02 + (learningScore * 0.05);
+                        indicator.position.y = 2 + Math.sin(Date.now() * 0.003) * 0.3;
+                        
+                        // Color intensity based on current action
+                        if (npcData.currentAction && npcData.currentAction !== 'idle') {
+                            indicator.material.emissiveIntensity = 0.5;
+                            indicator.material.color.setHex(0xffff00); // Active yellow
+                        } else {
+                            indicator.material.emissiveIntensity = 0.2;
+                            indicator.material.color.setHex(0x00ffff); // Idle cyan
+                        }
+                    }
+                    
+                    // Create trail effect for highly learning NPCs
+                    if (learningScore > 0.5) {
+                        this.createNPCTrail(npc, learningScore);
+                    }
+                    
+                    // Update stored data
+                    npc.userData.data = npcData;
+                });
+            }
+            
+            createNPCTrail(npc, intensity) {
+                // Create particle trail for learning NPCs
+                const trailGeometry = new THREE.SphereGeometry(0.1, 4, 4);
+                const trailMaterial = new THREE.MeshBasicMaterial({
+                    color: this.getNPCColor(npc.userData.npcId),
+                    transparent: true,
+                    opacity: intensity * 0.5
+                });
+                
+                const trailParticle = new THREE.Mesh(trailGeometry, trailMaterial);
+                trailParticle.position.copy(npc.position);
+                trailParticle.userData = { 
+                    type: 'trail',
+                    life: 1.0,
+                    decay: 0.02
+                };
+                
+                this.scene.add(trailParticle);
+                
+                // Clean up old trail particles
+                this.cleanupTrailParticles();
+            }
+            
+            cleanupTrailParticles() {
+                const trailParticles = this.scene.children.filter(child => 
+                    child.userData.type === 'trail'
+                );
+                
+                trailParticles.forEach(particle => {
+                    particle.userData.life -= particle.userData.decay;
+                    particle.material.opacity = particle.userData.life;
+                    
+                    if (particle.userData.life <= 0) {
+                        this.scene.remove(particle);
+                    }
+                });
+            }
+            
+            getNPCColor(npcId) {
+                const colors = {
+                    ralph: 0xff4444,
+                    alice: 0x44ff44,
+                    bob: 0x4444ff,
+                    charlie: 0xff8800,
+                    diana: 0xff44ff,
+                    eve: 0x44ffff
+                };
+                return colors[npcId] || 0x888888;
+            }
+            
+            updatePlayer() {
+                // Movement with proper physics
+                const speed = 0.1;
+                const direction = new THREE.Vector3();
+                
+                // Get forward/right vectors based on camera rotation
+                const forward = new THREE.Vector3(0, 0, -1);
+                const right = new THREE.Vector3(1, 0, 0);
+                
+                forward.applyQuaternion(this.camera.quaternion);
+                right.applyQuaternion(this.camera.quaternion);
+                
+                // Flatten vectors (no flying)
+                forward.y = 0;
+                right.y = 0;
+                forward.normalize();
+                right.normalize();
+                
+                // Apply input
+                if (this.keys['KeyW']) direction.add(forward);
+                if (this.keys['KeyS']) direction.sub(forward);
+                if (this.keys['KeyA']) direction.sub(right);
+                if (this.keys['KeyD']) direction.add(right);
+                
+                // Normalize diagonal movement
+                if (direction.length() > 0) {
+                    direction.normalize();
+                    this.playerVelocity.x = direction.x * speed;
+                    this.playerVelocity.z = direction.z * speed;
+                } else {
+                    // Apply friction
+                    this.playerVelocity.x *= 0.8;
+                    this.playerVelocity.z *= 0.8;
+                }
+                
+                // Jump
+                if (this.keys['Space'] && Math.abs(this.playerVelocity.y) < 0.01) {
+                    this.playerVelocity.y = 0.2;
+                }
+                
+                // Gravity
+                this.playerVelocity.y -= 0.01;
+                
+                // Apply velocity
+                this.player.position.add(this.playerVelocity);
+                
+                // Ground collision
+                if (this.player.position.y < 1) {
+                    this.player.position.y = 1;
+                    this.playerVelocity.y = 0;
+                }
+                
+                // Keep player in bounds
+                this.player.position.x = Math.max(-20, Math.min(20, this.player.position.x));
+                this.player.position.z = Math.max(-20, Math.min(20, this.player.position.z));
+                
+                // Update camera to follow player
+                this.updateCamera();
+            }
+            
+            updateCamera() {
+                // Third person camera
+                const offset = new THREE.Vector3(0, 3, 8);
+                offset.applyAxisAngle(new THREE.Vector3(0, 1, 0), this.mouse.x);
+                
+                this.camera.position.copy(this.player.position).add(offset);
+                this.camera.lookAt(this.player.position);
+            }
+            
+            spawnCollectible() {
+                // Only spawn if under limit and enough time passed
+                if (this.collectibles.length >= this.maxCollectibles) return;
+                if (Date.now() - this.lastSpawn < this.spawnRate) return;
+                
+                const collectibleGeometry = new THREE.SphereGeometry(0.5, 8, 6);
+                const collectibleMaterial = new THREE.MeshLambertMaterial({ 
+                    color: 0xffd700,
+                    emissive: 0x221100
+                });
+                const collectible = new THREE.Mesh(collectibleGeometry, collectibleMaterial);
+                
+                // Spawn near player but not too close
+                const angle = Math.random() * Math.PI * 2;
+                const distance = 5 + Math.random() * 10;
+                collectible.position.set(
+                    this.player.position.x + Math.cos(angle) * distance,
+                    1,
+                    this.player.position.z + Math.sin(angle) * distance
+                );
+                
+                collectible.castShadow = true;
+                collectible.userData = { type: 'collectible', value: 10, spawnTime: Date.now() };
+                
+                this.scene.add(collectible);
+                this.collectibles.push(collectible);
+                
+                this.lastSpawn = Date.now();
+            }
+            
+            updateCollectibles() {
+                this.collectibles.forEach((collectible, index) => {
+                    // Gentle floating animation (no crazy spinning)
+                    const time = (Date.now() - collectible.userData.spawnTime) * 0.001;
+                    collectible.position.y = 1 + Math.sin(time * 2) * 0.2;
+                    collectible.rotation.y = time * 0.5; // Slow rotation
+                    
+                    // Check collection
+                    const distance = this.player.position.distanceTo(collectible.position);
+                    if (distance < 2) {
+                        this.collectItem(collectible, index);
+                    }
+                    
+                    // Remove old collectibles
+                    if (time > 30) { // 30 seconds lifetime
+                        this.scene.remove(collectible);
+                        this.collectibles.splice(index, 1);
+                    }
+                });
+            }
+            
+            collectItem(collectible, index) {
+                this.scene.remove(collectible);
+                this.collectibles.splice(index, 1);
+                
+                this.gameState.score += collectible.userData.value;
+                
+                // Level up every 100 points
+                const newLevel = Math.floor(this.gameState.score / 100) + 1;
+                if (newLevel > this.gameState.level) {
+                    this.gameState.level = newLevel;
+                    console.log(`🎉 Level up! Now level ${this.gameState.level}`);
+                }
+                
+                this.updateUI();
+            }
+            
+            updatePerformance() {
+                this.performance.frameCount++;
+                const now = performance.now();
+                
+                if (now >= this.performance.lastTime + 1000) {
+                    this.performance.fps = Math.round((this.performance.frameCount * 1000) / (now - this.performance.lastTime));
+                    this.performance.frameCount = 0;
+                    this.performance.lastTime = now;
+                    
+                    // Update performance display
+                    document.getElementById('fps').textContent = this.performance.fps;
+                    document.getElementById('objectCount').textContent = this.scene.children.length;
+                    document.getElementById('drawCalls').textContent = this.renderer.info.render.calls;
+                    
+                    // Estimate memory usage
+                    const memory = Math.round(this.renderer.info.memory.geometries + this.renderer.info.memory.textures);
+                    document.getElementById('memory').textContent = memory;
+                }
+            }
+            
+            updateUI() {
+                document.getElementById('score').textContent = this.gameState.score;
+                document.getElementById('level').textContent = this.gameState.level;
+                document.getElementById('health').textContent = this.gameState.health;
+            }
+            
+            animate() {
+                requestAnimationFrame(() => this.animate());
+                
+                if (!this.gameState.paused) {
+                    this.updatePlayer();
+                    this.updateCollectibles();
+                    this.spawnCollectible();
+                    this.cleanupTrailParticles(); // Clean up NPC trails
+                }
+                
+                this.updatePerformance();
+                this.renderer.render(this.scene, this.camera);
+            }
+        }
+        
+        // Initialize game when page loads
+        let game;
+        window.addEventListener('load', () => {
+            game = new OptimizedGameEngine();
+            game.init();
+            
+            console.log('🎮 Actually Working 3D Game loaded');
+            console.log('✅ Optimized for performance');
+            console.log('🎯 Click to capture mouse, WASD to move');
+        });
+        
+        // Pause/unpause with ESC
+        document.addEventListener('keydown', (e) => {
+            if (e.code === 'Escape') {
+                if (game) {
+                    game.gameState.paused = !game.gameState.paused;
+                    console.log(game.gameState.paused ? '⏸️ Paused' : '▶️ Resumed');
+                }
+            }
+        });
+    </script>
+</body>
+</html>

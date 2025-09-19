@@ -1,0 +1,746 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Real-Time Ticker Tape Trading Floor</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Courier New', monospace;
+            background: #000;
+            color: #0f0;
+            overflow: hidden;
+        }
+
+        /* Header */
+        .header {
+            background: #111;
+            padding: 10px 20px;
+            border-bottom: 2px solid #0f0;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .title {
+            font-size: 24px;
+            text-shadow: 0 0 10px #0f0;
+        }
+
+        .connection-status {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .status-dot {
+            width: 10px;
+            height: 10px;
+            border-radius: 50%;
+            background: #f00;
+            transition: all 0.3s;
+        }
+
+        .status-dot.connected {
+            background: #0f0;
+            box-shadow: 0 0 10px #0f0;
+        }
+
+        /* Ticker Tape Container */
+        .ticker-tape-container {
+            position: relative;
+            height: 80px;
+            background: #000;
+            border-top: 1px solid #333;
+            border-bottom: 1px solid #333;
+            overflow: hidden;
+            margin: 20px 0;
+        }
+
+        .ticker-tape {
+            position: absolute;
+            display: flex;
+            align-items: center;
+            height: 100%;
+            white-space: nowrap;
+            animation: scroll-left 60s linear infinite;
+        }
+
+        @keyframes scroll-left {
+            0% { transform: translateX(100%); }
+            100% { transform: translateX(-100%); }
+        }
+
+        .ticker-tape.paused {
+            animation-play-state: paused;
+        }
+
+        /* Price Items */
+        .price-item {
+            display: inline-flex;
+            align-items: center;
+            margin: 0 30px;
+            padding: 10px 20px;
+            border: 2px solid;
+            border-radius: 5px;
+            background: rgba(0, 0, 0, 0.8);
+            position: relative;
+            transition: all 0.3s;
+        }
+
+        .price-item:hover {
+            transform: scale(1.05);
+            z-index: 10;
+        }
+
+        /* Quality-based styling */
+        .price-item.realtime {
+            border-color: gold;
+            box-shadow: 0 0 20px rgba(255, 215, 0, 0.5);
+        }
+
+        .price-item.cached {
+            border-color: silver;
+            box-shadow: 0 0 10px rgba(192, 192, 192, 0.3);
+        }
+
+        .price-item.demo {
+            border-color: orange;
+            border-style: dashed;
+            opacity: 0.8;
+        }
+
+        .price-item.error {
+            border-color: red;
+            opacity: 0.6;
+        }
+
+        /* Symbol and price */
+        .symbol {
+            font-size: 20px;
+            font-weight: bold;
+            margin-right: 15px;
+            color: #fff;
+        }
+
+        .price {
+            font-size: 24px;
+            font-weight: bold;
+        }
+
+        .price.positive { color: #0f0; }
+        .price.negative { color: #f00; }
+        .price.neutral { color: #fff; }
+
+        /* Change indicator */
+        .change {
+            font-size: 16px;
+            margin-left: 10px;
+            display: flex;
+            align-items: center;
+        }
+
+        .change.positive { color: #0f0; }
+        .change.negative { color: #f00; }
+
+        .arrow {
+            margin-right: 5px;
+            font-size: 18px;
+        }
+
+        /* Sparkline */
+        .sparkline {
+            width: 60px;
+            height: 30px;
+            margin-left: 15px;
+        }
+
+        /* Quality badge */
+        .quality-badge {
+            position: absolute;
+            top: -10px;
+            right: -10px;
+            background: rgba(0, 0, 0, 0.9);
+            padding: 2px 8px;
+            border-radius: 10px;
+            font-size: 10px;
+            text-transform: uppercase;
+            border: 1px solid;
+        }
+
+        .quality-badge.realtime {
+            border-color: gold;
+            color: gold;
+        }
+
+        .quality-badge.cached {
+            border-color: silver;
+            color: silver;
+        }
+
+        .quality-badge.demo {
+            border-color: orange;
+            color: orange;
+        }
+
+        /* Main content grid */
+        .content-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 20px;
+            padding: 20px;
+            height: calc(100vh - 200px);
+        }
+
+        /* Order book */
+        .order-book {
+            background: #111;
+            border: 1px solid #333;
+            border-radius: 10px;
+            padding: 20px;
+            overflow: auto;
+        }
+
+        .order-book h2 {
+            margin-bottom: 15px;
+            color: #0f0;
+            text-align: center;
+        }
+
+        .order-row {
+            display: grid;
+            grid-template-columns: 1fr 1fr 1fr;
+            padding: 5px 0;
+            border-bottom: 1px solid #222;
+        }
+
+        .order-row.header {
+            font-weight: bold;
+            color: #888;
+            border-bottom: 2px solid #333;
+        }
+
+        .bid { color: #0f0; }
+        .ask { color: #f00; }
+
+        /* Activity feed */
+        .activity-feed {
+            background: #111;
+            border: 1px solid #333;
+            border-radius: 10px;
+            padding: 20px;
+            overflow: auto;
+        }
+
+        .activity-feed h2 {
+            margin-bottom: 15px;
+            color: #0f0;
+            text-align: center;
+        }
+
+        .activity-item {
+            padding: 10px;
+            margin-bottom: 10px;
+            background: rgba(0, 255, 0, 0.1);
+            border-left: 3px solid #0f0;
+            border-radius: 5px;
+            animation: fadeIn 0.5s;
+        }
+
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateX(-20px); }
+            to { opacity: 1; transform: translateX(0); }
+        }
+
+        .activity-time {
+            font-size: 12px;
+            color: #888;
+        }
+
+        /* Controls */
+        .controls {
+            position: fixed;
+            bottom: 20px;
+            right: 20px;
+            display: flex;
+            gap: 10px;
+        }
+
+        .btn {
+            background: #111;
+            color: #0f0;
+            border: 1px solid #0f0;
+            padding: 10px 20px;
+            border-radius: 5px;
+            cursor: pointer;
+            transition: all 0.3s;
+        }
+
+        .btn:hover {
+            background: #0f0;
+            color: #000;
+            box-shadow: 0 0 10px #0f0;
+        }
+
+        /* Tier indicator */
+        .tier-indicator {
+            position: absolute;
+            top: 10px;
+            right: 20px;
+            padding: 5px 15px;
+            border-radius: 20px;
+            font-size: 14px;
+            text-transform: uppercase;
+        }
+
+        .tier-indicator.premium {
+            background: gold;
+            color: #000;
+        }
+
+        .tier-indicator.paid {
+            background: silver;
+            color: #000;
+        }
+
+        .tier-indicator.free {
+            background: #333;
+            color: #fff;
+        }
+
+        /* Game narrative */
+        .game-narrative {
+            position: fixed;
+            bottom: 0;
+            left: 0;
+            right: 0;
+            background: rgba(0, 0, 0, 0.9);
+            border-top: 1px solid #333;
+            padding: 10px 20px;
+            font-style: italic;
+            color: #ff0;
+            text-align: center;
+            min-height: 40px;
+        }
+
+        /* Loading */
+        .loading {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            height: 100%;
+            font-size: 24px;
+            color: #0f0;
+        }
+
+        .loading::after {
+            content: '...';
+            animation: dots 1.5s infinite;
+        }
+
+        @keyframes dots {
+            0%, 20% { content: '.'; }
+            40% { content: '..'; }
+            60%, 100% { content: '...'; }
+        }
+    </style>
+</head>
+<body>
+    <div class="header">
+        <h1 class="title">📊 REAL-TIME TICKER TAPE TRADING FLOOR 📊</h1>
+        <div class="connection-status">
+            <span id="connectionText">Disconnected</span>
+            <div class="status-dot" id="statusDot"></div>
+        </div>
+        <div class="tier-indicator free" id="tierIndicator">FREE TIER</div>
+    </div>
+
+    <div class="ticker-tape-container">
+        <div class="ticker-tape" id="tickerTape">
+            <div class="loading">Loading real-time data</div>
+        </div>
+    </div>
+
+    <div class="content-grid">
+        <div class="order-book">
+            <h2>🏛️ Grand Exchange Order Book</h2>
+            <div id="orderBook">
+                <div class="order-row header">
+                    <div>Symbol</div>
+                    <div>Price</div>
+                    <div>Volume</div>
+                </div>
+            </div>
+        </div>
+
+        <div class="activity-feed">
+            <h2>📜 Live Activity Feed</h2>
+            <div id="activityFeed"></div>
+        </div>
+    </div>
+
+    <div class="controls">
+        <button class="btn" onclick="toggleTicker()">⏸️ Pause</button>
+        <button class="btn" onclick="changeSpeed()">⚡ Speed</button>
+        <button class="btn" onclick="addSymbol()">➕ Add</button>
+    </div>
+
+    <div class="game-narrative" id="gameNarrative">
+        Welcome to the Grand Exchange Trading Floor...
+    </div>
+
+    <script>
+        class TickerTapeDisplay {
+            constructor() {
+                this.ws = null;
+                this.connectionId = null;
+                this.userId = 'user_' + Math.random().toString(36).substr(2, 9);
+                this.tier = 'free';
+                this.symbols = ['btc', 'eth', 'sol', 'bnb', 'mlb:nyy'];
+                this.priceData = new Map();
+                this.isPaused = false;
+                this.speed = 60; // seconds for full scroll
+                
+                this.init();
+            }
+            
+            init() {
+                this.connectWebSocket();
+                this.setupEventListeners();
+            }
+            
+            connectWebSocket() {
+                const wsUrl = `ws://localhost:${window.location.port || 3335}`;
+                
+                try {
+                    this.ws = new WebSocket(wsUrl);
+                    
+                    this.ws.onopen = () => {
+                        console.log('Connected to ticker tape');
+                        this.updateConnectionStatus(true);
+                        
+                        // Authenticate
+                        this.ws.send(JSON.stringify({
+                            type: 'authenticate',
+                            userId: this.userId
+                        }));
+                    };
+                    
+                    this.ws.onmessage = (event) => {
+                        const data = JSON.parse(event.data);
+                        this.handleMessage(data);
+                    };
+                    
+                    this.ws.onclose = () => {
+                        console.log('Disconnected from ticker tape');
+                        this.updateConnectionStatus(false);
+                        // Reconnect after 3 seconds
+                        setTimeout(() => this.connectWebSocket(), 3000);
+                    };
+                    
+                    this.ws.onerror = (error) => {
+                        console.error('WebSocket error:', error);
+                        this.updateConnectionStatus(false);
+                    };
+                } catch (error) {
+                    console.error('Failed to connect:', error);
+                    this.updateConnectionStatus(false);
+                }
+            }
+            
+            handleMessage(data) {
+                switch (data.type) {
+                    case 'welcome':
+                        this.connectionId = data.connectionId;
+                        break;
+                        
+                    case 'authenticated':
+                        this.tier = data.tier;
+                        this.updateTierDisplay(data.tier);
+                        
+                        // Subscribe to symbols
+                        this.ws.send(JSON.stringify({
+                            type: 'subscribe',
+                            symbols: this.symbols
+                        }));
+                        
+                        this.addActivity(`Connected as ${data.tier} tier user`);
+                        break;
+                        
+                    case 'price_update':
+                        this.handlePriceUpdates(data.updates);
+                        break;
+                }
+            }
+            
+            handlePriceUpdates(updates) {
+                for (const update of updates) {
+                    this.priceData.set(update.symbol, update);
+                    
+                    // Update order book
+                    this.updateOrderBook(update);
+                    
+                    // Generate narrative
+                    if (Math.abs(update.priceChange) > 2) {
+                        this.generateNarrative(update);
+                    }
+                }
+                
+                // Rebuild ticker tape
+                this.buildTickerTape();
+            }
+            
+            buildTickerTape() {
+                const tickerTape = document.getElementById('tickerTape');
+                tickerTape.innerHTML = '';
+                
+                // Create two sets of items for seamless scrolling
+                for (let i = 0; i < 2; i++) {
+                    for (const [symbol, data] of this.priceData) {
+                        const item = this.createPriceItem(symbol, data);
+                        tickerTape.appendChild(item);
+                    }
+                }
+                
+                // Update animation duration based on content
+                tickerTape.style.animationDuration = `${this.speed}s`;
+            }
+            
+            createPriceItem(symbol, data) {
+                const item = document.createElement('div');
+                item.className = `price-item ${data.quality || 'demo'}`;
+                
+                if (data.error) {
+                    item.classList.add('error');
+                    item.innerHTML = `
+                        <span class="symbol">${symbol.toUpperCase()}</span>
+                        <span class="price neutral">ERROR</span>
+                    `;
+                    return item;
+                }
+                
+                const changeClass = data.change24h > 0 ? 'positive' : 
+                                  data.change24h < 0 ? 'negative' : 'neutral';
+                const arrow = data.change24h > 0 ? '▲' : 
+                             data.change24h < 0 ? '▼' : '—';
+                
+                item.innerHTML = `
+                    <span class="symbol">${symbol.toUpperCase()}</span>
+                    <span class="price ${changeClass}">
+                        ${this.formatPrice(data.price)}
+                    </span>
+                    <span class="change ${changeClass}">
+                        <span class="arrow">${arrow}</span>
+                        ${Math.abs(data.change24h || 0).toFixed(2)}%
+                    </span>
+                    <div class="quality-badge ${data.quality}">${data.quality}</div>
+                `;
+                
+                return item;
+            }
+            
+            formatPrice(price) {
+                if (!price) return '—';
+                
+                if (price >= 1000) {
+                    return '$' + price.toLocaleString('en-US', { 
+                        minimumFractionDigits: 0,
+                        maximumFractionDigits: 0 
+                    });
+                } else if (price >= 1) {
+                    return '$' + price.toFixed(2);
+                } else {
+                    return '$' + price.toFixed(4);
+                }
+            }
+            
+            updateOrderBook(data) {
+                const orderBook = document.getElementById('orderBook');
+                let row = document.getElementById(`order-${data.symbol}`);
+                
+                if (!row) {
+                    row = document.createElement('div');
+                    row.id = `order-${data.symbol}`;
+                    row.className = 'order-row';
+                    orderBook.appendChild(row);
+                }
+                
+                const changeClass = data.change24h > 0 ? 'bid' : 
+                                  data.change24h < 0 ? 'ask' : '';
+                
+                row.innerHTML = `
+                    <div>${data.symbol.toUpperCase()}</div>
+                    <div class="${changeClass}">${this.formatPrice(data.price)}</div>
+                    <div>${this.formatVolume(data.volume24h)}</div>
+                `;
+            }
+            
+            formatVolume(volume) {
+                if (!volume) return '—';
+                
+                if (volume >= 1e9) {
+                    return '$' + (volume / 1e9).toFixed(2) + 'B';
+                } else if (volume >= 1e6) {
+                    return '$' + (volume / 1e6).toFixed(2) + 'M';
+                } else if (volume >= 1e3) {
+                    return '$' + (volume / 1e3).toFixed(2) + 'K';
+                }
+                return '$' + volume.toFixed(0);
+            }
+            
+            generateNarrative(data) {
+                const narratives = {
+                    bigRise: [
+                        `🚀 ${data.symbol.toUpperCase()} rockets up ${data.change24h.toFixed(1)}%! Bulls charge the Grand Exchange!`,
+                        `💎 Diamond hands prevail as ${data.symbol.toUpperCase()} soars to ${this.formatPrice(data.price)}!`,
+                        `📈 The ${data.symbol.toUpperCase()} guild celebrates massive gains!`
+                    ],
+                    bigDrop: [
+                        `🔻 ${data.symbol.toUpperCase()} plummets ${Math.abs(data.change24h).toFixed(1)}%! Bears attack the market!`,
+                        `💔 Panic at the Grand Exchange as ${data.symbol.toUpperCase()} crashes!`,
+                        `⚔️ The ${data.symbol.toUpperCase()} kingdom faces dark times...`
+                    ],
+                    moderate: [
+                        `${data.symbol.toUpperCase()} trades at ${this.formatPrice(data.price)}`,
+                        `Steady trading for ${data.symbol.toUpperCase()} today`
+                    ]
+                };
+                
+                let narrative;
+                if (data.change24h > 5) {
+                    narrative = this.randomFrom(narratives.bigRise);
+                } else if (data.change24h < -5) {
+                    narrative = this.randomFrom(narratives.bigDrop);
+                } else {
+                    narrative = this.randomFrom(narratives.moderate);
+                }
+                
+                this.showNarrative(narrative);
+                this.addActivity(narrative);
+            }
+            
+            randomFrom(array) {
+                return array[Math.floor(Math.random() * array.length)];
+            }
+            
+            showNarrative(text) {
+                const narrative = document.getElementById('gameNarrative');
+                narrative.textContent = text;
+                narrative.style.animation = 'none';
+                setTimeout(() => {
+                    narrative.style.animation = 'fadeIn 0.5s';
+                }, 10);
+            }
+            
+            addActivity(text) {
+                const feed = document.getElementById('activityFeed');
+                const item = document.createElement('div');
+                item.className = 'activity-item';
+                item.innerHTML = `
+                    <div class="activity-time">${new Date().toLocaleTimeString()}</div>
+                    <div>${text}</div>
+                `;
+                
+                feed.insertBefore(item, feed.firstChild);
+                
+                // Keep only recent items
+                while (feed.children.length > 10) {
+                    feed.removeChild(feed.lastChild);
+                }
+            }
+            
+            updateConnectionStatus(connected) {
+                const dot = document.getElementById('statusDot');
+                const text = document.getElementById('connectionText');
+                
+                if (connected) {
+                    dot.classList.add('connected');
+                    text.textContent = 'Connected';
+                } else {
+                    dot.classList.remove('connected');
+                    text.textContent = 'Disconnected';
+                }
+            }
+            
+            updateTierDisplay(tier) {
+                const indicator = document.getElementById('tierIndicator');
+                indicator.className = `tier-indicator ${tier}`;
+                indicator.textContent = `${tier.toUpperCase()} TIER`;
+            }
+            
+            setupEventListeners() {
+                // Pause on hover
+                const tickerTape = document.getElementById('tickerTape');
+                tickerTape.addEventListener('mouseenter', () => {
+                    if (!this.isPaused) {
+                        tickerTape.classList.add('paused');
+                    }
+                });
+                
+                tickerTape.addEventListener('mouseleave', () => {
+                    if (!this.isPaused) {
+                        tickerTape.classList.remove('paused');
+                    }
+                });
+            }
+        }
+        
+        // Global functions for controls
+        let ticker;
+        
+        function toggleTicker() {
+            const tickerTape = document.getElementById('tickerTape');
+            const btn = event.target;
+            
+            if (ticker.isPaused) {
+                tickerTape.classList.remove('paused');
+                btn.textContent = '⏸️ Pause';
+                ticker.isPaused = false;
+            } else {
+                tickerTape.classList.add('paused');
+                btn.textContent = '▶️ Play';
+                ticker.isPaused = true;
+            }
+        }
+        
+        function changeSpeed() {
+            const speeds = [30, 60, 90, 120];
+            const currentIndex = speeds.indexOf(ticker.speed);
+            ticker.speed = speeds[(currentIndex + 1) % speeds.length];
+            
+            const tickerTape = document.getElementById('tickerTape');
+            tickerTape.style.animationDuration = `${ticker.speed}s`;
+            
+            ticker.addActivity(`Speed changed to ${ticker.speed}s`);
+        }
+        
+        function addSymbol() {
+            const symbol = prompt('Enter symbol (e.g., doge, ada, nfl:patriots):');
+            if (symbol && !ticker.symbols.includes(symbol.toLowerCase())) {
+                ticker.symbols.push(symbol.toLowerCase());
+                
+                // Subscribe to new symbol
+                if (ticker.ws && ticker.ws.readyState === WebSocket.OPEN) {
+                    ticker.ws.send(JSON.stringify({
+                        type: 'subscribe',
+                        symbols: [symbol.toLowerCase()]
+                    }));
+                }
+                
+                ticker.addActivity(`Added ${symbol.toUpperCase()} to ticker`);
+            }
+        }
+        
+        // Initialize ticker on load
+        document.addEventListener('DOMContentLoaded', () => {
+            ticker = new TickerTapeDisplay();
+        });
+    </script>
+</body>
+</html>

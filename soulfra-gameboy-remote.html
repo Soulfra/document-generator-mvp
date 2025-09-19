@@ -1,0 +1,783 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Soulfra Remote Control - Gameboy Interface</title>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Orbitron:wght@400;700;900&family=VT323:wght@400&display=swap');
+        
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            background: linear-gradient(145deg, #1a1a2e, #16213e, #0f3460);
+            font-family: 'VT323', monospace;
+            color: #00ff41;
+            overflow: hidden;
+            user-select: none;
+        }
+        
+        .gameboy-container {
+            width: 100vw;
+            height: 100vh;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            background: radial-gradient(circle at center, #0a0a23 0%, #000 100%);
+        }
+        
+        .gameboy-frame {
+            width: 400px;
+            height: 600px;
+            background: linear-gradient(145deg, #8b8b8b, #666666);
+            border-radius: 20px;
+            box-shadow: 
+                inset -5px -5px 15px rgba(0,0,0,0.3),
+                inset 5px 5px 15px rgba(255,255,255,0.1),
+                0 20px 40px rgba(0,0,0,0.5);
+            position: relative;
+            border: 3px solid #555;
+        }
+        
+        .gameboy-screen {
+            width: 320px;
+            height: 240px;
+            background: #0a0a0a;
+            margin: 40px auto 20px;
+            border-radius: 10px;
+            border: 8px solid #2a2a2a;
+            position: relative;
+            overflow: hidden;
+            box-shadow: inset 0 0 20px rgba(0,0,0,0.8);
+        }
+        
+        .screen-content {
+            width: 100%;
+            height: 100%;
+            background: linear-gradient(145deg, #001a00, #003300);
+            color: #00ff41;
+            padding: 10px;
+            font-size: 12px;
+            line-height: 1.2;
+            overflow-y: auto;
+            position: relative;
+        }
+        
+        .screen-header {
+            text-align: center;
+            font-family: 'Orbitron', monospace;
+            font-weight: 700;
+            color: #00ffff;
+            text-shadow: 0 0 10px #00ffff;
+            margin-bottom: 10px;
+            animation: pulse 2s infinite;
+        }
+        
+        @keyframes pulse {
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0.7; }
+        }
+        
+        .control-section {
+            margin-bottom: 15px;
+            border: 1px solid #00ff41;
+            border-radius: 5px;
+            padding: 8px;
+            background: rgba(0, 255, 65, 0.1);
+        }
+        
+        .control-title {
+            color: #ffff00;
+            font-weight: bold;
+            margin-bottom: 5px;
+            text-decoration: underline;
+        }
+        
+        .status-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 5px;
+            font-size: 10px;
+        }
+        
+        .status-item {
+            display: flex;
+            justify-content: space-between;
+            padding: 2px;
+        }
+        
+        .status-ok { color: #00ff41; }
+        .status-warning { color: #ffff00; }
+        .status-error { color: #ff4141; }
+        
+        .gameboy-controls {
+            padding: 20px;
+        }
+        
+        .d-pad-container {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 30px;
+        }
+        
+        .d-pad {
+            width: 80px;
+            height: 80px;
+            position: relative;
+            background: #333;
+            border-radius: 50%;
+            box-shadow: 
+                inset -3px -3px 8px rgba(0,0,0,0.5),
+                inset 3px 3px 8px rgba(255,255,255,0.1);
+        }
+        
+        .d-pad-cross {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+        }
+        
+        .d-pad-vertical, .d-pad-horizontal {
+            background: #222;
+            position: absolute;
+            border-radius: 3px;
+            cursor: pointer;
+            transition: all 0.1s;
+        }
+        
+        .d-pad-vertical {
+            width: 20px;
+            height: 60px;
+            left: 50%;
+            top: 50%;
+            transform: translate(-50%, -50%);
+        }
+        
+        .d-pad-horizontal {
+            width: 60px;
+            height: 20px;
+            left: 50%;
+            top: 50%;
+            transform: translate(-50%, -50%);
+        }
+        
+        .d-pad-vertical:active, .d-pad-horizontal:active {
+            background: #00ff41;
+            box-shadow: 0 0 10px #00ff41;
+        }
+        
+        .action-buttons {
+            display: flex;
+            gap: 15px;
+        }
+        
+        .btn {
+            width: 40px;
+            height: 40px;
+            border-radius: 50%;
+            border: none;
+            background: linear-gradient(145deg, #444, #222);
+            color: #fff;
+            font-family: 'Orbitron', monospace;
+            font-weight: 700;
+            cursor: pointer;
+            transition: all 0.1s;
+            box-shadow: 
+                -2px -2px 5px rgba(255,255,255,0.1),
+                2px 2px 5px rgba(0,0,0,0.5);
+        }
+        
+        .btn:active {
+            background: linear-gradient(145deg, #222, #444);
+            box-shadow: 
+                inset -2px -2px 5px rgba(255,255,255,0.1),
+                inset 2px 2px 5px rgba(0,0,0,0.5);
+            transform: scale(0.95);
+        }
+        
+        .btn-a { 
+            background: linear-gradient(145deg, #ff4141, #cc3333);
+            color: white;
+        }
+        
+        .btn-b { 
+            background: linear-gradient(145deg, #4169ff, #3354cc);
+            color: white;
+        }
+        
+        .copilot-input {
+            position: absolute;
+            bottom: 20px;
+            left: 20px;
+            right: 20px;
+            height: 80px;
+            background: rgba(0, 0, 0, 0.8);
+            border: 2px solid #00ff41;
+            border-radius: 10px;
+            padding: 10px;
+            display: flex;
+            flex-direction: column;
+        }
+        
+        .copilot-label {
+            color: #00ffff;
+            font-size: 10px;
+            margin-bottom: 5px;
+            font-family: 'Orbitron', monospace;
+        }
+        
+        .copilot-textarea {
+            flex: 1;
+            background: transparent;
+            border: none;
+            color: #00ff41;
+            font-family: 'VT323', monospace;
+            font-size: 12px;
+            resize: none;
+            outline: none;
+        }
+        
+        .copilot-textarea::placeholder {
+            color: #006600;
+        }
+        
+        .etch-sketch-overlay {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0, 20, 0, 0.9);
+            display: none;
+            z-index: 1000;
+        }
+        
+        .etch-sketch-container {
+            width: 100%;
+            height: 100%;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            padding: 20px;
+        }
+        
+        .etch-sketch-screen {
+            width: 300px;
+            height: 200px;
+            background: #1a1a1a;
+            border: 5px solid #666;
+            border-radius: 10px;
+            position: relative;
+            cursor: crosshair;
+            overflow: hidden;
+        }
+        
+        .etch-sketch-canvas {
+            width: 100%;
+            height: 100%;
+            background: #0a0a0a;
+        }
+        
+        .etch-controls {
+            margin-top: 20px;
+            display: flex;
+            gap: 10px;
+        }
+        
+        .etch-btn {
+            padding: 10px 20px;
+            background: linear-gradient(145deg, #333, #111);
+            color: #00ff41;
+            border: 2px solid #00ff41;
+            border-radius: 5px;
+            font-family: 'VT323', monospace;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+        
+        .etch-btn:hover {
+            background: linear-gradient(145deg, #00ff41, #00cc33);
+            color: #000;
+        }
+        
+        .persona-indicator {
+            position: absolute;
+            top: 10px;
+            right: 10px;
+            font-family: 'Orbitron', monospace;
+            font-size: 10px;
+            color: #ffff00;
+            text-shadow: 0 0 5px #ffff00;
+        }
+        
+        .command-history {
+            font-size: 9px;
+            opacity: 0.7;
+            max-height: 60px;
+            overflow-y: auto;
+        }
+        
+        .blinking-cursor {
+            animation: blink 1s infinite;
+        }
+        
+        @keyframes blink {
+            0%, 50% { opacity: 1; }
+            51%, 100% { opacity: 0; }
+        }
+    </style>
+</head>
+<body>
+    <div class="gameboy-container">
+        <div class="gameboy-frame">
+            <div class="gameboy-screen">
+                <div class="screen-content">
+                    <div class="screen-header">SOULFRA.REMOTE v1.0</div>
+                    <div class="persona-indicator" id="currentPersona">COPILOT</div>
+                    
+                    <div class="control-section">
+                        <div class="control-title">SYSTEM STATUS</div>
+                        <div class="status-grid">
+                            <div class="status-item">
+                                <span>RAG-AI:</span>
+                                <span class="status-ok" id="ragStatus">ONLINE</span>
+                            </div>
+                            <div class="status-item">
+                                <span>SDK:</span>
+                                <span class="status-ok" id="sdkStatus">READY</span>
+                            </div>
+                            <div class="status-item">
+                                <span>DOCS:</span>
+                                <span class="status-ok" id="docsStatus">LIVE</span>
+                            </div>
+                            <div class="status-item">
+                                <span>DB:</span>
+                                <span class="status-warning" id="dbStatus">SYNC</span>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div class="control-section">
+                        <div class="control-title">ACTIVE SERVICES</div>
+                        <div style="font-size: 9px;">
+                            ◆ localhost:3003 - RAG Intelligence<br>
+                            ◆ localhost:3006 - Universal SDK<br>
+                            ◆ localhost:4000 - Documentation<br>
+                            ◆ localhost:8080 - Gaming Bridge<br>
+                            ◆ localhost:9200 - Commerce Hub
+                        </div>
+                    </div>
+                    
+                    <div class="control-section">
+                        <div class="control-title">COMMAND LOG</div>
+                        <div class="command-history" id="commandHistory">
+                            > init soulfra_remote_v1.0<br>
+                            > persona switch copilot<br>
+                            > connect all_services<br>
+                            > status check complete<br>
+                            > awaiting_input<span class="blinking-cursor">_</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            
+            <div class="gameboy-controls">
+                <div class="d-pad-container">
+                    <div class="d-pad">
+                        <div class="d-pad-cross">
+                            <div class="d-pad-vertical" onclick="navigate('up')"></div>
+                            <div class="d-pad-horizontal" onclick="navigate('horizontal')"></div>
+                        </div>
+                    </div>
+                    
+                    <div class="action-buttons">
+                        <button class="btn btn-b" onclick="actionB()">B</button>
+                        <button class="btn btn-a" onclick="actionA()">A</button>
+                    </div>
+                </div>
+                
+                <div class="copilot-input">
+                    <div class="copilot-label">COPILOT COMMAND INTERFACE</div>
+                    <textarea 
+                        class="copilot-textarea" 
+                        id="copilotInput"
+                        placeholder="Enter command or query... (Press ENTER to execute)"
+                        onkeypress="handleCopilotInput(event)"></textarea>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <!-- Etch-a-Sketch Overlay -->
+    <div class="etch-sketch-overlay" id="etchOverlay">
+        <div class="etch-sketch-container">
+            <h2 style="color: #00ff41; font-family: 'Orbitron', monospace; margin-bottom: 20px;">
+                ETCH-A-SKETCH INTERFACE
+            </h2>
+            <div class="etch-sketch-screen">
+                <canvas class="etch-sketch-canvas" id="etchCanvas" width="290" height="190"></canvas>
+            </div>
+            <div class="etch-controls">
+                <button class="etch-btn" onclick="clearCanvas()">CLEAR</button>
+                <button class="etch-btn" onclick="saveDrawing()">SAVE</button>
+                <button class="etch-btn" onclick="closeEtchSketch()">EXIT</button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // Gameboy Remote Control System
+        class SoulFraRemote {
+            constructor() {
+                this.currentPersona = 'COPILOT';
+                this.personas = ['COPILOT', 'ROUGHSPARKS', 'SATOSHI'];
+                this.personaIndex = 0;
+                this.services = {
+                    rag: { status: 'CHECKING', port: 3003 },
+                    sdk: { status: 'CHECKING', port: 3006 },
+                    docs: { status: 'CHECKING', port: 4000 },
+                    gaming: { status: 'CHECKING', port: 8080 },
+                    commerce: { status: 'CHECKING', port: 9200 }
+                };
+                this.websocket = null;
+                this.isConnected = false;
+                this.initializeWebSocket();
+                this.initializeEtchSketch();
+                this.updateServiceStatus();
+            }
+            
+            initializeWebSocket() {
+                const wsUrl = `ws://localhost:3007`;
+                console.log('🔌 Connecting to Copilot Service:', wsUrl);
+                
+                try {
+                    this.websocket = new WebSocket(wsUrl);
+                    
+                    this.websocket.onopen = () => {
+                        console.log('✅ Connected to Copilot Service');
+                        this.isConnected = true;
+                        this.addToCommandHistory('> copilot service connected');
+                        this.requestHealthCheck();
+                    };
+                    
+                    this.websocket.onmessage = (event) => {
+                        try {
+                            const message = JSON.parse(event.data);
+                            this.handleWebSocketMessage(message);
+                        } catch (error) {
+                            console.error('WebSocket message error:', error);
+                        }
+                    };
+                    
+                    this.websocket.onclose = () => {
+                        console.log('🔌 Disconnected from Copilot Service');
+                        this.isConnected = false;
+                        this.addToCommandHistory('> copilot service disconnected');
+                        
+                        // Attempt to reconnect after 5 seconds
+                        setTimeout(() => {
+                            if (!this.isConnected) {
+                                this.initializeWebSocket();
+                            }
+                        }, 5000);
+                    };
+                    
+                    this.websocket.onerror = (error) => {
+                        console.error('WebSocket error:', error);
+                        this.addToCommandHistory('> connection error - retrying...');
+                    };
+                } catch (error) {
+                    console.error('Failed to initialize WebSocket:', error);
+                    this.addToCommandHistory('> failed to connect to copilot service');
+                }
+            }
+            
+            handleWebSocketMessage(message) {
+                const { type, data } = message;
+                
+                switch (type) {
+                    case 'state_sync':
+                        this.currentPersona = data.currentPersona;
+                        this.personaIndex = this.personas.indexOf(this.currentPersona);
+                        document.getElementById('currentPersona').textContent = this.currentPersona;
+                        this.services = data.serviceStatus || this.services;
+                        this.updateServiceStatus();
+                        break;
+                        
+                    case 'command_response':
+                        this.addToCommandHistory(`> ${data.response}`);
+                        break;
+                        
+                    case 'persona_switched':
+                        if (data.success) {
+                            this.currentPersona = data.currentPersona;
+                            this.personaIndex = this.personas.indexOf(this.currentPersona);
+                            document.getElementById('currentPersona').textContent = this.currentPersona;
+                            this.updatePersonaColor();
+                        }
+                        break;
+                        
+                    case 'health_update':
+                    case 'health_status':
+                        this.services = data;
+                        this.updateServiceStatus();
+                        break;
+                        
+                    case 'command_logged':
+                        // Real-time command log updates
+                        break;
+                        
+                    case 'error':
+                        this.addToCommandHistory(`> error: ${data.message}`);
+                        break;
+                }
+            }
+            
+            sendWebSocketMessage(type, payload) {
+                if (this.websocket && this.websocket.readyState === WebSocket.OPEN) {
+                    this.websocket.send(JSON.stringify({ type, payload }));
+                    return true;
+                } else {
+                    this.addToCommandHistory('> copilot service not connected');
+                    return false;
+                }
+            }
+            
+            requestHealthCheck() {
+                this.sendWebSocketMessage('health_check', {});
+            }
+            
+            switchPersona() {
+                this.personaIndex = (this.personaIndex + 1) % this.personas.length;
+                const newPersona = this.personas[this.personaIndex];
+                
+                // Send persona switch command to copilot service
+                if (this.sendWebSocketMessage('switch_persona', { persona: newPersona })) {
+                    this.addToCommandHistory(`> switching to ${newPersona.toLowerCase()}...`);
+                } else {
+                    // Fallback to local switching if service unavailable
+                    this.currentPersona = newPersona;
+                    document.getElementById('currentPersona').textContent = this.currentPersona;
+                    this.updatePersonaColor();
+                    this.addToCommandHistory(`> persona switched to ${this.currentPersona.toLowerCase()} (offline)`);
+                }
+            }
+            
+            updatePersonaColor() {
+                const behaviors = {
+                    'COPILOT': { color: '#00ffff', mode: 'assistant' },
+                    'ROUGHSPARKS': { color: '#ff4141', mode: 'aggressive' },
+                    'SATOSHI': { color: '#ffff00', mode: 'wisdom' }
+                };
+                
+                const behavior = behaviors[this.currentPersona];
+                if (behavior) {
+                    document.getElementById('currentPersona').style.color = behavior.color;
+                }
+            }
+            
+            executeCommand(command) {
+                const cmd = command.toLowerCase().trim();
+                
+                // Local commands that don't need AI processing
+                if (cmd.includes('etch') || cmd.includes('draw')) {
+                    this.openEtchSketch();
+                    return;
+                } else if (cmd.includes('persona') || cmd.includes('switch')) {
+                    this.switchPersona();
+                    return;
+                } else if (cmd.includes('status')) {
+                    this.requestHealthCheck();
+                    this.addToCommandHistory(`> checking system status...`);
+                    return;
+                } else if (cmd.includes('connect')) {
+                    this.connectToServices();
+                    return;
+                }
+                
+                // Send command to AI service for processing
+                if (this.sendWebSocketMessage('execute_command', { command: command })) {
+                    this.addToCommandHistory(`> processing with ${this.currentPersona.toLowerCase()}...`);
+                } else {
+                    // Fallback to local processing if service unavailable
+                    this.processAICommandLocal(cmd);
+                }
+            }
+            
+            processAICommandLocal(command) {
+                // Fallback AI processing when service is offline
+                const responses = {
+                    'COPILOT': `Processing: "${command}" via local protocols...`,
+                    'ROUGHSPARKS': `Executing offline mode: "${command}"`,
+                    'SATOSHI': `Analyzing locally: "${command}"`
+                };
+                
+                this.addToCommandHistory(`> ${responses[this.currentPersona]} (offline)`);
+                
+                // Show help for common commands
+                if (command.includes('help')) {
+                    this.showHelp();
+                } else {
+                    setTimeout(() => {
+                        this.addToCommandHistory(`> command processed locally`);
+                    }, 1000);
+                }
+            }
+            
+            addToCommandHistory(text) {
+                const history = document.getElementById('commandHistory');
+                history.innerHTML += '<br>' + text;
+                history.scrollTop = history.scrollHeight;
+            }
+            
+            updateServiceStatus() {
+                Object.keys(this.services).forEach(service => {
+                    const element = document.getElementById(service + 'Status');
+                    if (element) {
+                        const status = this.services[service].status;
+                        element.textContent = status.toUpperCase();
+                        
+                        // Set appropriate status class
+                        if (status === 'online' || status === 'ONLINE') {
+                            element.className = 'status-ok';
+                        } else if (status === 'offline' || status === 'OFFLINE' || status === 'error') {
+                            element.className = 'status-error';
+                        } else {
+                            element.className = 'status-warning';
+                        }
+                    }
+                });
+            }
+            
+            connectToServices() {
+                this.addToCommandHistory('> connecting to document-generator services...');
+                
+                Object.keys(this.services).forEach((service, index) => {
+                    setTimeout(() => {
+                        this.services[service].status = 'ONLINE';
+                        this.addToCommandHistory(`> ${service} connected on port ${this.services[service].port}`);
+                        this.updateServiceStatus();
+                    }, index * 500);
+                });
+            }
+            
+            openEtchSketch() {
+                document.getElementById('etchOverlay').style.display = 'block';
+                this.addToCommandHistory('> etch-a-sketch interface activated');
+            }
+            
+            showHelp() {
+                this.addToCommandHistory('> Available commands:');
+                this.addToCommandHistory('  persona - switch AI persona');
+                this.addToCommandHistory('  etch - open drawing interface');
+                this.addToCommandHistory('  status - check service status');
+                this.addToCommandHistory('  connect - connect to services');
+            }
+            
+            initializeEtchSketch() {
+                const canvas = document.getElementById('etchCanvas');
+                const ctx = canvas.getContext('2d');
+                let drawing = false;
+                let lastX = 0;
+                let lastY = 0;
+                
+                ctx.strokeStyle = '#00ff41';
+                ctx.lineWidth = 2;
+                ctx.lineCap = 'round';
+                
+                canvas.addEventListener('mousedown', (e) => {
+                    drawing = true;
+                    [lastX, lastY] = this.getMousePos(canvas, e);
+                });
+                
+                canvas.addEventListener('mousemove', (e) => {
+                    if (!drawing) return;
+                    const [x, y] = this.getMousePos(canvas, e);
+                    
+                    ctx.beginPath();
+                    ctx.moveTo(lastX, lastY);
+                    ctx.lineTo(x, y);
+                    ctx.stroke();
+                    
+                    [lastX, lastY] = [x, y];
+                });
+                
+                canvas.addEventListener('mouseup', () => drawing = false);
+                canvas.addEventListener('mouseout', () => drawing = false);
+            }
+            
+            getMousePos(canvas, e) {
+                const rect = canvas.getBoundingClientRect();
+                return [
+                    e.clientX - rect.left,
+                    e.clientY - rect.top
+                ];
+            }
+        }
+        
+        // Initialize the remote control system
+        const remote = new SoulFraRemote();
+        
+        // Button handlers
+        function navigate(direction) {
+            console.log(`Navigate: ${direction}`);
+            remote.addToCommandHistory(`> nav ${direction}`);
+        }
+        
+        function actionA() {
+            remote.executeCommand('select');
+        }
+        
+        function actionB() {
+            remote.executeCommand('back');
+        }
+        
+        function handleCopilotInput(event) {
+            if (event.key === 'Enter') {
+                const input = document.getElementById('copilotInput');
+                const command = input.value.trim();
+                if (command) {
+                    remote.addToCommandHistory(`> ${command}`);
+                    remote.executeCommand(command);
+                    input.value = '';
+                }
+                event.preventDefault();
+            }
+        }
+        
+        function clearCanvas() {
+            const canvas = document.getElementById('etchCanvas');
+            const ctx = canvas.getContext('2d');
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+        }
+        
+        function saveDrawing() {
+            const canvas = document.getElementById('etchCanvas');
+            const dataURL = canvas.toDataURL();
+            console.log('Drawing saved:', dataURL);
+            remote.addToCommandHistory('> drawing saved to system');
+        }
+        
+        function closeEtchSketch() {
+            document.getElementById('etchOverlay').style.display = 'none';
+            remote.addToCommandHistory('> etch-a-sketch interface closed');
+        }
+        
+        // Auto-update system status every 5 seconds
+        setInterval(() => {
+            remote.updateServiceStatus();
+        }, 5000);
+        
+        console.log('🎮 Soulfra Remote Control System Initialized');
+        console.log('Available personas:', remote.personas);
+        console.log('Type "help" in the command interface for available commands');
+    </script>
+</body>
+</html>

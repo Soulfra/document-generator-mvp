@@ -1,0 +1,958 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Live System Monitoring Dashboard</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        
+        body {
+            font-family: 'SF Mono', 'Monaco', 'Cascadia Code', monospace;
+            background: linear-gradient(135deg, #0a0a0f 0%, #1a1a2e 50%, #16213e 100%);
+            color: #00ff88;
+            min-height: 100vh;
+            overflow-x: auto;
+        }
+        
+        .dashboard-header {
+            background: rgba(0, 0, 0, 0.9);
+            padding: 15px 30px;
+            border-bottom: 2px solid #00ff88;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            position: sticky;
+            top: 0;
+            z-index: 1000;
+        }
+        
+        .dashboard-title {
+            font-size: 24px;
+            font-weight: bold;
+            text-shadow: 0 0 10px #00ff88;
+        }
+        
+        .system-status {
+            display: flex;
+            gap: 20px;
+            align-items: center;
+        }
+        
+        .status-indicator {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            padding: 8px 15px;
+            background: rgba(0, 255, 136, 0.1);
+            border-radius: 20px;
+            border: 1px solid rgba(0, 255, 136, 0.3);
+        }
+        
+        .status-dot {
+            width: 12px;
+            height: 12px;
+            border-radius: 50%;
+            background: #00ff88;
+            box-shadow: 0 0 10px #00ff88;
+            animation: pulse 2s infinite;
+        }
+        
+        .status-dot.error { background: #ff4444; box-shadow: 0 0 10px #ff4444; }
+        .status-dot.warning { background: #ffaa00; box-shadow: 0 0 10px #ffaa00; }
+        
+        @keyframes pulse {
+            0%, 100% { opacity: 1; transform: scale(1); }
+            50% { opacity: 0.6; transform: scale(1.1); }
+        }
+        
+        .main-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr 1fr;
+            grid-template-rows: auto auto auto;
+            gap: 20px;
+            padding: 20px;
+            min-height: calc(100vh - 80px);
+        }
+        
+        .panel {
+            background: rgba(0, 0, 0, 0.7);
+            border: 1px solid rgba(0, 255, 136, 0.3);
+            border-radius: 12px;
+            padding: 20px;
+            backdrop-filter: blur(10px);
+            overflow: hidden;
+            position: relative;
+        }
+        
+        .panel::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            height: 2px;
+            background: linear-gradient(90deg, #00ff88, #00bbff, #9966ff);
+            opacity: 0.8;
+        }
+        
+        .panel-title {
+            font-size: 18px;
+            font-weight: bold;
+            margin-bottom: 15px;
+            color: #00bbff;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+        
+        .panel-icon {
+            font-size: 20px;
+        }
+        
+        .live-feed {
+            grid-column: 1 / 2;
+            grid-row: 1 / 3;
+        }
+        
+        .cost-tracker {
+            grid-column: 2 / 3;
+            grid-row: 1 / 2;
+        }
+        
+        .performance-metrics {
+            grid-column: 3 / 4;
+            grid-row: 1 / 2;
+        }
+        
+        .network-topology {
+            grid-column: 2 / 4;
+            grid-row: 2 / 3;
+        }
+        
+        .query-inspector {
+            grid-column: 1 / 4;
+            grid-row: 3 / 4;
+        }
+        
+        .feed-container {
+            height: 600px;
+            overflow-y: auto;
+            background: rgba(0, 0, 0, 0.5);
+            border-radius: 8px;
+            padding: 15px;
+            font-size: 12px;
+            line-height: 1.4;
+        }
+        
+        .feed-entry {
+            display: flex;
+            gap: 10px;
+            margin-bottom: 8px;
+            padding: 8px;
+            border-radius: 4px;
+            background: rgba(0, 255, 136, 0.05);
+            border-left: 3px solid transparent;
+            opacity: 0;
+            transform: translateX(-20px);
+            animation: slideIn 0.3s ease forwards;
+        }
+        
+        .feed-entry.character { border-color: #00ff88; }
+        .feed-entry.claude { border-color: #9966ff; }
+        .feed-entry.system { border-color: #00bbff; }
+        .feed-entry.error { border-color: #ff4444; }
+        
+        @keyframes slideIn {
+            to {
+                opacity: 1;
+                transform: translateX(0);
+            }
+        }
+        
+        .timestamp {
+            color: rgba(255, 255, 255, 0.6);
+            font-size: 10px;
+            min-width: 60px;
+        }
+        
+        .feed-type {
+            color: #00bbff;
+            font-weight: bold;
+            min-width: 80px;
+        }
+        
+        .feed-content {
+            flex: 1;
+            word-break: break-word;
+        }
+        
+        .cost-display {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 15px;
+            height: 300px;
+        }
+        
+        .cost-item {
+            background: rgba(0, 255, 136, 0.1);
+            padding: 15px;
+            border-radius: 8px;
+            border: 1px solid rgba(0, 255, 136, 0.2);
+        }
+        
+        .cost-value {
+            font-size: 24px;
+            font-weight: bold;
+            color: #00ff88;
+            margin-bottom: 5px;
+        }
+        
+        .cost-label {
+            font-size: 12px;
+            color: rgba(255, 255, 255, 0.7);
+        }
+        
+        .cost-trend {
+            font-size: 10px;
+            margin-top: 5px;
+        }
+        
+        .cost-trend.up { color: #ff6b6b; }
+        .cost-trend.down { color: #00ff88; }
+        
+        .metrics-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 10px;
+            height: 280px;
+        }
+        
+        .metric {
+            background: rgba(0, 187, 255, 0.1);
+            padding: 12px;
+            border-radius: 6px;
+            text-align: center;
+        }
+        
+        .metric-value {
+            font-size: 20px;
+            font-weight: bold;
+            color: #00bbff;
+        }
+        
+        .metric-label {
+            font-size: 10px;
+            color: rgba(255, 255, 255, 0.6);
+            margin-top: 5px;
+        }
+        
+        .network-visual {
+            height: 400px;
+            position: relative;
+            background: radial-gradient(circle at center, rgba(0, 255, 136, 0.1) 0%, transparent 70%);
+            border-radius: 8px;
+            overflow: hidden;
+        }
+        
+        .network-node {
+            position: absolute;
+            width: 60px;
+            height: 60px;
+            border-radius: 50%;
+            background: linear-gradient(45deg, #00ff88, #00bbff);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 12px;
+            font-weight: bold;
+            color: #000;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            border: 2px solid rgba(255, 255, 255, 0.3);
+        }
+        
+        .network-node:hover {
+            transform: scale(1.1);
+            box-shadow: 0 0 20px rgba(0, 255, 136, 0.8);
+        }
+        
+        .network-node.active {
+            animation: networkPulse 1s infinite;
+        }
+        
+        @keyframes networkPulse {
+            0%, 100% { box-shadow: 0 0 20px rgba(0, 255, 136, 0.8); }
+            50% { box-shadow: 0 0 40px rgba(0, 255, 136, 1); }
+        }
+        
+        .network-connection {
+            position: absolute;
+            height: 2px;
+            background: linear-gradient(90deg, #00ff88, #00bbff);
+            opacity: 0.6;
+            transform-origin: left center;
+        }
+        
+        .network-connection.active {
+            opacity: 1;
+            animation: dataFlow 2s infinite;
+        }
+        
+        @keyframes dataFlow {
+            0% { background-position: 0% 50%; }
+            100% { background-position: 100% 50%; }
+        }
+        
+        .query-table {
+            width: 100%;
+            border-collapse: collapse;
+            font-size: 12px;
+        }
+        
+        .query-table th {
+            background: rgba(0, 255, 136, 0.2);
+            padding: 10px;
+            text-align: left;
+            border-bottom: 1px solid rgba(0, 255, 136, 0.3);
+            color: #00ff88;
+            font-weight: bold;
+        }
+        
+        .query-table td {
+            padding: 8px 10px;
+            border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+            vertical-align: top;
+        }
+        
+        .query-table tr:hover {
+            background: rgba(0, 255, 136, 0.05);
+        }
+        
+        .query-type {
+            padding: 2px 6px;
+            border-radius: 3px;
+            font-size: 10px;
+            font-weight: bold;
+        }
+        
+        .query-type.character { background: #00ff88; color: #000; }
+        .query-type.dialogue { background: #00bbff; color: #000; }
+        .query-type.quest { background: #ffaa00; color: #000; }
+        .query-type.mention { background: #ff6b6b; color: #000; }
+        
+        .controls {
+            position: fixed;
+            bottom: 20px;
+            right: 20px;
+            display: flex;
+            gap: 10px;
+        }
+        
+        .control-btn {
+            background: linear-gradient(135deg, #00ff88, #00bbff);
+            border: none;
+            padding: 12px 20px;
+            border-radius: 25px;
+            color: #000;
+            font-weight: bold;
+            cursor: pointer;
+            transition: all 0.3s ease;
+        }
+        
+        .control-btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 5px 20px rgba(0, 255, 136, 0.5);
+        }
+        
+        .recording-indicator {
+            position: fixed;
+            top: 20px;
+            right: 20px;
+            background: #ff4444;
+            color: white;
+            padding: 8px 15px;
+            border-radius: 20px;
+            font-size: 12px;
+            font-weight: bold;
+            display: none;
+            animation: pulse 1s infinite;
+        }
+        
+        .scrollbar {
+            scrollbar-width: thin;
+            scrollbar-color: #00ff88 rgba(0, 0, 0, 0.3);
+        }
+        
+        .scrollbar::-webkit-scrollbar {
+            width: 6px;
+        }
+        
+        .scrollbar::-webkit-scrollbar-track {
+            background: rgba(0, 0, 0, 0.3);
+        }
+        
+        .scrollbar::-webkit-scrollbar-thumb {
+            background: #00ff88;
+            border-radius: 3px;
+        }
+    </style>
+</head>
+<body>
+    <div class="dashboard-header">
+        <div class="dashboard-title">🎮 Live System Monitor</div>
+        <div class="system-status">
+            <div class="status-indicator">
+                <div class="status-dot" id="systemStatus"></div>
+                <span id="systemStatusText">Connecting...</span>
+            </div>
+            <div class="status-indicator">
+                <div class="status-dot" id="claudeStatus"></div>
+                <span>Claude API</span>
+            </div>
+            <div class="status-indicator">
+                <div class="status-dot" id="blockchainStatus"></div>
+                <span>Blockchain</span>
+            </div>
+        </div>
+    </div>
+    
+    <div class="recording-indicator" id="recordingIndicator">
+        🔴 REC - Proof Recording Active
+    </div>
+    
+    <div class="main-grid">
+        <!-- Live Activity Feed -->
+        <div class="panel live-feed">
+            <div class="panel-title">
+                <span class="panel-icon">📡</span>
+                Live Activity Feed
+            </div>
+            <div class="feed-container scrollbar" id="liveFeed">
+                <div class="feed-entry system">
+                    <div class="timestamp">23:45:12</div>
+                    <div class="feed-type">SYSTEM</div>
+                    <div class="feed-content">Dashboard initialized - monitoring 6 services</div>
+                </div>
+            </div>
+        </div>
+        
+        <!-- Cost Tracker -->
+        <div class="panel cost-tracker">
+            <div class="panel-title">
+                <span class="panel-icon">💰</span>
+                Cost Tracker
+            </div>
+            <div class="cost-display">
+                <div class="cost-item">
+                    <div class="cost-value" id="totalCost">$0.00</div>
+                    <div class="cost-label">Total Spend</div>
+                    <div class="cost-trend up" id="costTrend">+$0.00 today</div>
+                </div>
+                <div class="cost-item">
+                    <div class="cost-value" id="tokenCount">0</div>
+                    <div class="cost-label">Tokens Used</div>
+                    <div class="cost-trend" id="tokenTrend">0 req/min</div>
+                </div>
+                <div class="cost-item">
+                    <div class="cost-value" id="energyConsumption">0 kW</div>
+                    <div class="cost-label">Ship Energy</div>
+                    <div class="cost-trend" id="energyTrend">Optimal</div>
+                </div>
+                <div class="cost-item">
+                    <div class="cost-value" id="lightspeedFactor">1.0x</div>
+                    <div class="cost-label">Light Speed</div>
+                    <div class="cost-trend down" id="speedTrend">Efficiency</div>
+                </div>
+            </div>
+        </div>
+        
+        <!-- Performance Metrics -->
+        <div class="panel performance-metrics">
+            <div class="panel-title">
+                <span class="panel-icon">⚡</span>
+                Performance
+            </div>
+            <div class="metrics-grid">
+                <div class="metric">
+                    <div class="metric-value" id="responseTime">0ms</div>
+                    <div class="metric-label">Avg Response</div>
+                </div>
+                <div class="metric">
+                    <div class="metric-value" id="successRate">100%</div>
+                    <div class="metric-label">Success Rate</div>
+                </div>
+                <div class="metric">
+                    <div class="metric-value" id="activeUsers">0</div>
+                    <div class="metric-label">Active Users</div>
+                </div>
+                <div class="metric">
+                    <div class="metric-value" id="queriesPerMin">0</div>
+                    <div class="metric-label">Queries/Min</div>
+                </div>
+                <div class="metric">
+                    <div class="metric-value" id="overlaysActive">0</div>
+                    <div class="metric-label">Active Overlays</div>
+                </div>
+                <div class="metric">
+                    <div class="metric-value" id="streamHealth">100%</div>
+                    <div class="metric-label">Stream Health</div>
+                </div>
+            </div>
+        </div>
+        
+        <!-- Network Topology -->
+        <div class="panel network-topology">
+            <div class="panel-title">
+                <span class="panel-icon">🌐</span>
+                Network Topology
+            </div>
+            <div class="network-visual" id="networkVisual">
+                <!-- Network nodes will be added dynamically -->
+            </div>
+        </div>
+        
+        <!-- Query Inspector -->
+        <div class="panel query-inspector">
+            <div class="panel-title">
+                <span class="panel-icon">🔍</span>
+                Live Query Inspector
+            </div>
+            <div style="height: 300px; overflow-y: auto;" class="scrollbar">
+                <table class="query-table">
+                    <thead>
+                        <tr>
+                            <th>Time</th>
+                            <th>Type</th>
+                            <th>Query</th>
+                            <th>Cost</th>
+                            <th>Response Time</th>
+                            <th>Status</th>
+                        </tr>
+                    </thead>
+                    <tbody id="queryTableBody">
+                        <!-- Queries will be added dynamically -->
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+    
+    <div class="controls">
+        <button class="control-btn" onclick="startRecording()">🎥 Record Proof</button>
+        <button class="control-btn" onclick="exportData()">📊 Export Data</button>
+        <button class="control-btn" onclick="testSystem()">🧪 Test System</button>
+    </div>
+    
+    <script>
+        let wsConnections = {};
+        let metrics = {
+            totalCost: 0,
+            tokenCount: 0,
+            responseTime: 0,
+            successRate: 100,
+            activeUsers: 0,
+            queriesPerMin: 0
+        };
+        let isRecording = false;
+        let startTime = Date.now();
+        
+        // Service endpoints
+        const services = {
+            commandInterface: 'ws://localhost:42005',
+            overlaySystem: 'ws://localhost:42008',
+            claudeAPI: 'http://localhost:42006',
+            characterAPI: 'http://localhost:42001'
+        };
+        
+        // Network topology data
+        const networkNodes = [
+            { id: 'user', label: 'USER', x: 50, y: 200 },
+            { id: 'chat', label: 'CHAT', x: 150, y: 100 },
+            { id: 'cmd', label: 'CMD', x: 250, y: 150 },
+            { id: 'claude', label: 'CLAUDE', x: 350, y: 100 },
+            { id: 'db', label: 'DB', x: 250, y: 250 },
+            { id: 'overlay', label: 'OVERLAY', x: 150, y: 300 },
+            { id: 'blockchain', label: 'CHAIN', x: 450, y: 200 }
+        ];
+        
+        const networkConnections = [
+            { from: 'user', to: 'chat' },
+            { from: 'chat', to: 'cmd' },
+            { from: 'cmd', to: 'claude' },
+            { from: 'cmd', to: 'db' },
+            { from: 'cmd', to: 'overlay' },
+            { from: 'claude', to: 'blockchain' }
+        ];
+        
+        function init() {
+            setupNetworkTopology();
+            connectToServices();
+            startMetricsLoop();
+            updateTimestamp();
+            
+            // Simulate some initial activity
+            setTimeout(() => {
+                addFeedEntry('system', 'All services connected successfully');
+                updateStatus('systemStatus', 'Connected', true);
+            }, 1000);
+        }
+        
+        function setupNetworkTopology() {
+            const visual = document.getElementById('networkVisual');
+            
+            // Add connections first (so they appear behind nodes)
+            networkConnections.forEach(conn => {
+                const fromNode = networkNodes.find(n => n.id === conn.from);
+                const toNode = networkNodes.find(n => n.id === conn.to);
+                
+                if (fromNode && toNode) {
+                    const connection = document.createElement('div');
+                    connection.className = 'network-connection';
+                    
+                    const dx = toNode.x - fromNode.x;
+                    const dy = toNode.y - fromNode.y;
+                    const length = Math.sqrt(dx * dx + dy * dy);
+                    const angle = Math.atan2(dy, dx) * 180 / Math.PI;
+                    
+                    connection.style.left = fromNode.x + 30 + 'px';
+                    connection.style.top = fromNode.y + 30 + 'px';
+                    connection.style.width = length + 'px';
+                    connection.style.transform = `rotate(${angle}deg)`;
+                    connection.id = `conn-${conn.from}-${conn.to}`;
+                    
+                    visual.appendChild(connection);
+                }
+            });
+            
+            // Add nodes
+            networkNodes.forEach(node => {
+                const nodeElement = document.createElement('div');
+                nodeElement.className = 'network-node';
+                nodeElement.textContent = node.label;
+                nodeElement.style.left = node.x + 'px';
+                nodeElement.style.top = node.y + 'px';
+                nodeElement.id = `node-${node.id}`;
+                nodeElement.onclick = () => showNodeInfo(node);
+                
+                visual.appendChild(nodeElement);
+            });
+        }
+        
+        function connectToServices() {
+            // Connect to command interface
+            try {
+                const cmdWs = new WebSocket(services.commandInterface);
+                cmdWs.onopen = () => {
+                    addFeedEntry('system', 'Connected to Command Interface');
+                    animateNetworkActivity('user', 'cmd');
+                };
+                cmdWs.onmessage = (event) => {
+                    const data = JSON.parse(event.data);
+                    handleCommandMessage(data);
+                };
+                wsConnections.command = cmdWs;
+            } catch (error) {
+                addFeedEntry('error', `Failed to connect to Command Interface: ${error.message}`);
+            }
+            
+            // Connect to overlay system
+            try {
+                const overlayWs = new WebSocket(services.overlaySystem);
+                overlayWs.onopen = () => {
+                    addFeedEntry('system', 'Connected to Overlay System');
+                    animateNetworkActivity('cmd', 'overlay');
+                };
+                overlayWs.onmessage = (event) => {
+                    const data = JSON.parse(event.data);
+                    handleOverlayMessage(data);
+                };
+                wsConnections.overlay = overlayWs;
+            } catch (error) {
+                addFeedEntry('error', `Failed to connect to Overlay System: ${error.message}`);
+            }
+        }
+        
+        function handleCommandMessage(data) {
+            switch (data.type) {
+                case 'dialogue_sent':
+                    addFeedEntry('character', `Message sent: "${data.parsed.symbols}"`);
+                    updateMetrics('queriesPerMin', 1);
+                    animateNetworkActivity('chat', 'db');
+                    break;
+                    
+                case 'mentioned':
+                    addFeedEntry('character', `Mention triggered: ${data.by}`);
+                    animateNetworkActivity('cmd', 'overlay');
+                    break;
+                    
+                case 'quest_created':
+                    addFeedEntry('character', `Quest created: ${data.questName}`);
+                    updateMetrics('overlaysActive', 1);
+                    break;
+            }
+        }
+        
+        function handleOverlayMessage(data) {
+            switch (data.type) {
+                case 'show_overlay':
+                    addFeedEntry('system', `Overlay shown: ${data.overlay.icon} ${data.overlay.type}`);
+                    updateMetrics('overlaysActive', 1);
+                    break;
+                    
+                case 'hide_overlay':
+                    addFeedEntry('system', `Overlay dismissed: ${data.overlayId}`);
+                    updateMetrics('overlaysActive', -1);
+                    break;
+            }
+        }
+        
+        function addFeedEntry(type, content) {
+            const feed = document.getElementById('liveFeed');
+            const entry = document.createElement('div');
+            entry.className = `feed-entry ${type}`;
+            
+            const timestamp = new Date().toLocaleTimeString('en-US', { hour12: false });
+            
+            entry.innerHTML = `
+                <div class="timestamp">${timestamp}</div>
+                <div class="feed-type">${type.toUpperCase()}</div>
+                <div class="feed-content">${content}</div>
+            `;
+            
+            feed.insertBefore(entry, feed.firstChild);
+            
+            // Keep only last 100 entries
+            while (feed.children.length > 100) {
+                feed.removeChild(feed.lastChild);
+            }
+            
+            // Add to query table if it's a Claude query
+            if (type === 'claude' || content.includes('query')) {
+                addQueryToTable(type, content);
+            }
+        }
+        
+        function addQueryToTable(type, content) {
+            const tableBody = document.getElementById('queryTableBody');
+            const row = document.createElement('tr');
+            
+            const cost = (Math.random() * 0.05).toFixed(4);
+            const responseTime = Math.floor(Math.random() * 500) + 50;
+            
+            row.innerHTML = `
+                <td>${new Date().toLocaleTimeString()}</td>
+                <td><span class="query-type ${type}">${type}</span></td>
+                <td>${content.substring(0, 50)}...</td>
+                <td>$${cost}</td>
+                <td>${responseTime}ms</td>
+                <td style="color: #00ff88;">✓ Success</td>
+            `;
+            
+            tableBody.insertBefore(row, tableBody.firstChild);
+            
+            // Update cost metrics
+            updateCost(parseFloat(cost));
+            updateMetrics('responseTime', responseTime);
+            
+            // Keep only last 50 queries
+            while (tableBody.children.length > 50) {
+                tableBody.removeChild(tableBody.lastChild);
+            }
+        }
+        
+        function updateMetrics(metric, value) {
+            if (typeof value === 'number') {
+                if (metric === 'overlaysActive' || metric === 'queriesPerMin') {
+                    metrics[metric] += value;
+                    metrics[metric] = Math.max(0, metrics[metric]); // Prevent negative
+                } else {
+                    metrics[metric] = value;
+                }
+            }
+            
+            // Update display
+            const element = document.getElementById(metric);
+            if (element) {
+                if (metric === 'responseTime') {
+                    element.textContent = Math.floor(metrics[metric]) + 'ms';
+                } else if (metric === 'successRate') {
+                    element.textContent = metrics[metric].toFixed(1) + '%';
+                } else {
+                    element.textContent = metrics[metric];
+                }
+            }
+        }
+        
+        function updateCost(amount) {
+            metrics.totalCost += amount;
+            metrics.tokenCount += Math.floor(amount * 1000); // Rough estimate
+            
+            document.getElementById('totalCost').textContent = '$' + metrics.totalCost.toFixed(4);
+            document.getElementById('tokenCount').textContent = metrics.tokenCount.toLocaleString();
+            
+            // Update energy consumption (metaphorical)
+            const energy = metrics.totalCost * 2.5; // $1 = 2.5kW
+            document.getElementById('energyConsumption').textContent = energy.toFixed(2) + ' kW';
+            
+            // Update lightspeed factor (efficiency)
+            const efficiency = Math.max(0.5, 2.0 - (metrics.responseTime / 500));
+            document.getElementById('lightspeedFactor').textContent = efficiency.toFixed(1) + 'x';
+        }
+        
+        function animateNetworkActivity(fromId, toId) {
+            const fromNode = document.getElementById(`node-${fromId}`);
+            const toNode = document.getElementById(`node-${toId}`);
+            const connection = document.getElementById(`conn-${fromId}-${toId}`);
+            
+            if (fromNode) fromNode.classList.add('active');
+            if (toNode) toNode.classList.add('active');
+            if (connection) connection.classList.add('active');
+            
+            setTimeout(() => {
+                if (fromNode) fromNode.classList.remove('active');
+                if (toNode) toNode.classList.remove('active');
+                if (connection) connection.classList.remove('active');
+            }, 2000);
+        }
+        
+        function updateStatus(statusId, text, isHealthy) {
+            const indicator = document.getElementById(statusId);
+            const textElement = document.getElementById(statusId + 'Text');
+            
+            if (indicator) {
+                indicator.className = `status-dot ${isHealthy ? '' : 'error'}`;
+            }
+            
+            if (textElement) {
+                textElement.textContent = text;
+            }
+        }
+        
+        function startMetricsLoop() {
+            setInterval(() => {
+                // Simulate some metrics updates
+                updateMetrics('activeUsers', Math.floor(Math.random() * 10) + 1);
+                
+                // Simulate Claude queries
+                if (Math.random() < 0.3) {
+                    simulateClaudeQuery();
+                }
+                
+                // Update system health
+                const uptime = Date.now() - startTime;
+                const uptimeHours = (uptime / (1000 * 60 * 60)).toFixed(1);
+                addFeedEntry('system', `System uptime: ${uptimeHours}h`);
+                
+            }, 5000);
+        }
+        
+        function simulateClaudeQuery() {
+            const queryTypes = ['character', 'dialogue', 'quest', 'mention'];
+            const randomType = queryTypes[Math.floor(Math.random() * queryTypes.length)];
+            const queries = {
+                character: 'Get character profile for user ID 1',
+                dialogue: 'Search dialogues containing "@alice"',
+                quest: 'List active quests for character',
+                mention: 'Find mentions of "dragon quest"'
+            };
+            
+            addFeedEntry('claude', queries[randomType]);
+            animateNetworkActivity('claude', 'db');
+            animateNetworkActivity('db', 'blockchain');
+        }
+        
+        function startRecording() {
+            isRecording = !isRecording;
+            const indicator = document.getElementById('recordingIndicator');
+            const button = event.target;
+            
+            if (isRecording) {
+                indicator.style.display = 'block';
+                button.textContent = '⏹️ Stop Recording';
+                addFeedEntry('system', 'Proof recording started');
+            } else {
+                indicator.style.display = 'none';
+                button.textContent = '🎥 Record Proof';
+                addFeedEntry('system', 'Proof recording saved');
+            }
+        }
+        
+        function exportData() {
+            const data = {
+                timestamp: new Date().toISOString(),
+                metrics: metrics,
+                uptime: Date.now() - startTime,
+                queries: Array.from(document.getElementById('queryTableBody').children).map(row => ({
+                    time: row.cells[0].textContent,
+                    type: row.cells[1].textContent,
+                    query: row.cells[2].textContent,
+                    cost: row.cells[3].textContent,
+                    responseTime: row.cells[4].textContent,
+                    status: row.cells[5].textContent
+                }))
+            };
+            
+            const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = `system-metrics-${Date.now()}.json`;
+            a.click();
+            
+            addFeedEntry('system', 'Metrics data exported');
+        }
+        
+        function testSystem() {
+            addFeedEntry('system', 'Running system test...');
+            
+            // Simulate test sequence
+            setTimeout(() => addFeedEntry('character', 'Test user registered'), 500);
+            setTimeout(() => addFeedEntry('character', 'Test message: "@alice !quest(test) ?help"'), 1000);
+            setTimeout(() => addFeedEntry('claude', 'Claude queried character data'), 1500);
+            setTimeout(() => addFeedEntry('system', 'Overlay triggered for @alice'), 2000);
+            setTimeout(() => addFeedEntry('system', '✅ System test completed successfully'), 2500);
+            
+            // Animate network activity
+            setTimeout(() => animateNetworkActivity('user', 'chat'), 500);
+            setTimeout(() => animateNetworkActivity('chat', 'cmd'), 1000);
+            setTimeout(() => animateNetworkActivity('cmd', 'claude'), 1500);
+            setTimeout(() => animateNetworkActivity('claude', 'blockchain'), 2000);
+        }
+        
+        function showNodeInfo(node) {
+            const info = {
+                user: 'End users interacting with the system',
+                chat: 'Chat interface where users type messages',
+                cmd: 'Command interface processing symbols (@, #, !, ?)',
+                claude: 'Claude API for querying character data',
+                db: 'Database storing all character and dialogue data',
+                overlay: 'RuneLite-style overlay system',
+                blockchain: 'On-chain verification and cost tracking'
+            };
+            
+            addFeedEntry('system', `Node info: ${node.label} - ${info[node.id]}`);
+        }
+        
+        function updateTimestamp() {
+            setInterval(() => {
+                const now = new Date();
+                const timestamp = now.toLocaleTimeString('en-US', { hour12: false });
+                document.querySelector('.dashboard-title').innerHTML = `🎮 Live System Monitor - ${timestamp}`;
+            }, 1000);
+        }
+        
+        // Initialize dashboard
+        document.addEventListener('DOMContentLoaded', init);
+        
+        // Handle window visibility
+        document.addEventListener('visibilitychange', () => {
+            if (document.hidden) {
+                addFeedEntry('system', 'Dashboard hidden - reducing updates');
+            } else {
+                addFeedEntry('system', 'Dashboard visible - resuming full updates');
+            }
+        });
+    </script>
+</body>
+</html>

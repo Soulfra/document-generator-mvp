@@ -1,0 +1,183 @@
+{
+  "name": "documind-pro",
+  "version": "1.0.0",
+  "description": "AI-powered document analysis platform with enterprise-grade architecture",
+  "main": "production-platform-architecture.js",
+  "scripts": {
+    "start": "node production-platform-architecture.js",
+    "start:dev": "nodemon production-platform-architecture.js",
+    "start:test": "NODE_ENV=test node production-platform-architecture.js",
+    "start:staging": "NODE_ENV=staging node production-platform-architecture.js",
+    "start:production": "NODE_ENV=production node production-platform-architecture.js",
+    
+    "test": "jest",
+    "test:unit": "jest --testPathPattern=unit",
+    "test:integration": "jest --testPathPattern=integration",
+    "test:api": "jest --testPathPattern=api",
+    "test:e2e": "playwright test",
+    "test:performance": "artillery run test/performance/*.yml",
+    "test:security": "npm audit && zap-baseline.py -t http://localhost:3000",
+    "test:coverage": "jest --coverage",
+    "test:watch": "jest --watch",
+    "test:all": "npm run test:unit && npm run test:integration && npm run test:api && npm run test:e2e",
+    
+    "build": "npm run build:production",
+    "build:development": "NODE_ENV=development webpack --mode=development",
+    "build:staging": "NODE_ENV=staging webpack --mode=production",
+    "build:production": "NODE_ENV=production webpack --mode=production --optimize-minimize",
+    
+    "deploy:development": "npm run build:development && kubectl apply -f k8s/development/",
+    "deploy:staging": "npm run build:staging && kubectl apply -f k8s/staging/",
+    "deploy:production": "npm run build:production && kubectl apply -f k8s/production/",
+    
+    "db:migrate": "knex migrate:latest",
+    "db:migrate:dev": "NODE_ENV=development knex migrate:latest",
+    "db:migrate:staging": "NODE_ENV=staging knex migrate:latest",
+    "db:migrate:prod": "NODE_ENV=production knex migrate:latest",
+    "db:seed": "knex seed:run",
+    "db:rollback": "knex migrate:rollback",
+    
+    "lint": "eslint src/ test/ --fix",
+    "lint:check": "eslint src/ test/",
+    "format": "prettier --write src/ test/",
+    "format:check": "prettier --check src/ test/",
+    
+    "docker:build": "docker build -t documind/platform:latest .",
+    "docker:run": "docker run -p 3000:3000 documind/platform:latest",
+    "docker:push": "docker push documind/platform:latest",
+    
+    "docs:generate": "node camel-integration-layer.js --generate-docs",
+    "docs:api": "swagger-jsdoc -d swagger.config.js src/**/*.js -o docs/api.json",
+    "docs:serve": "docsify serve docs",
+    
+    "metrics:collect": "node scripts/collect-metrics.js",
+    "health:check": "node scripts/health-check.js",
+    "logs:tail": "kubectl logs -f deployment/documind-platform",
+    
+    "setup:dev": "npm install && npm run db:migrate:dev && npm run db:seed",
+    "setup:staging": "npm install && npm run db:migrate:staging",
+    "setup:production": "npm install && npm run db:migrate:prod",
+    
+    "validate:deployment": "node scripts/validate-deployment.js",
+    "validate:staging": "NODE_ENV=staging npm run validate:deployment",
+    "validate:production": "NODE_ENV=production npm run validate:deployment",
+    
+    "rollback": "kubectl rollout undo deployment/documind-platform",
+    "scale": "kubectl scale deployment documind-platform --replicas",
+    
+    "security:scan": "npm audit && snyk test",
+    "security:fix": "npm audit fix && snyk wizard",
+    
+    "pre-commit": "lint-staged",
+    "pre-push": "npm run test:unit && npm run lint:check",
+    "prepare": "husky install"
+  },
+  "keywords": [
+    "document-analysis",
+    "ai",
+    "saas",
+    "enterprise",
+    "microservices",
+    "production"
+  ],
+  "author": "DocuMind Pro Team",
+  "license": "MIT",
+  "dependencies": {
+    "express": "^4.18.2",
+    "cors": "^2.8.5",
+    "helmet": "^7.0.0",
+    "express-rate-limit": "^6.8.1",
+    "jsonwebtoken": "^9.0.1",
+    "bcrypt": "^5.1.0",
+    "uuid": "^9.0.0",
+    "stripe": "^12.18.0",
+    "winston": "^3.10.0",
+    "prom-client": "^14.2.0",
+    "ws": "^8.13.0",
+    "knex": "^2.5.1",
+    "pg": "^8.11.2",
+    "redis": "^4.6.7",
+    "bull": "^4.11.3",
+    "joi": "^17.9.2",
+    "dotenv": "^16.3.1",
+    "multer": "^1.4.5-lts.1",
+    "sharp": "^0.32.4",
+    "pdf-parse": "^1.1.1",
+    "mammoth": "^1.5.1",
+    "openai": "^3.3.0",
+    "@anthropic-ai/sdk": "^0.4.3",
+    "axios": "^1.4.0",
+    "nodemailer": "^6.9.4",
+    "ioredis": "^5.3.2"
+  },
+  "devDependencies": {
+    "jest": "^29.6.2",
+    "supertest": "^6.3.3",
+    "@playwright/test": "^1.36.2",
+    "artillery": "^2.0.0",
+    "nodemon": "^3.0.1",
+    "webpack": "^5.88.2",
+    "webpack-cli": "^5.1.4",
+    "eslint": "^8.45.0",
+    "eslint-config-airbnb-base": "^15.0.0",
+    "eslint-plugin-import": "^2.27.5",
+    "prettier": "^3.0.0",
+    "husky": "^8.0.3",
+    "lint-staged": "^13.2.3",
+    "@types/jest": "^29.5.3",
+    "swagger-jsdoc": "^6.2.8",
+    "swagger-ui-express": "^5.0.0",
+    "docsify-cli": "^4.4.4",
+    "nyc": "^15.1.0",
+    "snyk": "^1.1193.0",
+    "docker-compose": "^0.24.2"
+  },
+  "engines": {
+    "node": ">=18.0.0",
+    "npm": ">=8.0.0"
+  },
+  "lint-staged": {
+    "src/**/*.js": [
+      "eslint --fix",
+      "prettier --write"
+    ],
+    "test/**/*.js": [
+      "eslint --fix",
+      "prettier --write"
+    ]
+  },
+  "jest": {
+    "testEnvironment": "node",
+    "coverageDirectory": "coverage",
+    "collectCoverageFrom": [
+      "src/**/*.js",
+      "!src/**/*.test.js",
+      "!src/test/**"
+    ],
+    "coverageThreshold": {
+      "global": {
+        "branches": 80,
+        "functions": 80,
+        "lines": 80,
+        "statements": 80
+      }
+    },
+    "setupFilesAfterEnv": [
+      "./test/setup/jest.setup.js"
+    ],
+    "testMatch": [
+      "**/__tests__/**/*.js",
+      "**/*.test.js"
+    ],
+    "verbose": true,
+    "collectCoverage": true
+  },
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/documind-pro/platform.git"
+  },
+  "bugs": {
+    "url": "https://github.com/documind-pro/platform/issues"
+  },
+  "homepage": "https://documind.com"
+}

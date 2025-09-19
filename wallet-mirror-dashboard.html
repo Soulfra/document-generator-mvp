@@ -1,0 +1,682 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>🪞 WALLET MIRROR VERIFICATION DASHBOARD</title>
+    <style>
+        body {
+            margin: 0;
+            padding: 0;
+            background: #0a0a0a;
+            color: #fff;
+            font-family: 'Courier New', monospace;
+            overflow-x: hidden;
+        }
+        
+        .header {
+            background: linear-gradient(135deg, #ff6b6b, #4ecdc4, #45b7d1, #96ceb4, #feca57, #ff9ff3);
+            padding: 20px;
+            text-align: center;
+            border-bottom: 3px solid #fff;
+            box-shadow: 0 4px 20px rgba(255,255,255,0.2);
+        }
+        
+        .wallet-grid {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 20px;
+            padding: 20px;
+        }
+        
+        .wallet-panel {
+            border: 3px solid;
+            border-radius: 15px;
+            padding: 20px;
+            position: relative;
+            backdrop-filter: blur(10px);
+            transition: all 0.3s;
+        }
+        
+        .wallet-panel:hover {
+            transform: scale(1.05);
+            box-shadow: 0 0 30px rgba(255,255,255,0.3);
+        }
+        
+        .unified-api { border-color: #ff6b6b; background: linear-gradient(135deg, rgba(255,107,107,0.1), rgba(255,107,107,0.05)); }
+        .gaming-bridge { border-color: #4ecdc4; background: linear-gradient(135deg, rgba(78,205,196,0.1), rgba(78,205,196,0.05)); }
+        .financial-bridge { border-color: #45b7d1; background: linear-gradient(135deg, rgba(69,183,209,0.1), rgba(69,183,209,0.05)); }
+        .universal-bridge { border-color: #96ceb4; background: linear-gradient(135deg, rgba(150,206,180,0.1), rgba(150,206,180,0.05)); }
+        .world-broadcaster { border-color: #feca57; background: linear-gradient(135deg, rgba(254,202,87,0.1), rgba(254,202,87,0.05)); }
+        .blamechain-node { border-color: #ff9ff3; background: linear-gradient(135deg, rgba(255,159,243,0.1), rgba(255,159,243,0.05)); }
+        
+        .wallet-header {
+            text-align: center;
+            padding: 15px;
+            border-radius: 10px;
+            margin-bottom: 20px;
+            font-size: 18px;
+            font-weight: bold;
+        }
+        
+        .unified-api .wallet-header { background: rgba(255,107,107,0.2); color: #ff6b6b; }
+        .gaming-bridge .wallet-header { background: rgba(78,205,196,0.2); color: #4ecdc4; }
+        .financial-bridge .wallet-header { background: rgba(69,183,209,0.2); color: #45b7d1; }
+        .universal-bridge .wallet-header { background: rgba(150,206,180,0.2); color: #96ceb4; }
+        .world-broadcaster .wallet-header { background: rgba(254,202,87,0.2); color: #feca57; }
+        .blamechain-node .wallet-header { background: rgba(255,159,243,0.2); color: #ff9ff3; }
+        
+        .mirror-network {
+            position: relative;
+            height: 200px;
+            border: 2px dashed #333;
+            border-radius: 10px;
+            margin: 15px 0;
+            overflow: hidden;
+        }
+        
+        .mirror-node {
+            position: absolute;
+            width: 40px;
+            height: 40px;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 8px;
+            font-weight: bold;
+            cursor: pointer;
+            transition: all 0.3s;
+        }
+        
+        .mirror-node:hover {
+            transform: scale(1.3);
+            z-index: 10;
+        }
+        
+        .verification-status {
+            background: rgba(255,255,255,0.05);
+            border-radius: 10px;
+            padding: 10px;
+            margin: 10px 0;
+        }
+        
+        .status-active { border-left: 4px solid #4ecdc4; }
+        .status-syncing { border-left: 4px solid #feca57; }
+        .status-failed { border-left: 4px solid #ff6b6b; }
+        
+        .mirror-connections {
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            pointer-events: none;
+            z-index: 5;
+        }
+        
+        .mirror-line {
+            position: absolute;
+            height: 2px;
+            background: linear-gradient(90deg, transparent, #4ecdc4, transparent);
+            transform-origin: left center;
+            animation: pulse 3s infinite;
+        }
+        
+        @keyframes pulse {
+            0%, 100% { opacity: 0.3; }
+            50% { opacity: 1; }
+        }
+        
+        .stats-panel {
+            grid-column: span 3;
+            background: rgba(255,255,255,0.05);
+            border: 2px solid #4ecdc4;
+            border-radius: 15px;
+            padding: 20px;
+            margin-top: 20px;
+        }
+        
+        .stats-grid {
+            display: grid;
+            grid-template-columns: repeat(4, 1fr);
+            gap: 20px;
+        }
+        
+        .stat-card {
+            text-align: center;
+            background: rgba(0,0,0,0.3);
+            padding: 15px;
+            border-radius: 10px;
+        }
+        
+        .stat-value {
+            font-size: 32px;
+            font-weight: bold;
+            color: #4ecdc4;
+        }
+        
+        .verification-log {
+            height: 200px;
+            overflow-y: auto;
+            background: rgba(0,0,0,0.5);
+            padding: 10px;
+            border-radius: 5px;
+            font-size: 12px;
+            margin: 10px 0;
+        }
+        
+        .log-entry {
+            margin: 5px 0;
+            padding: 5px;
+            border-radius: 3px;
+            border-left: 3px solid;
+        }
+        
+        .log-success { border-left-color: #4ecdc4; background: rgba(78,205,196,0.1); }
+        .log-warning { border-left-color: #feca57; background: rgba(254,202,87,0.1); }
+        .log-error { border-left-color: #ff6b6b; background: rgba(255,107,107,0.1); }
+        
+        button {
+            padding: 10px 20px;
+            margin: 5px;
+            border: none;
+            border-radius: 5px;
+            font-weight: bold;
+            cursor: pointer;
+            transition: all 0.3s;
+        }
+        
+        .sync-button { background: #4ecdc4; color: #000; }
+        .verify-button { background: #45b7d1; color: #fff; }
+        .reset-button { background: #ff6b6b; color: #fff; }
+        
+        .sync-button:hover { box-shadow: 0 0 20px #4ecdc4; }
+        .verify-button:hover { box-shadow: 0 0 20px #45b7d1; }
+        .reset-button:hover { box-shadow: 0 0 20px #ff6b6b; }
+        
+        .live-indicator {
+            display: inline-block;
+            width: 12px;
+            height: 12px;
+            border-radius: 50%;
+            margin-right: 8px;
+            animation: pulse 2s infinite;
+        }
+        
+        .indicator-active { background: #4ecdc4; }
+        .indicator-syncing { background: #feca57; }
+        .indicator-failed { background: #ff6b6b; }
+    </style>
+</head>
+<body>
+    <div class="header">
+        <h1>🪞 WALLET MIRROR VERIFICATION DASHBOARD</h1>
+        <div>All wallets looking at each other through mirrors and verifying transactions</div>
+        <div style="margin-top: 10px;">
+            <span class="live-indicator indicator-active"></span>
+            <span>6 Wallets Connected</span>
+            <span style="margin-left: 20px;">
+                <span class="live-indicator indicator-syncing"></span>
+                <span id="mirrorCount">15</span> Mirrors Active
+            </span>
+        </div>
+    </div>
+    
+    <div class="wallet-grid">
+        <!-- Unified API Wallet -->
+        <div class="wallet-panel unified-api">
+            <div class="wallet-header">
+                🔗 UNIFIED API WALLET
+            </div>
+            
+            <div class="verification-status status-active">
+                <div><strong>Status:</strong> <span id="unified-status">Active</span></div>
+                <div><strong>Ring ID:</strong> <span id="unified-ring">7556412a</span></div>
+                <div><strong>Validators:</strong> <span id="unified-validators">5</span></div>
+            </div>
+            
+            <div class="mirror-network" id="unified-mirrors">
+                <!-- Mirror nodes will be added here -->
+            </div>
+            
+            <button class="sync-button" onclick="syncWallet('unified_api')">🔄 Sync Mirrors</button>
+            <button class="verify-button" onclick="verifyWallet('unified_api')">✅ Verify Transactions</button>
+        </div>
+        
+        <!-- Gaming Bridge Wallet -->
+        <div class="wallet-panel gaming-bridge">
+            <div class="wallet-header">
+                🎮 GAMING BRIDGE WALLET
+            </div>
+            
+            <div class="verification-status status-active">
+                <div><strong>Status:</strong> <span id="gaming-status">Active</span></div>
+                <div><strong>Ring ID:</strong> <span id="gaming-ring">d08d0077</span></div>
+                <div><strong>Validators:</strong> <span id="gaming-validators">5</span></div>
+            </div>
+            
+            <div class="mirror-network" id="gaming-mirrors">
+                <!-- Mirror nodes will be added here -->
+            </div>
+            
+            <button class="sync-button" onclick="syncWallet('gaming_bridge')">🔄 Sync Mirrors</button>
+            <button class="verify-button" onclick="verifyWallet('gaming_bridge')">✅ Verify Transactions</button>
+        </div>
+        
+        <!-- Financial Bridge Wallet -->
+        <div class="wallet-panel financial-bridge">
+            <div class="wallet-header">
+                💰 FINANCIAL BRIDGE WALLET
+            </div>
+            
+            <div class="verification-status status-active">
+                <div><strong>Status:</strong> <span id="financial-status">Active</span></div>
+                <div><strong>Ring ID:</strong> <span id="financial-ring">d7f98eb4</span></div>
+                <div><strong>Validators:</strong> <span id="financial-validators">5</span></div>
+            </div>
+            
+            <div class="mirror-network" id="financial-mirrors">
+                <!-- Mirror nodes will be added here -->
+            </div>
+            
+            <button class="sync-button" onclick="syncWallet('financial_bridge')">🔄 Sync Mirrors</button>
+            <button class="verify-button" onclick="verifyWallet('financial_bridge')">✅ Verify Transactions</button>
+        </div>
+        
+        <!-- Universal Bridge Wallet -->
+        <div class="wallet-panel universal-bridge">
+            <div class="wallet-header">
+                🌐 UNIVERSAL BRIDGE WALLET
+            </div>
+            
+            <div class="verification-status status-syncing">
+                <div><strong>Status:</strong> <span id="universal-status">Syncing</span></div>
+                <div><strong>Ring ID:</strong> <span id="universal-ring">325ec4e0</span></div>
+                <div><strong>Validators:</strong> <span id="universal-validators">5</span></div>
+            </div>
+            
+            <div class="mirror-network" id="universal-mirrors">
+                <!-- Mirror nodes will be added here -->
+            </div>
+            
+            <button class="sync-button" onclick="syncWallet('universal_bridge')">🔄 Sync Mirrors</button>
+            <button class="verify-button" onclick="verifyWallet('universal_bridge')">✅ Verify Transactions</button>
+        </div>
+        
+        <!-- World Broadcaster Wallet -->
+        <div class="wallet-panel world-broadcaster">
+            <div class="wallet-header">
+                📡 WORLD BROADCASTER WALLET
+            </div>
+            
+            <div class="verification-status status-active">
+                <div><strong>Status:</strong> <span id="broadcaster-status">Active</span></div>
+                <div><strong>Ring ID:</strong> <span id="broadcaster-ring">1f926d12</span></div>
+                <div><strong>Validators:</strong> <span id="broadcaster-validators">5</span></div>
+            </div>
+            
+            <div class="mirror-network" id="broadcaster-mirrors">
+                <!-- Mirror nodes will be added here -->
+            </div>
+            
+            <button class="sync-button" onclick="syncWallet('world_broadcaster')">🔄 Sync Mirrors</button>
+            <button class="verify-button" onclick="verifyWallet('world_broadcaster')">✅ Verify Transactions</button>
+        </div>
+        
+        <!-- BlameChain Node Wallet -->
+        <div class="wallet-panel blamechain-node">
+            <div class="wallet-header">
+                ⚖️ BLAMECHAIN NODE WALLET
+            </div>
+            
+            <div class="verification-status status-active">
+                <div><strong>Status:</strong> <span id="blamechain-status">Active</span></div>
+                <div><strong>Ring ID:</strong> <span id="blamechain-ring">bc7f41d8</span></div>
+                <div><strong>Validators:</strong> <span id="blamechain-validators">5</span></div>
+            </div>
+            
+            <div class="mirror-network" id="blamechain-mirrors">
+                <!-- Mirror nodes will be added here -->
+            </div>
+            
+            <button class="sync-button" onclick="syncWallet('blamechain_node')">🔄 Sync Mirrors</button>
+            <button class="verify-button" onclick="verifyWallet('blamechain_node')">✅ Verify Transactions</button>
+        </div>
+        
+        <!-- System Stats Panel -->
+        <div class="stats-panel">
+            <h2>📊 MIRROR VERIFICATION STATISTICS</h2>
+            
+            <div class="stats-grid">
+                <div class="stat-card">
+                    <div class="stat-value" id="totalValidations">1,247</div>
+                    <div>Total Validations</div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-value" id="activeMirrors">15</div>
+                    <div>Active Mirrors</div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-value" id="crossValidations">892</div>
+                    <div>Cross Validations</div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-value" id="systemHealth">98%</div>
+                    <div>System Health</div>
+                </div>
+            </div>
+            
+            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 20px; margin-top: 20px;">
+                <div>
+                    <h3>🔄 Real-Time Verification Log</h3>
+                    <div class="verification-log" id="verificationLog">
+                        <div class="log-entry log-success">[12:34:56] Unified API ↔ Gaming Bridge: Mirror sync completed (5 transactions verified)</div>
+                        <div class="log-entry log-success">[12:34:55] Financial ↔ Universal: Cross-validation successful (3 transactions)</div>
+                        <div class="log-entry log-warning">[12:34:54] World Broadcaster ↔ BlameChain: Sync delay detected</div>
+                        <div class="log-entry log-success">[12:34:53] Gaming ↔ Financial: Ring signature validation passed</div>
+                        <div class="log-entry log-success">[12:34:52] Universal ↔ Unified API: Balance verification completed</div>
+                        <div class="log-entry log-error">[12:34:51] BlameChain ↔ Gaming: Double-spend check failed (tx: ab12cd34)</div>
+                        <div class="log-entry log-success">[12:34:50] Financial ↔ Broadcaster: Mirror network synchronized</div>
+                    </div>
+                </div>
+                
+                <div>
+                    <h3>🪞 Mirror Network Status</h3>
+                    <div class="verification-log" id="mirrorStatus">
+                        <div class="log-entry log-success">Unified API ↔ Gaming Bridge: ACTIVE (127 verifications)</div>
+                        <div class="log-entry log-success">Unified API ↔ Financial Bridge: ACTIVE (109 verifications)</div>
+                        <div class="log-entry log-success">Unified API ↔ Universal Bridge: ACTIVE (98 verifications)</div>
+                        <div class="log-entry log-success">Unified API ↔ World Broadcaster: ACTIVE (87 verifications)</div>
+                        <div class="log-entry log-success">Unified API ↔ BlameChain Node: ACTIVE (76 verifications)</div>
+                        <div class="log-entry log-success">Gaming ↔ Financial: ACTIVE (143 verifications)</div>
+                        <div class="log-entry log-warning">Gaming ↔ Universal: SYNCING (234 verifications)</div>
+                        <div class="log-entry log-success">Gaming ↔ World Broadcaster: ACTIVE (156 verifications)</div>
+                    </div>
+                </div>
+            </div>
+            
+            <div style="text-align: center; margin-top: 30px;">
+                <button class="sync-button" onclick="syncAllMirrors()">🔄 Sync All Mirrors</button>
+                <button class="verify-button" onclick="verifyAllTransactions()">✅ Verify All Transactions</button>
+                <button class="reset-button" onclick="resetMirrorSystem()">🔄 Reset Mirror System</button>
+            </div>
+        </div>
+    </div>
+    
+    <!-- Mirror Connection Lines -->
+    <div class="mirror-connections" id="mirrorConnections">
+        <!-- Dynamic mirror lines will be added here -->
+    </div>
+
+    <script>
+        // Wallet configuration
+        const wallets = {
+            unified_api: { color: '#ff6b6b', name: 'Unified API' },
+            gaming_bridge: { color: '#4ecdc4', name: 'Gaming Bridge' },
+            financial_bridge: { color: '#45b7d1', name: 'Financial Bridge' },
+            universal_bridge: { color: '#96ceb4', name: 'Universal Bridge' },
+            world_broadcaster: { color: '#feca57', name: 'World Broadcaster' },
+            blamechain_node: { color: '#ff9ff3', name: 'BlameChain Node' }
+        };
+        
+        let verificationStats = {
+            totalValidations: 1247,
+            activeMirrors: 15,
+            crossValidations: 892,
+            systemHealth: 98
+        };
+        
+        // Initialize dashboard
+        function initializeDashboard() {
+            drawMirrorNodes();
+            drawMirrorConnections();
+            startRealTimeUpdates();
+        }
+        
+        // Draw mirror nodes for each wallet
+        function drawMirrorNodes() {
+            const walletKeys = Object.keys(wallets);
+            
+            walletKeys.forEach(walletType => {
+                const container = document.getElementById(walletType.replace('_', '-') + '-mirrors');
+                if (!container) return;
+                
+                // Clear existing nodes
+                container.innerHTML = '';
+                
+                // Create mirror nodes for other wallets
+                const otherWallets = walletKeys.filter(w => w !== walletType);
+                const positions = [
+                    { x: 30, y: 30 },
+                    { x: 150, y: 30 },
+                    { x: 30, y: 120 },
+                    { x: 150, y: 120 },
+                    { x: 90, y: 75 }
+                ];
+                
+                otherWallets.forEach((otherWallet, index) => {
+                    const node = document.createElement('div');
+                    node.className = 'mirror-node';
+                    node.style.background = wallets[otherWallet].color;
+                    node.style.color = isLightColor(wallets[otherWallet].color) ? '#000' : '#fff';
+                    
+                    const pos = positions[index] || { x: Math.random() * 160, y: Math.random() * 140 };
+                    node.style.left = pos.x + 'px';
+                    node.style.top = pos.y + 'px';
+                    
+                    node.innerHTML = otherWallet.split('_')[0].substring(0, 3).toUpperCase();
+                    node.onclick = () => showMirrorDetails(walletType, otherWallet);
+                    
+                    container.appendChild(node);
+                });
+            });
+        }
+        
+        // Draw mirror connections between wallets
+        function drawMirrorConnections() {
+            const connectionsContainer = document.getElementById('mirrorConnections');
+            connectionsContainer.innerHTML = '';
+            
+            const walletPanels = document.querySelectorAll('.wallet-panel');
+            const panelPositions = Array.from(walletPanels).map(panel => {
+                const rect = panel.getBoundingClientRect();
+                return {
+                    x: rect.left + rect.width / 2,
+                    y: rect.top + rect.height / 2,
+                    wallet: panel.className.split(' ')[1]
+                };
+            });
+            
+            // Draw connections between all panels
+            for (let i = 0; i < panelPositions.length; i++) {
+                for (let j = i + 1; j < panelPositions.length; j++) {
+                    const line = createMirrorLine(panelPositions[i], panelPositions[j]);
+                    connectionsContainer.appendChild(line);
+                }
+            }
+        }
+        
+        // Create mirror connection line
+        function createMirrorLine(pos1, pos2) {
+            const dx = pos2.x - pos1.x;
+            const dy = pos2.y - pos1.y;
+            const length = Math.sqrt(dx * dx + dy * dy);
+            const angle = Math.atan2(dy, dx) * 180 / Math.PI;
+            
+            const line = document.createElement('div');
+            line.className = 'mirror-line';
+            line.style.left = pos1.x + 'px';
+            line.style.top = pos1.y + 'px';
+            line.style.width = length + 'px';
+            line.style.transform = `rotate(${angle}deg)`;
+            
+            return line;
+        }
+        
+        // Check if color is light
+        function isLightColor(color) {
+            const r = parseInt(color.slice(1, 3), 16);
+            const g = parseInt(color.slice(3, 5), 16);
+            const b = parseInt(color.slice(5, 7), 16);
+            const brightness = (r * 299 + g * 587 + b * 114) / 1000;
+            return brightness > 128;
+        }
+        
+        // Wallet actions
+        function syncWallet(walletType) {
+            addLogEntry('success', `${walletType.toUpperCase()}: Mirror sync initiated...`);
+            
+            setTimeout(() => {
+                addLogEntry('success', `${walletType.toUpperCase()}: Sync completed (${Math.floor(Math.random() * 10) + 1} transactions verified)`);
+                updateVerificationStats();
+            }, 2000);
+        }
+        
+        function verifyWallet(walletType) {
+            addLogEntry('warning', `${walletType.toUpperCase()}: Starting transaction verification...`);
+            
+            setTimeout(() => {
+                const verified = Math.floor(Math.random() * 20) + 5;
+                const failed = Math.floor(Math.random() * 3);
+                
+                if (failed > 0) {
+                    addLogEntry('error', `${walletType.toUpperCase()}: ${failed} transactions failed verification`);
+                }
+                addLogEntry('success', `${walletType.toUpperCase()}: ${verified} transactions verified successfully`);
+                updateVerificationStats();
+            }, 1500);
+        }
+        
+        function syncAllMirrors() {
+            addLogEntry('success', 'SYSTEM: Initiating bulk mirror synchronization...');
+            
+            Object.keys(wallets).forEach((wallet, index) => {
+                setTimeout(() => {
+                    syncWallet(wallet);
+                }, index * 500);
+            });
+            
+            setTimeout(() => {
+                addLogEntry('success', 'SYSTEM: All mirrors synchronized successfully');
+            }, 4000);
+        }
+        
+        function verifyAllTransactions() {
+            addLogEntry('warning', 'SYSTEM: Starting cross-validation of all transactions...');
+            
+            Object.keys(wallets).forEach((wallet, index) => {
+                setTimeout(() => {
+                    verifyWallet(wallet);
+                }, index * 300);
+            });
+            
+            setTimeout(() => {
+                addLogEntry('success', 'SYSTEM: Cross-validation completed across all wallets');
+            }, 3000);
+        }
+        
+        function resetMirrorSystem() {
+            addLogEntry('warning', 'SYSTEM: Resetting mirror verification system...');
+            
+            setTimeout(() => {
+                verificationStats.totalValidations = 0;
+                verificationStats.crossValidations = 0;
+                updateStatsDisplay();
+                addLogEntry('success', 'SYSTEM: Mirror system reset complete');
+            }, 2000);
+        }
+        
+        // Show mirror details
+        function showMirrorDetails(wallet1, wallet2) {
+            const details = `
+MIRROR VERIFICATION DETAILS
+===========================
+
+Primary Wallet: ${wallet1.toUpperCase()}
+Mirror Wallet: ${wallet2.toUpperCase()}
+
+Status: ACTIVE
+Sync Rate: Every 5 seconds
+Verifications: ${Math.floor(Math.random() * 200) + 50}
+Last Sync: ${new Date().toLocaleTimeString()}
+
+Validation Rules:
+✅ Signature Validation
+✅ Balance Verification  
+✅ Double-spend Check
+✅ Timestamp Validation
+✅ Ring Signature Check
+
+Mirror Health: 98%
+Network Latency: 12ms
+            `;
+            
+            alert(details);
+        }
+        
+        // Add log entry
+        function addLogEntry(type, message) {
+            const log = document.getElementById('verificationLog');
+            const entry = document.createElement('div');
+            entry.className = `log-entry log-${type}`;
+            entry.innerHTML = `[${new Date().toLocaleTimeString()}] ${message}`;
+            
+            log.insertBefore(entry, log.firstChild);
+            
+            // Keep only last 20 entries
+            while (log.children.length > 20) {
+                log.removeChild(log.lastChild);
+            }
+        }
+        
+        // Update verification stats
+        function updateVerificationStats() {
+            verificationStats.totalValidations += Math.floor(Math.random() * 10) + 1;
+            verificationStats.crossValidations += Math.floor(Math.random() * 5) + 1;
+            verificationStats.systemHealth = Math.max(95, Math.min(99, verificationStats.systemHealth + (Math.random() - 0.5)));
+            
+            updateStatsDisplay();
+        }
+        
+        // Update stats display
+        function updateStatsDisplay() {
+            document.getElementById('totalValidations').textContent = verificationStats.totalValidations.toLocaleString();
+            document.getElementById('activeMirrors').textContent = verificationStats.activeMirrors;
+            document.getElementById('crossValidations').textContent = verificationStats.crossValidations.toLocaleString();
+            document.getElementById('systemHealth').textContent = Math.round(verificationStats.systemHealth) + '%';
+        }
+        
+        // Start real-time updates
+        function startRealTimeUpdates() {
+            // Simulate real-time verification activity
+            setInterval(() => {
+                if (Math.random() > 0.7) {
+                    const wallets = Object.keys(window.wallets || {});
+                    const wallet1 = wallets[Math.floor(Math.random() * wallets.length)];
+                    const wallet2 = wallets[Math.floor(Math.random() * wallets.length)];
+                    
+                    if (wallet1 !== wallet2) {
+                        const actions = ['Mirror sync', 'Cross-validation', 'Transaction verification', 'Ring signature check'];
+                        const action = actions[Math.floor(Math.random() * actions.length)];
+                        
+                        addLogEntry('success', `${wallet1.toUpperCase()} ↔ ${wallet2.toUpperCase()}: ${action} completed`);
+                        updateVerificationStats();
+                    }
+                }
+            }, 3000);
+            
+            // Update stats periodically
+            setInterval(() => {
+                updateVerificationStats();
+            }, 5000);
+        }
+        
+        // Handle window resize
+        window.addEventListener('resize', () => {
+            setTimeout(drawMirrorConnections, 100);
+        });
+        
+        // Initialize on load
+        window.onload = initializeDashboard;
+    </script>
+</body>
+</html>

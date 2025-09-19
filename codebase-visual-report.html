@@ -1,0 +1,387 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Codebase Analysis Report</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            background: #0a0a0a;
+            color: #e0e0e0;
+            line-height: 1.6;
+        }
+        
+        .container {
+            max-width: 1400px;
+            margin: 0 auto;
+            padding: 2rem;
+        }
+        
+        h1 {
+            color: #00ff00;
+            font-size: 3rem;
+            margin-bottom: 2rem;
+            text-align: center;
+            text-shadow: 0 0 20px rgba(0, 255, 0, 0.5);
+        }
+        
+        .summary-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+            gap: 1.5rem;
+            margin-bottom: 3rem;
+        }
+        
+        .stat-card {
+            background: rgba(255, 255, 255, 0.05);
+            border: 1px solid rgba(0, 255, 0, 0.3);
+            border-radius: 10px;
+            padding: 1.5rem;
+            text-align: center;
+            transition: all 0.3s;
+        }
+        
+        .stat-card:hover {
+            background: rgba(0, 255, 0, 0.1);
+            transform: translateY(-5px);
+            box-shadow: 0 10px 30px rgba(0, 255, 0, 0.2);
+        }
+        
+        .stat-number {
+            font-size: 2.5rem;
+            font-weight: bold;
+            color: #00ff00;
+            margin-bottom: 0.5rem;
+        }
+        
+        .stat-label {
+            font-size: 1rem;
+            opacity: 0.8;
+        }
+        
+        .section {
+            background: rgba(255, 255, 255, 0.05);
+            border: 1px solid rgba(0, 255, 0, 0.2);
+            border-radius: 15px;
+            padding: 2rem;
+            margin-bottom: 2rem;
+        }
+        
+        h2 {
+            color: #00ff00;
+            font-size: 1.8rem;
+            margin-bottom: 1.5rem;
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+        }
+        
+        .language-list {
+            display: grid;
+            gap: 1rem;
+        }
+        
+        .language-item {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: 1rem;
+            background: rgba(0, 0, 0, 0.3);
+            border-radius: 8px;
+            border: 1px solid rgba(255, 255, 255, 0.1);
+        }
+        
+        .language-name {
+            font-weight: 600;
+            color: #ffffff;
+        }
+        
+        .language-stats {
+            display: flex;
+            gap: 2rem;
+            font-size: 0.9rem;
+            opacity: 0.8;
+        }
+        
+        .progress-bar {
+            width: 100%;
+            height: 20px;
+            background: rgba(255, 255, 255, 0.1);
+            border-radius: 10px;
+            overflow: hidden;
+            margin-top: 0.5rem;
+        }
+        
+        .progress-fill {
+            height: 100%;
+            background: linear-gradient(90deg, #00ff00, #00cc00);
+            transition: width 0.5s ease;
+        }
+        
+        .duplicate-group {
+            background: rgba(255, 0, 0, 0.1);
+            border: 1px solid rgba(255, 0, 0, 0.3);
+            border-radius: 8px;
+            padding: 1rem;
+            margin-bottom: 1rem;
+        }
+        
+        .file-path {
+            font-family: monospace;
+            font-size: 0.9rem;
+            color: #00ccff;
+            word-break: break-all;
+        }
+        
+        .warning {
+            background: rgba(255, 193, 7, 0.1);
+            border: 1px solid rgba(255, 193, 7, 0.3);
+            border-radius: 8px;
+            padding: 1rem;
+            margin-bottom: 1rem;
+        }
+        
+        .insights {
+            background: rgba(0, 123, 255, 0.1);
+            border: 1px solid rgba(0, 123, 255, 0.3);
+            border-radius: 8px;
+            padding: 1.5rem;
+            margin-top: 2rem;
+        }
+        
+        .insights h3 {
+            color: #00ccff;
+            margin-bottom: 1rem;
+        }
+        
+        .insights ul {
+            list-style: none;
+            padding-left: 1rem;
+        }
+        
+        .insights li::before {
+            content: "→ ";
+            color: #00ff00;
+            font-weight: bold;
+        }
+        
+        .load-button {
+            background: linear-gradient(45deg, #00ff00, #00cc00);
+            color: #000;
+            border: none;
+            padding: 1rem 2rem;
+            border-radius: 8px;
+            font-weight: bold;
+            cursor: pointer;
+            margin: 1rem 0;
+            transition: all 0.3s;
+        }
+        
+        .load-button:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 5px 20px rgba(0, 255, 0, 0.4);
+        }
+        
+        #report-data {
+            display: none;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🔍 Codebase Analysis Report</h1>
+        
+        <div class="summary-grid">
+            <div class="stat-card">
+                <div class="stat-number" id="total-files">0</div>
+                <div class="stat-label">Total Files</div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-number" id="total-size">0</div>
+                <div class="stat-label">Total Size</div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-number" id="duplicate-count">0</div>
+                <div class="stat-label">Duplicate Files</div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-number" id="similar-count">0</div>
+                <div class="stat-label">Similar Groups</div>
+            </div>
+        </div>
+
+        <div class="section">
+            <h2>📊 Language Distribution</h2>
+            <div id="language-list" class="language-list">
+                <!-- Languages will be populated here -->
+            </div>
+        </div>
+
+        <div class="section">
+            <h2>⚠️ Key Findings</h2>
+            <div class="warning">
+                <h3>🔄 Massive Duplication</h3>
+                <p>Found <strong id="dup-count">0</strong> duplicate files wasting space. The codebase has multiple copies of the same files, often in backup directories.</p>
+            </div>
+            
+            <div class="warning">
+                <h3>🗂️ No Clear Organization</h3>
+                <p>Files are scattered across <strong>2133 unknown file types</strong>. Many critical systems like OCR, study guides, and gaming platforms exist but aren't integrated.</p>
+            </div>
+            
+            <div class="warning">
+                <h3>🧩 Disconnected Systems</h3>
+                <p>Found <strong>522 groups of similar files</strong> with different names but similar functionality, suggesting multiple attempts at the same features.</p>
+            </div>
+        </div>
+
+        <div class="section">
+            <h2>🔗 Integration Opportunities</h2>
+            <div class="insights">
+                <h3>What You Actually Have:</h3>
+                <ul>
+                    <li>Document Generator with 5 context-aware templates</li>
+                    <li>Multiple OCR systems (simple-ocr-system.js, autonomous-ocr-learning-system.js)</li>
+                    <li>Learning/Education systems scattered across files</li>
+                    <li>Gaming platforms and economy systems</li>
+                    <li>Agent/AI orchestration layers</li>
+                    <li>Blockchain and verification systems</li>
+                </ul>
+                
+                <h3>What's Missing:</h3>
+                <ul>
+                    <li>Unified interface connecting all systems</li>
+                    <li>Study guide generator using OCR input</li>
+                    <li>MCAT/educational content processor</li>
+                    <li>Video/ffmpeg transcript integration</li>
+                    <li>Central dashboard for all features</li>
+                </ul>
+            </div>
+        </div>
+
+        <div class="section">
+            <h2>📁 Project Structure Issues</h2>
+            <div id="structure-analysis">
+                <h3>Current Chaos:</h3>
+                <ul>
+                    <li><strong>Root directory:</strong> 1400+ JavaScript files mixed together</li>
+                    <li><strong>No clear modules:</strong> Everything dumped in one place</li>
+                    <li><strong>Multiple attempts:</strong> Same features reimplemented many times</li>
+                    <li><strong>Backup pollution:</strong> .cleanup-backup folders with duplicates</li>
+                </ul>
+                
+                <h3>Recommended Structure:</h3>
+                <pre style="background: rgba(0,0,0,0.5); padding: 1rem; border-radius: 8px; overflow-x: auto;">
+/Document-Generator/
+├── apps/
+│   ├── web-interface/          # Main dashboard
+│   ├── document-generator/     # Core doc → website
+│   └── study-guide-generator/  # OCR → flashcards
+├── services/
+│   ├── ocr-service/           # Unified OCR
+│   ├── ai-service/            # AI orchestration
+│   └── template-service/      # Template engine
+├── shared/
+│   ├── utils/                 # Common utilities
+│   └── types/                 # Shared types
+└── docs/                      # Documentation
+                </pre>
+            </div>
+        </div>
+
+        <button class="load-button" onclick="loadFullReport()">Load Full Duplicate Analysis</button>
+        
+        <div id="duplicates-section" class="section" style="display: none;">
+            <h2>🔄 Duplicate Files</h2>
+            <div id="duplicate-list">
+                <!-- Duplicates will be populated here -->
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // Load report data
+        fetch('codebase-index-report.json')
+            .then(res => res.json())
+            .then(data => {
+                // Update summary stats
+                document.getElementById('total-files').textContent = data.summary.totalFiles.toLocaleString();
+                document.getElementById('total-size').textContent = formatSize(data.summary.totalSize);
+                document.getElementById('duplicate-count').textContent = data.duplicates.length;
+                document.getElementById('dup-count').textContent = data.duplicates.length;
+                document.getElementById('similar-count').textContent = data.similar.length;
+                
+                // Populate languages
+                const langList = document.getElementById('language-list');
+                const languages = Object.entries(data.languages)
+                    .sort((a, b) => b[1].count - a[1].count)
+                    .slice(0, 10);
+                
+                const maxCount = languages[0][1].count;
+                
+                languages.forEach(([lang, info]) => {
+                    const percentage = (info.count / maxCount) * 100;
+                    const item = document.createElement('div');
+                    item.className = 'language-item';
+                    item.innerHTML = `
+                        <div>
+                            <div class="language-name">${lang.charAt(0).toUpperCase() + lang.slice(1)}</div>
+                            <div class="progress-bar">
+                                <div class="progress-fill" style="width: ${percentage}%"></div>
+                            </div>
+                        </div>
+                        <div class="language-stats">
+                            <span>${info.count} files</span>
+                            <span>${formatSize(info.totalSize)}</span>
+                        </div>
+                    `;
+                    langList.appendChild(item);
+                });
+                
+                // Store data for later use
+                window.reportData = data;
+            })
+            .catch(err => console.error('Failed to load report:', err));
+        
+        function formatSize(bytes) {
+            const units = ['B', 'KB', 'MB', 'GB'];
+            let size = bytes;
+            let unit = 0;
+            
+            while (size >= 1024 && unit < units.length - 1) {
+                size /= 1024;
+                unit++;
+            }
+            
+            return `${size.toFixed(2)} ${units[unit]}`;
+        }
+        
+        function loadFullReport() {
+            if (!window.reportData) return;
+            
+            const section = document.getElementById('duplicates-section');
+            const list = document.getElementById('duplicate-list');
+            
+            // Show top 20 duplicate groups
+            window.reportData.duplicates.slice(0, 20).forEach(dup => {
+                const group = document.createElement('div');
+                group.className = 'duplicate-group';
+                group.innerHTML = `
+                    <h4>Duplicate Group (${dup.count} files, ${formatSize(dup.size)} each)</h4>
+                    ${dup.files.map(f => `<div class="file-path">${f}</div>`).join('')}
+                `;
+                list.appendChild(group);
+            });
+            
+            section.style.display = 'block';
+        }
+    </script>
+</body>
+</html>

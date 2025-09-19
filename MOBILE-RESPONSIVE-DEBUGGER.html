@@ -1,0 +1,1084 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+    <title>📱🔍 Mobile Debugger - Three Layer Architecture</title>
+    <style>
+        /* 🎯 CLEAN DEBUG-FOCUSED MOBILE-FIRST DESIGN */
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        :root {
+            /* Debug Color System */
+            --debug-normal: #00ff00;    /* 🟢 Green: Normal operations */
+            --debug-error: #ff0000;     /* 🔴 Red: Errors/failures */
+            --debug-warning: #ffff00;   /* 🟡 Yellow: Warnings/performance */
+            --debug-ai: #8a2be2;        /* 🟣 Purple: AI layer issues */
+            --debug-state: #4488ff;     /* 🔵 Blue: State changes */
+            --debug-info: #ffffff;      /* ⚪ White: System info */
+            
+            /* Base colors */
+            --bg-primary: #0a0a0a;
+            --bg-secondary: #1a1a1a;
+            --text-primary: #00ff00;
+            --border-color: #333;
+            
+            /* Responsive sizing */
+            --size-xs: 8px;
+            --size-sm: 12px;
+            --size-md: 16px;
+            --size-lg: 24px;
+            --size-xl: 32px;
+        }
+        
+        /* Mobile-first responsive adjustments */
+        @media (min-width: 768px) {
+            :root {
+                --size-xs: 12px;
+                --size-sm: 16px;
+                --size-md: 20px;
+                --size-lg: 32px;
+                --size-xl: 48px;
+            }
+        }
+        
+        body {
+            font-family: 'Courier New', monospace;
+            background: var(--bg-primary);
+            color: var(--text-primary);
+            overflow: hidden;
+            height: 100vh;
+            touch-action: manipulation;
+            -webkit-overflow-scrolling: touch;
+        }
+        
+        /* 📱 MOBILE-FIRST GRID LAYOUT */
+        .debug-container {
+            height: 100vh;
+            display: grid;
+            grid-template-rows: auto auto 1fr auto;
+            grid-template-areas:
+                "header"
+                "debug-bar"
+                "content"
+                "controls";
+        }
+        
+        /* Tablet/Desktop: Three-panel layout */
+        @media (min-width: 768px) {
+            .debug-container {
+                grid-template-columns: 280px 1fr 320px;
+                grid-template-rows: auto auto 1fr auto;
+                grid-template-areas:
+                    "header header header"
+                    "debug-bar debug-bar debug-bar"
+                    "rigid fluid minimap"
+                    "controls controls controls";
+            }
+        }
+        
+        /* 🎯 HEADER WITH DEVICE INFO */
+        .header {
+            grid-area: header;
+            background: var(--bg-secondary);
+            border-bottom: 2px solid var(--debug-normal);
+            padding: var(--size-sm);
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            font-size: var(--size-md);
+        }
+        
+        .device-info {
+            font-size: var(--size-xs);
+            opacity: 0.8;
+            color: var(--debug-info);
+        }
+        
+        /* 🔍 DEBUG BAR - THE MAGIC VISUAL DEBUGGING SYSTEM */
+        .debug-bar {
+            grid-area: debug-bar;
+            background: var(--bg-secondary);
+            border-bottom: 1px solid var(--border-color);
+            padding: var(--size-sm);
+            display: flex;
+            gap: var(--size-sm);
+            overflow-x: auto;
+            align-items: center;
+        }
+        
+        .debug-switch {
+            background: var(--bg-primary);
+            border: 2px solid var(--debug-normal);
+            color: var(--debug-normal);
+            padding: var(--size-xs) var(--size-sm);
+            border-radius: 4px;
+            cursor: pointer;
+            font-family: inherit;
+            font-size: var(--size-xs);
+            transition: all 0.3s;
+            min-width: 60px;
+            text-align: center;
+            white-space: nowrap;
+        }
+        
+        /* Debug switch states */
+        .debug-switch.normal { border-color: var(--debug-normal); color: var(--debug-normal); }
+        .debug-switch.error { border-color: var(--debug-error); color: var(--debug-error); }
+        .debug-switch.warning { border-color: var(--debug-warning); color: var(--debug-warning); }
+        .debug-switch.ai { border-color: var(--debug-ai); color: var(--debug-ai); }
+        .debug-switch.state { border-color: var(--debug-state); color: var(--debug-state); }
+        .debug-switch.info { border-color: var(--debug-info); color: var(--debug-info); }
+        
+        .debug-switch.active {
+            background: currentColor;
+            color: var(--bg-primary);
+            box-shadow: 0 0 10px currentColor;
+        }
+        
+        .debug-status {
+            margin-left: auto;
+            font-size: var(--size-xs);
+            display: flex;
+            gap: var(--size-sm);
+            align-items: center;
+        }
+        
+        .status-dot {
+            width: 8px;
+            height: 8px;
+            border-radius: 50%;
+            background: var(--debug-normal);
+            animation: pulse 2s infinite;
+        }
+        
+        @keyframes pulse {
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0.3; }
+        }
+        
+        /* 📱 CONTENT AREA */
+        .content-area {
+            grid-area: content;
+            overflow: hidden;
+            position: relative;
+        }
+        
+        /* Mobile: Tab interface */
+        .mobile-interface {
+            display: block;
+            height: 100%;
+        }
+        
+        @media (min-width: 768px) {
+            .mobile-interface {
+                display: none;
+            }
+        }
+        
+        .tab-nav {
+            display: flex;
+            background: var(--bg-secondary);
+            border-bottom: 1px solid var(--border-color);
+        }
+        
+        .tab-button {
+            flex: 1;
+            background: none;
+            border: none;
+            color: var(--text-primary);
+            font-family: inherit;
+            font-size: var(--size-sm);
+            padding: var(--size-md);
+            cursor: pointer;
+            border-right: 1px solid var(--border-color);
+            transition: all 0.3s;
+            min-height: 48px; /* Touch target */
+        }
+        
+        .tab-button:last-child {
+            border-right: none;
+        }
+        
+        .tab-button.active {
+            background: var(--debug-normal);
+            color: var(--bg-primary);
+        }
+        
+        .tab-content {
+            height: calc(100% - 48px);
+            overflow: hidden;
+        }
+        
+        .tab-panel {
+            display: none;
+            height: 100%;
+            padding: var(--size-md);
+            overflow-y: auto;
+            -webkit-overflow-scrolling: touch;
+        }
+        
+        .tab-panel.active {
+            display: block;
+        }
+        
+        /* Desktop: Three-panel interface */
+        .desktop-interface {
+            display: none;
+            height: 100%;
+        }
+        
+        @media (min-width: 768px) {
+            .desktop-interface {
+                display: block;
+            }
+            
+            .rigid-layer {
+                grid-area: rigid;
+                background: var(--bg-primary);
+                border-right: 2px solid var(--debug-error);
+                padding: var(--size-lg);
+                overflow-y: auto;
+            }
+            
+            .fluid-layer {
+                grid-area: fluid;
+                background: var(--bg-primary);
+                padding: var(--size-lg);
+                overflow-y: auto;
+                border-right: 2px solid var(--debug-state);
+            }
+            
+            .minimap-layer {
+                grid-area: minimap;
+                background: var(--bg-primary);
+                padding: var(--size-lg);
+                overflow-y: auto;
+            }
+        }
+        
+        /* 🎨 DEBUG-COLORED COMPONENTS */
+        .debug-component {
+            background: var(--bg-secondary);
+            border: 1px solid var(--debug-normal);
+            border-radius: 4px;
+            padding: var(--size-md);
+            margin-bottom: var(--size-md);
+            transition: all 0.3s;
+            cursor: pointer;
+        }
+        
+        .debug-component.error { border-color: var(--debug-error); }
+        .debug-component.warning { border-color: var(--debug-warning); }
+        .debug-component.ai-issue { border-color: var(--debug-ai); }
+        .debug-component.state-change { border-color: var(--debug-state); }
+        
+        .debug-component:hover {
+            box-shadow: 0 0 10px currentColor;
+            transform: scale(1.02);
+        }
+        
+        /* API Endpoint styling */
+        .api-endpoint {
+            background: var(--bg-secondary);
+            border: 1px solid var(--debug-normal);
+            border-radius: 4px;
+            padding: var(--size-md);
+            margin-bottom: var(--size-sm);
+            cursor: pointer;
+            transition: all 0.3s;
+            min-height: 44px; /* Touch target */
+            display: flex;
+            align-items: center;
+        }
+        
+        .api-endpoint.calling {
+            border-color: var(--debug-warning);
+            background: var(--debug-warning);
+            color: var(--bg-primary);
+            animation: flash 0.5s;
+        }
+        
+        .api-endpoint.error {
+            border-color: var(--debug-error);
+        }
+        
+        .api-endpoint.ai-processing {
+            border-color: var(--debug-ai);
+        }
+        
+        @keyframes flash {
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0.7; }
+        }
+        
+        /* Event stream */
+        .event-stream {
+            height: 200px;
+            overflow-y: auto;
+            border: 1px solid var(--debug-state);
+            border-radius: 4px;
+            padding: var(--size-sm);
+            background: rgba(68, 136, 255, 0.05);
+            margin-bottom: var(--size-md);
+        }
+        
+        .event-item {
+            padding: var(--size-xs);
+            margin-bottom: var(--size-xs);
+            border-radius: 2px;
+            font-size: var(--size-xs);
+            animation: slideIn 0.3s;
+        }
+        
+        .event-item.normal { background: rgba(0, 255, 0, 0.1); }
+        .event-item.error { background: rgba(255, 0, 0, 0.1); }
+        .event-item.ai { background: rgba(138, 43, 226, 0.1); }
+        .event-item.state { background: rgba(68, 136, 255, 0.1); }
+        
+        @keyframes slideIn {
+            from { transform: translateY(-10px); opacity: 0; }
+            to { transform: translateY(0); opacity: 1; }
+        }
+        
+        /* Sonar display */
+        .sonar-display {
+            height: 200px;
+            border: 1px solid var(--debug-normal);
+            border-radius: 4px;
+            position: relative;
+            background: radial-gradient(circle at center,
+                rgba(0, 255, 0, 0.1) 0%,
+                transparent 70%);
+            overflow: hidden;
+        }
+        
+        .sonar-sweep {
+            position: absolute;
+            width: 2px;
+            height: 50%;
+            background: linear-gradient(to bottom, var(--debug-normal), transparent);
+            left: 50%;
+            bottom: 50%;
+            transform-origin: bottom center;
+            animation: sweep 4s linear infinite;
+        }
+        
+        @keyframes sweep {
+            from { transform: translateX(-50%) rotate(0deg); }
+            to { transform: translateX(-50%) rotate(360deg); }
+        }
+        
+        /* 🎮 CONTROLS */
+        .controls {
+            grid-area: controls;
+            background: var(--bg-secondary);
+            border-top: 1px solid var(--border-color);
+            padding: var(--size-sm);
+            display: flex;
+            gap: var(--size-sm);
+            justify-content: space-around;
+            align-items: center;
+        }
+        
+        .control-button {
+            background: var(--bg-primary);
+            border: 1px solid var(--debug-normal);
+            color: var(--debug-normal);
+            padding: var(--size-sm);
+            border-radius: 4px;
+            cursor: pointer;
+            font-family: inherit;
+            font-size: var(--size-sm);
+            transition: all 0.3s;
+            min-height: 44px;
+            min-width: 44px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+        
+        .control-button:hover,
+        .control-button:active {
+            background: var(--debug-normal);
+            color: var(--bg-primary);
+            transform: scale(0.95);
+        }
+        
+        /* 🔍 DEBUG OVERLAY */
+        .debug-overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: rgba(0, 0, 0, 0.95);
+            z-index: 1000;
+            display: none;
+            padding: var(--size-lg);
+            overflow-y: auto;
+        }
+        
+        .debug-overlay.active {
+            display: block;
+        }
+        
+        .debug-console {
+            background: var(--bg-secondary);
+            border: 1px solid var(--debug-normal);
+            border-radius: 4px;
+            padding: var(--size-md);
+            height: 100%;
+            font-family: 'Courier New', monospace;
+            font-size: var(--size-xs);
+            overflow-y: auto;
+        }
+        
+        .debug-log-entry {
+            margin-bottom: var(--size-xs);
+            padding: var(--size-xs);
+            border-radius: 2px;
+        }
+        
+        .debug-log-entry.error { color: var(--debug-error); }
+        .debug-log-entry.warning { color: var(--debug-warning); }
+        .debug-log-entry.ai { color: var(--debug-ai); }
+        .debug-log-entry.state { color: var(--debug-state); }
+        .debug-log-entry.info { color: var(--debug-info); }
+        
+        /* 📱 Touch feedback */
+        .touch-feedback {
+            position: fixed;
+            width: 40px;
+            height: 40px;
+            border: 2px solid var(--debug-normal);
+            border-radius: 50%;
+            pointer-events: none;
+            opacity: 0;
+            transform: scale(0);
+            transition: all 0.3s;
+        }
+        
+        .touch-feedback.active {
+            opacity: 0.7;
+            transform: scale(1);
+        }
+    </style>
+</head>
+<body>
+    <div class="debug-container">
+        <!-- 📱 HEADER WITH DEVICE INFO -->
+        <div class="header">
+            <div>📱🔍 Mobile Debugger</div>
+            <div class="device-info" id="deviceInfo">
+                Loading device info...
+            </div>
+        </div>
+        
+        <!-- 🔍 DEBUG BAR - VISUAL DEBUGGING SWITCHES -->
+        <div class="debug-bar">
+            <button class="debug-switch normal active" data-debug="normal">
+                🟢 Normal
+            </button>
+            <button class="debug-switch error" data-debug="error">
+                🔴 Errors
+            </button>
+            <button class="debug-switch warning" data-debug="warning">
+                🟡 Warnings
+            </button>
+            <button class="debug-switch ai" data-debug="ai">
+                🟣 AI Issues
+            </button>
+            <button class="debug-switch state" data-debug="state">
+                🔵 State
+            </button>
+            <button class="debug-switch info" data-debug="info">
+                ⚪ Info
+            </button>
+            
+            <div class="debug-status">
+                <div class="status-dot" id="connectionDot"></div>
+                <span id="connectionStatus">Connecting...</span>
+            </div>
+        </div>
+        
+        <!-- 📱 CONTENT AREA -->
+        <div class="content-area">
+            <!-- Mobile Interface -->
+            <div class="mobile-interface">
+                <div class="tab-nav">
+                    <button class="tab-button active" data-tab="apis">⚡ APIs</button>
+                    <button class="tab-button" data-tab="state">🌊 State</button>
+                    <button class="tab-button" data-tab="minimap">🗺️ Map</button>
+                    <button class="tab-button" data-tab="sonar">📡 Sonar</button>
+                </div>
+                
+                <div class="tab-content">
+                    <!-- APIs Tab -->
+                    <div class="tab-panel active" id="apis-panel">
+                        <h3 style="color: var(--debug-error); margin-bottom: var(--size-md);">⚡ RIGID API LAYER</h3>
+                        
+                        <div class="api-endpoint" onclick="testAPI('create')" data-endpoint="create">
+                            <div>
+                                <strong>POST /api/agent/create</strong><br>
+                                <small style="opacity: 0.7;">Create new agent</small>
+                            </div>
+                        </div>
+                        
+                        <div class="api-endpoint" onclick="testAPI('move')" data-endpoint="move">
+                            <div>
+                                <strong>POST /api/agent/move</strong><br>
+                                <small style="opacity: 0.7;">Move agent to room</small>
+                            </div>
+                        </div>
+                        
+                        <div class="api-endpoint" onclick="testAPI('trade')" data-endpoint="trade">
+                            <div>
+                                <strong>POST /api/agent/trade</strong><br>
+                                <small style="opacity: 0.7;">Trade compute for credits</small>
+                            </div>
+                        </div>
+                        
+                        <div class="api-endpoint" onclick="testAPI('ai-query')" data-endpoint="ai-query">
+                            <div>
+                                <strong>POST /api/ai/query</strong><br>
+                                <small style="opacity: 0.7;">Send query to AI layer</small>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <!-- State Tab -->
+                    <div class="tab-panel" id="state-panel">
+                        <h3 style="color: var(--debug-state); margin-bottom: var(--size-md);">🌊 FLUID STATE LAYER</h3>
+                        
+                        <div class="event-stream" id="mobileEventStream">
+                            <div class="event-item normal">System initialized</div>
+                            <div class="event-item state">State manager connected</div>
+                            <div class="event-item normal">WebSocket ready</div>
+                        </div>
+                        
+                        <div class="debug-component state-change">
+                            <h4 style="color: var(--debug-state);">Global State</h4>
+                            <div id="mobileGlobalStats">
+                                Chain Length: 0 blocks<br>
+                                Total Agents: 0<br>
+                                Active Connections: 1<br>
+                                Debug Mode: Active
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <!-- Minimap Tab -->
+                    <div class="tab-panel" id="minimap-panel">
+                        <h3 style="color: var(--debug-normal); margin-bottom: var(--size-md);">🗺️ MINIMAP/MUD VIEW</h3>
+                        
+                        <div class="debug-component">
+                            <pre id="mobileMudView" style="white-space: pre-wrap; font-size: var(--size-xs);">
+> MOBILE MUD INTERFACE
+> DEBUG MODE ACTIVE
+> 
+> Location: Debug Console
+> Viewport: Mobile Optimized
+> Touch Controls: Enabled
+> 
+> Available Commands:
+> - tap: Interact
+> - swipe: Navigate
+> - long-press: Debug menu
+                            </pre>
+                        </div>
+                    </div>
+                    
+                    <!-- Sonar Tab -->
+                    <div class="tab-panel" id="sonar-panel">
+                        <h3 style="color: var(--debug-normal); margin-bottom: var(--size-md);">📡 RESPONSIVE SONAR</h3>
+                        
+                        <div class="sonar-display">
+                            <div class="sonar-sweep"></div>
+                            <div style="position: absolute; top: var(--size-sm); left: var(--size-sm); font-size: var(--size-xs); background: rgba(0,0,0,0.8); padding: var(--size-xs); border-radius: 2px;">
+                                Mobile Sonar Active<br>
+                                Range: Optimized<br>
+                                Touch: Enabled
+                            </div>
+                        </div>
+                        
+                        <div class="debug-component" style="margin-top: var(--size-md);">
+                            <h4>Sonar Debug Info</h4>
+                            <div id="sonarDebugInfo">
+                                Sweep Rate: 4s<br>
+                                Resolution: Mobile<br>
+                                Status: Active
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- Desktop Interface -->
+            <div class="desktop-interface">
+                <div class="rigid-layer">
+                    <h2 style="color: var(--debug-error); margin-bottom: var(--size-lg);">⚡ RIGID API LAYER</h2>
+                    <div id="desktopAPIs">Loading APIs...</div>
+                </div>
+                
+                <div class="fluid-layer">
+                    <h2 style="color: var(--debug-state); margin-bottom: var(--size-lg);">🌊 FLUID STATE LAYER</h2>
+                    <div class="event-stream" id="desktopEventStream"></div>
+                    <div id="desktopGlobalStats"></div>
+                </div>
+                
+                <div class="minimap-layer">
+                    <h2 style="color: var(--debug-normal); margin-bottom: var(--size-lg);">🗺️ MINIMAP/MUD VIEW</h2>
+                    <div class="sonar-display">
+                        <div class="sonar-sweep"></div>
+                    </div>
+                    <div id="desktopMudView"></div>
+                </div>
+            </div>
+        </div>
+        
+        <!-- 🎮 CONTROLS -->
+        <div class="controls">
+            <button class="control-button" onclick="refresh()" title="Refresh All">🔄</button>
+            <button class="control-button" onclick="simulate()" title="Simulate Activity">🎮</button>
+            <button class="control-button" onclick="toggleDebugConsole()" title="Debug Console">🔍</button>
+            <button class="control-button" onclick="showDeviceInfo()" title="Device Info">📱</button>
+        </div>
+    </div>
+    
+    <!-- 🔍 DEBUG OVERLAY -->
+    <div class="debug-overlay" id="debugOverlay">
+        <div class="debug-console">
+            <h3 style="color: var(--debug-normal); margin-bottom: var(--size-md);">🔍 Debug Console</h3>
+            <button onclick="toggleDebugConsole()" style="float: right; background: none; border: 1px solid var(--debug-error); color: var(--debug-error); padding: 4px 8px; cursor: pointer;">✖</button>
+            <div id="debugLogContainer"></div>
+        </div>
+    </div>
+    
+    <!-- Touch feedback -->
+    <div class="touch-feedback" id="touchFeedback"></div>
+    
+    <script>
+        // 📱🔍 MOBILE RESPONSIVE DEBUGGER
+        const MobileDebugger = {
+            device: null,
+            viewport: null,
+            ws: null,
+            debugMode: 'normal',
+            eventCount: 0,
+            agents: new Map(),
+            debugLogs: [],
+            
+            init() {
+                console.log('📱🔍 Mobile Debugger initializing...');
+                this.detectDevice();
+                this.setupEventHandlers();
+                this.connectWebSocket();
+                this.startDebugSystems();
+                this.updateDeviceInfo();
+                console.log('✅ Mobile Debugger ready');
+            },
+            
+            detectDevice() {
+                const width = window.innerWidth;
+                const height = window.innerHeight;
+                const userAgent = navigator.userAgent.toLowerCase();
+                
+                const isMobile = /android|iphone|ipod|blackberry|iemobile|opera mini/i.test(userAgent) || width < 768;
+                const isTablet = /ipad|android(?!.*mobile)|tablet/i.test(userAgent) || (width >= 768 && width < 1024);
+                const isDesktop = !isMobile && !isTablet;
+                
+                this.device = {
+                    type: isMobile ? 'mobile' : isTablet ? 'tablet' : 'desktop',
+                    isMobile, isTablet, isDesktop,
+                    supportsTouch: 'ontouchstart' in window,
+                    userAgent: navigator.userAgent
+                };
+                
+                this.viewport = {
+                    width, height,
+                    ratio: window.devicePixelRatio || 1,
+                    orientation: width > height ? 'landscape' : 'portrait'
+                };
+            },
+            
+            updateDeviceInfo() {
+                const info = document.getElementById('deviceInfo');
+                info.textContent = `${this.device.type.toUpperCase()} ${this.viewport.width}x${this.viewport.height} ${this.viewport.orientation}`;
+                
+                // Update debug info
+                const debugInfo = document.getElementById('sonarDebugInfo');
+                if (debugInfo) {
+                    debugInfo.innerHTML = `
+Sweep Rate: 4s<br>
+Resolution: ${this.device.type}<br>
+Touch: ${this.device.supportsTouch ? 'Yes' : 'No'}<br>
+Status: Active
+                    `.trim();
+                }
+            },
+            
+            setupEventHandlers() {
+                // Mobile tab switching
+                const tabButtons = document.querySelectorAll('.tab-button');
+                const tabPanels = document.querySelectorAll('.tab-panel');
+                
+                tabButtons.forEach(button => {
+                    button.addEventListener('click', (e) => {
+                        const targetTab = button.getAttribute('data-tab');
+                        
+                        // Update buttons
+                        tabButtons.forEach(b => b.classList.remove('active'));
+                        button.classList.add('active');
+                        
+                        // Update panels
+                        tabPanels.forEach(p => p.classList.remove('active'));
+                        document.getElementById(targetTab + '-panel').classList.add('active');
+                        
+                        // Haptic feedback
+                        this.hapticFeedback();
+                        this.logDebug('info', `Switched to ${targetTab} tab`);
+                    });
+                });
+                
+                // Debug switches
+                const debugSwitches = document.querySelectorAll('.debug-switch');
+                debugSwitches.forEach(switchBtn => {
+                    switchBtn.addEventListener('click', (e) => {
+                        const debugType = switchBtn.getAttribute('data-debug');
+                        this.setDebugMode(debugType);
+                        
+                        // Update switch states
+                        debugSwitches.forEach(s => s.classList.remove('active'));
+                        switchBtn.classList.add('active');
+                        
+                        this.hapticFeedback();
+                        this.logDebug('info', `Debug mode: ${debugType}`);
+                    });
+                });
+                
+                // Touch feedback
+                if (this.device.supportsTouch) {
+                    this.setupTouchFeedback();
+                }
+                
+                // Resize handler
+                window.addEventListener('resize', () => {
+                    this.detectDevice();
+                    this.updateDeviceInfo();
+                });
+                
+                // Orientation change
+                window.addEventListener('orientationchange', () => {
+                    setTimeout(() => {
+                        this.detectDevice();
+                        this.updateDeviceInfo();
+                    }, 500);
+                });
+            },
+            
+            setupTouchFeedback() {
+                const touchFeedback = document.getElementById('touchFeedback');
+                
+                document.addEventListener('touchstart', (e) => {
+                    const touch = e.touches[0];
+                    touchFeedback.style.left = (touch.clientX - 20) + 'px';
+                    touchFeedback.style.top = (touch.clientY - 20) + 'px';
+                    touchFeedback.classList.add('active');
+                });
+                
+                document.addEventListener('touchend', () => {
+                    touchFeedback.classList.remove('active');
+                });
+            },
+            
+            connectWebSocket() {
+                // Try to connect to existing Universal Display Kernel
+                try {
+                    this.ws = new WebSocket('ws://localhost:8889');
+                    
+                    this.ws.onopen = () => {
+                        console.log('🔌 Connected to Universal Display Kernel');
+                        this.updateConnectionStatus('connected');
+                        this.logDebug('normal', 'WebSocket connected to Universal Display Kernel');
+                    };
+                    
+                    this.ws.onmessage = (event) => {
+                        const data = JSON.parse(event.data);
+                        this.handleWebSocketMessage(data);
+                    };
+                    
+                    this.ws.onclose = () => {
+                        this.updateConnectionStatus('disconnected');
+                        this.logDebug('warning', 'WebSocket disconnected, retrying...');
+                        // Retry connection
+                        setTimeout(() => this.connectWebSocket(), 5000);
+                    };
+                    
+                    this.ws.onerror = () => {
+                        this.updateConnectionStatus('error');
+                        this.logDebug('error', 'WebSocket connection failed');
+                    };
+                } catch (error) {
+                    console.log('⚠️ Universal Display Kernel not available, running standalone');
+                    this.updateConnectionStatus('standalone');
+                    this.logDebug('warning', 'Running in standalone mode');
+                }
+            },
+            
+            handleWebSocketMessage(data) {
+                switch (data.type) {
+                    case 'state_update':
+                        this.addEvent('state', data.message || 'State updated');
+                        break;
+                    case 'api_status':
+                        this.updateAPIStatus(data.endpoint, data.status);
+                        break;
+                    case 'ai_response':
+                        this.addEvent('ai', `AI response: ${data.message}`);
+                        break;
+                    default:
+                        this.addEvent('info', `Unknown message: ${data.type}`);
+                }
+            },
+            
+            updateConnectionStatus(status) {
+                const dot = document.getElementById('connectionDot');
+                const text = document.getElementById('connectionStatus');
+                
+                switch (status) {
+                    case 'connected':
+                        dot.style.background = 'var(--debug-normal)';
+                        text.textContent = 'Connected';
+                        break;
+                    case 'disconnected':
+                        dot.style.background = 'var(--debug-warning)';
+                        text.textContent = 'Disconnected';
+                        break;
+                    case 'error':
+                        dot.style.background = 'var(--debug-error)';
+                        text.textContent = 'Error';
+                        break;
+                    case 'standalone':
+                        dot.style.background = 'var(--debug-info)';
+                        text.textContent = 'Standalone';
+                        break;
+                }
+            },
+            
+            setDebugMode(mode) {
+                this.debugMode = mode;
+                console.log(`🔍 Debug mode: ${mode}`);
+                
+                // Update UI based on debug mode
+                const components = document.querySelectorAll('.debug-component, .api-endpoint');
+                components.forEach(comp => {
+                    comp.className = comp.className.replace(/\b(normal|error|warning|ai-issue|state-change)\b/g, '');
+                    
+                    // Add debug mode class
+                    if (mode !== 'normal') {
+                        comp.classList.add(mode === 'error' ? 'error' : 
+                                         mode === 'warning' ? 'warning' : 
+                                         mode === 'ai' ? 'ai-issue' : 'state-change');
+                    }
+                });
+            },
+            
+            addEvent(type, message) {
+                this.eventCount++;
+                
+                // Add to mobile event stream
+                const mobileStream = document.getElementById('mobileEventStream');
+                if (mobileStream) {
+                    const eventEl = document.createElement('div');
+                    eventEl.className = `event-item ${type}`;
+                    eventEl.textContent = `${new Date().toLocaleTimeString()}: ${message}`;
+                    
+                    mobileStream.insertBefore(eventEl, mobileStream.firstChild);
+                    
+                    // Keep only last 10 events
+                    while (mobileStream.children.length > 10) {
+                        mobileStream.removeChild(mobileStream.lastChild);
+                    }
+                }
+                
+                // Update stats
+                this.updateGlobalStats();
+                
+                // Log to debug console
+                this.logDebug(type, message);
+            },
+            
+            updateGlobalStats() {
+                const stats = `
+Chain Length: ${this.eventCount} events<br>
+Total Agents: ${this.agents.size}<br>
+Active Connections: 1<br>
+Debug Mode: ${this.debugMode}
+                `.trim();
+                
+                const mobileStats = document.getElementById('mobileGlobalStats');
+                if (mobileStats) mobileStats.innerHTML = stats;
+            },
+            
+            updateAPIStatus(endpoint, status) {
+                const apiEl = document.querySelector(`[data-endpoint="${endpoint}"]`);
+                if (apiEl) {
+                    apiEl.classList.remove('calling', 'error', 'ai-processing');
+                    if (status === 'calling') apiEl.classList.add('calling');
+                    if (status === 'error') apiEl.classList.add('error');
+                    if (status === 'ai-processing') apiEl.classList.add('ai-processing');
+                }
+            },
+            
+            logDebug(level, message) {
+                this.debugLogs.push({
+                    timestamp: new Date().toLocaleTimeString(),
+                    level,
+                    message
+                });
+                
+                // Keep only last 100 logs
+                if (this.debugLogs.length > 100) {
+                    this.debugLogs.shift();
+                }
+                
+                // Update debug console if open
+                this.updateDebugConsole();
+            },
+            
+            updateDebugConsole() {
+                const container = document.getElementById('debugLogContainer');
+                if (!container) return;
+                
+                container.innerHTML = this.debugLogs.map(log => 
+                    `<div class="debug-log-entry ${log.level}">[${log.timestamp}] ${log.message}</div>`
+                ).join('');
+                
+                container.scrollTop = container.scrollHeight;
+            },
+            
+            hapticFeedback() {
+                if (navigator.vibrate) {
+                    navigator.vibrate(50);
+                }
+            },
+            
+            startDebugSystems() {
+                // Simulate some activity
+                setInterval(() => {
+                    const events = ['normal', 'state', 'info'];
+                    const randomEvent = events[Math.floor(Math.random() * events.length)];
+                    this.addEvent(randomEvent, `Periodic check (${randomEvent})`);
+                }, 10000);
+                
+                // Simulate occasional errors for testing
+                setInterval(() => {
+                    if (Math.random() < 0.1) {
+                        this.addEvent('error', 'Simulated error for testing');
+                    }
+                    if (Math.random() < 0.1) {
+                        this.addEvent('ai', 'AI processing timeout');
+                    }
+                }, 15000);
+            }
+        };
+        
+        // 🎮 GLOBAL FUNCTIONS
+        function testAPI(action) {
+            console.log(`🔗 Testing API: ${action}`);
+            
+            // Visual feedback
+            MobileDebugger.updateAPIStatus(action, 'calling');
+            MobileDebugger.hapticFeedback();
+            
+            setTimeout(() => {
+                // Simulate different outcomes based on debug mode
+                if (MobileDebugger.debugMode === 'error') {
+                    MobileDebugger.updateAPIStatus(action, 'error');
+                    MobileDebugger.addEvent('error', `API ${action} failed (debug mode)`);
+                } else if (MobileDebugger.debugMode === 'ai' && action === 'ai-query') {
+                    MobileDebugger.updateAPIStatus(action, 'ai-processing');
+                    MobileDebugger.addEvent('ai', `AI query processing with issues`);
+                } else {
+                    MobileDebugger.updateAPIStatus(action, '');
+                    MobileDebugger.addEvent('normal', `API ${action} successful`);
+                }
+            }, 500);
+            
+            if (action === 'create') {
+                const agentId = 'agent_' + Date.now();
+                MobileDebugger.agents.set(agentId, { name: 'Test Agent', status: 'active' });
+            }
+        }
+        
+        function refresh() {
+            console.log('🔄 Refreshing all systems');
+            MobileDebugger.addEvent('info', 'Manual refresh triggered');
+            MobileDebugger.hapticFeedback();
+            
+            // Reset all API statuses
+            document.querySelectorAll('.api-endpoint').forEach(el => {
+                el.classList.remove('calling', 'error', 'ai-processing');
+            });
+        }
+        
+        function simulate() {
+            console.log('🎮 Simulating activity');
+            MobileDebugger.addEvent('info', 'Activity simulation started');
+            
+            const actions = ['create', 'move', 'trade', 'ai-query'];
+            let count = 0;
+            
+            const interval = setInterval(() => {
+                if (count >= 5) {
+                    clearInterval(interval);
+                    MobileDebugger.addEvent('info', 'Activity simulation completed');
+                    return;
+                }
+                
+                const action = actions[Math.floor(Math.random() * actions.length)];
+                testAPI(action);
+                count++;
+            }, 1000);
+        }
+        
+        function toggleDebugConsole() {
+            const overlay = document.getElementById('debugOverlay');
+            overlay.classList.toggle('active');
+            
+            if (overlay.classList.contains('active')) {
+                MobileDebugger.updateDebugConsole();
+                MobileDebugger.logDebug('info', 'Debug console opened');
+            }
+        }
+        
+        function showDeviceInfo() {
+            const info = `
+Device Type: ${MobileDebugger.device.type}
+Viewport: ${MobileDebugger.viewport.width}x${MobileDebugger.viewport.height}
+Orientation: ${MobileDebugger.viewport.orientation}
+Touch Support: ${MobileDebugger.device.supportsTouch ? 'Yes' : 'No'}
+Pixel Ratio: ${MobileDebugger.viewport.ratio}
+Debug Mode: ${MobileDebugger.debugMode}
+Events: ${MobileDebugger.eventCount}
+User Agent: ${MobileDebugger.device.userAgent.substring(0, 50)}...
+            `.trim();
+            
+            alert(info);
+            MobileDebugger.logDebug('info', 'Device info displayed');
+        }
+        
+        // 🚀 INITIALIZE
+        if (document.readyState === 'loading') {
+            document.addEventListener('DOMContentLoaded', () => MobileDebugger.init());
+        } else {
+            MobileDebugger.init();
+        }
+    </script>
+</body>
+</html>

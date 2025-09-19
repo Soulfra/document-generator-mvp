@@ -1,0 +1,879 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>🎯 File Swipe Decision Interface</title>
+    <script src="https://hammerjs.github.io/dist/hammer.min.js"></script>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;600;700&display=swap');
+        
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            font-family: 'Inter', sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            overflow-x: hidden;
+        }
+        
+        .app-container {
+            max-width: 500px;
+            margin: 0 auto;
+            padding: 20px;
+            position: relative;
+            height: 100vh;
+        }
+        
+        .header {
+            text-align: center;
+            color: white;
+            margin-bottom: 20px;
+        }
+        
+        .header h1 {
+            font-size: 2.5rem;
+            font-weight: 700;
+            margin-bottom: 10px;
+            text-shadow: 0 2px 10px rgba(0,0,0,0.3);
+        }
+        
+        .stats {
+            display: flex;
+            justify-content: space-around;
+            background: rgba(255,255,255,0.1);
+            padding: 15px;
+            border-radius: 15px;
+            backdrop-filter: blur(10px);
+            margin-bottom: 20px;
+        }
+        
+        .stat {
+            text-align: center;
+            color: white;
+        }
+        
+        .stat-number {
+            font-size: 1.5rem;
+            font-weight: 700;
+        }
+        
+        .stat-label {
+            font-size: 0.8rem;
+            opacity: 0.8;
+        }
+        
+        .card-stack {
+            position: relative;
+            height: 500px;
+            perspective: 1000px;
+        }
+        
+        .file-card {
+            position: absolute;
+            width: 100%;
+            height: 100%;
+            background: white;
+            border-radius: 20px;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.2);
+            cursor: grab;
+            transform-origin: center;
+            transition: transform 0.3s ease;
+            overflow: hidden;
+        }
+        
+        .file-card:active {
+            cursor: grabbing;
+        }
+        
+        .file-card.swiping {
+            transition: none;
+        }
+        
+        .similarity-badge {
+            position: absolute;
+            top: 15px;
+            right: 15px;
+            background: linear-gradient(45deg, #ff6b6b, #ffd93d);
+            color: white;
+            padding: 8px 15px;
+            border-radius: 20px;
+            font-weight: 600;
+            font-size: 0.9rem;
+            z-index: 10;
+        }
+        
+        .card-content {
+            padding: 20px;
+            height: 100%;
+            display: flex;
+            flex-direction: column;
+        }
+        
+        .file-comparison {
+            display: flex;
+            gap: 15px;
+            flex: 1;
+        }
+        
+        .file-preview {
+            flex: 1;
+            background: #f8f9fa;
+            border-radius: 10px;
+            padding: 15px;
+            position: relative;
+        }
+        
+        .file-name {
+            font-weight: 600;
+            margin-bottom: 10px;
+            color: #2c3e50;
+            font-size: 0.9rem;
+        }
+        
+        .file-meta {
+            font-size: 0.7rem;
+            color: #7f8c8d;
+            margin-bottom: 10px;
+        }
+        
+        .file-content {
+            font-family: 'Monaco', monospace;
+            font-size: 0.7rem;
+            line-height: 1.4;
+            color: #34495e;
+            height: 200px;
+            overflow-y: auto;
+            border: 1px solid #e9ecef;
+            border-radius: 5px;
+            padding: 8px;
+            background: white;
+        }
+        
+        .reasoning-section {
+            background: #f1f3f4;
+            border-radius: 10px;
+            padding: 15px;
+            margin-top: 15px;
+        }
+        
+        .reasoning-title {
+            font-weight: 600;
+            color: #2c3e50;
+            margin-bottom: 10px;
+            display: flex;
+            align-items: center;
+            gap: 5px;
+        }
+        
+        .reasoning-points {
+            list-style: none;
+        }
+        
+        .reasoning-points li {
+            margin-bottom: 8px;
+            padding-left: 20px;
+            position: relative;
+            font-size: 0.8rem;
+            color: #5a6c7d;
+        }
+        
+        .reasoning-points li::before {
+            content: '•';
+            position: absolute;
+            left: 0;
+            color: #3498db;
+            font-weight: bold;
+        }
+        
+        .action-hints {
+            position: absolute;
+            top: 50%;
+            transform: translateY(-50%);
+            font-size: 4rem;
+            font-weight: 700;
+            opacity: 0;
+            transition: opacity 0.3s ease;
+            z-index: 5;
+            pointer-events: none;
+        }
+        
+        .action-hints.left {
+            left: 20px;
+            color: #e74c3c;
+        }
+        
+        .action-hints.right {
+            right: 20px;
+            color: #27ae60;
+        }
+        
+        .action-hints.up {
+            top: 20px;
+            left: 50%;
+            transform: translateX(-50%);
+            color: #3498db;
+        }
+        
+        .action-hints.down {
+            bottom: 20px;
+            top: auto;
+            left: 50%;
+            transform: translateX(-50%);
+            color: #f39c12;
+        }
+        
+        .controls {
+            position: fixed;
+            bottom: 30px;
+            left: 50%;
+            transform: translateX(-50%);
+            display: flex;
+            gap: 15px;
+        }
+        
+        .control-btn {
+            width: 60px;
+            height: 60px;
+            border-radius: 50%;
+            border: none;
+            color: white;
+            font-size: 1.5rem;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            box-shadow: 0 5px 15px rgba(0,0,0,0.2);
+        }
+        
+        .control-btn:hover {
+            transform: scale(1.1);
+        }
+        
+        .control-btn.reject {
+            background: linear-gradient(45deg, #e74c3c, #c0392b);
+        }
+        
+        .control-btn.keep-both {
+            background: linear-gradient(45deg, #3498db, #2980b9);
+        }
+        
+        .control-btn.accept {
+            background: linear-gradient(45deg, #27ae60, #229954);
+        }
+        
+        .control-btn.auto {
+            background: linear-gradient(45deg, #f39c12, #e67e22);
+        }
+        
+        .progress-bar {
+            background: rgba(255,255,255,0.2);
+            height: 4px;
+            border-radius: 2px;
+            margin-top: 10px;
+            overflow: hidden;
+        }
+        
+        .progress-fill {
+            background: white;
+            height: 100%;
+            border-radius: 2px;
+            transition: width 0.3s ease;
+        }
+        
+        .empty-state {
+            text-align: center;
+            color: white;
+            padding: 60px 20px;
+        }
+        
+        .empty-state h2 {
+            font-size: 2rem;
+            margin-bottom: 15px;
+        }
+        
+        .empty-state p {
+            opacity: 0.8;
+            font-size: 1.1rem;
+        }
+        
+        .loading {
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            height: 200px;
+            color: white;
+        }
+        
+        .spinner {
+            width: 40px;
+            height: 40px;
+            border: 3px solid rgba(255,255,255,0.3);
+            border-top: 3px solid white;
+            border-radius: 50%;
+            animation: spin 1s linear infinite;
+            margin-right: 15px;
+        }
+        
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+        
+        .notification {
+            position: fixed;
+            top: 20px;
+            left: 50%;
+            transform: translateX(-50%);
+            background: rgba(0,0,0,0.8);
+            color: white;
+            padding: 15px 25px;
+            border-radius: 25px;
+            opacity: 0;
+            transition: opacity 0.3s ease;
+            z-index: 1000;
+        }
+        
+        .notification.show {
+            opacity: 1;
+        }
+        
+        /* Responsive */
+        @media (max-width: 600px) {
+            .app-container {
+                padding: 10px;
+            }
+            
+            .header h1 {
+                font-size: 2rem;
+            }
+            
+            .card-stack {
+                height: 450px;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="app-container">
+        <div class="header">
+            <h1>🎯 File Swipe</h1>
+            <p>Swipe to organize similar files</p>
+            
+            <div class="stats">
+                <div class="stat">
+                    <div class="stat-number" id="processed-count">0</div>
+                    <div class="stat-label">Processed</div>
+                </div>
+                <div class="stat">
+                    <div class="stat-number" id="remaining-count">0</div>
+                    <div class="stat-label">Remaining</div>
+                </div>
+                <div class="stat">
+                    <div class="stat-number" id="accuracy-rate">0%</div>
+                    <div class="stat-label">Accuracy</div>
+                </div>
+            </div>
+            
+            <div class="progress-bar">
+                <div class="progress-fill" id="progress-fill" style="width: 0%"></div>
+            </div>
+        </div>
+        
+        <div class="card-stack" id="card-stack">
+            <div class="loading">
+                <div class="spinner"></div>
+                <span>Loading file pairs...</span>
+            </div>
+        </div>
+        
+        <div class="controls">
+            <button class="control-btn reject" title="Delete/Archive (Swipe Left)" onclick="swipeLeft()">
+                🗑️
+            </button>
+            <button class="control-btn keep-both" title="Keep Both (Swipe Up)" onclick="swipeUp()">
+                📄
+            </button>
+            <button class="control-btn accept" title="Keep Preferred (Swipe Right)" onclick="swipeRight()">
+                ✅
+            </button>
+            <button class="control-btn auto" title="Auto-decide (Swipe Down)" onclick="swipeDown()">
+                🤖
+            </button>
+        </div>
+    </div>
+    
+    <div class="notification" id="notification"></div>
+    
+    <script>
+        class FileSwipeInterface {
+            constructor() {
+                this.filePairs = [];
+                this.currentIndex = 0;
+                this.decisions = [];
+                this.ws = null;
+                
+                this.stats = {
+                    processed: 0,
+                    correct: 0,
+                    total: 0
+                };
+                
+                this.init();
+            }
+            
+            async init() {
+                // Connect to WebSocket
+                this.connectWebSocket();
+                
+                // Load file pairs
+                await this.loadFilePairs();
+                
+                // Setup swipe gestures
+                this.setupGestures();
+                
+                // Render first card
+                this.renderCurrentCard();
+            }
+            
+            connectWebSocket() {
+                this.ws = new WebSocket('ws://localhost:3008');
+                
+                this.ws.onmessage = (event) => {
+                    const message = JSON.parse(event.data);
+                    
+                    if (message.type === 'similar_files_found') {
+                        this.showNotification(
+                            \`🔍 New similar files found: \${message.data.file1} & \${message.data.file2} (\${message.data.similarity}% similar)\`
+                        );
+                        
+                        // Optionally reload pairs
+                        setTimeout(() => this.loadFilePairs(), 1000);
+                    }
+                };
+            }
+            
+            async loadFilePairs() {
+                try {
+                    const response = await fetch('http://localhost:3008/api/file-pairs');
+                    this.filePairs = await response.json();
+                    this.stats.total = this.filePairs.length;
+                    
+                    if (this.filePairs.length === 0) {
+                        this.showEmptyState();
+                    } else {
+                        await this.loadFileContents();
+                        this.renderCurrentCard();
+                    }
+                    
+                    this.updateStats();
+                } catch (error) {
+                    console.error('Error loading file pairs:', error);
+                    this.showNotification('❌ Error loading file pairs');
+                }
+            }
+            
+            async loadFileContents() {
+                for (let pair of this.filePairs) {
+                    try {
+                        const [content1, content2] = await Promise.all([
+                            fetch(\`http://localhost:3008/api/file-content/\${encodeURIComponent(pair.file1_path)}\`).then(r => r.json()),
+                            fetch(\`http://localhost:3008/api/file-content/\${encodeURIComponent(pair.file2_path)}\`).then(r => r.json())
+                        ]);
+                        
+                        pair.file1_content = content1;
+                        pair.file2_content = content2;
+                        pair.reasoning = this.generateReasoning(pair, content1, content2);
+                    } catch (error) {
+                        console.error('Error loading content for pair:', error);
+                    }
+                }
+            }
+            
+            generateReasoning(pair, content1, content2) {
+                const reasons = [];
+                const similarity = Math.round(pair.similarity_score * 100);
+                
+                // Similarity level reasoning
+                if (similarity > 95) {
+                    reasons.push('Files are nearly identical - likely exact duplicates');
+                } else if (similarity > 85) {
+                    reasons.push('Files share most content with minor differences');
+                } else if (similarity > 70) {
+                    reasons.push('Files have significant overlap but notable differences');
+                }
+                
+                // Size comparison
+                const sizeDiff = Math.abs(content1.size - content2.size);
+                const sizeRatio = sizeDiff / Math.max(content1.size, content2.size);
+                
+                if (sizeRatio < 0.1) {
+                    reasons.push('Similar file sizes suggest comparable content');
+                } else if (sizeRatio > 0.5) {
+                    reasons.push(\`Significant size difference (\${this.formatSize(sizeDiff)})\`);
+                }
+                
+                // Name similarity
+                const name1 = content1.name.toLowerCase();
+                const name2 = content2.name.toLowerCase();
+                
+                if (name1.includes('backup') || name2.includes('backup')) {
+                    reasons.push('One file appears to be a backup');
+                }
+                
+                if (name1.includes('copy') || name2.includes('copy')) {
+                    reasons.push('One file appears to be a copy');
+                }
+                
+                // Version detection
+                const versionRegex = /v?\d+(\.\d+)?/g;
+                const versions1 = name1.match(versionRegex);
+                const versions2 = name2.match(versionRegex);
+                
+                if (versions1 && versions2) {
+                    reasons.push('Both files contain version numbers');
+                }
+                
+                // Content analysis
+                if (content1.lines && content2.lines) {
+                    const lineDiff = Math.abs(content1.lines - content2.lines);
+                    if (lineDiff > 10) {
+                        reasons.push(\`Content differs by \${lineDiff} lines\`);
+                    }
+                }
+                
+                return reasons;
+            }
+            
+            setupGestures() {
+                const cardStack = document.getElementById('card-stack');
+                const hammer = new Hammer(cardStack);
+                
+                hammer.get('swipe').set({ direction: Hammer.DIRECTION_ALL });
+                hammer.get('pan').set({ direction: Hammer.DIRECTION_ALL });
+                
+                hammer.on('pan', (e) => {
+                    const card = this.getCurrentCard();
+                    if (!card) return;
+                    
+                    const deltaX = e.deltaX;
+                    const deltaY = e.deltaY;
+                    const rotation = deltaX * 0.1;
+                    
+                    card.classList.add('swiping');
+                    card.style.transform = \`translateX(\${deltaX}px) translateY(\${deltaY}px) rotate(\${rotation}deg)\`;
+                    
+                    // Update action hints
+                    this.updateActionHints(deltaX, deltaY);
+                });
+                
+                hammer.on('panend', (e) => {
+                    const card = this.getCurrentCard();
+                    if (!card) return;
+                    
+                    card.classList.remove('swiping');
+                    
+                    const threshold = 100;
+                    const deltaX = e.deltaX;
+                    const deltaY = e.deltaY;
+                    
+                    if (Math.abs(deltaX) > threshold || Math.abs(deltaY) > threshold) {
+                        if (Math.abs(deltaX) > Math.abs(deltaY)) {
+                            // Horizontal swipe
+                            if (deltaX > 0) {
+                                this.handleSwipe('right');
+                            } else {
+                                this.handleSwipe('left');
+                            }
+                        } else {
+                            // Vertical swipe
+                            if (deltaY > 0) {
+                                this.handleSwipe('down');
+                            } else {
+                                this.handleSwipe('up');
+                            }
+                        }
+                    } else {
+                        // Snap back
+                        card.style.transform = '';
+                        this.hideActionHints();
+                    }
+                });
+                
+                hammer.on('swipe', (e) => {
+                    const direction = e.direction;
+                    
+                    if (direction === Hammer.DIRECTION_LEFT) {
+                        this.handleSwipe('left');
+                    } else if (direction === Hammer.DIRECTION_RIGHT) {
+                        this.handleSwipe('right');
+                    } else if (direction === Hammer.DIRECTION_UP) {
+                        this.handleSwipe('up');
+                    } else if (direction === Hammer.DIRECTION_DOWN) {
+                        this.handleSwipe('down');
+                    }
+                });
+            }
+            
+            updateActionHints(deltaX, deltaY) {
+                const hints = document.querySelectorAll('.action-hints');
+                hints.forEach(hint => hint.style.opacity = '0');
+                
+                const threshold = 50;
+                
+                if (Math.abs(deltaX) > Math.abs(deltaY)) {
+                    if (deltaX > threshold) {
+                        document.querySelector('.action-hints.right').style.opacity = Math.min(1, deltaX / 150);
+                    } else if (deltaX < -threshold) {
+                        document.querySelector('.action-hints.left').style.opacity = Math.min(1, Math.abs(deltaX) / 150);
+                    }
+                } else {
+                    if (deltaY > threshold) {
+                        document.querySelector('.action-hints.down').style.opacity = Math.min(1, deltaY / 150);
+                    } else if (deltaY < -threshold) {
+                        document.querySelector('.action-hints.up').style.opacity = Math.min(1, Math.abs(deltaY) / 150);
+                    }
+                }
+            }
+            
+            hideActionHints() {
+                const hints = document.querySelectorAll('.action-hints');
+                hints.forEach(hint => hint.style.opacity = '0');
+            }
+            
+            handleSwipe(direction) {
+                const pair = this.filePairs[this.currentIndex];
+                if (!pair) return;
+                
+                let decision, message;
+                
+                switch (direction) {
+                    case 'left':
+                        decision = 'delete_both';
+                        message = '🗑️ Marked for deletion';
+                        break;
+                    case 'right':
+                        decision = 'keep_file1';
+                        message = '✅ Keeping preferred file';
+                        break;
+                    case 'up':
+                        decision = 'keep_both';
+                        message = '📄 Keeping both files';
+                        break;
+                    case 'down':
+                        decision = 'auto_decide';
+                        message = '🤖 Auto-decision applied';
+                        break;
+                }
+                
+                this.recordDecision(pair, decision, message);
+                this.animateCardExit(direction);
+                
+                setTimeout(() => {
+                    this.nextCard();
+                }, 300);
+            }
+            
+            animateCardExit(direction) {
+                const card = this.getCurrentCard();
+                if (!card) return;
+                
+                let transform;
+                
+                switch (direction) {
+                    case 'left':
+                        transform = 'translateX(-100vw) rotate(-30deg)';
+                        break;
+                    case 'right':
+                        transform = 'translateX(100vw) rotate(30deg)';
+                        break;
+                    case 'up':
+                        transform = 'translateY(-100vh) rotate(10deg)';
+                        break;
+                    case 'down':
+                        transform = 'translateY(100vh) rotate(-10deg)';
+                        break;
+                }
+                
+                card.style.transform = transform;
+                card.style.opacity = '0';
+            }
+            
+            async recordDecision(pair, decision, message) {
+                this.showNotification(message);
+                
+                try {
+                    await fetch('http://localhost:3008/api/decision', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({
+                            file1: pair.file1_path,
+                            file2: pair.file2_path,
+                            decision,
+                            reasoning: \`Swipe decision: \${decision}\`
+                        })
+                    });
+                    
+                    this.stats.processed++;
+                    this.decisions.push({ pair, decision });
+                    
+                } catch (error) {
+                    console.error('Error recording decision:', error);
+                }
+            }
+            
+            nextCard() {
+                this.currentIndex++;
+                
+                if (this.currentIndex >= this.filePairs.length) {
+                    this.showCompletionState();
+                } else {
+                    this.renderCurrentCard();
+                }
+                
+                this.updateStats();
+            }
+            
+            renderCurrentCard() {
+                const cardStack = document.getElementById('card-stack');
+                const pair = this.filePairs[this.currentIndex];
+                
+                if (!pair) {
+                    this.showEmptyState();
+                    return;
+                }
+                
+                const similarity = Math.round(pair.similarity_score * 100);
+                
+                cardStack.innerHTML = \`
+                    <div class="file-card">
+                        <div class="similarity-badge">\${similarity}% Similar</div>
+                        
+                        <div class="action-hints left">❌</div>
+                        <div class="action-hints right">✅</div>
+                        <div class="action-hints up">📄</div>
+                        <div class="action-hints down">🤖</div>
+                        
+                        <div class="card-content">
+                            <div class="file-comparison">
+                                <div class="file-preview">
+                                    <div class="file-name">\${pair.file1_content?.name || 'File 1'}</div>
+                                    <div class="file-meta">
+                                        Size: \${this.formatSize(pair.file1_content?.size || 0)} • 
+                                        Lines: \${pair.file1_content?.lines || 0} • 
+                                        Type: \${pair.file1_content?.type || 'unknown'}
+                                    </div>
+                                    <div class="file-content">\${pair.file1_content?.preview || 'Loading...'}</div>
+                                </div>
+                                
+                                <div class="file-preview">
+                                    <div class="file-name">\${pair.file2_content?.name || 'File 2'}</div>
+                                    <div class="file-meta">
+                                        Size: \${this.formatSize(pair.file2_content?.size || 0)} • 
+                                        Lines: \${pair.file2_content?.lines || 0} • 
+                                        Type: \${pair.file2_content?.type || 'unknown'}
+                                    </div>
+                                    <div class="file-content">\${pair.file2_content?.preview || 'Loading...'}</div>
+                                </div>
+                            </div>
+                            
+                            <div class="reasoning-section">
+                                <div class="reasoning-title">
+                                    🧠 Why these files are similar:
+                                </div>
+                                <ul class="reasoning-points">
+                                    \${pair.reasoning?.map(reason => \`<li>\${reason}</li>\`).join('') || '<li>Content analysis in progress...</li>'}
+                                </ul>
+                            </div>
+                        </div>
+                    </div>
+                \`;
+            }
+            
+            getCurrentCard() {
+                return document.querySelector('.file-card');
+            }
+            
+            updateStats() {
+                document.getElementById('processed-count').textContent = this.stats.processed;
+                document.getElementById('remaining-count').textContent = this.filePairs.length - this.currentIndex;
+                
+                const accuracy = this.stats.processed > 0 ? Math.round((this.stats.correct / this.stats.processed) * 100) : 0;
+                document.getElementById('accuracy-rate').textContent = \`\${accuracy}%\`;
+                
+                const progress = this.filePairs.length > 0 ? (this.currentIndex / this.filePairs.length) * 100 : 0;
+                document.getElementById('progress-fill').style.width = \`\${progress}%\`;
+            }
+            
+            showNotification(message) {
+                const notification = document.getElementById('notification');
+                notification.textContent = message;
+                notification.classList.add('show');
+                
+                setTimeout(() => {
+                    notification.classList.remove('show');
+                }, 3000);
+            }
+            
+            showEmptyState() {
+                const cardStack = document.getElementById('card-stack');
+                cardStack.innerHTML = \`
+                    <div class="empty-state">
+                        <h2>🎉 All done!</h2>
+                        <p>No similar files found. Your project is well organized!</p>
+                        <button onclick="location.reload()" style="margin-top: 20px; padding: 10px 20px; background: white; border: none; border-radius: 10px; cursor: pointer;">
+                            Check Again
+                        </button>
+                    </div>
+                \`;
+            }
+            
+            showCompletionState() {
+                const cardStack = document.getElementById('card-stack');
+                const processed = this.stats.processed;
+                
+                cardStack.innerHTML = \`
+                    <div class="empty-state">
+                        <h2>✨ Session Complete!</h2>
+                        <p>You processed \${processed} file pairs</p>
+                        <p>Great job organizing your files!</p>
+                        <button onclick="location.reload()" style="margin-top: 20px; padding: 10px 20px; background: white; border: none; border-radius: 10px; cursor: pointer;">
+                            Start New Session
+                        </button>
+                    </div>
+                \`;
+            }
+            
+            formatSize(bytes) {
+                if (bytes === 0) return '0 B';
+                const k = 1024;
+                const sizes = ['B', 'KB', 'MB', 'GB'];
+                const i = Math.floor(Math.log(bytes) / Math.log(k));
+                return parseFloat((bytes / Math.pow(k, i)).toFixed(1)) + ' ' + sizes[i];
+            }
+        }
+        
+        // Control button functions
+        function swipeLeft() {
+            app.handleSwipe('left');
+        }
+        
+        function swipeRight() {
+            app.handleSwipe('right');
+        }
+        
+        function swipeUp() {
+            app.handleSwipe('up');
+        }
+        
+        function swipeDown() {
+            app.handleSwipe('down');
+        }
+        
+        // Initialize the app
+        const app = new FileSwipeInterface();
+    </script>
+</body>
+</html>

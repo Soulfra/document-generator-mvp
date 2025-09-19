@@ -1,0 +1,1458 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Universal Game Arena - Everything Everywhere All at Once</title>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Comic+Sans+MS&family=JetBrains+Mono:wght@400;700&display=swap');
+        
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            background: #000;
+            color: #00ff88;
+            font-family: 'JetBrains Mono', monospace;
+            overflow: hidden;
+            position: relative;
+        }
+        
+        /* Main container with HUD integration */
+        .universal-arena {
+            width: 100vw;
+            height: 100vh;
+            position: relative;
+            display: grid;
+            grid-template-rows: 60px 1fr 80px;
+        }
+        
+        /* Integrated HUD Header from universal-hud-enhanced */
+        .arena-header {
+            background: linear-gradient(90deg, rgba(0, 0, 0, 0.9), rgba(20, 20, 20, 0.9));
+            border-bottom: 2px solid #00ff88;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 0 20px;
+            backdrop-filter: blur(10px);
+            z-index: 1001;
+        }
+        
+        /* HyperCam overlay */
+        .hypercam-overlay {
+            position: absolute;
+            top: 70px;
+            left: 10px;
+            font-family: 'Comic Sans MS', cursive;
+            font-size: 20px;
+            font-weight: bold;
+            color: #ffff00;
+            text-shadow: 2px 2px 0 #000, -2px -2px 0 #000, 2px -2px 0 #000, -2px 2px 0 #000;
+            z-index: 1000;
+            pointer-events: none;
+        }
+        
+        .unregistered {
+            font-size: 24px;
+            color: #ff0000;
+            animation: blink 1s infinite;
+        }
+        
+        @keyframes blink {
+            0%, 50% { opacity: 1; }
+            51%, 100% { opacity: 0.7; }
+        }
+        
+        /* Main game area */
+        .game-area {
+            position: relative;
+            display: grid;
+            grid-template-columns: 300px 1fr 300px;
+            background: radial-gradient(circle at center, #0a0a0a, #000);
+        }
+        
+        /* Left panel - Chat & Players */
+        .left-panel {
+            background: rgba(0, 0, 0, 0.8);
+            border-right: 1px solid #333;
+            display: flex;
+            flex-direction: column;
+            overflow: hidden;
+        }
+        
+        /* Center - Game Canvas */
+        .canvas-container {
+            position: relative;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+        
+        #mainCanvas {
+            border: 2px solid #00ff88;
+            box-shadow: 0 0 20px rgba(0, 255, 136, 0.5);
+            image-rendering: pixelated;
+            cursor: crosshair;
+            max-width: 100%;
+            max-height: 100%;
+        }
+        
+        /* Right panel - Live Data */
+        .right-panel {
+            background: rgba(0, 0, 0, 0.8);
+            border-left: 1px solid #333;
+            display: flex;
+            flex-direction: column;
+            overflow: hidden;
+        }
+        
+        /* Recording indicator */
+        .recording-indicator {
+            position: absolute;
+            top: 70px;
+            right: 10px;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            background: rgba(0, 0, 0, 0.8);
+            padding: 10px 20px;
+            border-radius: 20px;
+            z-index: 1000;
+        }
+        
+        .rec-dot {
+            width: 12px;
+            height: 12px;
+            background: #ff0000;
+            border-radius: 50%;
+            animation: rec-pulse 1s infinite;
+        }
+        
+        @keyframes rec-pulse {
+            0%, 100% { opacity: 1; transform: scale(1); }
+            50% { opacity: 0.5; transform: scale(1.2); }
+        }
+        
+        /* Chat system */
+        .chat-container {
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            border-bottom: 1px solid #333;
+        }
+        
+        .chat-header {
+            background: #00ff88;
+            color: #000;
+            padding: 10px;
+            font-weight: bold;
+            font-size: 12px;
+        }
+        
+        .chat-messages {
+            flex: 1;
+            overflow-y: auto;
+            padding: 10px;
+            font-size: 11px;
+        }
+        
+        .chat-message {
+            margin: 5px 0;
+            word-wrap: break-word;
+        }
+        
+        .chat-message.system {
+            color: #ffaa00;
+            font-style: italic;
+        }
+        
+        .chat-input {
+            display: flex;
+            border-top: 1px solid #333;
+        }
+        
+        .chat-input input {
+            flex: 1;
+            background: #111;
+            border: none;
+            color: #00ff88;
+            padding: 10px;
+            font-family: inherit;
+            font-size: 11px;
+        }
+        
+        /* Players list */
+        .players-container {
+            border-top: 1px solid #333;
+        }
+        
+        .players-header {
+            background: #333;
+            padding: 10px;
+            font-weight: bold;
+            font-size: 12px;
+        }
+        
+        .players-list {
+            max-height: 200px;
+            overflow-y: auto;
+            padding: 10px;
+        }
+        
+        .player-item {
+            display: flex;
+            justify-content: space-between;
+            padding: 5px;
+            margin: 2px 0;
+            background: rgba(255, 255, 255, 0.05);
+            border-radius: 3px;
+            font-size: 11px;
+        }
+        
+        .player-item.local {
+            border: 1px solid #00ff88;
+        }
+        
+        /* Live data feed */
+        .data-feed-container {
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+        }
+        
+        .data-feed-header {
+            background: #333;
+            padding: 10px;
+            font-weight: bold;
+            font-size: 12px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+        
+        .data-feed {
+            flex: 1;
+            overflow-y: auto;
+            padding: 10px;
+            font-size: 10px;
+        }
+        
+        .data-item {
+            padding: 5px;
+            margin: 3px 0;
+            background: rgba(0, 255, 136, 0.1);
+            border-left: 2px solid #00ff88;
+            animation: slideIn 0.3s ease-out;
+        }
+        
+        @keyframes slideIn {
+            from {
+                opacity: 0;
+                transform: translateX(20px);
+            }
+            to {
+                opacity: 1;
+                transform: translateX(0);
+            }
+        }
+        
+        /* Game stats */
+        .game-stats {
+            border-top: 1px solid #333;
+            padding: 15px;
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 10px;
+        }
+        
+        .stat-box {
+            text-align: center;
+            background: rgba(255, 255, 255, 0.05);
+            padding: 10px;
+            border-radius: 5px;
+        }
+        
+        .stat-label {
+            font-size: 9px;
+            opacity: 0.7;
+            text-transform: uppercase;
+        }
+        
+        .stat-value {
+            font-size: 18px;
+            font-weight: bold;
+            color: #00ff88;
+            margin-top: 5px;
+        }
+        
+        /* Control bar */
+        .control-bar {
+            background: linear-gradient(90deg, rgba(0, 0, 0, 0.9), rgba(20, 20, 20, 0.9));
+            border-top: 2px solid #00ff88;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 0 20px;
+            backdrop-filter: blur(10px);
+        }
+        
+        .control-section {
+            display: flex;
+            gap: 10px;
+            align-items: center;
+        }
+        
+        .control-button {
+            background: rgba(0, 255, 136, 0.2);
+            border: 1px solid #00ff88;
+            color: #00ff88;
+            padding: 8px 16px;
+            cursor: pointer;
+            transition: all 0.3s;
+            font-family: inherit;
+            font-size: 11px;
+            font-weight: bold;
+        }
+        
+        .control-button:hover {
+            background: rgba(0, 255, 136, 0.3);
+            transform: scale(1.05);
+        }
+        
+        .control-button.active {
+            background: #00ff88;
+            color: #000;
+        }
+        
+        /* Mini map */
+        .minimap {
+            position: absolute;
+            bottom: 100px;
+            right: 20px;
+            width: 150px;
+            height: 100px;
+            background: rgba(0, 0, 0, 0.8);
+            border: 1px solid #00ff88;
+            z-index: 100;
+        }
+        
+        .minimap canvas {
+            width: 100%;
+            height: 100%;
+            image-rendering: pixelated;
+        }
+        
+        /* Achievement popup */
+        .achievement-popup {
+            position: fixed;
+            top: 80px;
+            left: 50%;
+            transform: translateX(-50%) translateY(-100px);
+            background: linear-gradient(135deg, rgba(255, 215, 0, 0.9), rgba(255, 165, 0, 0.9));
+            color: #000;
+            padding: 20px 30px;
+            border-radius: 10px;
+            box-shadow: 0 5px 20px rgba(255, 215, 0, 0.5);
+            transition: transform 0.5s cubic-bezier(0.68, -0.55, 0.265, 1.55);
+            z-index: 2000;
+        }
+        
+        .achievement-popup.show {
+            transform: translateX(-50%) translateY(0);
+        }
+        
+        /* Sports ticker integration */
+        .sports-ticker {
+            position: absolute;
+            bottom: 0;
+            left: 0;
+            right: 0;
+            height: 30px;
+            background: rgba(0, 0, 0, 0.9);
+            border-top: 1px solid #ffd700;
+            overflow: hidden;
+            z-index: 100;
+            display: none;
+        }
+        
+        .sports-ticker.active {
+            display: block;
+        }
+        
+        .ticker-content {
+            display: flex;
+            align-items: center;
+            height: 100%;
+            white-space: nowrap;
+            animation: ticker 30s linear infinite;
+            font-size: 12px;
+        }
+        
+        @keyframes ticker {
+            from { transform: translateX(100%); }
+            to { transform: translateX(-100%); }
+        }
+        
+        /* Loading screen */
+        .loading-overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: #000;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            z-index: 3000;
+        }
+        
+        .loading-text {
+            font-size: 24px;
+            margin-bottom: 20px;
+            color: #00ff88;
+            animation: pulse 1s infinite;
+        }
+        
+        @keyframes pulse {
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0.5; }
+        }
+        
+        /* Visual effects layer */
+        .effects-layer {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            pointer-events: none;
+            z-index: 500;
+        }
+        
+        .particle {
+            position: absolute;
+            width: 4px;
+            height: 4px;
+            background: #00ff88;
+            border-radius: 50%;
+            pointer-events: none;
+        }
+    </style>
+</head>
+<body>
+    <div class="universal-arena">
+        <!-- Integrated Header -->
+        <div class="arena-header">
+            <div class="context-indicator">
+                <div style="display: flex; align-items: center; gap: 10px;">
+                    <div style="width: 20px; height: 20px; background: #00ff88; border-radius: 50%; animation: pulse 2s infinite;"></div>
+                    <div>
+                        <div style="font-size: 16px; font-weight: bold;">UNIVERSAL GAME ARENA</div>
+                        <div style="font-size: 10px; opacity: 0.7;">Everything Everywhere All at Once</div>
+                    </div>
+                </div>
+            </div>
+            
+            <div class="data-indicators" style="display: flex; gap: 20px;">
+                <div class="data-indicator">
+                    <div style="font-size: 16px; font-weight: bold; color: #00ff88;" id="btcPrice">--</div>
+                    <div style="font-size: 9px; opacity: 0.7;">BTC</div>
+                </div>
+                <div class="data-indicator">
+                    <div style="font-size: 16px; font-weight: bold; color: #00ff88;" id="dataPoints">0</div>
+                    <div style="font-size: 9px; opacity: 0.7;">DATA PTS</div>
+                </div>
+                <div class="data-indicator">
+                    <div style="font-size: 16px; font-weight: bold; color: #00ff88;" id="fps">60</div>
+                    <div style="font-size: 9px; opacity: 0.7;">FPS</div>
+                </div>
+            </div>
+            
+            <div class="reality-status" style="display: flex; gap: 10px;">
+                <div style="padding: 5px 10px; border: 1px solid #ff4444; color: #ff8888; background: rgba(255, 68, 68, 0.1); border-radius: 3px;">
+                    <div style="font-size: 10px;">GOD VIEW</div>
+                    <div id="godTime" style="font-size: 12px; font-weight: bold;">00:00.000</div>
+                </div>
+                <div style="padding: 5px 10px; border: 1px solid #4488ff; color: #88aaff; background: rgba(68, 136, 255, 0.1); border-radius: 3px;">
+                    <div style="font-size: 10px;">PLAYER VIEW</div>
+                    <div id="playerTime" style="font-size: 12px; font-weight: bold;">00:00.000</div>
+                </div>
+            </div>
+        </div>
+        
+        <!-- Main Game Area -->
+        <div class="game-area">
+            <!-- HyperCam Overlay -->
+            <div class="hypercam-overlay">
+                HyperCam 2<br>
+                <span class="unregistered">www.hyperionics.com</span>
+            </div>
+            
+            <!-- Recording Indicator -->
+            <div class="recording-indicator" id="recordingIndicator" style="display: none;">
+                <div class="rec-dot"></div>
+                <span>REC</span>
+                <span id="recordingTime">00:00</span>
+            </div>
+            
+            <!-- Left Panel -->
+            <div class="left-panel">
+                <!-- Chat -->
+                <div class="chat-container">
+                    <div class="chat-header">💬 MULTIPLAYER CHAT</div>
+                    <div class="chat-messages" id="chatMessages">
+                        <div class="chat-message system">Welcome to Universal Game Arena!</div>
+                        <div class="chat-message system">Connecting to all data sources...</div>
+                    </div>
+                    <div class="chat-input">
+                        <input type="text" id="chatInput" placeholder="Type a message..." maxlength="100">
+                    </div>
+                </div>
+                
+                <!-- Players List -->
+                <div class="players-container">
+                    <div class="players-header">👥 PLAYERS ONLINE</div>
+                    <div class="players-list" id="playersList">
+                        <div class="player-item local">
+                            <span>You</span>
+                            <span>0 pts</span>
+                        </div>
+                    </div>
+                </div>
+                
+                <!-- Game Stats -->
+                <div class="game-stats">
+                    <div class="stat-box">
+                        <div class="stat-label">Health</div>
+                        <div class="stat-value" id="health">100</div>
+                    </div>
+                    <div class="stat-box">
+                        <div class="stat-label">Score</div>
+                        <div class="stat-value" id="score">0</div>
+                    </div>
+                    <div class="stat-box">
+                        <div class="stat-label">Level</div>
+                        <div class="stat-value" id="level">1</div>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- Center - Game Canvas -->
+            <div class="canvas-container">
+                <canvas id="mainCanvas" width="800" height="600"></canvas>
+                
+                <!-- Mini Map -->
+                <div class="minimap">
+                    <canvas id="minimapCanvas"></canvas>
+                </div>
+                
+                <!-- Effects Layer -->
+                <div class="effects-layer" id="effectsLayer"></div>
+            </div>
+            
+            <!-- Right Panel -->
+            <div class="right-panel">
+                <!-- Live Data Feed -->
+                <div class="data-feed-container">
+                    <div class="data-feed-header">
+                        <span>📡 LIVE DATA FEED</span>
+                        <span id="dataStatus" style="font-size: 10px; color: #00ff88;">ONLINE</span>
+                    </div>
+                    <div class="data-feed" id="dataFeed">
+                        <div class="data-item">Initializing data streams...</div>
+                    </div>
+                </div>
+                
+                <!-- Market Data -->
+                <div style="border-top: 1px solid #333; padding: 15px;">
+                    <div style="font-weight: bold; font-size: 12px; margin-bottom: 10px;">💰 MARKET DATA</div>
+                    <div id="marketData" style="font-size: 10px;">
+                        <div>Loading market data...</div>
+                    </div>
+                </div>
+                
+                <!-- Game Economy -->
+                <div style="border-top: 1px solid #333; padding: 15px;">
+                    <div style="font-weight: bold; font-size: 12px; margin-bottom: 10px;">🎮 GAME ECONOMY</div>
+                    <div id="gameEconomy" style="font-size: 10px;">
+                        <div>OSRS GE: Loading...</div>
+                        <div>D2JSP FG: Loading...</div>
+                        <div>Steam Market: Loading...</div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        
+        <!-- Control Bar -->
+        <div class="control-bar">
+            <div class="control-section">
+                <button class="control-button" id="recordBtn" onclick="toggleRecording()">🔴 RECORD</button>
+                <button class="control-button" onclick="shareRoom()">🔗 SHARE</button>
+                <button class="control-button" onclick="toggleFullscreen()">🗖 FULLSCREEN</button>
+            </div>
+            
+            <div class="control-section">
+                <button class="control-button" data-context="database">DATABASE</button>
+                <button class="control-button" data-context="games" class="active">GAMES</button>
+                <button class="control-button" data-context="economics">ECONOMICS</button>
+                <button class="control-button" data-context="multiplayer">MULTIPLAYER</button>
+            </div>
+            
+            <div class="control-section">
+                <span style="font-size: 11px; opacity: 0.7;">Room: </span>
+                <span id="roomId" style="font-size: 11px; font-family: monospace; color: #00ff88;">--</span>
+            </div>
+        </div>
+        
+        <!-- Sports Ticker -->
+        <div class="sports-ticker" id="sportsTicker">
+            <div class="ticker-content" id="tickerContent">
+                <span style="padding: 0 30px;">Loading sports data...</span>
+            </div>
+        </div>
+        
+        <!-- Achievement Popup -->
+        <div class="achievement-popup" id="achievementPopup">
+            <div style="font-weight: bold; font-size: 16px;" id="achievementTitle">Achievement Unlocked!</div>
+            <div style="font-size: 12px; margin-top: 5px;" id="achievementDesc">Welcome to the arena!</div>
+        </div>
+        
+        <!-- Loading Overlay -->
+        <div class="loading-overlay" id="loadingOverlay">
+            <div class="loading-text">INITIALIZING UNIVERSAL SYSTEMS...</div>
+            <div style="width: 300px; height: 20px; background: #111; border: 1px solid #00ff88; overflow: hidden;">
+                <div id="loadingBar" style="height: 100%; background: #00ff88; width: 0%; transition: width 0.3s;"></div>
+            </div>
+        </div>
+    </div>
+    
+    <script>
+        // Universal Game Arena - Main Controller
+        class UniversalGameArena {
+            constructor() {
+                this.canvas = document.getElementById('mainCanvas');
+                this.ctx = this.canvas.getContext('2d');
+                this.minimap = document.getElementById('minimapCanvas');
+                this.minimapCtx = this.minimap.getContext('2d');
+                
+                // Game state
+                this.players = new Map();
+                this.localPlayer = null;
+                this.projectiles = [];
+                this.particles = [];
+                this.dataConnections = new Map();
+                
+                // Recording state
+                this.recording = false;
+                this.recordingFrames = [];
+                this.recordingStartTime = null;
+                
+                // Network state
+                this.roomId = this.generateRoomId();
+                this.ws = null;
+                this.dataSources = new Map();
+                
+                // Performance tracking
+                this.fps = 60;
+                this.frameCount = 0;
+                this.lastFpsUpdate = Date.now();
+                
+                // Initialize
+                this.init();
+            }
+            
+            async init() {
+                console.log('🌟 Initializing Universal Game Arena...');
+                
+                // Show loading progress
+                this.updateLoading(10, 'Setting up game engine...');
+                
+                // Set up canvas dimensions
+                this.resizeCanvas();
+                window.addEventListener('resize', () => this.resizeCanvas());
+                
+                this.updateLoading(20, 'Creating player...');
+                
+                // Create local player
+                this.createLocalPlayer();
+                
+                this.updateLoading(40, 'Connecting to data sources...');
+                
+                // Connect to data sources
+                await this.connectDataSources();
+                
+                this.updateLoading(60, 'Setting up controls...');
+                
+                // Set up controls
+                this.setupControls();
+                
+                this.updateLoading(80, 'Initializing multiplayer...');
+                
+                // Connect multiplayer
+                await this.connectMultiplayer();
+                
+                this.updateLoading(100, 'Ready!');
+                
+                // Start game
+                setTimeout(() => {
+                    document.getElementById('loadingOverlay').style.display = 'none';
+                    this.startGame();
+                    
+                    // Show achievement
+                    this.showAchievement('Welcome Commander!', 'You\'ve entered the Universal Arena');
+                }, 1000);
+            }
+            
+            updateLoading(percent, message) {
+                document.getElementById('loadingBar').style.width = percent + '%';
+                if (message) {
+                    document.querySelector('.loading-text').textContent = message;
+                }
+            }
+            
+            resizeCanvas() {
+                const container = this.canvas.parentElement;
+                const maxWidth = container.clientWidth - 40;
+                const maxHeight = container.clientHeight - 140;
+                
+                const scale = Math.min(maxWidth / 800, maxHeight / 600);
+                this.canvas.style.transform = `scale(${scale})`;
+                this.canvas.style.transformOrigin = 'center center';
+            }
+            
+            generateRoomId() {
+                const id = 'arena_' + Math.random().toString(36).substr(2, 9);
+                document.getElementById('roomId').textContent = id;
+                return id;
+            }
+            
+            createLocalPlayer() {
+                this.localPlayer = {
+                    id: 'player_' + Date.now(),
+                    x: 400,
+                    y: 300,
+                    vx: 0,
+                    vy: 0,
+                    angle: 0,
+                    color: `hsl(${Math.random() * 360}, 100%, 50%)`,
+                    health: 100,
+                    score: 0,
+                    level: 1,
+                    radius: 20,
+                    trail: []
+                };
+                
+                this.players.set(this.localPlayer.id, this.localPlayer);
+                this.updatePlayersList();
+            }
+            
+            async connectDataSources() {
+                // Try to connect to Universal Data Aggregator
+                try {
+                    const ws = new WebSocket('ws://localhost:47004');
+                    
+                    ws.onopen = () => {
+                        console.log('✅ Connected to Universal Data Aggregator');
+                        this.addDataFeedItem('Connected to Universal Data Aggregator', 'success');
+                        this.dataSources.set('aggregator', ws);
+                    };
+                    
+                    ws.onmessage = (event) => {
+                        this.handleDataMessage(JSON.parse(event.data));
+                    };
+                    
+                    ws.onerror = () => {
+                        console.log('⚠️ Data Aggregator not available');
+                        this.addDataFeedItem('Data Aggregator offline - using demo data', 'warning');
+                    };
+                } catch (error) {
+                    console.log('Running in demo mode');
+                }
+                
+                // Try to connect to Crypto Aggregator
+                try {
+                    const cryptoWs = new WebSocket('ws://localhost:47003');
+                    
+                    cryptoWs.onopen = () => {
+                        console.log('✅ Connected to Crypto Aggregator');
+                        this.dataSources.set('crypto', cryptoWs);
+                    };
+                    
+                    cryptoWs.onmessage = (event) => {
+                        const data = JSON.parse(event.data);
+                        if (data.type === 'price_update' && data.consensus) {
+                            this.updateCryptoDisplay(data.consensus);
+                        }
+                    };
+                } catch (error) {
+                    console.log('Crypto aggregator not available');
+                }
+            }
+            
+            handleDataMessage(data) {
+                switch (data.type) {
+                    case 'category_update':
+                        this.handleCategoryUpdate(data);
+                        break;
+                    case 'universal_update':
+                        this.handleUniversalUpdate(data);
+                        break;
+                }
+            }
+            
+            handleCategoryUpdate(data) {
+                // Update data display based on category
+                if (data.category === 'games' && data.data.osrs_ge) {
+                    const osrsData = data.data.osrs_ge;
+                    if (osrsData.status === 'success' && osrsData.data) {
+                        document.getElementById('gameEconomy').innerHTML = `
+                            <div>OSRS GE: ${osrsData.data.itemCount || 0} items</div>
+                            <div>D2JSP FG: Active</div>
+                            <div>Steam Market: Active</div>
+                        `;
+                    }
+                }
+                
+                // Add to data feed
+                this.addDataFeedItem(`${data.category.toUpperCase()}: ${data.successRate.toFixed(0)}% success`, 'data');
+            }
+            
+            handleUniversalUpdate(data) {
+                if (data.summary) {
+                    document.getElementById('dataPoints').textContent = 
+                        (data.summary.dataPoints || 0).toLocaleString();
+                }
+            }
+            
+            updateCryptoDisplay(prices) {
+                if (prices.BTC) {
+                    document.getElementById('btcPrice').textContent = 
+                        `$${Math.round(prices.BTC).toLocaleString()}`;
+                }
+                
+                // Update market data panel
+                let marketHtml = '';
+                Object.entries(prices).forEach(([coin, price]) => {
+                    marketHtml += `<div>${coin}: $${price.toLocaleString()}</div>`;
+                });
+                document.getElementById('marketData').innerHTML = marketHtml;
+            }
+            
+            async connectMultiplayer() {
+                // Simulate multiplayer connection
+                this.addChatMessage('Connected to multiplayer server', 'system');
+                
+                // Simulate other players joining
+                setTimeout(() => this.addBot(), 3000);
+                setTimeout(() => this.addBot(), 7000);
+            }
+            
+            addBot() {
+                const bot = {
+                    id: 'bot_' + Date.now(),
+                    x: Math.random() * 700 + 50,
+                    y: Math.random() * 500 + 50,
+                    vx: 0,
+                    vy: 0,
+                    angle: 0,
+                    color: `hsl(${Math.random() * 360}, 100%, 50%)`,
+                    health: 100,
+                    score: Math.floor(Math.random() * 100),
+                    level: 1,
+                    radius: 20,
+                    trail: [],
+                    isBot: true,
+                    name: `Bot${Math.floor(Math.random() * 1000)}`
+                };
+                
+                this.players.set(bot.id, bot);
+                this.addChatMessage(`${bot.name} joined the game`, 'system');
+                this.updatePlayersList();
+                
+                // Bot AI
+                setInterval(() => {
+                    if (bot.health > 0) {
+                        // Random movement
+                        bot.vx += (Math.random() - 0.5) * 2;
+                        bot.vy += (Math.random() - 0.5) * 2;
+                        bot.angle += (Math.random() - 0.5) * 0.2;
+                        
+                        // Occasionally shoot
+                        if (Math.random() < 0.02) {
+                            this.shoot(bot);
+                        }
+                    }
+                }, 100);
+            }
+            
+            setupControls() {
+                // Keyboard controls
+                this.keys = {};
+                window.addEventListener('keydown', (e) => {
+                    this.keys[e.key.toLowerCase()] = true;
+                    
+                    if (e.key === 'Enter' && document.activeElement !== document.getElementById('chatInput')) {
+                        document.getElementById('chatInput').focus();
+                        e.preventDefault();
+                    }
+                });
+                
+                window.addEventListener('keyup', (e) => {
+                    this.keys[e.key.toLowerCase()] = false;
+                });
+                
+                // Mouse controls
+                this.canvas.addEventListener('mousemove', (e) => {
+                    const rect = this.canvas.getBoundingClientRect();
+                    const scaleX = this.canvas.width / rect.width;
+                    const scaleY = this.canvas.height / rect.height;
+                    
+                    this.mouseX = (e.clientX - rect.left) * scaleX;
+                    this.mouseY = (e.clientY - rect.top) * scaleY;
+                });
+                
+                this.canvas.addEventListener('click', () => {
+                    if (this.localPlayer && this.localPlayer.health > 0) {
+                        this.shoot(this.localPlayer);
+                    }
+                });
+                
+                // Chat input
+                document.getElementById('chatInput').addEventListener('keypress', (e) => {
+                    if (e.key === 'Enter') {
+                        this.sendChat();
+                    }
+                });
+                
+                // Context switching buttons
+                document.querySelectorAll('[data-context]').forEach(btn => {
+                    btn.addEventListener('click', (e) => {
+                        const context = e.target.dataset.context;
+                        this.switchContext(context);
+                        
+                        // Update active button
+                        document.querySelectorAll('[data-context]').forEach(b => b.classList.remove('active'));
+                        e.target.classList.add('active');
+                    });
+                });
+            }
+            
+            switchContext(context) {
+                this.addChatMessage(`Switched to ${context.toUpperCase()} mode`, 'system');
+                
+                // Show/hide sports ticker for games context
+                if (context === 'games') {
+                    document.getElementById('sportsTicker').classList.add('active');
+                    this.loadSportsData();
+                } else {
+                    document.getElementById('sportsTicker').classList.remove('active');
+                }
+                
+                // Context-specific visual changes
+                const contextColors = {
+                    database: '#00ff88',
+                    games: '#2ecc71',
+                    economics: '#ffd700',
+                    multiplayer: '#ff6b35'
+                };
+                
+                document.querySelector('.arena-header').style.borderBottomColor = contextColors[context] || '#00ff88';
+                document.querySelector('.control-bar').style.borderTopColor = contextColors[context] || '#00ff88';
+            }
+            
+            async loadSportsData() {
+                try {
+                    const response = await fetch('http://localhost:8087/api/live');
+                    if (response.ok) {
+                        const data = await response.json();
+                        this.updateSportsTicker(data);
+                    }
+                } catch (error) {
+                    // Use demo data
+                    const demoData = [
+                        'NFL: Patriots 21 - 17 Chiefs',
+                        'NBA: Lakers 112 - 108 Celtics',
+                        'NHL: Rangers 3 - 2 Bruins'
+                    ];
+                    document.getElementById('tickerContent').innerHTML = 
+                        demoData.map(item => `<span style="padding: 0 30px;">${item}</span>`).join('');
+                }
+            }
+            
+            updateSportsTicker(data) {
+                let tickerHtml = '';
+                
+                if (data.nfl) {
+                    data.nfl.forEach(game => {
+                        tickerHtml += `<span style="padding: 0 30px;">NFL: ${game.awayTeam} ${game.awayScore} - ${game.homeScore} ${game.homeTeam}</span>`;
+                    });
+                }
+                
+                document.getElementById('tickerContent').innerHTML = tickerHtml || '<span style="padding: 0 30px;">No live games</span>';
+            }
+            
+            shoot(player) {
+                const projectile = {
+                    x: player.x + Math.cos(player.angle) * (player.radius + 10),
+                    y: player.y + Math.sin(player.angle) * (player.radius + 10),
+                    vx: Math.cos(player.angle) * 10,
+                    vy: Math.sin(player.angle) * 10,
+                    ownerId: player.id,
+                    color: player.color,
+                    radius: 4
+                };
+                
+                this.projectiles.push(projectile);
+                
+                // Recoil
+                player.vx -= Math.cos(player.angle) * 2;
+                player.vy -= Math.sin(player.angle) * 2;
+                
+                // Muzzle flash
+                this.createParticles(projectile.x, projectile.y, player.color, 10);
+            }
+            
+            createParticles(x, y, color, count) {
+                for (let i = 0; i < count; i++) {
+                    this.particles.push({
+                        x, y,
+                        vx: (Math.random() - 0.5) * 5,
+                        vy: (Math.random() - 0.5) * 5,
+                        color,
+                        life: 30,
+                        size: Math.random() * 3 + 1
+                    });
+                }
+            }
+            
+            startGame() {
+                console.log('🎮 Game started!');
+                this.addChatMessage('Game started! Use WASD to move, click to shoot.', 'system');
+                
+                // Start game loops
+                this.gameLoop();
+                this.updateLoop();
+                
+                // FPS counter
+                setInterval(() => {
+                    document.getElementById('fps').textContent = Math.round(this.fps);
+                }, 100);
+                
+                // Reality time update
+                setInterval(() => {
+                    const now = Date.now();
+                    const lag = 850 + Math.sin(now / 5000) * 200;
+                    
+                    const formatTime = (timestamp) => {
+                        const date = new Date(timestamp);
+                        const minutes = date.getMinutes().toString().padStart(2, '0');
+                        const seconds = date.getSeconds().toString().padStart(2, '0');
+                        const ms = date.getMilliseconds().toString().padStart(3, '0');
+                        return `${minutes}:${seconds}.${ms}`;
+                    };
+                    
+                    document.getElementById('godTime').textContent = formatTime(now);
+                    document.getElementById('playerTime').textContent = formatTime(now - lag);
+                }, 16);
+            }
+            
+            updateLoop() {
+                // Update player movement
+                if (this.localPlayer && this.localPlayer.health > 0) {
+                    const speed = 2;
+                    if (this.keys['w'] || this.keys['arrowup']) this.localPlayer.vy -= speed;
+                    if (this.keys['s'] || this.keys['arrowdown']) this.localPlayer.vy += speed;
+                    if (this.keys['a'] || this.keys['arrowleft']) this.localPlayer.vx -= speed;
+                    if (this.keys['d'] || this.keys['arrowright']) this.localPlayer.vx += speed;
+                    
+                    // Update angle based on mouse
+                    if (this.mouseX !== undefined && this.mouseY !== undefined) {
+                        const dx = this.mouseX - this.localPlayer.x;
+                        const dy = this.mouseY - this.localPlayer.y;
+                        this.localPlayer.angle = Math.atan2(dy, dx);
+                    }
+                }
+                
+                // Update all players
+                this.players.forEach(player => {
+                    // Apply velocity
+                    player.x += player.vx;
+                    player.y += player.vy;
+                    
+                    // Friction
+                    player.vx *= 0.95;
+                    player.vy *= 0.95;
+                    
+                    // Bounds
+                    player.x = Math.max(player.radius, Math.min(800 - player.radius, player.x));
+                    player.y = Math.max(player.radius, Math.min(600 - player.radius, player.y));
+                    
+                    // Update trail
+                    player.trail.push({ x: player.x, y: player.y });
+                    if (player.trail.length > 20) {
+                        player.trail.shift();
+                    }
+                });
+                
+                // Update projectiles
+                this.projectiles = this.projectiles.filter(proj => {
+                    proj.x += proj.vx;
+                    proj.y += proj.vy;
+                    
+                    // Check bounds
+                    if (proj.x < 0 || proj.x > 800 || proj.y < 0 || proj.y > 600) {
+                        return false;
+                    }
+                    
+                    // Check collisions
+                    let hit = false;
+                    this.players.forEach(player => {
+                        if (player.id !== proj.ownerId && player.health > 0) {
+                            const dx = player.x - proj.x;
+                            const dy = player.y - proj.y;
+                            const dist = Math.sqrt(dx * dx + dy * dy);
+                            
+                            if (dist < player.radius + proj.radius) {
+                                player.health -= 10;
+                                this.createParticles(proj.x, proj.y, '#ff0000', 20);
+                                hit = true;
+                                
+                                // Give points to shooter
+                                const shooter = this.players.get(proj.ownerId);
+                                if (shooter) {
+                                    shooter.score += 10;
+                                    
+                                    // Check for level up
+                                    if (shooter.score >= shooter.level * 100) {
+                                        shooter.level++;
+                                        if (shooter === this.localPlayer) {
+                                            this.showAchievement('Level Up!', `You reached level ${shooter.level}`);
+                                        }
+                                    }
+                                }
+                                
+                                // Check for elimination
+                                if (player.health <= 0) {
+                                    this.addChatMessage(`${player.name || 'Player'} was eliminated!`, 'system');
+                                    
+                                    // Respawn after 3 seconds
+                                    setTimeout(() => {
+                                        player.health = 100;
+                                        player.x = Math.random() * 700 + 50;
+                                        player.y = Math.random() * 500 + 50;
+                                        player.vx = 0;
+                                        player.vy = 0;
+                                    }, 3000);
+                                }
+                            }
+                        }
+                    });
+                    
+                    return !hit;
+                });
+                
+                // Update particles
+                this.particles = this.particles.filter(particle => {
+                    particle.x += particle.vx;
+                    particle.y += particle.vy;
+                    particle.vx *= 0.98;
+                    particle.vy *= 0.98;
+                    particle.life--;
+                    return particle.life > 0;
+                });
+                
+                // Update UI
+                if (this.localPlayer) {
+                    document.getElementById('health').textContent = this.localPlayer.health;
+                    document.getElementById('score').textContent = this.localPlayer.score;
+                    document.getElementById('level').textContent = this.localPlayer.level;
+                }
+                
+                // Continue update loop
+                setTimeout(() => this.updateLoop(), 16);
+            }
+            
+            gameLoop() {
+                // Track FPS
+                this.frameCount++;
+                const now = Date.now();
+                if (now - this.lastFpsUpdate > 1000) {
+                    this.fps = this.frameCount;
+                    this.frameCount = 0;
+                    this.lastFpsUpdate = now;
+                }
+                
+                // Clear canvas
+                this.ctx.fillStyle = '#000';
+                this.ctx.fillRect(0, 0, 800, 600);
+                
+                // Draw grid
+                this.ctx.strokeStyle = '#111';
+                this.ctx.lineWidth = 1;
+                for (let x = 0; x < 800; x += 50) {
+                    this.ctx.beginPath();
+                    this.ctx.moveTo(x, 0);
+                    this.ctx.lineTo(x, 600);
+                    this.ctx.stroke();
+                }
+                for (let y = 0; y < 600; y += 50) {
+                    this.ctx.beginPath();
+                    this.ctx.moveTo(0, y);
+                    this.ctx.lineTo(800, y);
+                    this.ctx.stroke();
+                }
+                
+                // Draw particles
+                this.particles.forEach(particle => {
+                    this.ctx.fillStyle = particle.color + Math.floor((particle.life / 30) * 255).toString(16).padStart(2, '0');
+                    this.ctx.fillRect(particle.x - particle.size/2, particle.y - particle.size/2, particle.size, particle.size);
+                });
+                
+                // Draw projectiles
+                this.projectiles.forEach(proj => {
+                    this.ctx.fillStyle = proj.color;
+                    this.ctx.beginPath();
+                    this.ctx.arc(proj.x, proj.y, proj.radius, 0, Math.PI * 2);
+                    this.ctx.fill();
+                });
+                
+                // Draw players
+                this.players.forEach(player => {
+                    if (player.health <= 0) return;
+                    
+                    // Draw trail
+                    this.ctx.strokeStyle = player.color + '40';
+                    this.ctx.lineWidth = 2;
+                    this.ctx.beginPath();
+                    player.trail.forEach((point, i) => {
+                        if (i === 0) {
+                            this.ctx.moveTo(point.x, point.y);
+                        } else {
+                            this.ctx.lineTo(point.x, point.y);
+                        }
+                    });
+                    this.ctx.stroke();
+                    
+                    // Draw player
+                    this.ctx.save();
+                    this.ctx.translate(player.x, player.y);
+                    this.ctx.rotate(player.angle);
+                    
+                    // Body
+                    this.ctx.fillStyle = player.color;
+                    this.ctx.beginPath();
+                    this.ctx.arc(0, 0, player.radius, 0, Math.PI * 2);
+                    this.ctx.fill();
+                    
+                    // Direction indicator
+                    this.ctx.strokeStyle = '#fff';
+                    this.ctx.lineWidth = 3;
+                    this.ctx.beginPath();
+                    this.ctx.moveTo(0, 0);
+                    this.ctx.lineTo(player.radius, 0);
+                    this.ctx.stroke();
+                    
+                    this.ctx.restore();
+                    
+                    // Draw name
+                    this.ctx.fillStyle = '#fff';
+                    this.ctx.font = '11px JetBrains Mono';
+                    this.ctx.textAlign = 'center';
+                    this.ctx.fillText(player.name || 'Player', player.x, player.y - player.radius - 10);
+                    
+                    // Draw health bar
+                    const barWidth = 40;
+                    const barHeight = 4;
+                    this.ctx.fillStyle = '#333';
+                    this.ctx.fillRect(player.x - barWidth/2, player.y + player.radius + 5, barWidth, barHeight);
+                    this.ctx.fillStyle = player.health > 50 ? '#00ff00' : player.health > 25 ? '#ffaa00' : '#ff0000';
+                    this.ctx.fillRect(player.x - barWidth/2, player.y + player.radius + 5, barWidth * (player.health/100), barHeight);
+                });
+                
+                // Update minimap
+                this.updateMinimap();
+                
+                // Record frame if recording
+                if (this.recording) {
+                    this.recordFrame();
+                }
+                
+                requestAnimationFrame(() => this.gameLoop());
+            }
+            
+            updateMinimap() {
+                const scale = 0.15;
+                this.minimap.width = 800 * scale;
+                this.minimap.height = 600 * scale;
+                
+                // Clear minimap
+                this.minimapCtx.fillStyle = '#111';
+                this.minimapCtx.fillRect(0, 0, this.minimap.width, this.minimap.height);
+                
+                // Draw players on minimap
+                this.players.forEach(player => {
+                    if (player.health > 0) {
+                        this.minimapCtx.fillStyle = player.color;
+                        this.minimapCtx.fillRect(
+                            player.x * scale - 2,
+                            player.y * scale - 2,
+                            4, 4
+                        );
+                    }
+                });
+                
+                // Draw projectiles
+                this.minimapCtx.fillStyle = '#ff0000';
+                this.projectiles.forEach(proj => {
+                    this.minimapCtx.fillRect(
+                        proj.x * scale - 1,
+                        proj.y * scale - 1,
+                        2, 2
+                    );
+                });
+            }
+            
+            updatePlayersList() {
+                const playersList = Array.from(this.players.values())
+                    .sort((a, b) => b.score - a.score)
+                    .map(player => `
+                        <div class="player-item ${player === this.localPlayer ? 'local' : ''}">
+                            <span>${player.name || (player === this.localPlayer ? 'You' : 'Player')}</span>
+                            <span>${player.score} pts</span>
+                        </div>
+                    `).join('');
+                
+                document.getElementById('playersList').innerHTML = playersList;
+            }
+            
+            addChatMessage(message, type = 'system') {
+                const chat = document.getElementById('chatMessages');
+                const msg = document.createElement('div');
+                msg.className = `chat-message ${type}`;
+                msg.textContent = message;
+                chat.appendChild(msg);
+                chat.scrollTop = chat.scrollHeight;
+            }
+            
+            sendChat() {
+                const input = document.getElementById('chatInput');
+                const message = input.value.trim();
+                
+                if (message) {
+                    this.addChatMessage(`You: ${message}`, 'player');
+                    input.value = '';
+                    input.blur();
+                }
+            }
+            
+            addDataFeedItem(text, type = 'info') {
+                const feed = document.getElementById('dataFeed');
+                const item = document.createElement('div');
+                item.className = 'data-item';
+                item.textContent = `[${new Date().toLocaleTimeString()}] ${text}`;
+                feed.appendChild(item);
+                
+                // Keep only last 20 items
+                while (feed.children.length > 20) {
+                    feed.removeChild(feed.firstChild);
+                }
+                
+                feed.scrollTop = feed.scrollHeight;
+            }
+            
+            showAchievement(title, description) {
+                const popup = document.getElementById('achievementPopup');
+                document.getElementById('achievementTitle').textContent = title;
+                document.getElementById('achievementDesc').textContent = description;
+                
+                popup.classList.add('show');
+                setTimeout(() => {
+                    popup.classList.remove('show');
+                }, 3000);
+                
+                // Add to chat
+                this.addChatMessage(`🏆 Achievement: ${title}`, 'system');
+            }
+            
+            toggleRecording() {
+                this.recording = !this.recording;
+                const btn = document.getElementById('recordBtn');
+                const indicator = document.getElementById('recordingIndicator');
+                
+                if (this.recording) {
+                    this.recordingStartTime = Date.now();
+                    this.recordingFrames = [];
+                    btn.textContent = '⏹ STOP';
+                    btn.classList.add('active');
+                    indicator.style.display = 'flex';
+                    
+                    // Update timer
+                    this.recordingInterval = setInterval(() => {
+                        const elapsed = Date.now() - this.recordingStartTime;
+                        const minutes = Math.floor(elapsed / 60000);
+                        const seconds = Math.floor((elapsed % 60000) / 1000);
+                        document.getElementById('recordingTime').textContent = 
+                            `${minutes.toString().padStart(2, '0')}:${seconds.toString().padStart(2, '0')}`;
+                    }, 100);
+                    
+                    this.addChatMessage('Recording started...', 'system');
+                } else {
+                    btn.textContent = '🔴 RECORD';
+                    btn.classList.remove('active');
+                    indicator.style.display = 'none';
+                    clearInterval(this.recordingInterval);
+                    
+                    this.addChatMessage(`Recording saved! ${this.recordingFrames.length} frames captured.`, 'system');
+                }
+            }
+            
+            recordFrame() {
+                // Simplified recording - in real implementation would capture canvas
+                this.recordingFrames.push({
+                    timestamp: Date.now() - this.recordingStartTime,
+                    players: this.players.size,
+                    projectiles: this.projectiles.length
+                });
+            }
+            
+            shareRoom() {
+                const url = `${window.location.origin}${window.location.pathname}?room=${this.roomId}`;
+                navigator.clipboard.writeText(url).then(() => {
+                    this.addChatMessage('Room link copied to clipboard!', 'system');
+                    this.showAchievement('Link Copied!', 'Share with friends to play together');
+                });
+            }
+            
+            toggleFullscreen() {
+                if (!document.fullscreenElement) {
+                    document.documentElement.requestFullscreen();
+                } else {
+                    document.exitFullscreen();
+                }
+            }
+        }
+        
+        // Global functions
+        function toggleRecording() {
+            window.gameArena.toggleRecording();
+        }
+        
+        function shareRoom() {
+            window.gameArena.shareRoom();
+        }
+        
+        function toggleFullscreen() {
+            window.gameArena.toggleFullscreen();
+        }
+        
+        // Initialize game
+        window.addEventListener('load', () => {
+            window.gameArena = new UniversalGameArena();
+        });
+    </script>
+</body>
+</html>

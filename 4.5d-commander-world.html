@@ -1,0 +1,762 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>🎮⚔️ 4.5D Commander World - Spawn & Control</title>
+    <style>
+        body {
+            margin: 0;
+            overflow: hidden;
+            font-family: 'Courier New', monospace;
+            background: #000;
+            color: #0f0;
+        }
+        
+        #gameCanvas {
+            position: absolute;
+            top: 0;
+            left: 0;
+        }
+        
+        #ui {
+            position: absolute;
+            top: 10px;
+            left: 10px;
+            background: rgba(0, 0, 0, 0.8);
+            border: 2px solid #0f0;
+            padding: 10px;
+            border-radius: 5px;
+            z-index: 100;
+        }
+        
+        #minimap {
+            position: absolute;
+            top: 10px;
+            right: 10px;
+            width: 200px;
+            height: 200px;
+            background: rgba(0, 0, 0, 0.8);
+            border: 2px solid #0f0;
+            z-index: 100;
+        }
+        
+        #spawner {
+            position: absolute;
+            bottom: 10px;
+            left: 50%;
+            transform: translateX(-50%);
+            background: rgba(0, 0, 0, 0.9);
+            border: 2px solid #ff0;
+            padding: 15px;
+            border-radius: 10px;
+            z-index: 100;
+            display: flex;
+            gap: 10px;
+        }
+        
+        .spawn-button {
+            padding: 10px 20px;
+            background: #333;
+            color: #0f0;
+            border: 2px solid #0f0;
+            cursor: pointer;
+            border-radius: 5px;
+            font-family: inherit;
+            transition: all 0.3s;
+        }
+        
+        .spawn-button:hover {
+            background: #0f0;
+            color: #000;
+            transform: scale(1.1);
+        }
+        
+        #stats {
+            position: absolute;
+            top: 10px;
+            left: 50%;
+            transform: translateX(-50%);
+            background: rgba(0, 0, 0, 0.8);
+            border: 2px solid #ff0;
+            padding: 10px 20px;
+            border-radius: 5px;
+            z-index: 100;
+            text-align: center;
+        }
+        
+        #crosshair {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            width: 20px;
+            height: 20px;
+            border: 2px solid #ff0;
+            border-radius: 50%;
+            pointer-events: none;
+            z-index: 99;
+        }
+        
+        #camera-mode {
+            position: absolute;
+            bottom: 10px;
+            right: 10px;
+            background: rgba(0, 0, 0, 0.8);
+            border: 2px solid #0ff;
+            padding: 10px;
+            border-radius: 5px;
+            z-index: 100;
+        }
+    </style>
+</head>
+<body>
+    <canvas id="gameCanvas"></canvas>
+    <canvas id="minimap"></canvas>
+    
+    <div id="crosshair"></div>
+    
+    <div id="ui">
+        <h3>🎮 4.5D COMMANDER</h3>
+        <div>FPS: <span id="fps">60</span></div>
+        <div>Position: <span id="position">0, 0, 0</span></div>
+        <div>Units: <span id="unitCount">0</span></div>
+    </div>
+    
+    <div id="stats">
+        <div>💰 Resources: <span id="resources">1000</span></div>
+        <div>⚔️ Total Spawned: <span id="totalSpawned">0</span></div>
+    </div>
+    
+    <div id="spawner">
+        <button class="spawn-button" onclick="game.spawnUnit('scraper')">
+            🔍 Spawn Scraper<br>
+            <small>Cost: 50</small>
+        </button>
+        <button class="spawn-button" onclick="game.spawnUnit('validator')">
+            ✅ Spawn Validator<br>
+            <small>Cost: 75</small>
+        </button>
+        <button class="spawn-button" onclick="game.spawnUnit('duo')">
+            👥 Spawn Duo<br>
+            <small>Cost: 100</small>
+        </button>
+        <button class="spawn-button" onclick="game.spawnUnit('tower')">
+            🏰 Build Tower<br>
+            <small>Cost: 200</small>
+        </button>
+        <button class="spawn-button" onclick="game.spawnUnit('drone')">
+            🚁 Deploy Drone<br>
+            <small>Cost: 150</small>
+        </button>
+    </div>
+    
+    <div id="camera-mode">
+        <div>📷 Camera Mode: <span id="cameraModeName">Third Person</span></div>
+        <div><small>Press C to cycle modes</small></div>
+        <div><small>WASD: Move | Mouse: Look</small></div>
+        <div><small>Space: Jump | Shift: Sprint</small></div>
+        <div><small>Q/E: Strafe | R/F: Up/Down</small></div>
+    </div>
+
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+    <script>
+        class Commander4D {
+            constructor() {
+                this.scene = new THREE.Scene();
+                this.camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 1000);
+                this.renderer = new THREE.WebGLRenderer({ canvas: document.getElementById('gameCanvas'), antialias: true });
+                
+                this.units = [];
+                this.resources = 1000;
+                this.totalSpawned = 0;
+                this.cameraMode = 'third'; // third, drone, first, rts
+                this.player = null;
+                
+                this.mouse = { x: 0, y: 0 };
+                this.keys = {};
+                this.raycaster = new THREE.Raycaster();
+                this.mouseVector = new THREE.Vector2();
+                
+                this.init();
+            }
+            
+            init() {
+                // Setup renderer
+                this.renderer.setSize(window.innerWidth, window.innerHeight);
+                this.renderer.shadowMap.enabled = true;
+                this.renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+                this.renderer.setClearColor(0x001122);
+                
+                // Setup scene
+                this.scene.fog = new THREE.Fog(0x001122, 10, 100);
+                
+                // Lighting
+                const ambientLight = new THREE.AmbientLight(0x404040);
+                this.scene.add(ambientLight);
+                
+                const directionalLight = new THREE.DirectionalLight(0xffffff, 1);
+                directionalLight.position.set(50, 100, 50);
+                directionalLight.castShadow = true;
+                directionalLight.shadow.camera.left = -50;
+                directionalLight.shadow.camera.right = 50;
+                directionalLight.shadow.camera.top = 50;
+                directionalLight.shadow.camera.bottom = -50;
+                this.scene.add(directionalLight);
+                
+                // Create world
+                this.createWorld();
+                
+                // Create player
+                this.createPlayer();
+                
+                // Setup camera
+                this.setupCamera();
+                
+                // Setup controls
+                this.setupControls();
+                
+                // Setup minimap
+                this.setupMinimap();
+                
+                // Start animation
+                this.animate();
+            }
+            
+            createWorld() {
+                // Ground plane with grid
+                const gridHelper = new THREE.GridHelper(200, 50, 0x00ff00, 0x003300);
+                this.scene.add(gridHelper);
+                
+                // Ground
+                const groundGeometry = new THREE.PlaneGeometry(200, 200);
+                const groundMaterial = new THREE.MeshStandardMaterial({ 
+                    color: 0x001100,
+                    roughness: 0.8,
+                    metalness: 0.2
+                });
+                const ground = new THREE.Mesh(groundGeometry, groundMaterial);
+                ground.rotation.x = -Math.PI / 2;
+                ground.receiveShadow = true;
+                this.scene.add(ground);
+                
+                // Create some terrain features
+                for (let i = 0; i < 20; i++) {
+                    const size = Math.random() * 5 + 2;
+                    const height = Math.random() * 10 + 5;
+                    const geometry = new THREE.BoxGeometry(size, height, size);
+                    const material = new THREE.MeshStandardMaterial({
+                        color: new THREE.Color(0.1, 0.3 + Math.random() * 0.2, 0.1)
+                    });
+                    const obstacle = new THREE.Mesh(geometry, material);
+                    obstacle.position.set(
+                        (Math.random() - 0.5) * 150,
+                        height / 2,
+                        (Math.random() - 0.5) * 150
+                    );
+                    obstacle.castShadow = true;
+                    obstacle.receiveShadow = true;
+                    this.scene.add(obstacle);
+                }
+                
+                // Skybox effect
+                const skyGeometry = new THREE.SphereGeometry(400, 32, 32);
+                const skyMaterial = new THREE.MeshBasicMaterial({
+                    color: 0x001144,
+                    side: THREE.BackSide
+                });
+                const sky = new THREE.Mesh(skyGeometry, skyMaterial);
+                this.scene.add(sky);
+            }
+            
+            createPlayer() {
+                // Player model
+                const playerGeometry = new THREE.CapsuleGeometry(0.5, 2, 4, 8);
+                const playerMaterial = new THREE.MeshStandardMaterial({ 
+                    color: 0x00ff00,
+                    emissive: 0x00ff00,
+                    emissiveIntensity: 0.2
+                });
+                this.player = new THREE.Mesh(playerGeometry, playerMaterial);
+                this.player.position.set(0, 1.5, 0);
+                this.player.castShadow = true;
+                
+                // Player physics
+                this.player.velocity = new THREE.Vector3();
+                this.player.rotation.order = 'YXZ';
+                
+                this.scene.add(this.player);
+            }
+            
+            setupCamera() {
+                this.cameraOffset = new THREE.Vector3(0, 5, 10);
+                this.updateCameraMode();
+            }
+            
+            setupControls() {
+                // Mouse controls
+                document.addEventListener('mousemove', (e) => {
+                    if (document.pointerLockElement === document.body) {
+                        this.mouse.x += e.movementX * 0.002;
+                        this.mouse.y = Math.max(-Math.PI/2, Math.min(Math.PI/2, 
+                            this.mouse.y - e.movementY * 0.002));
+                    }
+                    
+                    // Update mouse vector for raycasting
+                    this.mouseVector.x = (e.clientX / window.innerWidth) * 2 - 1;
+                    this.mouseVector.y = -(e.clientY / window.innerHeight) * 2 + 1;
+                });
+                
+                document.addEventListener('click', () => {
+                    if (document.pointerLockElement !== document.body) {
+                        document.body.requestPointerLock();
+                    }
+                });
+                
+                // Keyboard controls
+                document.addEventListener('keydown', (e) => {
+                    this.keys[e.key.toLowerCase()] = true;
+                    
+                    if (e.key.toLowerCase() === 'c') {
+                        this.cycleCameraMode();
+                    }
+                });
+                
+                document.addEventListener('keyup', (e) => {
+                    this.keys[e.key.toLowerCase()] = false;
+                });
+                
+                // Window resize
+                window.addEventListener('resize', () => {
+                    this.camera.aspect = window.innerWidth / window.innerHeight;
+                    this.camera.updateProjectionMatrix();
+                    this.renderer.setSize(window.innerWidth, window.innerHeight);
+                });
+            }
+            
+            cycleCameraMode() {
+                const modes = ['third', 'drone', 'first', 'rts'];
+                const currentIndex = modes.indexOf(this.cameraMode);
+                this.cameraMode = modes[(currentIndex + 1) % modes.length];
+                this.updateCameraMode();
+                
+                const names = {
+                    'third': 'Third Person',
+                    'drone': 'Drone View',
+                    'first': 'First Person',
+                    'rts': 'RTS Top-Down'
+                };
+                document.getElementById('cameraModeName').textContent = names[this.cameraMode];
+            }
+            
+            updateCameraMode() {
+                switch (this.cameraMode) {
+                    case 'third':
+                        this.cameraOffset.set(0, 5, 10);
+                        break;
+                    case 'drone':
+                        this.cameraOffset.set(0, 15, 15);
+                        break;
+                    case 'first':
+                        this.cameraOffset.set(0, 0.5, 0);
+                        break;
+                    case 'rts':
+                        this.cameraOffset.set(0, 30, 0.1);
+                        break;
+                }
+            }
+            
+            updatePlayer(delta) {
+                if (!this.player) return;
+                
+                const speed = this.keys['shift'] ? 20 : 10;
+                const moveVector = new THREE.Vector3();
+                
+                // Movement
+                if (this.keys['w']) moveVector.z -= 1;
+                if (this.keys['s']) moveVector.z += 1;
+                if (this.keys['a']) moveVector.x -= 1;
+                if (this.keys['d']) moveVector.x += 1;
+                if (this.keys['q']) moveVector.x -= 0.7;
+                if (this.keys['e']) moveVector.x += 0.7;
+                
+                // Vertical movement (drone mode)
+                if (this.cameraMode === 'drone') {
+                    if (this.keys['r']) moveVector.y += 1;
+                    if (this.keys['f']) moveVector.y -= 1;
+                }
+                
+                // Apply rotation
+                if (this.cameraMode !== 'rts') {
+                    moveVector.applyAxisAngle(new THREE.Vector3(0, 1, 0), this.mouse.x);
+                }
+                
+                moveVector.normalize().multiplyScalar(speed * delta);
+                
+                // Update position
+                this.player.position.add(moveVector);
+                
+                // Jump
+                if (this.keys[' '] && Math.abs(this.player.velocity.y) < 0.01) {
+                    this.player.velocity.y = 10;
+                }
+                
+                // Gravity
+                if (this.cameraMode !== 'drone') {
+                    this.player.velocity.y -= 20 * delta;
+                    this.player.position.y += this.player.velocity.y * delta;
+                    
+                    // Ground collision
+                    if (this.player.position.y < 1.5) {
+                        this.player.position.y = 1.5;
+                        this.player.velocity.y = 0;
+                    }
+                }
+                
+                // Update rotation
+                if (this.cameraMode !== 'first') {
+                    this.player.rotation.y = this.mouse.x;
+                }
+                
+                // World boundaries
+                this.player.position.x = Math.max(-95, Math.min(95, this.player.position.x));
+                this.player.position.z = Math.max(-95, Math.min(95, this.player.position.z));
+            }
+            
+            updateCamera() {
+                if (!this.player) return;
+                
+                // Calculate camera position based on mode
+                const offset = this.cameraOffset.clone();
+                
+                if (this.cameraMode !== 'rts') {
+                    offset.applyAxisAngle(new THREE.Vector3(0, 1, 0), this.mouse.x);
+                }
+                
+                this.camera.position.copy(this.player.position).add(offset);
+                
+                // Camera look direction
+                if (this.cameraMode === 'first') {
+                    // First person - look where mouse points
+                    const lookAt = this.player.position.clone();
+                    lookAt.add(new THREE.Vector3(
+                        Math.sin(this.mouse.x) * Math.cos(this.mouse.y),
+                        Math.sin(this.mouse.y),
+                        -Math.cos(this.mouse.x) * Math.cos(this.mouse.y)
+                    ).multiplyScalar(10));
+                    this.camera.lookAt(lookAt);
+                } else if (this.cameraMode === 'rts') {
+                    // RTS - look straight down
+                    this.camera.lookAt(this.player.position);
+                    this.camera.rotation.z = 0;
+                } else {
+                    // Third person / Drone - look at player
+                    this.camera.lookAt(this.player.position);
+                }
+            }
+            
+            spawnUnit(type) {
+                const costs = {
+                    scraper: 50,
+                    validator: 75,
+                    duo: 100,
+                    tower: 200,
+                    drone: 150
+                };
+                
+                if (this.resources < costs[type]) {
+                    console.log('Not enough resources!');
+                    return;
+                }
+                
+                this.resources -= costs[type];
+                this.totalSpawned++;
+                
+                // Create unit at player position with offset
+                const unit = this.createUnit(type);
+                const angle = Math.random() * Math.PI * 2;
+                const distance = 5 + Math.random() * 5;
+                
+                unit.position.set(
+                    this.player.position.x + Math.sin(angle) * distance,
+                    type === 'tower' ? 2.5 : 1,
+                    this.player.position.z + Math.cos(angle) * distance
+                );
+                
+                this.units.push(unit);
+                this.scene.add(unit);
+                
+                // Update UI
+                this.updateUI();
+            }
+            
+            createUnit(type) {
+                let geometry, material, unit;
+                
+                switch (type) {
+                    case 'scraper':
+                        geometry = new THREE.ConeGeometry(0.5, 1.5, 6);
+                        material = new THREE.MeshStandardMaterial({ 
+                            color: 0x00ffff,
+                            emissive: 0x00ffff,
+                            emissiveIntensity: 0.3
+                        });
+                        unit = new THREE.Mesh(geometry, material);
+                        unit.unitType = 'scraper';
+                        unit.speed = 5;
+                        break;
+                        
+                    case 'validator':
+                        geometry = new THREE.OctahedronGeometry(0.7);
+                        material = new THREE.MeshStandardMaterial({ 
+                            color: 0xff00ff,
+                            emissive: 0xff00ff,
+                            emissiveIntensity: 0.3
+                        });
+                        unit = new THREE.Mesh(geometry, material);
+                        unit.unitType = 'validator';
+                        unit.speed = 3;
+                        break;
+                        
+                    case 'duo':
+                        // Create duo as group
+                        unit = new THREE.Group();
+                        
+                        // Scraper part
+                        const scraperGeo = new THREE.ConeGeometry(0.4, 1, 6);
+                        const scraperMat = new THREE.MeshStandardMaterial({ color: 0x00ffff });
+                        const scraper = new THREE.Mesh(scraperGeo, scraperMat);
+                        scraper.position.x = -0.5;
+                        unit.add(scraper);
+                        
+                        // Validator part
+                        const validatorGeo = new THREE.OctahedronGeometry(0.5);
+                        const validatorMat = new THREE.MeshStandardMaterial({ color: 0xff00ff });
+                        const validator = new THREE.Mesh(validatorGeo, validatorMat);
+                        validator.position.x = 0.5;
+                        unit.add(validator);
+                        
+                        // Connection
+                        const linkGeo = new THREE.CylinderGeometry(0.1, 0.1, 1);
+                        const linkMat = new THREE.MeshStandardMaterial({ color: 0xffff00 });
+                        const link = new THREE.Mesh(linkGeo, linkMat);
+                        link.rotation.z = Math.PI / 2;
+                        unit.add(link);
+                        
+                        unit.unitType = 'duo';
+                        unit.speed = 4;
+                        break;
+                        
+                    case 'tower':
+                        geometry = new THREE.CylinderGeometry(1, 1.5, 5, 8);
+                        material = new THREE.MeshStandardMaterial({ 
+                            color: 0xff6600,
+                            emissive: 0xff3300,
+                            emissiveIntensity: 0.2
+                        });
+                        unit = new THREE.Mesh(geometry, material);
+                        
+                        // Add top
+                        const topGeo = new THREE.ConeGeometry(1.2, 2, 8);
+                        const topMat = new THREE.MeshStandardMaterial({ color: 0xff9900 });
+                        const top = new THREE.Mesh(topGeo, topMat);
+                        top.position.y = 3.5;
+                        unit.add(top);
+                        
+                        unit.unitType = 'tower';
+                        unit.speed = 0;
+                        break;
+                        
+                    case 'drone':
+                        unit = new THREE.Group();
+                        
+                        // Body
+                        const bodyGeo = new THREE.BoxGeometry(1, 0.3, 1);
+                        const bodyMat = new THREE.MeshStandardMaterial({ color: 0x333333 });
+                        const body = new THREE.Mesh(bodyGeo, bodyMat);
+                        unit.add(body);
+                        
+                        // Rotors
+                        for (let i = 0; i < 4; i++) {
+                            const rotorGeo = new THREE.CylinderGeometry(0.3, 0.3, 0.1, 8);
+                            const rotorMat = new THREE.MeshStandardMaterial({ color: 0x666666 });
+                            const rotor = new THREE.Mesh(rotorGeo, rotorMat);
+                            const angle = (i / 4) * Math.PI * 2;
+                            rotor.position.set(Math.cos(angle) * 0.5, 0.2, Math.sin(angle) * 0.5);
+                            unit.add(rotor);
+                        }
+                        
+                        unit.unitType = 'drone';
+                        unit.speed = 8;
+                        unit.position.y = 5;
+                        break;
+                }
+                
+                unit.castShadow = true;
+                unit.receiveShadow = true;
+                unit.velocity = new THREE.Vector3();
+                unit.target = null;
+                
+                return unit;
+            }
+            
+            updateUnits(delta) {
+                this.units.forEach((unit, index) => {
+                    // Simple AI behavior
+                    if (unit.unitType === 'tower') {
+                        // Towers spin
+                        unit.rotation.y += delta;
+                    } else if (unit.unitType === 'drone') {
+                        // Drones hover and patrol
+                        unit.position.y = 5 + Math.sin(Date.now() * 0.001 + index) * 2;
+                        
+                        if (!unit.target || unit.position.distanceTo(unit.target) < 1) {
+                            unit.target = new THREE.Vector3(
+                                (Math.random() - 0.5) * 100,
+                                5,
+                                (Math.random() - 0.5) * 100
+                            );
+                        }
+                        
+                        const direction = unit.target.clone().sub(unit.position).normalize();
+                        unit.position.add(direction.multiplyScalar(unit.speed * delta));
+                        unit.lookAt(unit.target);
+                    } else {
+                        // Ground units wander
+                        if (!unit.target || unit.position.distanceTo(unit.target) < 1) {
+                            unit.target = new THREE.Vector3(
+                                (Math.random() - 0.5) * 100,
+                                1,
+                                (Math.random() - 0.5) * 100
+                            );
+                        }
+                        
+                        const direction = unit.target.clone().sub(unit.position).normalize();
+                        unit.position.add(direction.multiplyScalar(unit.speed * delta));
+                        unit.lookAt(unit.target);
+                        
+                        // Bobbing animation
+                        if (unit.unitType === 'duo') {
+                            unit.rotation.y += delta * 2;
+                        } else {
+                            unit.position.y = 1 + Math.sin(Date.now() * 0.005 + index) * 0.2;
+                        }
+                    }
+                });
+            }
+            
+            setupMinimap() {
+                this.minimapCanvas = document.getElementById('minimap');
+                this.minimapCtx = this.minimapCanvas.getContext('2d');
+                this.minimapCanvas.width = 200;
+                this.minimapCanvas.height = 200;
+            }
+            
+            updateMinimap() {
+                const ctx = this.minimapCtx;
+                const scale = 2;
+                
+                // Clear
+                ctx.fillStyle = '#001100';
+                ctx.fillRect(0, 0, 200, 200);
+                
+                // Grid
+                ctx.strokeStyle = '#003300';
+                ctx.lineWidth = 1;
+                for (let i = 0; i <= 10; i++) {
+                    ctx.beginPath();
+                    ctx.moveTo(i * 20, 0);
+                    ctx.lineTo(i * 20, 200);
+                    ctx.stroke();
+                    
+                    ctx.beginPath();
+                    ctx.moveTo(0, i * 20);
+                    ctx.lineTo(200, i * 20);
+                    ctx.stroke();
+                }
+                
+                // Player
+                ctx.fillStyle = '#00ff00';
+                ctx.fillRect(
+                    100 + this.player.position.x * scale - 2,
+                    100 - this.player.position.z * scale - 2,
+                    4, 4
+                );
+                
+                // Player direction
+                ctx.strokeStyle = '#00ff00';
+                ctx.lineWidth = 2;
+                ctx.beginPath();
+                ctx.moveTo(100 + this.player.position.x * scale, 100 - this.player.position.z * scale);
+                ctx.lineTo(
+                    100 + this.player.position.x * scale + Math.sin(this.mouse.x) * 10,
+                    100 - this.player.position.z * scale + Math.cos(this.mouse.x) * 10
+                );
+                ctx.stroke();
+                
+                // Units
+                this.units.forEach(unit => {
+                    switch (unit.unitType) {
+                        case 'scraper':
+                            ctx.fillStyle = '#00ffff';
+                            break;
+                        case 'validator':
+                            ctx.fillStyle = '#ff00ff';
+                            break;
+                        case 'duo':
+                            ctx.fillStyle = '#ffff00';
+                            break;
+                        case 'tower':
+                            ctx.fillStyle = '#ff6600';
+                            break;
+                        case 'drone':
+                            ctx.fillStyle = '#666666';
+                            break;
+                    }
+                    
+                    ctx.fillRect(
+                        100 + unit.position.x * scale - 2,
+                        100 - unit.position.z * scale - 2,
+                        4, 4
+                    );
+                });
+            }
+            
+            updateUI() {
+                document.getElementById('position').textContent = 
+                    `${this.player.position.x.toFixed(1)}, ${this.player.position.y.toFixed(1)}, ${this.player.position.z.toFixed(1)}`;
+                document.getElementById('unitCount').textContent = this.units.length;
+                document.getElementById('resources').textContent = this.resources;
+                document.getElementById('totalSpawned').textContent = this.totalSpawned;
+            }
+            
+            animate() {
+                requestAnimationFrame(() => this.animate());
+                
+                const delta = Math.min(0.1, this.clock ? this.clock.getDelta() : 0.016);
+                if (!this.clock) this.clock = new THREE.Clock();
+                
+                // Update game state
+                this.updatePlayer(delta);
+                this.updateCamera();
+                this.updateUnits(delta);
+                this.updateMinimap();
+                this.updateUI();
+                
+                // Add resources over time
+                this.resources += delta * 10;
+                
+                // Update FPS
+                const fps = 1 / delta;
+                document.getElementById('fps').textContent = Math.round(fps);
+                
+                // Render
+                this.renderer.render(this.scene, this.camera);
+            }
+        }
+        
+        // Start game
+        const game = new Commander4D();
+    </script>
+</body>
+</html>

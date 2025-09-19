@@ -1,0 +1,770 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>🧠 Visual Learning Dashboard - NPCs Acting on Database Learning</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+    <style>
+        body { 
+            margin: 0; 
+            background: linear-gradient(135deg, #0a0a0a 0%, #1a1a2e 50%, #16213e 100%);
+            font-family: 'Courier New', monospace; 
+            color: #00ff88;
+            overflow: hidden;
+        }
+        
+        #gameContainer {
+            position: relative;
+            width: 100vw;
+            height: 100vh;
+        }
+        
+        #hud {
+            position: absolute;
+            top: 10px;
+            left: 10px;
+            background: rgba(0, 0, 0, 0.8);
+            padding: 15px;
+            border-radius: 10px;
+            border: 2px solid #00ff88;
+            z-index: 100;
+            max-width: 300px;
+        }
+        
+        #npcPanel {
+            position: absolute;
+            top: 10px;
+            right: 10px;
+            background: rgba(0, 0, 0, 0.8);
+            padding: 15px;
+            border-radius: 10px;
+            border: 2px solid #00ffff;
+            z-index: 100;
+            max-width: 350px;
+            max-height: 80vh;
+            overflow-y: auto;
+        }
+        
+        #learningPanel {
+            position: absolute;
+            bottom: 10px;
+            left: 10px;
+            background: rgba(0, 0, 0, 0.8);
+            padding: 15px;
+            border-radius: 10px;
+            border: 2px solid #ff44ff;
+            z-index: 100;
+            max-width: 400px;
+        }
+        
+        #connectionStatus {
+            position: absolute;
+            bottom: 10px;
+            right: 10px;
+            background: rgba(0, 0, 0, 0.8);
+            padding: 10px;
+            border-radius: 8px;
+            border: 1px solid #ffff00;
+            z-index: 100;
+            font-size: 12px;
+        }
+        
+        .npc-item {
+            background: rgba(0, 255, 136, 0.1);
+            padding: 10px;
+            margin: 8px 0;
+            border-radius: 8px;
+            border-left: 4px solid;
+        }
+        
+        .ralph { border-left-color: #ff4444; }
+        .alice { border-left-color: #44ff44; }
+        .bob { border-left-color: #4444ff; }
+        .charlie { border-left-color: #ff8800; }
+        .diana { border-left-color: #ff44ff; }
+        .eve { border-left-color: #44ffff; }
+        
+        .learning-bar {
+            width: 100%;
+            height: 8px;
+            background: rgba(0, 0, 0, 0.5);
+            border-radius: 4px;
+            overflow: hidden;
+            margin: 3px 0;
+        }
+        
+        .learning-fill {
+            height: 100%;
+            background: linear-gradient(90deg, #00ff88, #00ffff);
+            transition: width 0.5s ease;
+            border-radius: 4px;
+        }
+        
+        .status-indicator {
+            display: inline-block;
+            width: 8px;
+            height: 8px;
+            border-radius: 50%;
+            margin-right: 5px;
+        }
+        
+        .status-connected { background: #00ff88; }
+        .status-learning { background: #ffff00; animation: pulse 1s infinite; }
+        .status-acting { background: #ff4444; animation: pulse 0.5s infinite; }
+        .status-idle { background: #666; }
+        
+        @keyframes pulse {
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0.3; }
+        }
+        
+        .action-log {
+            background: #000;
+            color: #00ff88;
+            padding: 10px;
+            border-radius: 5px;
+            max-height: 200px;
+            overflow-y: auto;
+            font-size: 11px;
+            font-family: 'Courier New', monospace;
+        }
+        
+        .action-entry {
+            margin: 2px 0;
+            padding: 2px 5px;
+            border-left: 2px solid #00ff88;
+        }
+        
+        .action-ralph { border-left-color: #ff4444; }
+        .action-alice { border-left-color: #44ff44; }
+        .action-bob { border-left-color: #4444ff; }
+        .action-charlie { border-left-color: #ff8800; }
+        .action-diana { border-left-color: #ff44ff; }
+        .action-eve { border-left-color: #44ffff; }
+        
+        h2 {
+            color: #00ffff;
+            text-align: center;
+            margin: 0 0 15px 0;
+            text-shadow: 0 0 10px #00ffff;
+        }
+        
+        h3 {
+            color: #00ff88;
+            margin: 10px 0 5px 0;
+            font-size: 14px;
+        }
+        
+        .stats {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 10px;
+            margin: 10px 0;
+            font-size: 12px;
+        }
+        
+        .stat-item {
+            background: rgba(0, 255, 136, 0.1);
+            padding: 5px;
+            border-radius: 5px;
+            text-align: center;
+        }
+        
+        canvas { display: block; }
+        
+        .tooltip {
+            position: absolute;
+            background: rgba(0, 0, 0, 0.9);
+            color: #00ff88;
+            padding: 5px 10px;
+            border-radius: 5px;
+            font-size: 11px;
+            pointer-events: none;
+            z-index: 1000;
+            border: 1px solid #00ff88;
+        }
+    </style>
+</head>
+<body>
+    <div id="gameContainer"></div>
+    
+    <div id="hud">
+        <h2>🧠 Learning → Action Proof</h2>
+        <div>Database Operations → NPC Intelligence</div>
+        <div style="margin: 10px 0;">
+            <div>Active NPCs: <span id="npcCount">0</span></div>
+            <div>Total Learning: <span id="totalLearning">0</span></div>
+            <div>Actions/Min: <span id="actionsPerMin">0</span></div>
+        </div>
+        <div class="stats">
+            <div class="stat-item">
+                <div>Database Ops</div>
+                <div id="databaseOps">0</div>
+            </div>
+            <div class="stat-item">
+                <div>Visual Actions</div>
+                <div id="visualActions">0</div>
+            </div>
+        </div>
+    </div>
+    
+    <div id="npcPanel">
+        <h2>🤖 Learning NPCs Live</h2>
+        <div id="npcList">Loading NPCs...</div>
+    </div>
+    
+    <div id="learningPanel">
+        <h3>📚 Real-Time Learning Flow</h3>
+        <div class="action-log" id="learningLog">
+            <div style="color: #00ffff;">🧠 Learning Dashboard initialized</div>
+            <div>Waiting for database learning data...</div>
+        </div>
+    </div>
+    
+    <div id="connectionStatus">
+        <div>🔗 NPC Controller: <span id="controllerStatus">Connecting...</span></div>
+        <div>📊 Character DB: <span id="dbStatus">Connecting...</span></div>
+        <div>🧠 RL System: <span id="rlStatus">Connecting...</span></div>
+    </div>
+    
+    <script>
+        class VisualLearningDashboard {
+            constructor() {
+                this.scene = null;
+                this.camera = null;
+                this.renderer = null;
+                this.npcs = new Map();
+                this.learningData = new Map();
+                
+                // Connection status
+                this.connections = {
+                    controller: false,
+                    database: false,
+                    rl: false
+                };
+                
+                // Performance tracking
+                this.stats = {
+                    databaseOps: 0,
+                    visualActions: 0,
+                    actionsPerMin: 0,
+                    lastMinute: Date.now()
+                };
+                
+                // Action log
+                this.actionLog = [];
+                this.maxLogEntries = 50;
+                
+                // WebSocket for real-time updates
+                this.ws = null;
+                
+                console.log('🧠 Visual Learning Dashboard initializing...');
+                this.init();
+            }
+            
+            async init() {
+                try {
+                    this.setupThreeJS();
+                    this.setup3DWorld();
+                    this.connectToSystems();
+                    this.startRenderLoop();
+                    this.startDataPolling();
+                    
+                    console.log('✅ Visual Learning Dashboard ready!');
+                } catch (error) {
+                    console.error('❌ Dashboard init failed:', error);
+                }
+            }
+            
+            setupThreeJS() {
+                // Scene setup
+                this.scene = new THREE.Scene();
+                this.scene.background = new THREE.Color(0x001122);
+                this.scene.fog = new THREE.Fog(0x001122, 10, 50);
+                
+                // Camera setup
+                this.camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 1000);
+                this.camera.position.set(0, 15, 20);
+                this.camera.lookAt(0, 0, 0);
+                
+                // Renderer setup
+                this.renderer = new THREE.WebGLRenderer({ antialias: true });
+                this.renderer.setSize(window.innerWidth, window.innerHeight);
+                this.renderer.shadowMap.enabled = true;
+                this.renderer.shadowMap.type = THREE.PCFShadowMap;
+                
+                document.getElementById('gameContainer').appendChild(this.renderer.domElement);
+                
+                // Handle window resize
+                window.addEventListener('resize', () => {
+                    this.camera.aspect = window.innerWidth / window.innerHeight;
+                    this.camera.updateProjectionMatrix();
+                    this.renderer.setSize(window.innerWidth, window.innerHeight);
+                });
+            }
+            
+            setup3DWorld() {
+                // Lighting
+                const ambientLight = new THREE.AmbientLight(0x404040, 0.3);
+                this.scene.add(ambientLight);
+                
+                const directionalLight = new THREE.DirectionalLight(0xffffff, 0.7);
+                directionalLight.position.set(10, 10, 5);
+                directionalLight.castShadow = true;
+                directionalLight.shadow.mapSize.width = 2048;
+                directionalLight.shadow.mapSize.height = 2048;
+                this.scene.add(directionalLight);
+                
+                // Ground plane
+                const groundGeometry = new THREE.PlaneGeometry(40, 40);
+                const groundMaterial = new THREE.MeshLambertMaterial({ 
+                    color: 0x228833,
+                    transparent: true,
+                    opacity: 0.8 
+                });
+                const ground = new THREE.Mesh(groundGeometry, groundMaterial);
+                ground.rotation.x = -Math.PI / 2;
+                ground.receiveShadow = true;
+                this.scene.add(ground);
+                
+                // Grid helper
+                const gridHelper = new THREE.GridHelper(40, 40, 0x444444, 0x222222);
+                this.scene.add(gridHelper);
+                
+                // Learning visualization center
+                const centerGeometry = new THREE.CylinderGeometry(1, 1, 0.1, 8);
+                const centerMaterial = new THREE.MeshLambertMaterial({ 
+                    color: 0x00ffff,
+                    emissive: 0x004444 
+                });
+                const center = new THREE.Mesh(centerGeometry, centerMaterial);
+                center.position.set(0, 0.05, 0);
+                this.scene.add(center);
+                
+                // Add text label for center
+                this.addTextLabel("DATABASE LEARNING", 0, 2, 0, 0x00ffff);
+            }
+            
+            addTextLabel(text, x, y, z, color = 0x00ff88) {
+                const loader = new THREE.FontLoader();
+                // For now, use a simple geometry as placeholder
+                const labelGeometry = new THREE.BoxGeometry(0.1, 0.5, 0.1);
+                const labelMaterial = new THREE.MeshLambertMaterial({ color });
+                const label = new THREE.Mesh(labelGeometry, labelMaterial);
+                label.position.set(x, y, z);
+                label.userData = { text, type: 'label' };
+                this.scene.add(label);
+            }
+            
+            async connectToSystems() {
+                // Connect to NPC Controller WebSocket
+                this.connectNPCController();
+                
+                // Connect to other systems
+                this.checkSystemConnections();
+                
+                // Update connection status every 5 seconds
+                setInterval(() => {
+                    this.checkSystemConnections();
+                }, 5000);
+            }
+            
+            connectNPCController() {
+                try {
+                    this.ws = new WebSocket('ws://localhost:4501');
+                    
+                    this.ws.onopen = () => {
+                        console.log('📡 Connected to NPC Controller');
+                        this.connections.controller = true;
+                        this.updateConnectionStatus();
+                        this.logAction('system', 'Connected to NPC Controller');
+                    };
+                    
+                    this.ws.onmessage = (event) => {
+                        const data = JSON.parse(event.data);
+                        this.handleNPCUpdate(data);
+                    };
+                    
+                    this.ws.onclose = () => {
+                        console.log('📡 NPC Controller disconnected');
+                        this.connections.controller = false;
+                        this.updateConnectionStatus();
+                        
+                        // Reconnect after 5 seconds
+                        setTimeout(() => {
+                            this.connectNPCController();
+                        }, 5000);
+                    };
+                    
+                    this.ws.onerror = (error) => {
+                        console.error('📡 NPC Controller error:', error);
+                    };
+                    
+                } catch (error) {
+                    console.error('Failed to connect to NPC Controller:', error);
+                }
+            }
+            
+            async checkSystemConnections() {
+                // Check Character Database
+                try {
+                    const dbResponse = await fetch('http://localhost:9902/health').catch(() => null);
+                    this.connections.database = dbResponse && dbResponse.ok;
+                } catch {
+                    this.connections.database = false;
+                }
+                
+                // Check RL System
+                try {
+                    const rlResponse = await fetch('http://localhost:9900/health').catch(() => null);
+                    this.connections.rl = rlResponse && rlResponse.ok;
+                } catch {
+                    this.connections.rl = false;
+                }
+                
+                this.updateConnectionStatus();
+            }
+            
+            updateConnectionStatus() {
+                document.getElementById('controllerStatus').textContent = 
+                    this.connections.controller ? 'Connected' : 'Disconnected';
+                document.getElementById('dbStatus').textContent = 
+                    this.connections.database ? 'Connected' : 'Disconnected';
+                document.getElementById('rlStatus').textContent = 
+                    this.connections.rl ? 'Connected' : 'Disconnected';
+            }
+            
+            handleNPCUpdate(data) {
+                switch (data.type) {
+                    case 'initial-state':
+                        this.initializeNPCs(data.npcs);
+                        this.updateLearningData(data.learning);
+                        break;
+                    case 'game-tick':
+                        this.updateNPCs(data.npcs);
+                        this.updateWorldObjects(data.objects);
+                        this.updateAnalysis(data.analysis);
+                        break;
+                }
+            }
+            
+            initializeNPCs(npcs) {
+                if (!npcs) return;
+                
+                npcs.forEach(npc => {
+                    this.createNPC3D(npc);
+                });
+                
+                this.logAction('system', `Initialized ${npcs.length} NPCs`);
+            }
+            
+            createNPC3D(npcData) {
+                // Create 3D representation of NPC
+                const geometry = new THREE.BoxGeometry(1, 2, 1);
+                const color = this.getNPCColor(npcData.id);
+                const material = new THREE.MeshLambertMaterial({ 
+                    color: color,
+                    emissive: color,
+                    emissiveIntensity: 0.2
+                });
+                
+                const npcMesh = new THREE.Mesh(geometry, material);
+                npcMesh.position.set(
+                    npcData.position?.x || (Math.random() - 0.5) * 20,
+                    1,
+                    npcData.position?.z || (Math.random() - 0.5) * 20
+                );
+                npcMesh.castShadow = true;
+                npcMesh.userData = { 
+                    npcId: npcData.id,
+                    type: 'npc',
+                    data: npcData
+                };
+                
+                this.scene.add(npcMesh);
+                this.npcs.set(npcData.id, {
+                    mesh: npcMesh,
+                    data: npcData,
+                    trail: [],
+                    lastAction: null
+                });
+                
+                // Add learning indicator above NPC
+                this.addLearningIndicator(npcMesh, npcData);
+            }
+            
+            addLearningIndicator(npcMesh, npcData) {
+                const indicatorGeometry = new THREE.SphereGeometry(0.2, 8, 6);
+                const indicatorMaterial = new THREE.MeshLambertMaterial({ 
+                    color: 0x00ffff,
+                    emissive: 0x004444,
+                    transparent: true,
+                    opacity: 0.8
+                });
+                
+                const indicator = new THREE.Mesh(indicatorGeometry, indicatorMaterial);
+                indicator.position.set(0, 2.5, 0);
+                indicator.userData = { type: 'learning-indicator' };
+                
+                npcMesh.add(indicator);
+            }
+            
+            updateNPCs(npcs) {
+                if (!npcs) return;
+                
+                npcs.forEach(npcData => {
+                    const npc = this.npcs.get(npcData.id);
+                    if (!npc) {
+                        this.createNPC3D(npcData);
+                        return;
+                    }
+                    
+                    // Update position with smooth transition
+                    const targetPos = {
+                        x: npcData.position?.x || npc.mesh.position.x,
+                        y: 1,
+                        z: npcData.position?.z || npc.mesh.position.z
+                    };
+                    
+                    // Smooth movement
+                    npc.mesh.position.lerp(new THREE.Vector3(targetPos.x, targetPos.y, targetPos.z), 0.1);
+                    
+                    // Update learning indicator based on learning score
+                    const learningScore = npcData.learningScore || 0;
+                    const indicator = npc.mesh.children.find(child => 
+                        child.userData.type === 'learning-indicator'
+                    );
+                    
+                    if (indicator) {
+                        indicator.scale.setScalar(0.5 + learningScore * 1.5);
+                        indicator.material.emissiveIntensity = learningScore * 0.5;
+                        
+                        // Rotate based on learning activity
+                        indicator.rotation.y += 0.02 + (learningScore * 0.05);
+                    }
+                    
+                    // Update NPC data
+                    npc.data = npcData;
+                    
+                    // Log significant actions
+                    if (npcData.currentAction && npcData.currentAction !== npc.lastAction) {
+                        this.logAction(npcData.id, `${npcData.currentAction} (Learning: ${(learningScore*100).toFixed(1)}%)`);
+                        npc.lastAction = npcData.currentAction;
+                        this.stats.visualActions++;
+                    }
+                });
+                
+                this.updateNPCPanel();
+                this.updateStats();
+            }
+            
+            updateWorldObjects(objects) {
+                if (!objects) return;
+                
+                // Remove old object meshes
+                const objectsToRemove = this.scene.children.filter(child => 
+                    child.userData.type === 'world-object'
+                );
+                objectsToRemove.forEach(obj => this.scene.remove(obj));
+                
+                // Add new objects
+                objects.forEach(obj => {
+                    const geometry = new THREE.BoxGeometry(0.5, 0.5, 0.5);
+                    const material = new THREE.MeshLambertMaterial({ 
+                        color: this.getNPCColor(obj.creator),
+                        transparent: true,
+                        opacity: obj.quality || 0.7
+                    });
+                    
+                    const mesh = new THREE.Mesh(geometry, material);
+                    mesh.position.set(obj.position.x, obj.position.y + 0.25, obj.position.z);
+                    mesh.userData = { type: 'world-object', data: obj };
+                    
+                    this.scene.add(mesh);
+                });
+            }
+            
+            updateAnalysis(analysis) {
+                if (!analysis) return;
+                
+                // Update stats
+                document.getElementById('npcCount').textContent = analysis.summary?.totalNPCs || 0;
+                document.getElementById('totalLearning').textContent = 
+                    ((analysis.summary?.averageLearning || 0) * 100).toFixed(1) + '%';
+            }
+            
+            updateLearningData(learning) {
+                if (!learning) return;
+                
+                for (const [charId, data] of Object.entries(learning)) {
+                    this.learningData.set(charId, data);
+                    this.stats.databaseOps += data.operations || 0;
+                    
+                    this.logAction(charId, `Database ops: ${data.operations}, Effectiveness: ${(data.effectiveness*100).toFixed(1)}%`);
+                }
+            }
+            
+            updateNPCPanel() {
+                const container = document.getElementById('npcList');
+                const npcsArray = Array.from(this.npcs.values());
+                
+                container.innerHTML = npcsArray.map(npc => {
+                    const data = npc.data;
+                    const learningScore = data.learningScore || 0;
+                    const performance = data.performance || {};
+                    
+                    return `
+                        <div class="npc-item ${data.id}">
+                            <div style="display: flex; justify-content: space-between; align-items: center;">
+                                <strong>${data.name || data.id}</strong>
+                                <span class="status-indicator ${this.getNPCStatusClass(data)}"></span>
+                            </div>
+                            <div style="font-size: 11px; color: #888;">
+                                ${data.type} | Action: ${data.currentAction || 'idle'}
+                            </div>
+                            <div style="margin: 5px 0;">
+                                Learning Progress:
+                                <div class="learning-bar">
+                                    <div class="learning-fill" style="width: ${(learningScore * 100).toFixed(1)}%"></div>
+                                </div>
+                                <div style="font-size: 10px;">
+                                    ${(learningScore * 100).toFixed(1)}% | Tasks: ${performance.tasksCompleted || 0}
+                                </div>
+                            </div>
+                        </div>
+                    `;
+                }).join('');
+            }
+            
+            updateStats() {
+                const now = Date.now();
+                const minutesPassed = (now - this.stats.lastMinute) / 60000;
+                
+                if (minutesPassed >= 1) {
+                    this.stats.actionsPerMin = Math.round(this.stats.visualActions / minutesPassed);
+                    this.stats.lastMinute = now;
+                    document.getElementById('actionsPerMin').textContent = this.stats.actionsPerMin;
+                }
+                
+                document.getElementById('databaseOps').textContent = this.stats.databaseOps;
+                document.getElementById('visualActions').textContent = this.stats.visualActions;
+            }
+            
+            getNPCColor(npcId) {
+                const colors = {
+                    ralph: 0xff4444,
+                    alice: 0x44ff44,
+                    bob: 0x4444ff,
+                    charlie: 0xff8800,
+                    diana: 0xff44ff,
+                    eve: 0x44ffff
+                };
+                return colors[npcId] || 0x888888;
+            }
+            
+            getNPCStatusClass(npcData) {
+                if (npcData.currentAction && npcData.currentAction !== 'idle') {
+                    return 'status-acting';
+                } else if (npcData.learningScore > 0.1) {
+                    return 'status-learning';
+                } else {
+                    return 'status-idle';
+                }
+            }
+            
+            logAction(source, message) {
+                const timestamp = new Date().toLocaleTimeString();
+                const entry = {
+                    timestamp,
+                    source,
+                    message,
+                    time: Date.now()
+                };
+                
+                this.actionLog.push(entry);
+                
+                // Keep only recent entries
+                if (this.actionLog.length > this.maxLogEntries) {
+                    this.actionLog.shift();
+                }
+                
+                this.updateActionLog();
+            }
+            
+            updateActionLog() {
+                const container = document.getElementById('learningLog');
+                const recentEntries = this.actionLog.slice(-20).reverse();
+                
+                container.innerHTML = recentEntries.map(entry => `
+                    <div class="action-entry action-${entry.source}">
+                        <span style="color: #666;">[${entry.timestamp}]</span>
+                        <span style="color: #00ffff;">${entry.source.toUpperCase()}</span>:
+                        ${entry.message}
+                    </div>
+                `).join('');
+                
+                container.scrollTop = 0;
+            }
+            
+            async startDataPolling() {
+                // Poll for learning data every 10 seconds
+                setInterval(async () => {
+                    try {
+                        // Get learning data from character database
+                        const charResponse = await fetch('http://localhost:9902/api/characters/effectiveness').catch(() => null);
+                        if (charResponse && charResponse.ok) {
+                            const effectiveness = await charResponse.json();
+                            this.updateLearningData(effectiveness);
+                        }
+                        
+                        // Get RL patterns
+                        const rlResponse = await fetch('http://localhost:9900/api/knowledge-graph').catch(() => null);
+                        if (rlResponse && rlResponse.ok) {
+                            const knowledgeGraph = await rlResponse.json();
+                            if (knowledgeGraph && knowledgeGraph.graph) {
+                                this.logAction('rl-system', `Knowledge graph updated: ${knowledgeGraph.graph.nodes?.length || 0} nodes`);
+                            }
+                        }
+                        
+                    } catch (error) {
+                        console.error('Data polling error:', error);
+                    }
+                }, 10000);
+            }
+            
+            startRenderLoop() {
+                const animate = () => {
+                    requestAnimationFrame(animate);
+                    
+                    // Rotate camera around the scene
+                    const time = Date.now() * 0.0005;
+                    this.camera.position.x = Math.cos(time) * 25;
+                    this.camera.position.z = Math.sin(time) * 25;
+                    this.camera.lookAt(0, 0, 0);
+                    
+                    // Animate NPC learning indicators
+                    this.npcs.forEach(npc => {
+                        const indicator = npc.mesh.children.find(child => 
+                            child.userData.type === 'learning-indicator'
+                        );
+                        if (indicator) {
+                            indicator.position.y = 2.5 + Math.sin(Date.now() * 0.003) * 0.2;
+                        }
+                    });
+                    
+                    this.renderer.render(this.scene, this.camera);
+                };
+                
+                animate();
+            }
+        }
+        
+        // Initialize the dashboard
+        window.addEventListener('load', () => {
+            new VisualLearningDashboard();
+            console.log('🧠 Visual Learning Dashboard loaded');
+            console.log('📊 Watch NPCs act based on database learning!');
+        });
+    </script>
+</body>
+</html>

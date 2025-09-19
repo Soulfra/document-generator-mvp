@@ -1,0 +1,1181 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Document Generator - Author Studio</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            background: #0a0a0a;
+            color: #e0e0e0;
+            height: 100vh;
+            overflow: hidden;
+        }
+
+        .studio-container {
+            display: grid;
+            grid-template-columns: 250px 1fr 300px;
+            height: 100vh;
+        }
+
+        /* Sidebar */
+        .sidebar {
+            background: #1a1a1a;
+            border-right: 1px solid #333;
+            padding: 1rem;
+            overflow-y: auto;
+        }
+
+        .sidebar h2 {
+            color: #4ecca3;
+            font-size: 1.2rem;
+            margin-bottom: 1rem;
+        }
+
+        .post-list {
+            list-style: none;
+        }
+
+        .post-item {
+            background: #252525;
+            border: 1px solid #333;
+            border-radius: 6px;
+            padding: 0.8rem;
+            margin-bottom: 0.5rem;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+
+        .post-item:hover {
+            border-color: #4ecca3;
+            transform: translateX(5px);
+        }
+
+        .post-item.active {
+            border-color: #4ecca3;
+            background: #2a2a2a;
+        }
+
+        .post-title {
+            font-weight: 600;
+            margin-bottom: 0.3rem;
+        }
+
+        .post-meta {
+            font-size: 0.8rem;
+            color: #666;
+        }
+
+        .new-post-btn {
+            width: 100%;
+            padding: 0.8rem;
+            background: linear-gradient(45deg, #4ecca3, #3eb393);
+            color: #000;
+            border: none;
+            border-radius: 6px;
+            font-weight: 600;
+            cursor: pointer;
+            margin-bottom: 1rem;
+            transition: all 0.2s;
+        }
+
+        .new-post-btn:hover {
+            transform: scale(1.05);
+            box-shadow: 0 5px 20px rgba(78, 204, 163, 0.3);
+        }
+
+        /* Editor Area */
+        .editor-area {
+            background: #151515;
+            display: flex;
+            flex-direction: column;
+        }
+
+        .editor-toolbar {
+            background: #1a1a1a;
+            border-bottom: 1px solid #333;
+            padding: 1rem;
+            display: flex;
+            gap: 1rem;
+            align-items: center;
+            flex-wrap: wrap;
+        }
+
+        .toolbar-btn {
+            background: #252525;
+            border: 1px solid #333;
+            color: #e0e0e0;
+            padding: 0.5rem 1rem;
+            border-radius: 4px;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+
+        .toolbar-btn:hover {
+            background: #2a2a2a;
+            border-color: #4ecca3;
+        }
+
+        .toolbar-btn.active {
+            background: #4ecca3;
+            color: #000;
+            border-color: #4ecca3;
+        }
+
+        .editor-tabs {
+            display: flex;
+            background: #1a1a1a;
+            border-bottom: 1px solid #333;
+        }
+
+        .editor-tab {
+            padding: 0.8rem 1.5rem;
+            background: none;
+            border: none;
+            color: #666;
+            cursor: pointer;
+            border-bottom: 2px solid transparent;
+            transition: all 0.2s;
+        }
+
+        .editor-tab:hover {
+            color: #e0e0e0;
+        }
+
+        .editor-tab.active {
+            color: #4ecca3;
+            border-bottom-color: #4ecca3;
+        }
+
+        .editor-content {
+            flex: 1;
+            padding: 2rem;
+            overflow-y: auto;
+        }
+
+        .title-input {
+            width: 100%;
+            background: none;
+            border: none;
+            color: #e0e0e0;
+            font-size: 2rem;
+            font-weight: 700;
+            margin-bottom: 1rem;
+            outline: none;
+        }
+
+        .title-input::placeholder {
+            color: #666;
+        }
+
+        .content-editor {
+            min-height: 300px;
+            background: #1a1a1a;
+            border: 1px solid #333;
+            border-radius: 8px;
+            padding: 1rem;
+            color: #e0e0e0;
+            font-family: 'Monaco', 'Consolas', monospace;
+            font-size: 0.95rem;
+            line-height: 1.6;
+            outline: none;
+            resize: vertical;
+        }
+
+        /* Twinery-style Story Map */
+        .story-map {
+            background: #1a1a1a;
+            border: 1px solid #333;
+            border-radius: 8px;
+            min-height: 400px;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .story-node {
+            position: absolute;
+            background: #252525;
+            border: 2px solid #4ecca3;
+            border-radius: 8px;
+            padding: 1rem;
+            min-width: 150px;
+            cursor: move;
+            transition: all 0.2s;
+        }
+
+        .story-node:hover {
+            transform: scale(1.05);
+            box-shadow: 0 5px 20px rgba(78, 204, 163, 0.3);
+        }
+
+        .story-node.selected {
+            background: #2a2a2a;
+            border-color: #ffd700;
+        }
+
+        .story-connection {
+            stroke: #4ecca3;
+            stroke-width: 2;
+            fill: none;
+        }
+
+        /* Properties Panel */
+        .properties-panel {
+            background: #1a1a1a;
+            border-left: 1px solid #333;
+            padding: 1rem;
+            overflow-y: auto;
+        }
+
+        .properties-panel h3 {
+            color: #4ecca3;
+            font-size: 1.1rem;
+            margin-bottom: 1rem;
+        }
+
+        .property-group {
+            margin-bottom: 1.5rem;
+        }
+
+        .property-label {
+            display: block;
+            font-size: 0.9rem;
+            color: #999;
+            margin-bottom: 0.3rem;
+        }
+
+        .property-input {
+            width: 100%;
+            background: #252525;
+            border: 1px solid #333;
+            color: #e0e0e0;
+            padding: 0.5rem;
+            border-radius: 4px;
+            outline: none;
+        }
+
+        .property-input:focus {
+            border-color: #4ecca3;
+        }
+
+        /* Publishing Options */
+        .publish-section {
+            background: #252525;
+            border: 1px solid #333;
+            border-radius: 8px;
+            padding: 1rem;
+            margin-top: 1rem;
+        }
+
+        .publish-btn {
+            width: 100%;
+            padding: 0.8rem;
+            background: #4ecca3;
+            color: #000;
+            border: none;
+            border-radius: 6px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+
+        .publish-btn:hover {
+            background: #3eb393;
+        }
+
+        /* Preview Mode */
+        .preview-container {
+            padding: 2rem;
+            max-width: 800px;
+            margin: 0 auto;
+        }
+
+        .preview-content {
+            background: #1a1a1a;
+            border: 1px solid #333;
+            border-radius: 8px;
+            padding: 2rem;
+            line-height: 1.8;
+        }
+
+        .preview-content h1, .preview-content h2, .preview-content h3 {
+            color: #4ecca3;
+            margin: 1rem 0;
+        }
+
+        .preview-content p {
+            margin: 1rem 0;
+        }
+
+        .preview-content a {
+            color: #4ecca3;
+            text-decoration: none;
+        }
+
+        .preview-content a:hover {
+            text-decoration: underline;
+        }
+
+        /* Markdown toolbar */
+        .markdown-toolbar {
+            display: flex;
+            gap: 0.3rem;
+            margin-bottom: 0.5rem;
+        }
+
+        .markdown-btn {
+            background: #252525;
+            border: 1px solid #333;
+            color: #e0e0e0;
+            padding: 0.4rem 0.6rem;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 0.9rem;
+            transition: all 0.2s;
+        }
+
+        .markdown-btn:hover {
+            background: #2a2a2a;
+            border-color: #4ecca3;
+        }
+
+        /* Status bar */
+        .status-bar {
+            background: #1a1a1a;
+            border-top: 1px solid #333;
+            padding: 0.5rem 1rem;
+            display: flex;
+            justify-content: space-between;
+            font-size: 0.9rem;
+            color: #666;
+        }
+
+        .status-item {
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+        }
+
+        .status-dot {
+            width: 8px;
+            height: 8px;
+            border-radius: 50%;
+            background: #4ecca3;
+        }
+
+        /* Modal for settings */
+        .modal {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: rgba(0, 0, 0, 0.8);
+            backdrop-filter: blur(10px);
+            z-index: 1000;
+        }
+
+        .modal-content {
+            background: #1a1a1a;
+            border: 1px solid #333;
+            border-radius: 12px;
+            max-width: 600px;
+            margin: 5% auto;
+            padding: 2rem;
+        }
+
+        .modal-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 1rem;
+        }
+
+        .modal-title {
+            color: #4ecca3;
+            font-size: 1.5rem;
+        }
+
+        .close-btn {
+            background: none;
+            border: none;
+            color: #666;
+            font-size: 1.5rem;
+            cursor: pointer;
+        }
+
+        .close-btn:hover {
+            color: #e0e0e0;
+        }
+
+        /* Git integration status */
+        .git-status {
+            background: #252525;
+            border: 1px solid #333;
+            border-radius: 6px;
+            padding: 0.8rem;
+            margin-top: 1rem;
+            font-size: 0.9rem;
+        }
+
+        .git-status-item {
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+            margin-bottom: 0.3rem;
+        }
+
+        .git-status-icon {
+            color: #4ecca3;
+        }
+
+        .git-status-icon.error {
+            color: #e94560;
+        }
+
+        /* Responsive adjustments */
+        @media (max-width: 1024px) {
+            .studio-container {
+                grid-template-columns: 1fr;
+            }
+            
+            .sidebar, .properties-panel {
+                display: none;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="studio-container">
+        <!-- Sidebar -->
+        <div class="sidebar">
+            <h2>📝 Posts & Stories</h2>
+            <button class="new-post-btn" onclick="createNewPost()">+ New Post</button>
+            <ul class="post-list" id="postList">
+                <li class="post-item active">
+                    <div class="post-title">Welcome to Author Studio</div>
+                    <div class="post-meta">Draft • Just now</div>
+                </li>
+            </ul>
+            
+            <h2 style="margin-top: 2rem;">🌳 Story Branches</h2>
+            <ul class="post-list" id="storyList">
+                <li class="post-item">
+                    <div class="post-title">Interactive Tutorial</div>
+                    <div class="post-meta">5 nodes • Published</div>
+                </li>
+            </ul>
+        </div>
+
+        <!-- Editor Area -->
+        <div class="editor-area">
+            <div class="editor-toolbar">
+                <button class="toolbar-btn active" onclick="switchMode('write')">✍️ Write</button>
+                <button class="toolbar-btn" onclick="switchMode('story')">🗺️ Story Map</button>
+                <button class="toolbar-btn" onclick="switchMode('preview')">👁️ Preview</button>
+                <div style="margin-left: auto;">
+                    <button class="toolbar-btn" onclick="saveWork()">💾 Save</button>
+                    <button class="toolbar-btn" onclick="showPublishModal()">🚀 Publish</button>
+                    <button class="toolbar-btn" onclick="showGitModal()">🔧 Git Settings</button>
+                </div>
+            </div>
+
+            <!-- Editor Tabs -->
+            <div class="editor-tabs">
+                <button class="editor-tab active" onclick="switchTab('content')">Content</button>
+                <button class="editor-tab" onclick="switchTab('metadata')">Metadata</button>
+                <button class="editor-tab" onclick="switchTab('settings')">Settings</button>
+            </div>
+
+            <!-- Writing Mode -->
+            <div class="editor-content" id="writeMode">
+                <input type="text" class="title-input" placeholder="Post Title..." id="postTitle" />
+                
+                <div class="markdown-toolbar">
+                    <button class="markdown-btn" onclick="insertMarkdown('**', '**')">B</button>
+                    <button class="markdown-btn" onclick="insertMarkdown('*', '*')">I</button>
+                    <button class="markdown-btn" onclick="insertMarkdown('~~', '~~')">S</button>
+                    <button class="markdown-btn" onclick="insertMarkdown('`', '`')">Code</button>
+                    <button class="markdown-btn" onclick="insertMarkdown('[', '](url)')">Link</button>
+                    <button class="markdown-btn" onclick="insertMarkdown('![', '](url)')">Image</button>
+                    <button class="markdown-btn" onclick="insertMarkdown('\n### ', '\n')">H3</button>
+                    <button class="markdown-btn" onclick="insertMarkdown('\n- ', '')">List</button>
+                    <button class="markdown-btn" onclick="insertMarkdown('\n> ', '')">Quote</button>
+                </div>
+                
+                <textarea class="content-editor" id="contentEditor" placeholder="Start writing your post in Markdown...
+
+# Heading 1
+## Heading 2
+### Heading 3
+
+**Bold text** and *italic text*
+
+- List item 1
+- List item 2
+  - Nested item
+
+> Blockquote
+
+`inline code` and code blocks:
+
+```javascript
+// Your code here
+```
+
+[Link text](https://example.com)
+![Image alt](image-url.jpg)"></textarea>
+            </div>
+
+            <!-- Story Map Mode (Twinery-style) -->
+            <div class="editor-content" id="storyMode" style="display: none;">
+                <div class="story-map" id="storyMap">
+                    <svg id="storyConnections" style="position: absolute; top: 0; left: 0; width: 100%; height: 100%; pointer-events: none;">
+                        <!-- Connection lines will be drawn here -->
+                    </svg>
+                    <div class="story-node" style="left: 50px; top: 50px;" data-node-id="start">
+                        <strong>Start</strong>
+                        <div style="font-size: 0.9rem; color: #999; margin-top: 0.5rem;">Entry point</div>
+                    </div>
+                    <div class="story-node" style="left: 250px; top: 100px;" data-node-id="node1">
+                        <strong>Chapter 1</strong>
+                        <div style="font-size: 0.9rem; color: #999; margin-top: 0.5rem;">First decision</div>
+                    </div>
+                </div>
+                <div class="status-bar">
+                    <div class="status-item">
+                        <span>Click to select • Drag to move • Double-click to edit</span>
+                    </div>
+                    <div class="status-item">
+                        <button class="markdown-btn" onclick="addStoryNode()">+ Add Node</button>
+                        <button class="markdown-btn" onclick="connectNodes()">↗ Connect</button>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Preview Mode -->
+            <div class="editor-content" id="previewMode" style="display: none;">
+                <div class="preview-container">
+                    <div class="preview-content" id="previewContent">
+                        <!-- Preview will be rendered here -->
+                    </div>
+                </div>
+            </div>
+
+            <!-- Status Bar -->
+            <div class="status-bar">
+                <div class="status-item">
+                    <div class="status-dot"></div>
+                    <span id="saveStatus">All changes saved</span>
+                </div>
+                <div class="status-item">
+                    <span id="wordCount">0 words</span> • 
+                    <span id="charCount">0 characters</span>
+                </div>
+            </div>
+        </div>
+
+        <!-- Properties Panel -->
+        <div class="properties-panel">
+            <h3>📋 Properties</h3>
+            
+            <div class="property-group">
+                <label class="property-label">Slug</label>
+                <input type="text" class="property-input" id="postSlug" placeholder="auto-generated-slug">
+            </div>
+            
+            <div class="property-group">
+                <label class="property-label">Categories</label>
+                <input type="text" class="property-input" id="postCategories" placeholder="blog, tutorial, guide">
+            </div>
+            
+            <div class="property-group">
+                <label class="property-label">Tags</label>
+                <input type="text" class="property-input" id="postTags" placeholder="javascript, ai, automation">
+            </div>
+            
+            <div class="property-group">
+                <label class="property-label">Status</label>
+                <select class="property-input" id="postStatus">
+                    <option value="draft">Draft</option>
+                    <option value="published">Published</option>
+                    <option value="scheduled">Scheduled</option>
+                    <option value="private">Private</option>
+                </select>
+            </div>
+            
+            <div class="publish-section">
+                <h3>🚀 Publishing</h3>
+                <button class="publish-btn" onclick="publishPost()">Publish to GitHub</button>
+                <button class="publish-btn" style="margin-top: 0.5rem; background: #3eb393;" onclick="exportPost()">Export as Markdown</button>
+            </div>
+            
+            <div class="git-status" id="gitStatus">
+                <h3>🔧 Git Status</h3>
+                <div class="git-status-item">
+                    <span class="git-status-icon error">⚠️</span>
+                    <span>No remote configured</span>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Publish Modal -->
+    <div class="modal" id="publishModal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h2 class="modal-title">🚀 Publish Settings</h2>
+                <button class="close-btn" onclick="closeModal('publishModal')">&times;</button>
+            </div>
+            <div class="property-group">
+                <label class="property-label">Publish to:</label>
+                <select class="property-input">
+                    <option>GitHub Pages</option>
+                    <option>Soulfra Page</option>
+                    <option>Export Only</option>
+                </select>
+            </div>
+            <div class="property-group">
+                <label class="property-label">File Path:</label>
+                <input type="text" class="property-input" value="_posts/2024-01-29-post-title.md">
+            </div>
+            <button class="publish-btn" style="margin-top: 1rem;">Publish Now</button>
+        </div>
+    </div>
+
+    <!-- Git Settings Modal -->
+    <div class="modal" id="gitModal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h2 class="modal-title">🔧 Git Configuration</h2>
+                <button class="close-btn" onclick="closeModal('gitModal')">&times;</button>
+            </div>
+            <div class="property-group">
+                <label class="property-label">GitHub Repository URL:</label>
+                <input type="text" class="property-input" id="gitRemoteUrl" 
+                       placeholder="https://github.com/username/repository.git">
+            </div>
+            <div class="property-group">
+                <label class="property-label">Branch:</label>
+                <input type="text" class="property-input" id="gitBranch" value="main">
+            </div>
+            <button class="publish-btn" onclick="configureGit()">Configure Git Remote</button>
+            
+            <div class="git-status" style="margin-top: 1rem;">
+                <div class="git-status-item">
+                    <span>Current Status:</span>
+                </div>
+                <div id="gitConfigStatus" style="font-family: monospace; font-size: 0.8rem; margin-top: 0.5rem;">
+                    <!-- Git status will be shown here -->
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // Author Studio JavaScript
+        class AuthorStudio {
+            constructor() {
+                this.currentPost = {
+                    id: 'post-' + Date.now(),
+                    title: '',
+                    content: '',
+                    slug: '',
+                    categories: [],
+                    tags: [],
+                    status: 'draft',
+                    created: new Date(),
+                    modified: new Date()
+                };
+                
+                this.posts = this.loadPosts();
+                this.currentMode = 'write';
+                this.socket = null;
+                
+                this.init();
+            }
+            
+            init() {
+                this.connectToSocket();
+                this.setupEventListeners();
+                this.updateWordCount();
+                this.loadGitConfig();
+            }
+            
+            connectToSocket() {
+                try {
+                    this.socket = new WebSocket('ws://localhost:8081');
+                    
+                    this.socket.onopen = () => {
+                        console.log('Connected to Document Generator Socket');
+                        this.updateStatus('Connected to server');
+                    };
+                    
+                    this.socket.onmessage = (event) => {
+                        const data = JSON.parse(event.data);
+                        this.handleSocketMessage(data);
+                    };
+                    
+                    this.socket.onclose = () => {
+                        console.log('Disconnected from server');
+                        this.updateStatus('Disconnected - working offline');
+                    };
+                } catch (error) {
+                    console.error('Socket connection failed:', error);
+                }
+            }
+            
+            handleSocketMessage(data) {
+                switch (data.type) {
+                    case 'save_complete':
+                        this.updateStatus('All changes saved');
+                        break;
+                    case 'publish_complete':
+                        this.updateStatus('Published successfully');
+                        break;
+                    case 'git_status':
+                        this.updateGitStatus(data.status);
+                        break;
+                }
+            }
+            
+            setupEventListeners() {
+                // Content editor
+                const editor = document.getElementById('contentEditor');
+                const titleInput = document.getElementById('postTitle');
+                
+                editor.addEventListener('input', () => {
+                    this.currentPost.content = editor.value;
+                    this.updateWordCount();
+                    this.autoSave();
+                });
+                
+                titleInput.addEventListener('input', () => {
+                    this.currentPost.title = titleInput.value;
+                    this.generateSlug();
+                    this.autoSave();
+                });
+                
+                // Property inputs
+                ['postSlug', 'postCategories', 'postTags', 'postStatus'].forEach(id => {
+                    const element = document.getElementById(id);
+                    element.addEventListener('input', () => {
+                        this.updatePostProperty(id, element.value);
+                    });
+                });
+                
+                // Story map drag functionality
+                this.setupStoryMapDrag();
+            }
+            
+            setupStoryMapDrag() {
+                let draggedNode = null;
+                let offset = { x: 0, y: 0 };
+                
+                document.addEventListener('mousedown', (e) => {
+                    if (e.target.closest('.story-node')) {
+                        draggedNode = e.target.closest('.story-node');
+                        const rect = draggedNode.getBoundingClientRect();
+                        offset.x = e.clientX - rect.left;
+                        offset.y = e.clientY - rect.top;
+                        draggedNode.classList.add('selected');
+                    }
+                });
+                
+                document.addEventListener('mousemove', (e) => {
+                    if (draggedNode) {
+                        const container = document.getElementById('storyMap');
+                        const rect = container.getBoundingClientRect();
+                        draggedNode.style.left = (e.clientX - rect.left - offset.x) + 'px';
+                        draggedNode.style.top = (e.clientY - rect.top - offset.y) + 'px';
+                        this.updateConnections();
+                    }
+                });
+                
+                document.addEventListener('mouseup', () => {
+                    if (draggedNode) {
+                        draggedNode.classList.remove('selected');
+                        draggedNode = null;
+                    }
+                });
+            }
+            
+            updateWordCount() {
+                const content = this.currentPost.content;
+                const words = content.trim() ? content.trim().split(/\s+/).length : 0;
+                const chars = content.length;
+                
+                document.getElementById('wordCount').textContent = `${words} words`;
+                document.getElementById('charCount').textContent = `${chars} characters`;
+            }
+            
+            generateSlug() {
+                if (!this.currentPost.title) return;
+                
+                const slug = this.currentPost.title
+                    .toLowerCase()
+                    .replace(/[^a-z0-9]+/g, '-')
+                    .replace(/^-+|-+$/g, '');
+                
+                this.currentPost.slug = slug;
+                document.getElementById('postSlug').value = slug;
+            }
+            
+            updatePostProperty(property, value) {
+                const propMap = {
+                    'postSlug': 'slug',
+                    'postCategories': 'categories',
+                    'postTags': 'tags',
+                    'postStatus': 'status'
+                };
+                
+                const prop = propMap[property];
+                if (prop === 'categories' || prop === 'tags') {
+                    this.currentPost[prop] = value.split(',').map(s => s.trim()).filter(s => s);
+                } else {
+                    this.currentPost[prop] = value;
+                }
+                
+                this.autoSave();
+            }
+            
+            autoSave() {
+                clearTimeout(this.saveTimeout);
+                this.updateStatus('Saving...');
+                
+                this.saveTimeout = setTimeout(() => {
+                    this.savePost();
+                }, 1000);
+            }
+            
+            savePost() {
+                this.currentPost.modified = new Date();
+                
+                // Save to localStorage
+                const posts = this.loadPosts();
+                const index = posts.findIndex(p => p.id === this.currentPost.id);
+                
+                if (index >= 0) {
+                    posts[index] = this.currentPost;
+                } else {
+                    posts.push(this.currentPost);
+                }
+                
+                localStorage.setItem('author_studio_posts', JSON.stringify(posts));
+                
+                // Send to server if connected
+                if (this.socket && this.socket.readyState === WebSocket.OPEN) {
+                    this.socket.send(JSON.stringify({
+                        type: 'save_post',
+                        post: this.currentPost
+                    }));
+                }
+                
+                this.updateStatus('All changes saved');
+                this.updatePostList();
+            }
+            
+            loadPosts() {
+                const saved = localStorage.getItem('author_studio_posts');
+                return saved ? JSON.parse(saved) : [];
+            }
+            
+            updatePostList() {
+                const list = document.getElementById('postList');
+                const posts = this.loadPosts();
+                
+                list.innerHTML = posts.map(post => `
+                    <li class="post-item ${post.id === this.currentPost.id ? 'active' : ''}"
+                        onclick="authorStudio.loadPost('${post.id}')">
+                        <div class="post-title">${post.title || 'Untitled'}</div>
+                        <div class="post-meta">${post.status} • ${this.formatDate(post.modified)}</div>
+                    </li>
+                `).join('');
+            }
+            
+            loadPost(postId) {
+                const posts = this.loadPosts();
+                const post = posts.find(p => p.id === postId);
+                
+                if (post) {
+                    this.currentPost = post;
+                    document.getElementById('postTitle').value = post.title;
+                    document.getElementById('contentEditor').value = post.content;
+                    document.getElementById('postSlug').value = post.slug;
+                    document.getElementById('postCategories').value = post.categories.join(', ');
+                    document.getElementById('postTags').value = post.tags.join(', ');
+                    document.getElementById('postStatus').value = post.status;
+                    
+                    this.updateWordCount();
+                    this.updatePostList();
+                }
+            }
+            
+            formatDate(date) {
+                const d = new Date(date);
+                const now = new Date();
+                const diff = now - d;
+                
+                if (diff < 60000) return 'Just now';
+                if (diff < 3600000) return Math.floor(diff / 60000) + ' min ago';
+                if (diff < 86400000) return Math.floor(diff / 3600000) + ' hours ago';
+                return d.toLocaleDateString();
+            }
+            
+            updateStatus(message) {
+                document.getElementById('saveStatus').textContent = message;
+            }
+            
+            updateGitStatus(status) {
+                const gitStatus = document.getElementById('gitStatus');
+                gitStatus.innerHTML = `
+                    <h3>🔧 Git Status</h3>
+                    ${status}
+                `;
+            }
+            
+            loadGitConfig() {
+                const config = localStorage.getItem('git_config');
+                if (config) {
+                    const { url, branch } = JSON.parse(config);
+                    document.getElementById('gitRemoteUrl').value = url || '';
+                    document.getElementById('gitBranch').value = branch || 'main';
+                }
+            }
+            
+            updateConnections() {
+                // Update SVG connection lines between story nodes
+                // This would draw lines between connected nodes
+            }
+        }
+        
+        // Global instance
+        const authorStudio = new AuthorStudio();
+        
+        // Global functions for UI
+        function createNewPost() {
+            authorStudio.currentPost = {
+                id: 'post-' + Date.now(),
+                title: '',
+                content: '',
+                slug: '',
+                categories: [],
+                tags: [],
+                status: 'draft',
+                created: new Date(),
+                modified: new Date()
+            };
+            
+            document.getElementById('postTitle').value = '';
+            document.getElementById('contentEditor').value = '';
+            document.getElementById('postSlug').value = '';
+            document.getElementById('postCategories').value = '';
+            document.getElementById('postTags').value = '';
+            document.getElementById('postStatus').value = 'draft';
+            
+            authorStudio.updateWordCount();
+            authorStudio.updatePostList();
+        }
+        
+        function switchMode(mode) {
+            ['write', 'story', 'preview'].forEach(m => {
+                document.getElementById(m + 'Mode').style.display = m === mode ? 'block' : 'none';
+            });
+            
+            document.querySelectorAll('.toolbar-btn').forEach((btn, i) => {
+                if (i < 3) btn.classList.toggle('active', ['write', 'story', 'preview'][i] === mode);
+            });
+            
+            if (mode === 'preview') {
+                renderPreview();
+            }
+        }
+        
+        function renderPreview() {
+            const content = authorStudio.currentPost.content;
+            const title = authorStudio.currentPost.title;
+            
+            // Simple Markdown to HTML conversion
+            let html = content
+                .replace(/^### (.*$)/gim, '<h3>$1</h3>')
+                .replace(/^## (.*$)/gim, '<h2>$1</h2>')
+                .replace(/^# (.*$)/gim, '<h1>$1</h1>')
+                .replace(/\*\*\*(.+?)\*\*\*/g, '<strong><em>$1</em></strong>')
+                .replace(/\*\*(.+?)\*\*/g, '<strong>$1</strong>')
+                .replace(/\*(.+?)\*/g, '<em>$1</em>')
+                .replace(/\[([^\]]+)\]\(([^)]+)\)/g, '<a href="$2">$1</a>')
+                .replace(/\n\n/g, '</p><p>')
+                .replace(/^/, '<p>')
+                .replace(/$/, '</p>');
+            
+            document.getElementById('previewContent').innerHTML = `
+                <h1>${title || 'Untitled Post'}</h1>
+                ${html}
+            `;
+        }
+        
+        function insertMarkdown(prefix, suffix) {
+            const editor = document.getElementById('contentEditor');
+            const start = editor.selectionStart;
+            const end = editor.selectionEnd;
+            const text = editor.value;
+            const selected = text.substring(start, end);
+            
+            editor.value = text.substring(0, start) + prefix + selected + suffix + text.substring(end);
+            editor.focus();
+            editor.setSelectionRange(start + prefix.length, end + prefix.length);
+            
+            authorStudio.currentPost.content = editor.value;
+            authorStudio.autoSave();
+        }
+        
+        function showPublishModal() {
+            document.getElementById('publishModal').style.display = 'block';
+        }
+        
+        function showGitModal() {
+            document.getElementById('gitModal').style.display = 'block';
+            checkGitStatus();
+        }
+        
+        function closeModal(modalId) {
+            document.getElementById(modalId).style.display = 'none';
+        }
+        
+        function configureGit() {
+            const url = document.getElementById('gitRemoteUrl').value;
+            const branch = document.getElementById('gitBranch').value;
+            
+            if (!url) {
+                alert('Please enter a GitHub repository URL');
+                return;
+            }
+            
+            // Save config
+            localStorage.setItem('git_config', JSON.stringify({ url, branch }));
+            
+            // Send to server to configure git remote
+            if (authorStudio.socket && authorStudio.socket.readyState === WebSocket.OPEN) {
+                authorStudio.socket.send(JSON.stringify({
+                    type: 'configure_git',
+                    url: url,
+                    branch: branch
+                }));
+            }
+            
+            document.getElementById('gitConfigStatus').innerHTML = 
+                `Configuring remote: ${url}<br>Branch: ${branch}`;
+        }
+        
+        function checkGitStatus() {
+            if (authorStudio.socket && authorStudio.socket.readyState === WebSocket.OPEN) {
+                authorStudio.socket.send(JSON.stringify({
+                    type: 'check_git_status'
+                }));
+            }
+        }
+        
+        function publishPost() {
+            const config = localStorage.getItem('git_config');
+            if (!config) {
+                alert('Please configure Git settings first');
+                showGitModal();
+                return;
+            }
+            
+            if (authorStudio.socket && authorStudio.socket.readyState === WebSocket.OPEN) {
+                authorStudio.socket.send(JSON.stringify({
+                    type: 'publish_post',
+                    post: authorStudio.currentPost,
+                    gitConfig: JSON.parse(config)
+                }));
+            }
+            
+            closeModal('publishModal');
+        }
+        
+        function exportPost() {
+            const post = authorStudio.currentPost;
+            const date = new Date(post.created).toISOString().split('T')[0];
+            const filename = `${date}-${post.slug}.md`;
+            
+            const frontmatter = `---
+title: "${post.title}"
+date: ${date}
+categories: [${post.categories.join(', ')}]
+tags: [${post.tags.join(', ')}]
+status: ${post.status}
+---
+
+`;
+            
+            const content = frontmatter + post.content;
+            const blob = new Blob([content], { type: 'text/markdown' });
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = filename;
+            a.click();
+            URL.revokeObjectURL(url);
+        }
+        
+        function saveWork() {
+            authorStudio.savePost();
+        }
+        
+        function addStoryNode() {
+            const storyMap = document.getElementById('storyMap');
+            const nodeId = 'node-' + Date.now();
+            
+            const node = document.createElement('div');
+            node.className = 'story-node';
+            node.style.left = '100px';
+            node.style.top = '200px';
+            node.setAttribute('data-node-id', nodeId);
+            node.innerHTML = `
+                <strong>New Node</strong>
+                <div style="font-size: 0.9rem; color: #999; margin-top: 0.5rem;">Double-click to edit</div>
+            `;
+            
+            storyMap.appendChild(node);
+        }
+        
+        function connectNodes() {
+            // This would implement node connection logic
+            alert('Select two nodes to connect them');
+        }
+        
+        function switchTab(tab) {
+            document.querySelectorAll('.editor-tab').forEach(t => {
+                t.classList.toggle('active', t.textContent.toLowerCase() === tab);
+            });
+            
+            // Handle tab content switching
+            // This would show different content based on the selected tab
+        }
+        
+        // Keyboard shortcuts
+        document.addEventListener('keydown', (e) => {
+            if ((e.ctrlKey || e.metaKey) && e.key === 's') {
+                e.preventDefault();
+                saveWork();
+            }
+        });
+        
+        // Close modals when clicking outside
+        document.addEventListener('click', (e) => {
+            if (e.target.classList.contains('modal')) {
+                e.target.style.display = 'none';
+            }
+        });
+    </script>
+</body>
+</html>

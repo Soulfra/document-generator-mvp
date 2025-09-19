@@ -1,0 +1,533 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>🎮 Unified 3D Game with Enhanced AI</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body { 
+            overflow: hidden; 
+            font-family: 'Courier New', monospace;
+            background: #000;
+        }
+        
+        #gameCanvas {
+            width: 100vw;
+            height: 100vh;
+            display: block;
+        }
+        
+        .hud {
+            position: fixed;
+            color: #fff;
+            text-shadow: 2px 2px 4px rgba(0,0,0,0.8);
+            font-size: 14px;
+            pointer-events: none;
+            z-index: 100;
+        }
+        
+        .crosshair {
+            position: fixed;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            width: 20px;
+            height: 20px;
+            border: 2px solid rgba(255,255,255,0.8);
+            border-radius: 50%;
+        }
+        
+        .hotbar {
+            position: fixed;
+            bottom: 20px;
+            left: 50%;
+            transform: translateX(-50%);
+            display: flex;
+            gap: 5px;
+            background: rgba(0,0,0,0.5);
+            padding: 10px;
+            border-radius: 5px;
+        }
+        
+        .hotbar-slot {
+            width: 50px;
+            height: 50px;
+            border: 2px solid #666;
+            background: rgba(0,0,0,0.3);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 24px;
+            position: relative;
+        }
+        
+        .hotbar-slot.active {
+            border-color: #00ff00;
+            background: rgba(0,255,0,0.1);
+        }
+        
+        .hotbar-count {
+            position: absolute;
+            bottom: 2px;
+            right: 2px;
+            font-size: 12px;
+            background: rgba(0,0,0,0.8);
+            padding: 2px 4px;
+            border-radius: 3px;
+        }
+        
+        .health-bar {
+            position: fixed;
+            top: 20px;
+            left: 20px;
+            width: 200px;
+            height: 20px;
+            background: rgba(0,0,0,0.5);
+            border: 2px solid #666;
+            border-radius: 10px;
+            overflow: hidden;
+        }
+        
+        .health-fill {
+            height: 100%;
+            background: linear-gradient(to right, #ff0000, #ff6600);
+            transition: width 0.3s;
+            width: 100%;
+        }
+        
+        .coordinates {
+            position: fixed;
+            top: 20px;
+            right: 20px;
+            background: rgba(0,0,0,0.5);
+            padding: 10px;
+            border-radius: 5px;
+            font-size: 12px;
+        }
+        
+        .chat-window {
+            position: fixed;
+            bottom: 100px;
+            left: 20px;
+            width: 400px;
+            max-height: 200px;
+            background: rgba(0,0,0,0.7);
+            border: 1px solid #333;
+            border-radius: 5px;
+            padding: 10px;
+            overflow-y: auto;
+            pointer-events: all;
+        }
+        
+        .chat-message {
+            margin-bottom: 5px;
+            word-wrap: break-word;
+        }
+        
+        .chat-message.npc {
+            color: #00ff00;
+        }
+        
+        .chat-message.system {
+            color: #ffff00;
+        }
+        
+        .chat-message.player {
+            color: #00ffff;
+        }
+        
+        .npc-indicator {
+            position: absolute;
+            background: rgba(0,255,0,0.8);
+            color: #000;
+            padding: 2px 6px;
+            border-radius: 3px;
+            font-size: 12px;
+            font-weight: bold;
+            transform: translate(-50%, -120%);
+            pointer-events: none;
+        }
+        
+        .loading-screen {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: #000;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            flex-direction: column;
+            z-index: 1000;
+        }
+        
+        .loading-text {
+            color: #00ff00;
+            font-size: 24px;
+            margin-bottom: 20px;
+        }
+        
+        .loading-bar {
+            width: 300px;
+            height: 20px;
+            background: #333;
+            border: 2px solid #00ff00;
+            border-radius: 10px;
+            overflow: hidden;
+        }
+        
+        .loading-progress {
+            height: 100%;
+            background: #00ff00;
+            width: 0%;
+            transition: width 0.3s;
+        }
+    </style>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+</head>
+<body>
+    <div class="loading-screen" id="loadingScreen">
+        <div class="loading-text">Loading Enhanced 3D World...</div>
+        <div class="loading-bar">
+            <div class="loading-progress" id="loadingProgress"></div>
+        </div>
+    </div>
+    
+    <canvas id="gameCanvas"></canvas>
+    
+    <div class="hud">
+        <div class="crosshair"></div>
+        
+        <div class="health-bar">
+            <div class="health-fill" id="healthFill"></div>
+        </div>
+        
+        <div class="coordinates">
+            <div>X: <span id="posX">0</span></div>
+            <div>Y: <span id="posY">0</span></div>
+            <div>Z: <span id="posZ">0</span></div>
+            <div>Chunk: <span id="chunk">0,0</span></div>
+            <div>FPS: <span id="fps">0</span></div>
+            <div>NPCs: <span id="npcCount">0</span></div>
+        </div>
+        
+        <div class="hotbar" id="hotbar"></div>
+        
+        <div class="chat-window" id="chatWindow"></div>
+    </div>
+    
+    <script type="module">
+        // Import the unified game engine
+        const script1 = document.createElement('script');
+        script1.src = '/unified-3d-game-engine.js';
+        document.head.appendChild(script1);
+        
+        // Import the enhanced AI behavior system
+        const script2 = document.createElement('script');
+        script2.src = '/enhanced-ai-behavior-system.js';
+        document.head.appendChild(script2);
+        
+        // Wait for scripts to load
+        window.addEventListener('load', async () => {
+            // Initialize unified game with AI enhancements
+            class EnhancedUnified3DGame {
+                constructor() {
+                    this.gameEngine = null;
+                    this.aiSystem = null;
+                    this.npcs = new Map();
+                    this.chatHistory = [];
+                    
+                    this.init();
+                }
+                
+                async init() {
+                    console.log('🎮 Initializing Enhanced 3D Game with AI...');
+                    
+                    // Show loading
+                    this.updateLoadingProgress(10);
+                    
+                    // Initialize game engine
+                    if (window.Unified3DGameEngine) {
+                        this.gameEngine = new window.Unified3DGameEngine();
+                        await this.gameEngine.init();
+                        this.updateLoadingProgress(50);
+                    }
+                    
+                    // Initialize AI system
+                    if (window.EnhancedAIBehaviorSystem) {
+                        this.aiSystem = new window.EnhancedAIBehaviorSystem();
+                        await this.aiSystem.init({
+                            width: this.gameEngine.world.width * this.gameEngine.world.chunkSize,
+                            height: this.gameEngine.world.depth * this.gameEngine.world.chunkSize,
+                            obstacles: this.getWorldObstacles()
+                        });
+                        this.updateLoadingProgress(70);
+                    }
+                    
+                    // Spawn NPCs
+                    this.spawnNPCs();
+                    this.updateLoadingProgress(90);
+                    
+                    // Setup AI event listeners
+                    this.setupAIEvents();
+                    
+                    // Hide loading screen
+                    setTimeout(() => {
+                        document.getElementById('loadingScreen').style.display = 'none';
+                        this.updateLoadingProgress(100);
+                    }, 1000);
+                    
+                    // Start game loop
+                    this.animate();
+                    
+                    console.log('✅ Enhanced 3D Game initialized!');
+                }
+                
+                spawnNPCs() {
+                    // Spawn different types of NPCs
+                    const npcTypes = [
+                        { name: 'Bob the Builder', personality: 'friendly', skills: { building: 5 } },
+                        { name: 'Alice the Miner', personality: 'cautious', skills: { mining: 5 } },
+                        { name: 'Charlie the Trader', personality: 'merchant', skills: { trading: 5 } },
+                        { name: 'Diana the Explorer', personality: 'scholar', skills: { exploration: 5 } },
+                        { name: 'Eve the Warrior', personality: 'aggressive', skills: { combat: 5 } }
+                    ];
+                    
+                    npcTypes.forEach((npcData, index) => {
+                        // Create AI agent
+                        const agent = this.aiSystem.createAgent({
+                            name: npcData.name,
+                            personality: { type: npcData.personality },
+                            skills: npcData.skills,
+                            position: {
+                                x: Math.cos(index * Math.PI / 2.5) * 20,
+                                y: 64,
+                                z: Math.sin(index * Math.PI / 2.5) * 20
+                            }
+                        });
+                        
+                        // Create visual representation
+                        const npcMesh = this.createNPCMesh(npcData.personality);
+                        npcMesh.position.copy(agent.position);
+                        this.gameEngine.scene.add(npcMesh);
+                        
+                        // Store NPC data
+                        this.npcs.set(agent.id, {
+                            agent: agent,
+                            mesh: npcMesh,
+                            nameTag: this.createNameTag(agent.name)
+                        });
+                    });
+                    
+                    this.addChatMessage(`🌍 ${this.npcs.size} NPCs have joined the world!`, 'system');
+                }
+                
+                createNPCMesh(personality) {
+                    const group = new THREE.Group();
+                    
+                    // Body (capsule)
+                    const bodyGeometry = new THREE.CapsuleGeometry(0.4, 1.6, 4, 8);
+                    const bodyColor = {
+                        friendly: 0x00ff00,
+                        cautious: 0xffff00,
+                        aggressive: 0xff0000,
+                        merchant: 0x00ffff,
+                        scholar: 0xff00ff
+                    }[personality] || 0x00ff00;
+                    
+                    const bodyMaterial = new THREE.MeshPhongMaterial({ 
+                        color: bodyColor,
+                        emissive: bodyColor,
+                        emissiveIntensity: 0.2
+                    });
+                    
+                    const body = new THREE.Mesh(bodyGeometry, bodyMaterial);
+                    body.position.y = 1;
+                    body.castShadow = true;
+                    body.receiveShadow = true;
+                    group.add(body);
+                    
+                    // Head
+                    const headGeometry = new THREE.SphereGeometry(0.3, 16, 16);
+                    const head = new THREE.Mesh(headGeometry, bodyMaterial);
+                    head.position.y = 2;
+                    head.castShadow = true;
+                    group.add(head);
+                    
+                    // Eyes
+                    const eyeGeometry = new THREE.SphereGeometry(0.05, 8, 8);
+                    const eyeMaterial = new THREE.MeshBasicMaterial({ color: 0xffffff });
+                    
+                    const leftEye = new THREE.Mesh(eyeGeometry, eyeMaterial);
+                    leftEye.position.set(-0.1, 2, 0.25);
+                    group.add(leftEye);
+                    
+                    const rightEye = new THREE.Mesh(eyeGeometry, eyeMaterial);
+                    rightEye.position.set(0.1, 2, 0.25);
+                    group.add(rightEye);
+                    
+                    return group;
+                }
+                
+                createNameTag(name) {
+                    const div = document.createElement('div');
+                    div.className = 'npc-indicator';
+                    div.textContent = name;
+                    document.body.appendChild(div);
+                    return div;
+                }
+                
+                setupAIEvents() {
+                    // Listen for AI conversations
+                    this.aiSystem.on('conversation', (data) => {
+                        const { agent1, agent2, dialogue } = data;
+                        this.addChatMessage(
+                            `${agent1.name}: ${dialogue.message}`,
+                            'npc'
+                        );
+                        
+                        // Show speech bubble effect
+                        this.showSpeechBubble(agent1, dialogue.message);
+                    });
+                    
+                    // Listen for AI actions
+                    this.aiSystem.on('agent-moved', (data) => {
+                        const npc = this.npcs.get(data.agent.id);
+                        if (npc) {
+                            // Smooth movement
+                            npc.mesh.position.lerp(data.agent.position, 0.1);
+                            npc.mesh.rotation.y = data.agent.rotation.y;
+                        }
+                    });
+                    
+                    // Listen for goal changes
+                    this.aiSystem.on('goal-assigned', (data) => {
+                        console.log(`🎯 ${data.agent.name}: New goal - ${data.goal.type}`);
+                    });
+                    
+                    // Listen for resource gathering
+                    this.aiSystem.on('resource-gathered', (data) => {
+                        this.addChatMessage(
+                            `${data.agent.name} gathered ${data.resource.type}!`,
+                            'system'
+                        );
+                    });
+                }
+                
+                getWorldObstacles() {
+                    const obstacles = [];
+                    
+                    // Get solid blocks from world
+                    if (this.gameEngine && this.gameEngine.world) {
+                        const chunks = this.gameEngine.world.chunks;
+                        chunks.forEach(chunk => {
+                            const blocks = chunk.blocks;
+                            for (let x = 0; x < chunk.size; x++) {
+                                for (let z = 0; z < chunk.size; z++) {
+                                    for (let y = 0; y < chunk.height; y++) {
+                                        const block = blocks[x][y][z];
+                                        if (block && block !== 0) {
+                                            obstacles.push({
+                                                x: chunk.x * chunk.size + x,
+                                                y: y,
+                                                z: chunk.z * chunk.size + z
+                                            });
+                                        }
+                                    }
+                                }
+                            }
+                        });
+                    }
+                    
+                    return obstacles;
+                }
+                
+                showSpeechBubble(agent, message) {
+                    const npc = this.npcs.get(agent.id);
+                    if (!npc) return;
+                    
+                    // Create speech bubble (simplified - in real game would be 3D)
+                    const bubble = document.createElement('div');
+                    bubble.style.position = 'absolute';
+                    bubble.style.background = 'rgba(255,255,255,0.9)';
+                    bubble.style.color = '#000';
+                    bubble.style.padding = '5px 10px';
+                    bubble.style.borderRadius = '10px';
+                    bubble.style.fontSize = '12px';
+                    bubble.style.maxWidth = '200px';
+                    bubble.textContent = message;
+                    document.body.appendChild(bubble);
+                    
+                    // Position bubble
+                    const vector = npc.mesh.position.clone();
+                    vector.y += 3;
+                    vector.project(this.gameEngine.camera);
+                    
+                    const x = (vector.x + 1) * window.innerWidth / 2;
+                    const y = (-vector.y + 1) * window.innerHeight / 2;
+                    
+                    bubble.style.left = x + 'px';
+                    bubble.style.top = y + 'px';
+                    bubble.style.transform = 'translate(-50%, -100%)';
+                    
+                    // Remove after 3 seconds
+                    setTimeout(() => {
+                        bubble.remove();
+                    }, 3000);
+                }
+                
+                addChatMessage(message, type = 'system') {
+                    const chatWindow = document.getElementById('chatWindow');
+                    const messageDiv = document.createElement('div');
+                    messageDiv.className = `chat-message ${type}`;
+                    messageDiv.textContent = message;
+                    chatWindow.appendChild(messageDiv);
+                    
+                    // Keep chat history
+                    this.chatHistory.push({ message, type, timestamp: Date.now() });
+                    
+                    // Limit chat messages
+                    while (chatWindow.children.length > 10) {
+                        chatWindow.removeChild(chatWindow.firstChild);
+                    }
+                    
+                    // Scroll to bottom
+                    chatWindow.scrollTop = chatWindow.scrollHeight;
+                }
+                
+                updateLoadingProgress(percent) {
+                    document.getElementById('loadingProgress').style.width = percent + '%';
+                }
+                
+                animate() {
+                    requestAnimationFrame(() => this.animate());
+                    
+                    // Update NPC name tags positions
+                    this.npcs.forEach((npc) => {
+                        const vector = npc.mesh.position.clone();
+                        vector.y += 2.5;
+                        vector.project(this.gameEngine.camera);
+                        
+                        const x = (vector.x + 1) * window.innerWidth / 2;
+                        const y = (-vector.y + 1) * window.innerHeight / 2;
+                        
+                        npc.nameTag.style.left = x + 'px';
+                        npc.nameTag.style.top = y + 'px';
+                        
+                        // Hide if behind camera
+                        npc.nameTag.style.display = vector.z > 1 ? 'none' : 'block';
+                    });
+                    
+                    // Update NPC count
+                    document.getElementById('npcCount').textContent = this.npcs.size;
+                }
+            }
+            
+            // Start the enhanced game
+            window.enhancedGame = new EnhancedUnified3DGame();
+        });
+    </script>
+</body>
+</html>

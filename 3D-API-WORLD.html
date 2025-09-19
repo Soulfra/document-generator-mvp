@@ -1,0 +1,714 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>3D API World Visualization</title>
+    <style>
+        body {
+            margin: 0;
+            overflow: hidden;
+            font-family: 'Courier New', monospace;
+            background: #000;
+        }
+        
+        #info {
+            position: absolute;
+            top: 10px;
+            left: 10px;
+            color: #0f0;
+            background: rgba(0, 0, 0, 0.8);
+            padding: 15px;
+            border: 1px solid #0f0;
+            border-radius: 5px;
+            z-index: 100;
+            max-width: 300px;
+        }
+        
+        #stats {
+            position: absolute;
+            top: 10px;
+            right: 10px;
+            color: #0f0;
+            background: rgba(0, 0, 0, 0.8);
+            padding: 15px;
+            border: 1px solid #0f0;
+            border-radius: 5px;
+            z-index: 100;
+        }
+        
+        .packet {
+            position: absolute;
+            color: #fff;
+            font-size: 12px;
+            pointer-events: none;
+        }
+        
+        #controls {
+            position: absolute;
+            bottom: 20px;
+            left: 50%;
+            transform: translateX(-50%);
+            text-align: center;
+            color: #0f0;
+            background: rgba(0, 0, 0, 0.8);
+            padding: 10px;
+            border: 1px solid #0f0;
+            border-radius: 5px;
+        }
+        
+        button {
+            background: #003300;
+            color: #0f0;
+            border: 1px solid #0f0;
+            padding: 5px 15px;
+            margin: 0 5px;
+            cursor: pointer;
+            font-family: inherit;
+        }
+        
+        button:hover {
+            background: #0f0;
+            color: #000;
+        }
+    </style>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/controls/OrbitControls.js"></script>
+</head>
+<body>
+    <div id="info">
+        <h3 style="margin-top: 0;">🌐 3D API World</h3>
+        <div id="connection-status">Connecting...</div>
+        <div id="ai-status"></div>
+        <div id="packet-count"></div>
+    </div>
+    
+    <div id="stats">
+        <h3 style="margin-top: 0;">📊 Live Stats</h3>
+        <div>Gold: <span id="gold">0</span></div>
+        <div>Packets: <span id="packets">0</span></div>
+        <div>Vampires: <span id="vampires">0</span></div>
+        <div>FPS: <span id="fps">0</span></div>
+    </div>
+    
+    <div id="controls">
+        <button onclick="toggleView()">🔄 Change View</button>
+        <button onclick="togglePackets()">📦 Toggle Packets</button>
+        <button onclick="toggleRotation()">🌀 Auto Rotate</button>
+        <button onclick="resetCamera()">📷 Reset Camera</button>
+    </div>
+    
+    <script>
+        // Three.js setup
+        const scene = new THREE.Scene();
+        scene.fog = new THREE.Fog(0x000000, 10, 100);
+        
+        const camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 1000);
+        camera.position.set(20, 20, 20);
+        
+        const renderer = new THREE.WebGLRenderer({ antialias: true });
+        renderer.setSize(window.innerWidth, window.innerHeight);
+        renderer.shadowMap.enabled = true;
+        renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+        document.body.appendChild(renderer.domElement);
+        
+        const controls = new THREE.OrbitControls(camera, renderer.domElement);
+        controls.enableDamping = true;
+        controls.dampingFactor = 0.05;
+        
+        // Lighting
+        const ambientLight = new THREE.AmbientLight(0x404040);
+        scene.add(ambientLight);
+        
+        const directionalLight = new THREE.DirectionalLight(0xffffff, 1);
+        directionalLight.position.set(10, 20, 10);
+        directionalLight.castShadow = true;
+        directionalLight.shadow.camera.near = 0.1;
+        directionalLight.shadow.camera.far = 50;
+        directionalLight.shadow.camera.left = -20;
+        directionalLight.shadow.camera.right = 20;
+        directionalLight.shadow.camera.top = 20;
+        directionalLight.shadow.camera.bottom = -20;
+        scene.add(directionalLight);
+        
+        // Grid
+        const gridHelper = new THREE.GridHelper(50, 50, 0x00ff00, 0x003300);
+        scene.add(gridHelper);
+        
+        // API World Objects
+        const apiObjects = {
+            // Central MCP Router (glowing cube)
+            mcpRouter: null,
+            
+            // Systems (different colored spheres)
+            systems: {
+                tycoon: null,
+                ai: null,
+                postOffice: null,
+                deviceMesh: null,
+                verification: null
+            },
+            
+            // Connections (lines between systems)
+            connections: [],
+            
+            // Packets (moving particles)
+            packets: [],
+            
+            // Data flows (particle systems)
+            dataFlows: []
+        };
+        
+        // Create MCP Router (central hub)
+        function createMCPRouter() {
+            const geometry = new THREE.BoxGeometry(5, 5, 5);
+            const material = new THREE.MeshPhongMaterial({
+                color: 0x00ff00,
+                emissive: 0x00ff00,
+                emissiveIntensity: 0.5,
+                transparent: true,
+                opacity: 0.8
+            });
+            
+            apiObjects.mcpRouter = new THREE.Mesh(geometry, material);
+            apiObjects.mcpRouter.position.set(0, 5, 0);
+            apiObjects.mcpRouter.castShadow = true;
+            scene.add(apiObjects.mcpRouter);
+            
+            // Add glow effect
+            const glowGeometry = new THREE.BoxGeometry(6, 6, 6);
+            const glowMaterial = new THREE.MeshBasicMaterial({
+                color: 0x00ff00,
+                transparent: true,
+                opacity: 0.2
+            });
+            const glow = new THREE.Mesh(glowGeometry, glowMaterial);
+            apiObjects.mcpRouter.add(glow);
+        }
+        
+        // Create system nodes
+        function createSystemNode(name, color, position) {
+            const geometry = new THREE.SphereGeometry(2, 32, 16);
+            const material = new THREE.MeshPhongMaterial({
+                color: color,
+                emissive: color,
+                emissiveIntensity: 0.3
+            });
+            
+            const node = new THREE.Mesh(geometry, material);
+            node.position.copy(position);
+            node.castShadow = true;
+            node.receiveShadow = true;
+            scene.add(node);
+            
+            // Add label
+            const canvas = document.createElement('canvas');
+            const context = canvas.getContext('2d');
+            canvas.width = 256;
+            canvas.height = 64;
+            context.fillStyle = '#00ff00';
+            context.font = '24px Courier New';
+            context.fillText(name, 10, 40);
+            
+            const texture = new THREE.CanvasTexture(canvas);
+            const spriteMaterial = new THREE.SpriteMaterial({ map: texture });
+            const sprite = new THREE.Sprite(spriteMaterial);
+            sprite.scale.set(4, 1, 1);
+            sprite.position.y = 3;
+            node.add(sprite);
+            
+            return node;
+        }
+        
+        // Initialize world
+        function initWorld() {
+            createMCPRouter();
+            
+            // Create system nodes in a circle around MCP
+            const radius = 15;
+            const systems = [
+                { name: 'Tycoon', color: 0xff0000 },
+                { name: 'AI Player', color: 0xffff00 },
+                { name: 'Post Office', color: 0x00ffff },
+                { name: 'Device Mesh', color: 0xff00ff },
+                { name: 'Verification', color: 0xffffff }
+            ];
+            
+            systems.forEach((system, index) => {
+                const angle = (index / systems.length) * Math.PI * 2;
+                const x = Math.cos(angle) * radius;
+                const z = Math.sin(angle) * radius;
+                
+                const node = createSystemNode(
+                    system.name,
+                    system.color,
+                    new THREE.Vector3(x, 3, z)
+                );
+                
+                apiObjects.systems[system.name.toLowerCase().replace(' ', '')] = node;
+                
+                // Create connection to MCP
+                createConnection(apiObjects.mcpRouter.position, node.position, system.color);
+            });
+        }
+        
+        // Create connection line
+        function createConnection(start, end, color) {
+            const points = [start, end];
+            const geometry = new THREE.BufferGeometry().setFromPoints(points);
+            const material = new THREE.LineBasicMaterial({
+                color: color,
+                transparent: true,
+                opacity: 0.5
+            });
+            
+            const line = new THREE.Line(geometry, material);
+            scene.add(line);
+            apiObjects.connections.push(line);
+            
+            return line;
+        }
+        
+        // Create packet visualization
+        function createPacket(from, to, type = 'data') {
+            const geometry = new THREE.BoxGeometry(0.5, 0.5, 0.5);
+            const colors = {
+                data: 0x00ff00,
+                vampire: 0xff0000,
+                gold: 0xffff00,
+                ai: 0x00ffff
+            };
+            
+            const material = new THREE.MeshBasicMaterial({
+                color: colors[type] || 0xffffff,
+                emissive: colors[type] || 0xffffff
+            });
+            
+            const packet = new THREE.Mesh(geometry, material);
+            packet.position.copy(from);
+            
+            // Store destination and progress
+            packet.userData = {
+                from: from.clone(),
+                to: to.clone(),
+                progress: 0,
+                type: type,
+                speed: 0.02 + Math.random() * 0.02
+            };
+            
+            scene.add(packet);
+            apiObjects.packets.push(packet);
+            
+            return packet;
+        }
+        
+        // Animation variables
+        let autoRotate = true;
+        let showPackets = true;
+        let viewMode = 0;
+        
+        // WebSocket connections to both MCP and Dungeon Master
+        let mcpWs = null;
+        let dmWs = null;
+        
+        function connectWebSocket() {
+            // Connect to MCP
+            mcpWs = new WebSocket('ws://localhost:6667');
+            
+            mcpWs.onopen = () => {
+                document.getElementById('connection-status').textContent = '✅ Connected to MCP';
+                mcpWs.send(JSON.stringify({ type: 'system-status' }));
+            };
+            
+            mcpWs.onmessage = (event) => {
+                try {
+                    const data = JSON.parse(event.data);
+                    handleAPIMessage(data);
+                } catch (e) {
+                    console.error('MCP Parse error:', e);
+                }
+            };
+            
+            mcpWs.onerror = () => {
+                document.getElementById('connection-status').textContent = '❌ MCP Connection error';
+            };
+            
+            mcpWs.onclose = () => {
+                document.getElementById('connection-status').textContent = '🔄 Reconnecting MCP...';
+                setTimeout(() => connectWebSocket(), 3000);
+            };
+            
+            // Connect to Dungeon Master reasoning
+            dmWs = new WebSocket('ws://localhost:7778');
+            
+            dmWs.onopen = () => {
+                console.log('🏰 Connected to Dungeon Master reasoning');
+                dmWs.send(JSON.stringify({ type: 'observer-connected' }));
+            };
+            
+            dmWs.onmessage = (event) => {
+                try {
+                    const data = JSON.parse(event.data);
+                    handleReasoningMessage(data);
+                } catch (e) {
+                    console.error('DM Parse error:', e);
+                }
+            };
+            
+            dmWs.onerror = () => {
+                console.error('❌ Dungeon Master connection error');
+            };
+            
+            dmWs.onclose = () => {
+                console.log('🔄 Reconnecting to Dungeon Master...');
+                setTimeout(() => {
+                    dmWs = new WebSocket('ws://localhost:7778');
+                }, 3000);
+            };
+        }
+        
+        // Handle API messages
+        function handleAPIMessage(data) {
+            switch (data.type) {
+                case 'game-update':
+                    updateGameStats(data.state);
+                    // Create packet visualization
+                    if (showPackets && Math.random() < 0.5) {
+                        const from = apiObjects.systems.tycoon.position;
+                        const to = apiObjects.mcpRouter.position;
+                        createPacket(from, to, 'gold');
+                    }
+                    break;
+                    
+                case 'ai-status':
+                    updateAIStatus(data);
+                    // AI thinking visualization
+                    if (showPackets) {
+                        const from = apiObjects.systems.aiplayer.position;
+                        const to = apiObjects.mcpRouter.position;
+                        createPacket(from, to, 'ai');
+                    }
+                    break;
+                    
+                case 'packet-received':
+                    // Packet flow visualization
+                    if (showPackets) {
+                        const from = apiObjects.systems.postoffice.position;
+                        const to = apiObjects.systems.tycoon.position;
+                        createPacket(from, to, data.packet.type === 'vampire' ? 'vampire' : 'data');
+                    }
+                    break;
+            }
+        }
+        
+        // Handle Dungeon Master reasoning messages
+        function handleReasoningMessage(data) {
+            console.log('🧠 Reasoning update:', data.type);
+            
+            switch (data.type) {
+                case 'dm-welcome':
+                    document.getElementById('ai-status').innerHTML = `
+                        🏰 Campaign: ${data.campaign.name}<br>
+                        📜 Quest: ${data.campaign.currentQuest}<br>
+                        🎯 Progress: ${data.campaign.progress.toFixed(1)}%
+                    `;
+                    updateAgentNodes(data.agents);
+                    break;
+                    
+                case 'reasoning-update':
+                    updateReasoningVisualization(data.reasoning);
+                    updateCampaignProgress(data.campaign);
+                    visualizeAgentWork(data.agents);
+                    break;
+            }
+        }
+        
+        // Update agent nodes in 3D world
+        function updateAgentNodes(agents) {
+            // Clear existing agent nodes
+            Object.values(apiObjects.systems).forEach(node => {
+                if (node && node.parent) {
+                    node.parent.remove(node);
+                }
+            });
+            
+            // Create agent nodes
+            const agentColors = {
+                htmlMaster: 0xff4444,
+                cssMage: 0x4444ff,
+                jsWizard: 0xffff44,
+                designPaladin: 0xff44ff,
+                seoRogue: 0x44ffff,
+                dbCleric: 0x44ff44
+            };
+            
+            const radius = 15;
+            let index = 0;
+            
+            Object.entries(agents).forEach(([agentName, agent]) => {
+                const angle = (index / Object.keys(agents).length) * Math.PI * 2;
+                const x = Math.cos(angle) * radius;
+                const z = Math.sin(angle) * radius;
+                
+                const node = createSystemNode(
+                    `${agentName} L${agent.level}`,
+                    agentColors[agentName] || 0xffffff,
+                    new THREE.Vector3(x, 3, z)
+                );
+                
+                // Add task indicator
+                if (agent.currentTask) {
+                    const taskGeometry = new THREE.RingGeometry(2.5, 3, 8);
+                    const taskMaterial = new THREE.MeshBasicMaterial({ 
+                        color: 0xffff00, 
+                        transparent: true, 
+                        opacity: 0.5 
+                    });
+                    const taskRing = new THREE.Mesh(taskGeometry, taskMaterial);
+                    taskRing.rotation.x = -Math.PI / 2;
+                    node.add(taskRing);
+                }
+                
+                apiObjects.systems[agentName] = node;
+                
+                // Create connection to MCP
+                createConnection(apiObjects.mcpRouter.position, node.position, agentColors[agentName]);
+                
+                index++;
+            });
+        }
+        
+        // Visualize reasoning process
+        function updateReasoningVisualization(reasoning) {
+            document.getElementById('packet-count').innerHTML = `
+                🧠 ${reasoning.currentThought}<br>
+                🎯 Active Agents: ${reasoning.activeAgents.join(', ')}<br>
+                📊 Decisions: ${reasoning.decisionTree.length}
+            `;
+            
+            // Create thinking particles
+            if (showPackets && reasoning.currentThought) {
+                // Particles flowing from active agents to MCP router
+                reasoning.activeAgents.forEach(agentName => {
+                    const agent = apiObjects.systems[agentName];
+                    if (agent) {
+                        createPacket(agent.position, apiObjects.mcpRouter.position, 'ai');
+                    }
+                });
+            }
+        }
+        
+        // Visualize agent work
+        function visualizeAgentWork(agents) {
+            Object.entries(agents).forEach(([agentName, agent]) => {
+                const agentNode = apiObjects.systems[agentName];
+                
+                if (agentNode && agent.currentTask) {
+                    // Make agent glow when working
+                    agentNode.material.emissiveIntensity = 0.8;
+                    
+                    // Create work packets
+                    if (showPackets && Math.random() < 0.3) {
+                        createPacket(
+                            agentNode.position, 
+                            apiObjects.mcpRouter.position, 
+                            'data'
+                        );
+                    }
+                    
+                    setTimeout(() => {
+                        if (agentNode.material) {
+                            agentNode.material.emissiveIntensity = 0.3;
+                        }
+                    }, 1000);
+                }
+            });
+        }
+        
+        // Update campaign progress
+        function updateCampaignProgress(campaign) {
+            document.getElementById('gold').textContent = `${campaign.progress.toFixed(1)}%`;
+            document.getElementById('packets').textContent = campaign.artifacts.length;
+            
+            // Make MCP router pulse based on progress
+            if (apiObjects.mcpRouter) {
+                const intensity = 0.5 + (campaign.progress / 100) * 0.5;
+                apiObjects.mcpRouter.material.emissiveIntensity = intensity;
+            }
+        }
+        
+        // Update displays
+        function updateGameStats(state) {
+            if (state.player) {
+                document.getElementById('gold').textContent = state.player.gold || 0;
+            }
+            if (state.resources) {
+                document.getElementById('packets').textContent = state.resources.cleanPackets || 0;
+                document.getElementById('vampires').textContent = state.resources.corruptedPackets || 0;
+            }
+        }
+        
+        function updateAIStatus(data) {
+            const aiStatus = document.getElementById('ai-status');
+            if (data.name && data.state) {
+                const consciousness = (data.state.consciousness * 100).toFixed(1);
+                aiStatus.innerHTML = `AI: ${data.name}<br>Consciousness: ${consciousness}%`;
+            }
+        }
+        
+        // Animation loop
+        const clock = new THREE.Clock();
+        let frameCount = 0;
+        let lastFPSUpdate = 0;
+        
+        function animate() {
+            requestAnimationFrame(animate);
+            
+            const delta = clock.getDelta();
+            const elapsed = clock.getElapsedTime();
+            
+            // Update controls
+            controls.update();
+            
+            // Rotate MCP Router
+            if (apiObjects.mcpRouter) {
+                apiObjects.mcpRouter.rotation.y = elapsed * 0.5;
+                
+                // Pulse effect
+                const scale = 1 + Math.sin(elapsed * 2) * 0.1;
+                apiObjects.mcpRouter.scale.set(scale, scale, scale);
+            }
+            
+            // Rotate system nodes
+            Object.values(apiObjects.systems).forEach((node, index) => {
+                if (node) {
+                    node.rotation.y = elapsed * 0.3;
+                    
+                    // Float effect
+                    node.position.y = 3 + Math.sin(elapsed + index) * 0.5;
+                }
+            });
+            
+            // Animate packets
+            apiObjects.packets = apiObjects.packets.filter(packet => {
+                packet.userData.progress += packet.userData.speed;
+                
+                if (packet.userData.progress >= 1) {
+                    scene.remove(packet);
+                    return false;
+                }
+                
+                // Interpolate position
+                packet.position.lerpVectors(
+                    packet.userData.from,
+                    packet.userData.to,
+                    packet.userData.progress
+                );
+                
+                // Spin packet
+                packet.rotation.x += 0.1;
+                packet.rotation.y += 0.1;
+                
+                return true;
+            });
+            
+            // Pulse connections
+            apiObjects.connections.forEach((line, index) => {
+                if (line.material) {
+                    line.material.opacity = 0.3 + Math.sin(elapsed * 2 + index) * 0.2;
+                }
+            });
+            
+            // Auto rotate camera
+            if (autoRotate) {
+                const radius = 30;
+                camera.position.x = Math.cos(elapsed * 0.1) * radius;
+                camera.position.z = Math.sin(elapsed * 0.1) * radius;
+                camera.lookAt(0, 5, 0);
+            }
+            
+            // Update FPS
+            frameCount++;
+            if (elapsed - lastFPSUpdate > 1) {
+                document.getElementById('fps').textContent = frameCount;
+                frameCount = 0;
+                lastFPSUpdate = elapsed;
+            }
+            
+            renderer.render(scene, camera);
+        }
+        
+        // Control functions
+        function toggleView() {
+            viewMode = (viewMode + 1) % 3;
+            
+            switch (viewMode) {
+                case 0: // Overview
+                    camera.position.set(20, 20, 20);
+                    break;
+                case 1: // Top down
+                    camera.position.set(0, 40, 0);
+                    break;
+                case 2: // Close up
+                    camera.position.set(10, 10, 10);
+                    break;
+            }
+            
+            camera.lookAt(0, 5, 0);
+        }
+        
+        function togglePackets() {
+            showPackets = !showPackets;
+            if (!showPackets) {
+                // Clear existing packets
+                apiObjects.packets.forEach(packet => scene.remove(packet));
+                apiObjects.packets = [];
+            }
+        }
+        
+        function toggleRotation() {
+            autoRotate = !autoRotate;
+            if (!autoRotate) {
+                controls.enabled = true;
+            } else {
+                controls.enabled = false;
+            }
+        }
+        
+        function resetCamera() {
+            camera.position.set(20, 20, 20);
+            camera.lookAt(0, 5, 0);
+            controls.target.set(0, 5, 0);
+            controls.update();
+        }
+        
+        // Handle window resize
+        window.addEventListener('resize', () => {
+            camera.aspect = window.innerWidth / window.innerHeight;
+            camera.updateProjectionMatrix();
+            renderer.setSize(window.innerWidth, window.innerHeight);
+        });
+        
+        // Initialize
+        initWorld();
+        connectWebSocket();
+        animate();
+        
+        // Keyboard controls
+        document.addEventListener('keydown', (e) => {
+            switch (e.key) {
+                case ' ':
+                    toggleRotation();
+                    break;
+                case 'p':
+                    togglePackets();
+                    break;
+                case 'v':
+                    toggleView();
+                    break;
+                case 'r':
+                    resetCamera();
+                    break;
+            }
+        });
+    </script>
+</body>
+</html>

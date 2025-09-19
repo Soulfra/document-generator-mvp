@@ -1,0 +1,604 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>🧠 AI Reasoning Feedback</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            padding: 20px;
+        }
+
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            background: white;
+            border-radius: 15px;
+            box-shadow: 0 20px 40px rgba(0,0,0,0.1);
+            overflow: hidden;
+        }
+
+        .header {
+            background: linear-gradient(45deg, #2196F3, #21CBF3);
+            color: white;
+            padding: 30px;
+            text-align: center;
+        }
+
+        .header h1 {
+            font-size: 2.5em;
+            margin-bottom: 10px;
+        }
+
+        .header p {
+            font-size: 1.2em;
+            opacity: 0.9;
+        }
+
+        .main-content {
+            padding: 40px;
+        }
+
+        .reasoning-display {
+            background: #f8f9fa;
+            border-radius: 10px;
+            padding: 30px;
+            margin-bottom: 30px;
+            border-left: 5px solid #2196F3;
+        }
+
+        .question {
+            font-size: 1.4em;
+            font-weight: bold;
+            color: #333;
+            margin-bottom: 20px;
+            padding: 15px;
+            background: #e3f2fd;
+            border-radius: 8px;
+        }
+
+        .reasoning-step {
+            background: white;
+            margin: 15px 0;
+            padding: 20px;
+            border-radius: 8px;
+            border: 1px solid #e0e0e0;
+            transition: all 0.3s ease;
+        }
+
+        .reasoning-step:hover {
+            box-shadow: 0 5px 15px rgba(0,0,0,0.1);
+            transform: translateY(-2px);
+        }
+
+        .step-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 10px;
+        }
+
+        .step-number {
+            background: #2196F3;
+            color: white;
+            width: 30px;
+            height: 30px;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-weight: bold;
+        }
+
+        .confidence-bar {
+            flex: 1;
+            margin: 0 15px;
+            background: #e0e0e0;
+            height: 8px;
+            border-radius: 4px;
+            overflow: hidden;
+        }
+
+        .confidence-fill {
+            height: 100%;
+            background: linear-gradient(90deg, #ff4444, #ffaa00, #44ff44);
+            transition: width 0.3s ease;
+        }
+
+        .confidence-text {
+            font-weight: bold;
+            color: #666;
+        }
+
+        .step-content {
+            font-size: 1.1em;
+            line-height: 1.6;
+            color: #444;
+        }
+
+        .feedback-section {
+            background: #fff;
+            border-radius: 10px;
+            padding: 30px;
+            text-align: center;
+            border: 2px solid #e0e0e0;
+        }
+
+        .feedback-title {
+            font-size: 1.8em;
+            margin-bottom: 20px;
+            color: #333;
+        }
+
+        .feedback-subtitle {
+            font-size: 1.1em;
+            color: #666;
+            margin-bottom: 30px;
+        }
+
+        .feedback-buttons {
+            display: flex;
+            gap: 20px;
+            justify-content: center;
+            margin-bottom: 30px;
+        }
+
+        .feedback-btn {
+            background: #f5f5f5;
+            border: 3px solid #ddd;
+            border-radius: 15px;
+            padding: 20px 40px;
+            font-size: 1.2em;
+            font-weight: bold;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            min-width: 150px;
+        }
+
+        .feedback-btn:hover {
+            transform: translateY(-3px);
+            box-shadow: 0 10px 25px rgba(0,0,0,0.2);
+        }
+
+        .feedback-btn.positive {
+            color: #4CAF50;
+            border-color: #4CAF50;
+        }
+
+        .feedback-btn.positive:hover {
+            background: #4CAF50;
+            color: white;
+        }
+
+        .feedback-btn.negative {
+            color: #f44336;
+            border-color: #f44336;
+        }
+
+        .feedback-btn.negative:hover {
+            background: #f44336;
+            color: white;
+        }
+
+        .step-feedback {
+            margin-top: 30px;
+            padding: 20px;
+            background: #f0f8ff;
+            border-radius: 8px;
+        }
+
+        .step-feedback-title {
+            font-size: 1.3em;
+            margin-bottom: 15px;
+            color: #333;
+        }
+
+        .step-feedback-buttons {
+            display: flex;
+            gap: 10px;
+            flex-wrap: wrap;
+            justify-content: center;
+        }
+
+        .step-feedback-btn {
+            background: white;
+            border: 2px solid #ddd;
+            border-radius: 8px;
+            padding: 10px 15px;
+            font-size: 0.9em;
+            cursor: pointer;
+            transition: all 0.2s ease;
+        }
+
+        .step-feedback-btn:hover {
+            background: #e3f2fd;
+            border-color: #2196F3;
+        }
+
+        .feedback-result {
+            margin-top: 20px;
+            padding: 15px;
+            border-radius: 8px;
+            font-size: 1.1em;
+            font-weight: bold;
+            display: none;
+        }
+
+        .feedback-result.success {
+            background: #d4edda;
+            color: #155724;
+            border: 1px solid #c3e6cb;
+        }
+
+        .feedback-result.error {
+            background: #f8d7da;
+            color: #721c24;
+            border: 1px solid #f5c6cb;
+        }
+
+        .stats-section {
+            margin-top: 40px;
+            padding: 20px;
+            background: #f8f9fa;
+            border-radius: 10px;
+        }
+
+        .stats-title {
+            font-size: 1.4em;
+            margin-bottom: 15px;
+            color: #333;
+        }
+
+        .stats-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 20px;
+        }
+
+        .stat-card {
+            background: white;
+            padding: 20px;
+            border-radius: 8px;
+            text-align: center;
+            box-shadow: 0 2px 5px rgba(0,0,0,0.1);
+        }
+
+        .stat-number {
+            font-size: 2em;
+            font-weight: bold;
+            color: #2196F3;
+        }
+
+        .stat-label {
+            color: #666;
+            margin-top: 5px;
+        }
+
+        .loading {
+            text-align: center;
+            padding: 40px;
+            color: #666;
+        }
+
+        .spinner {
+            width: 40px;
+            height: 40px;
+            border: 4px solid #e0e0e0;
+            border-top: 4px solid #2196F3;
+            border-radius: 50%;
+            animation: spin 1s linear infinite;
+            margin: 0 auto 20px;
+        }
+
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+
+        @media (max-width: 768px) {
+            .feedback-buttons {
+                flex-direction: column;
+                align-items: center;
+            }
+
+            .feedback-btn {
+                width: 100%;
+                max-width: 300px;
+            }
+
+            .step-feedback-buttons {
+                flex-direction: column;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>🧠 AI Reasoning Feedback</h1>
+            <p>Help the AI learn by providing feedback on its reasoning process</p>
+        </div>
+
+        <div class="main-content">
+            <div id="loading" class="loading">
+                <div class="spinner"></div>
+                <p>Loading reasoning session...</p>
+            </div>
+
+            <div id="content" style="display: none;">
+                <div class="reasoning-display">
+                    <div id="question" class="question">
+                        <!-- Question will be loaded here -->
+                    </div>
+
+                    <div id="reasoning-steps">
+                        <!-- Reasoning steps will be loaded here -->
+                    </div>
+                </div>
+
+                <div class="feedback-section">
+                    <h2 class="feedback-title">How was the overall reasoning?</h2>
+                    <p class="feedback-subtitle">Your feedback helps the AI improve its thinking process</p>
+                    
+                    <div class="feedback-buttons">
+                        <button class="feedback-btn positive" onclick="provideFeedback(true)">
+                            👍 Good Reasoning
+                        </button>
+                        <button class="feedback-btn negative" onclick="provideFeedback(false)">
+                            👎 Needs Improvement
+                        </button>
+                    </div>
+
+                    <div class="step-feedback">
+                        <h3 class="step-feedback-title">Or rate individual steps:</h3>
+                        <div id="step-feedback-buttons" class="step-feedback-buttons">
+                            <!-- Step feedback buttons will be generated here -->
+                        </div>
+                    </div>
+
+                    <div id="feedback-result" class="feedback-result">
+                        <!-- Feedback result will be shown here -->
+                    </div>
+                </div>
+
+                <div class="stats-section">
+                    <h3 class="stats-title">📊 Learning Statistics</h3>
+                    <div class="stats-grid">
+                        <div class="stat-card">
+                            <div id="positive-count" class="stat-number">0</div>
+                            <div class="stat-label">Positive Feedback</div>
+                        </div>
+                        <div class="stat-card">
+                            <div id="negative-count" class="stat-number">0</div>
+                            <div class="stat-label">Negative Feedback</div>
+                        </div>
+                        <div class="stat-card">
+                            <div id="total-sessions" class="stat-number">0</div>
+                            <div class="stat-label">Total Sessions</div>
+                        </div>
+                        <div class="stat-card">
+                            <div id="learning-score" class="stat-number">0%</div>
+                            <div class="stat-label">Learning Score</div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        let currentReasoning = null;
+        let feedbackData = null;
+
+        // Load reasoning data and feedback statistics
+        async function loadReasoningData() {
+            try {
+                // Simulate loading current reasoning session
+                // In a real implementation, this would fetch from the AI engine
+                currentReasoning = {
+                    question: "How do I debug JavaScript async issues?",
+                    reasoning: [
+                        {
+                            step: 1,
+                            content: "I need to understand what is being asked: \"How do I debug JavaScript async issues?\"",
+                            confidence: 0.9,
+                            timestamp: new Date().toISOString()
+                        },
+                        {
+                            step: 2,
+                            content: "This appears to be a technical type question",
+                            confidence: 0.7,
+                            timestamp: new Date().toISOString()
+                        },
+                        {
+                            step: 3,
+                            content: "For this technical problem, I would: 1) Break it into smaller components, 2) Consider existing solutions and patterns, 3) Think about edge cases and potential issues, 4) Plan implementation steps",
+                            confidence: 0.8,
+                            timestamp: new Date().toISOString()
+                        },
+                        {
+                            step: 4,
+                            content: "Alternative approaches: step-by-step tutorial, visual diagram, examples",
+                            confidence: 0.4,
+                            timestamp: new Date().toISOString()
+                        },
+                        {
+                            step: 5,
+                            content: "Final answer: Based on my reasoning, here's my answer: [This would be the actual answer based on the question type and reasoning steps]",
+                            confidence: 0.8,
+                            timestamp: new Date().toISOString()
+                        }
+                    ],
+                    conclusion: "Use debugging tools, proper error handling, and step-by-step analysis",
+                    confidence: 0.8
+                };
+
+                // Load feedback statistics
+                feedbackData = {
+                    positive: Array(12).fill(null), // 12 positive feedback instances
+                    negative: Array(3).fill(null),  // 3 negative feedback instances
+                    patterns: {}
+                };
+
+                displayReasoning();
+                updateStats();
+                
+            } catch (error) {
+                console.error('Error loading reasoning data:', error);
+                document.getElementById('loading').innerHTML = `
+                    <p style="color: #f44336;">Error loading reasoning data. The AI engine might not be running.</p>
+                    <p style="margin-top: 10px; font-size: 0.9em;">
+                        Try running: <code>node ai-reasoning-engine.js "your question"</code>
+                    </p>
+                `;
+            }
+        }
+
+        // Display reasoning steps
+        function displayReasoning() {
+            if (!currentReasoning) return;
+
+            // Display question
+            document.getElementById('question').textContent = currentReasoning.question;
+
+            // Display reasoning steps
+            const stepsContainer = document.getElementById('reasoning-steps');
+            stepsContainer.innerHTML = '';
+
+            currentReasoning.reasoning.forEach(step => {
+                const stepElement = document.createElement('div');
+                stepElement.className = 'reasoning-step';
+                stepElement.innerHTML = `
+                    <div class="step-header">
+                        <div class="step-number">${step.step}</div>
+                        <div class="confidence-bar">
+                            <div class="confidence-fill" style="width: ${step.confidence * 100}%"></div>
+                        </div>
+                        <div class="confidence-text">${(step.confidence * 100).toFixed(1)}%</div>
+                    </div>
+                    <div class="step-content">${step.content}</div>
+                `;
+                stepsContainer.appendChild(stepElement);
+            });
+
+            // Generate step feedback buttons
+            const stepButtonsContainer = document.getElementById('step-feedback-buttons');
+            stepButtonsContainer.innerHTML = '';
+
+            currentReasoning.reasoning.forEach(step => {
+                const positiveBtn = document.createElement('button');
+                positiveBtn.className = 'step-feedback-btn';
+                positiveBtn.textContent = `👍 Step ${step.step}`;
+                positiveBtn.onclick = () => provideStepFeedback(step.step - 1, true);
+
+                const negativeBtn = document.createElement('button');
+                negativeBtn.className = 'step-feedback-btn';
+                negativeBtn.textContent = `👎 Step ${step.step}`;
+                negativeBtn.onclick = () => provideStepFeedback(step.step - 1, false);
+
+                stepButtonsContainer.appendChild(positiveBtn);
+                stepButtonsContainer.appendChild(negativeBtn);
+            });
+
+            // Show content
+            document.getElementById('loading').style.display = 'none';
+            document.getElementById('content').style.display = 'block';
+        }
+
+        // Provide overall feedback
+        async function provideFeedback(isPositive) {
+            try {
+                // In a real implementation, this would send feedback to the AI engine
+                console.log('Overall feedback:', isPositive ? 'positive' : 'negative');
+                
+                showFeedbackResult(
+                    isPositive ? 'success' : 'success',
+                    `${isPositive ? '✅' : '❌'} Thank you for your feedback! The AI will learn from this.`
+                );
+
+                // Update local stats
+                if (isPositive) {
+                    feedbackData.positive.push({});
+                } else {
+                    feedbackData.negative.push({});
+                }
+                updateStats();
+                
+            } catch (error) {
+                showFeedbackResult('error', 'Failed to record feedback. Please try again.');
+            }
+        }
+
+        // Provide step-specific feedback
+        async function provideStepFeedback(stepIndex, isPositive) {
+            try {
+                const step = currentReasoning.reasoning[stepIndex];
+                console.log(`Step ${stepIndex + 1} feedback:`, isPositive ? 'positive' : 'negative');
+                
+                showFeedbackResult(
+                    'success',
+                    `${isPositive ? '✅' : '❌'} Feedback recorded for Step ${stepIndex + 1}!`
+                );
+
+                // Update local stats
+                if (isPositive) {
+                    feedbackData.positive.push({});
+                } else {
+                    feedbackData.negative.push({});
+                }
+                updateStats();
+                
+            } catch (error) {
+                showFeedbackResult('error', 'Failed to record step feedback. Please try again.');
+            }
+        }
+
+        // Show feedback result
+        function showFeedbackResult(type, message) {
+            const resultElement = document.getElementById('feedback-result');
+            resultElement.className = `feedback-result ${type}`;
+            resultElement.textContent = message;
+            resultElement.style.display = 'block';
+
+            setTimeout(() => {
+                resultElement.style.display = 'none';
+            }, 3000);
+        }
+
+        // Update statistics
+        function updateStats() {
+            if (!feedbackData) return;
+
+            const positiveCount = feedbackData.positive.length;
+            const negativeCount = feedbackData.negative.length;
+            const totalFeedback = positiveCount + negativeCount;
+            const learningScore = totalFeedback > 0 ? Math.round((positiveCount / totalFeedback) * 100) : 0;
+
+            document.getElementById('positive-count').textContent = positiveCount;
+            document.getElementById('negative-count').textContent = negativeCount;
+            document.getElementById('total-sessions').textContent = totalFeedback;
+            document.getElementById('learning-score').textContent = `${learningScore}%`;
+        }
+
+        // Auto-refresh every 5 seconds to get new reasoning sessions
+        setInterval(() => {
+            // In a real implementation, this would check for new reasoning sessions
+            console.log('Checking for new reasoning sessions...');
+        }, 5000);
+
+        // Initialize on page load
+        window.addEventListener('load', () => {
+            loadReasoningData();
+        });
+    </script>
+</body>
+</html>

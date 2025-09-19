@@ -1,0 +1,203 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Electron Packet Client</title>
+    <style>
+        body {
+            font-family: -apple-system, sans-serif;
+            background: #2b2b2b;
+            color: #fff;
+            padding: 20px;
+        }
+        .container {
+            max-width: 800px;
+            margin: 0 auto;
+        }
+        .packet-form {
+            background: #3c3c3c;
+            padding: 20px;
+            border-radius: 8px;
+            margin-bottom: 20px;
+        }
+        input, textarea, select, button {
+            width: 100%;
+            padding: 10px;
+            margin: 5px 0;
+            background: #2b2b2b;
+            color: #fff;
+            border: 1px solid #555;
+            border-radius: 4px;
+        }
+        button {
+            background: #0e639c;
+            cursor: pointer;
+        }
+        button:hover {
+            background: #1177bb;
+        }
+        .packet-log {
+            background: #1e1e1e;
+            padding: 15px;
+            border-radius: 8px;
+            max-height: 400px;
+            overflow-y: auto;
+        }
+        .packet-item {
+            background: #2d2d2d;
+            padding: 10px;
+            margin: 5px 0;
+            border-radius: 4px;
+            border-left: 3px solid #0e639c;
+        }
+        .status {
+            position: fixed;
+            top: 20px;
+            right: 20px;
+            padding: 10px 20px;
+            background: #16825d;
+            border-radius: 4px;
+        }
+        .status.disconnected {
+            background: #f44336;
+        }
+    </style>
+</head>
+<body>
+    <div class="status" id="status">Connecting...</div>
+    
+    <div class="container">
+        <h1>⚡ Electron Packet Client</h1>
+        
+        <div class="packet-form">
+            <h3>Send Packet</h3>
+            <select id="destination">
+                <option value="broadcast">📡 Broadcast to All</option>
+                <option value="terminal">💻 Terminal</option>
+                <option value="phone-pwa">📱 Phone PWA</option>
+            </select>
+            
+            <input type="text" id="dataType" placeholder="Data type (e.g., tax-data, game-state)" />
+            
+            <textarea id="packetData" placeholder="Packet data (JSON or text)" rows="5"></textarea>
+            
+            <label>
+                <input type="checkbox" id="encrypt"> Encrypt packet
+            </label>
+            
+            <button onclick="sendPacket()">📤 Send Packet</button>
+        </div>
+        
+        <h3>📬 Packet Log</h3>
+        <div class="packet-log" id="packetLog"></div>
+    </div>
+    
+    <script>
+        let ws;
+        const statusEl = document.getElementById('status');
+        const logEl = document.getElementById('packetLog');
+        
+        function connect() {
+            ws = new WebSocket('ws://localhost:5555');
+            
+            ws.onopen = () => {
+                statusEl.textContent = '✅ Connected';
+                statusEl.classList.remove('disconnected');
+                log('Connected to Digital Post Office');
+            };
+            
+            ws.onmessage = (event) => {
+                const data = JSON.parse(event.data);
+                
+                if (data.type === 'incoming') {
+                    logPacket('📬 RECEIVED', data.packet, data.data);
+                } else if (data.type === 'ack') {
+                    log(`✅ Packet ${data.packetId} ${data.status}`);
+                }
+            };
+            
+            ws.onclose = () => {
+                statusEl.textContent = '❌ Disconnected';
+                statusEl.classList.add('disconnected');
+                log('Disconnected - Reconnecting in 3s...');
+                setTimeout(connect, 3000);
+            };
+            
+            ws.onerror = (error) => {
+                log(`❌ Error: ${error.message || 'Connection failed'}`);
+            };
+        }
+        
+        function sendPacket() {
+            const destination = document.getElementById('destination').value;
+            const dataType = document.getElementById('dataType').value || 'electron-data';
+            const packetData = document.getElementById('packetData').value;
+            const encrypt = document.getElementById('encrypt').checked;
+            
+            try {
+                let data;
+                try {
+                    data = JSON.parse(packetData);
+                } catch {
+                    data = { message: packetData };
+                }
+                
+                data.type = dataType;
+                data.encrypted = encrypt;
+                
+                const packet = {
+                    id: 'electron-' + Date.now().toString(36),
+                    from: 'electron-app',
+                    to: destination,
+                    timestamp: Date.now(),
+                    envelope: btoa(JSON.stringify(data)),
+                    checksum: calculateChecksum(data)
+                };
+                
+                ws.send(JSON.stringify(packet));
+                logPacket('📤 SENT', packet, data);
+                
+                // Clear form
+                document.getElementById('packetData').value = '';
+                
+            } catch (error) {
+                log(`❌ Error: ${error.message}`);
+            }
+        }
+        
+        function calculateChecksum(data) {
+            // Simple checksum for demo
+            return JSON.stringify(data).split('').reduce((a, b) => {
+                return ((a << 5) - a) + b.charCodeAt(0);
+            }, 0).toString(16).substr(0, 8);
+        }
+        
+        function logPacket(prefix, packet, data) {
+            const item = document.createElement('div');
+            item.className = 'packet-item';
+            item.innerHTML = `
+                <strong>${prefix}</strong><br>
+                <small>ID: ${packet.id} | From: ${packet.from} | To: ${packet.to}</small><br>
+                <pre>${JSON.stringify(data, null, 2)}</pre>
+            `;
+            logEl.insertBefore(item, logEl.firstChild);
+        }
+        
+        function log(message) {
+            const item = document.createElement('div');
+            item.className = 'packet-item';
+            item.textContent = `[${new Date().toLocaleTimeString()}] ${message}`;
+            logEl.insertBefore(item, logEl.firstChild);
+        }
+        
+        // Connect on load
+        connect();
+        
+        // For Electron: expose to main process
+        if (window.electronAPI) {
+            window.electronAPI.onPacket((packet) => {
+                ws.send(JSON.stringify(packet));
+            });
+        }
+    </script>
+</body>
+</html>

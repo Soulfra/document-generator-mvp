@@ -1,0 +1,1555 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>🎮 Web3 Playable Game World - AI Swarm Built Universe</title>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/web3@latest/dist/web3.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/ethers@5.7.2/dist/ethers.min.js"></script>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Courier New', monospace;
+            background: #000;
+            color: #00ff41;
+            overflow: hidden;
+            height: 100vh;
+        }
+
+        .game-interface {
+            display: grid;
+            grid-template-columns: 250px 1fr 300px;
+            grid-template-rows: 80px 1fr 100px;
+            height: 100vh;
+            gap: 2px;
+            background: #001;
+        }
+
+        .header {
+            grid-column: 1 / -1;
+            background: linear-gradient(90deg, #0a4d3a 0%, #1a5f4a 100%);
+            padding: 15px 25px;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            border-bottom: 3px solid #00ff41;
+        }
+
+        .wallet-status {
+            display: flex;
+            gap: 15px;
+            align-items: center;
+        }
+
+        .wallet-badge {
+            background: rgba(0, 255, 65, 0.2);
+            padding: 8px 15px;
+            border-radius: 20px;
+            border: 1px solid #00ff41;
+            font-size: 0.9rem;
+            cursor: pointer;
+            transition: all 0.3s;
+        }
+
+        .wallet-badge:hover {
+            background: rgba(0, 255, 65, 0.4);
+            transform: scale(1.05);
+        }
+
+        .wallet-badge.connected {
+            background: linear-gradient(45deg, #00ff41, #00bfff);
+            color: #000;
+        }
+
+        .game-sidebar {
+            background: rgba(0, 30, 15, 0.9);
+            padding: 20px;
+            border-right: 2px solid #00ff41;
+            overflow-y: auto;
+        }
+
+        .game-viewport {
+            background: #000;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .game-stats {
+            background: rgba(0, 30, 15, 0.9);
+            padding: 20px;
+            border-left: 2px solid #00ff41;
+            overflow-y: auto;
+        }
+
+        .game-controls {
+            grid-column: 1 / -1;
+            background: rgba(0, 50, 25, 0.9);
+            padding: 15px 25px;
+            border-top: 2px solid #00ff41;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+        }
+
+        .control-group {
+            display: flex;
+            gap: 10px;
+            align-items: center;
+        }
+
+        .game-btn {
+            padding: 10px 20px;
+            background: linear-gradient(45deg, #003d1a, #006633);
+            border: 2px solid #00ff41;
+            border-radius: 8px;
+            color: #00ff41;
+            cursor: pointer;
+            font-family: inherit;
+            font-size: 0.9rem;
+            transition: all 0.3s;
+        }
+
+        .game-btn:hover {
+            background: linear-gradient(45deg, #00ff41, #00bfff);
+            color: #000;
+            transform: translateY(-2px);
+            box-shadow: 0 4px 15px rgba(0, 255, 65, 0.4);
+        }
+
+        .game-btn.primary {
+            background: linear-gradient(45deg, #ff6b35, #f7941d);
+            border-color: #ff6b35;
+            color: #fff;
+        }
+
+        .inventory-item {
+            background: rgba(0, 255, 65, 0.1);
+            border: 1px solid #00ff41;
+            padding: 12px;
+            margin: 8px 0;
+            border-radius: 6px;
+            cursor: pointer;
+            transition: all 0.3s;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .inventory-item:hover {
+            background: rgba(0, 255, 65, 0.3);
+            transform: translateX(5px);
+        }
+
+        .item-name {
+            font-weight: bold;
+        }
+
+        .item-value {
+            color: #00bfff;
+            font-size: 0.9rem;
+        }
+
+        .ai-player-card {
+            background: rgba(0, 191, 255, 0.1);
+            border: 1px solid #00bfff;
+            padding: 15px;
+            margin: 10px 0;
+            border-radius: 8px;
+            cursor: pointer;
+        }
+
+        .player-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 8px;
+        }
+
+        .player-status {
+            padding: 4px 8px;
+            border-radius: 12px;
+            font-size: 0.8rem;
+            border: 1px solid;
+        }
+
+        .status-active {
+            background: rgba(0, 255, 65, 0.2);
+            border-color: #00ff41;
+            color: #00ff41;
+        }
+
+        .status-building {
+            background: rgba(255, 152, 0, 0.2);
+            border-color: #ff9800;
+            color: #ff9800;
+        }
+
+        .world-map {
+            position: absolute;
+            top: 20px;
+            right: 20px;
+            width: 200px;
+            height: 150px;
+            background: rgba(0, 0, 0, 0.8);
+            border: 2px solid #00ff41;
+            border-radius: 8px;
+            z-index: 100;
+        }
+
+        .minimap-canvas {
+            width: 100%;
+            height: 100%;
+            border-radius: 6px;
+        }
+
+        .financial-ticker {
+            position: absolute;
+            bottom: 120px;
+            left: 20px;
+            right: 20px;
+            background: rgba(0, 0, 0, 0.9);
+            border: 1px solid #00ff41;
+            border-radius: 8px;
+            padding: 10px 20px;
+            display: flex;
+            justify-content: space-between;
+            z-index: 100;
+        }
+
+        .ticker-item {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            font-size: 0.9rem;
+        }
+
+        .ticker-label {
+            color: #888;
+            font-size: 0.8rem;
+        }
+
+        .ticker-value {
+            color: #00ff41;
+            font-weight: bold;
+        }
+
+        .ticker-change {
+            font-size: 0.8rem;
+        }
+
+        .ticker-up { color: #4caf50; }
+        .ticker-down { color: #f44336; }
+
+        .interaction-prompt {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            background: rgba(0, 0, 0, 0.9);
+            border: 2px solid #00ff41;
+            border-radius: 12px;
+            padding: 30px;
+            text-align: center;
+            z-index: 1000;
+            display: none;
+        }
+
+        .web3-connector {
+            background: rgba(0, 20, 40, 0.95);
+            border: 2px solid #00bfff;
+            padding: 20px;
+            border-radius: 10px;
+            margin: 15px 0;
+        }
+
+        .connection-status {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            margin: 10px 0;
+        }
+
+        .status-indicator {
+            width: 12px;
+            height: 12px;
+            border-radius: 50%;
+            background: #ff0000;
+            animation: pulse 2s infinite;
+        }
+
+        .status-indicator.connected {
+            background: #00ff41;
+        }
+
+        @keyframes pulse {
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0.5; }
+        }
+
+        .building-tool {
+            background: rgba(255, 107, 53, 0.1);
+            border: 1px solid #ff6b35;
+            padding: 12px;
+            margin: 8px 0;
+            border-radius: 6px;
+            cursor: pointer;
+        }
+
+        .building-tool:hover {
+            background: rgba(255, 107, 53, 0.3);
+        }
+
+        .resource-bar {
+            background: rgba(0, 255, 65, 0.2);
+            height: 20px;
+            border-radius: 10px;
+            margin: 5px 0;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .resource-fill {
+            background: linear-gradient(90deg, #00ff41, #00bfff);
+            height: 100%;
+            border-radius: 10px;
+            transition: width 0.5s ease;
+        }
+
+        .resource-text {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            font-size: 0.8rem;
+            font-weight: bold;
+            color: #000;
+            text-shadow: 0 0 3px #fff;
+        }
+
+        .wizard-spell {
+            background: linear-gradient(45deg, #9c27b0, #673ab7);
+            border: 2px solid #e91e63;
+            padding: 10px 15px;
+            margin: 5px;
+            border-radius: 20px;
+            color: #fff;
+            cursor: pointer;
+            transition: all 0.3s;
+            text-align: center;
+        }
+
+        .wizard-spell:hover {
+            transform: scale(1.05);
+            box-shadow: 0 0 20px rgba(233, 30, 99, 0.6);
+        }
+
+        .spell-cost {
+            font-size: 0.8rem;
+            opacity: 0.8;
+        }
+    </style>
+</head>
+<body>
+    <div class="game-interface">
+        <!-- Header -->
+        <div class="header">
+            <h1>🎮 Web3 Playable Game World</h1>
+            <div class="wallet-status">
+                <div class="wallet-badge" id="walletStatus" onclick="connectWallet()">
+                    Connect Wallet
+                </div>
+                <div class="wallet-badge" id="networkStatus">
+                    Ethereum
+                </div>
+                <div class="wallet-badge" id="gasStatus">
+                    Gas: --
+                </div>
+            </div>
+        </div>
+
+        <!-- Game Sidebar -->
+        <div class="game-sidebar">
+            <h3>🎒 Inventory</h3>
+            <div id="playerInventory">
+                <div class="inventory-item">
+                    <span class="item-name">🔮 Magic Crystals</span>
+                    <span class="item-value">127</span>
+                </div>
+                <div class="inventory-item">
+                    <span class="item-name">⚡ Energy Units</span>
+                    <span class="item-value">89</span>
+                </div>
+                <div class="inventory-item">
+                    <span class="item-name">🏗️ Building Materials</span>
+                    <span class="item-value">45</span>
+                </div>
+                <div class="inventory-item">
+                    <span class="item-name">🧙 Wizard Tokens</span>
+                    <span class="item-value">12</span>
+                </div>
+            </div>
+
+            <h3>🔧 Building Tools</h3>
+            <div id="buildingTools">
+                <div class="building-tool" onclick="selectTool('tower')">
+                    🏰 Build Tower (50 materials)
+                </div>
+                <div class="building-tool" onclick="selectTool('bridge')">
+                    🌉 Build Bridge (30 materials)
+                </div>
+                <div class="building-tool" onclick="selectTool('portal')">
+                    🌀 Build Portal (100 materials)
+                </div>
+                <div class="building-tool" onclick="selectTool('market')">
+                    🏪 Build Market (75 materials)
+                </div>
+            </div>
+
+            <h3>🧙 Wizard Spells</h3>
+            <div id="wizardSpells">
+                <div class="wizard-spell" onclick="castSpell('terraform')">
+                    🌍 Terraform<br>
+                    <span class="spell-cost">Cost: 25 crystals</span>
+                </div>
+                <div class="wizard-spell" onclick="castSpell('summon')">
+                    👾 Summon AI<br>
+                    <span class="spell-cost">Cost: 50 crystals</span>
+                </div>
+                <div class="wizard-spell" onclick="castSpell('boost')">
+                    ⚡ Boost Production<br>
+                    <span class="spell-cost">Cost: 15 crystals</span>
+                </div>
+            </div>
+
+            <div class="web3-connector">
+                <h4>🔗 Web3 Status</h4>
+                <div class="connection-status">
+                    <div class="status-indicator" id="web3Status"></div>
+                    <span id="web3StatusText">Disconnected</span>
+                </div>
+                <div class="connection-status">
+                    <div class="status-indicator" id="contractStatus"></div>
+                    <span id="contractStatusText">Contract: --</span>
+                </div>
+            </div>
+        </div>
+
+        <!-- Game Viewport -->
+        <div class="game-viewport">
+            <div id="gameCanvas"></div>
+            
+            <!-- World Minimap -->
+            <div class="world-map">
+                <canvas class="minimap-canvas" id="minimapCanvas" width="196" height="146"></canvas>
+            </div>
+
+            <!-- Financial Ticker -->
+            <div class="financial-ticker">
+                <div class="ticker-item">
+                    <span class="ticker-label">GAME Coin</span>
+                    <span class="ticker-value" id="gameCoinPrice">$127.45</span>
+                    <span class="ticker-change ticker-up" id="gameCoinChange">+12.3%</span>
+                </div>
+                <div class="ticker-item">
+                    <span class="ticker-label">Crystal Token</span>
+                    <span class="ticker-value" id="crystalPrice">$0.89</span>
+                    <span class="ticker-change ticker-down" id="crystalChange">-2.1%</span>
+                </div>
+                <div class="ticker-item">
+                    <span class="ticker-label">World Value</span>
+                    <span class="ticker-value" id="worldValue">$45,672</span>
+                    <span class="ticker-change ticker-up" id="worldChange">+156.7%</span>
+                </div>
+                <div class="ticker-item">
+                    <span class="ticker-label">AI Players</span>
+                    <span class="ticker-value" id="aiPlayerCount">4</span>
+                    <span class="ticker-change ticker-up">Active</span>
+                </div>
+            </div>
+
+            <!-- Interaction Prompt -->
+            <div class="interaction-prompt" id="interactionPrompt">
+                <h3>🎯 Interaction Available</h3>
+                <p id="interactionText">Click to interact with this object</p>
+                <div style="margin-top: 20px;">
+                    <button class="game-btn primary" onclick="confirmInteraction()">Interact</button>
+                    <button class="game-btn" onclick="closeInteraction()">Cancel</button>
+                </div>
+            </div>
+        </div>
+
+        <!-- Game Stats -->
+        <div class="game-stats">
+            <h3>📊 Resources</h3>
+            <div style="margin: 15px 0;">
+                <div>Energy</div>
+                <div class="resource-bar">
+                    <div class="resource-fill" style="width: 78%"></div>
+                    <div class="resource-text">78/100</div>
+                </div>
+            </div>
+            <div style="margin: 15px 0;">
+                <div>Materials</div>
+                <div class="resource-bar">
+                    <div class="resource-fill" style="width: 45%"></div>
+                    <div class="resource-text">45/100</div>
+                </div>
+            </div>
+            <div style="margin: 15px 0;">
+                <div>Magic</div>
+                <div class="resource-bar">
+                    <div class="resource-fill" style="width: 92%"></div>
+                    <div class="resource-text">92/100</div>
+                </div>
+            </div>
+
+            <h3>🤖 AI Players</h3>
+            <div id="aiPlayersPanel">
+                <div class="ai-player-card">
+                    <div class="player-header">
+                        <span>🔍 Explorer</span>
+                        <span class="player-status status-active">Active</span>
+                    </div>
+                    <div style="font-size: 0.9rem;">
+                        Building: Magic Tower<br>
+                        Progress: 67%
+                    </div>
+                </div>
+                
+                <div class="ai-player-card">
+                    <div class="player-header">
+                        <span>🏗️ Builder</span>
+                        <span class="player-status status-building">Building</span>
+                    </div>
+                    <div style="font-size: 0.9rem;">
+                        Building: Crystal Bridge<br>
+                        Progress: 23%
+                    </div>
+                </div>
+                
+                <div class="ai-player-card">
+                    <div class="player-header">
+                        <span>🧪 Tester</span>
+                        <span class="player-status status-active">Testing</span>
+                    </div>
+                    <div style="font-size: 0.9rem;">
+                        Testing: Portal Stability<br>
+                        Results: 94% stable
+                    </div>
+                </div>
+                
+                <div class="ai-player-card">
+                    <div class="player-header">
+                        <span>👁️ Observer</span>
+                        <span class="player-status status-active">Watching</span>
+                    </div>
+                    <div style="font-size: 0.9rem;">
+                        Analyzing: Player patterns<br>
+                        Insights: 12 discovered
+                    </div>
+                </div>
+            </div>
+
+            <h3>💰 Trading</h3>
+            <div style="margin: 15px 0;">
+                <button class="game-btn" onclick="openTrading()">🏪 Open Market</button>
+                <button class="game-btn" onclick="stakeCrystals()">💎 Stake Crystals</button>
+                <button class="game-btn" onclick="harvestRewards()">🌾 Harvest</button>
+            </div>
+        </div>
+
+        <!-- Game Controls -->
+        <div class="game-controls">
+            <div class="control-group">
+                <button class="game-btn" onclick="movePlayer('left')">⬅️</button>
+                <button class="game-btn" onclick="movePlayer('up')">⬆️</button>
+                <button class="game-btn" onclick="movePlayer('down')">⬇️</button>
+                <button class="game-btn" onclick="movePlayer('right')">➡️</button>
+            </div>
+            
+            <div class="control-group">
+                <button class="game-btn" onclick="toggleBuildMode()">🏗️ Build Mode</button>
+                <button class="game-btn" onclick="toggleWizardMode()">🧙 Wizard Mode</button>
+                <button class="game-btn primary" onclick="interactWithWorld()">🎯 Interact</button>
+            </div>
+            
+            <div class="control-group">
+                <span>Zoom:</span>
+                <button class="game-btn" onclick="zoomIn()">🔍+</button>
+                <button class="game-btn" onclick="zoomOut()">🔍-</button>
+                <button class="game-btn" onclick="resetCamera()">🎯 Center</button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // Global game state
+        const gameState = {
+            web3: null,
+            wallet: null,
+            contract: null,
+            scene: null,
+            camera: null,
+            renderer: null,
+            player: {
+                position: { x: 0, y: 0, z: 0 },
+                inventory: {
+                    crystals: 127,
+                    energy: 89,
+                    materials: 45,
+                    wizardTokens: 12
+                },
+                level: 5,
+                experience: 2847
+            },
+            world: {
+                buildings: [],
+                resources: [],
+                aiPlayers: [],
+                portals: [],
+                markets: []
+            },
+            mode: 'explore', // explore, build, wizard
+            selectedTool: null,
+            selectedSpell: null
+        };
+
+        // Initialize the game
+        async function initGame() {
+            console.log('🎮 Initializing Web3 Playable Game World...');
+            
+            // Initialize Three.js
+            initThreeJS();
+            
+            // Check for Web3
+            await checkWeb3();
+            
+            // Connect to AI systems
+            connectToAISystems();
+            
+            // Start game loops
+            startGameLoops();
+            
+            console.log('✅ Game world ready!');
+        }
+
+        function initThreeJS() {
+            const container = document.getElementById('gameCanvas');
+            
+            // Scene setup
+            gameState.scene = new THREE.Scene();
+            gameState.scene.background = new THREE.Color(0x001122);
+            
+            // Camera setup
+            gameState.camera = new THREE.PerspectiveCamera(
+                75,
+                container.clientWidth / container.clientHeight,
+                0.1,
+                1000
+            );
+            gameState.camera.position.set(0, 20, 30);
+            
+            // Renderer setup
+            gameState.renderer = new THREE.WebGLRenderer({ antialias: true });
+            gameState.renderer.setSize(container.clientWidth, container.clientHeight);
+            gameState.renderer.shadowMap.enabled = true;
+            gameState.renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+            container.appendChild(gameState.renderer.domElement);
+
+            // Create the playable world
+            createPlayableWorld();
+            
+            // Add lighting
+            addLighting();
+            
+            // Start render loop
+            animate();
+        }
+
+        function createPlayableWorld() {
+            // Create ground
+            const groundGeometry = new THREE.PlaneGeometry(200, 200);
+            const groundMaterial = new THREE.MeshLambertMaterial({ 
+                color: 0x2d5016,
+                transparent: true,
+                opacity: 0.8
+            });
+            const ground = new THREE.Mesh(groundGeometry, groundMaterial);
+            ground.rotation.x = -Math.PI / 2;
+            ground.receiveShadow = true;
+            gameState.scene.add(ground);
+
+            // Create player character
+            createPlayer();
+            
+            // Create initial buildings (built by AI)
+            createAIBuiltStructures();
+            
+            // Create resource nodes
+            createResourceNodes();
+            
+            // Create interactive elements
+            createInteractiveElements();
+            
+            // Add some magic effects
+            addMagicEffects();
+        }
+
+        function createPlayer() {
+            // Player avatar
+            const playerGeometry = new THREE.CapsuleGeometry(0.5, 2);
+            const playerMaterial = new THREE.MeshPhongMaterial({ 
+                color: 0x00ff41,
+                emissive: 0x002211
+            });
+            const player = new THREE.Mesh(playerGeometry, playerMaterial);
+            player.position.set(0, 1, 0);
+            player.castShadow = true;
+            player.userData = { type: 'player' };
+            gameState.scene.add(player);
+            gameState.player.mesh = player;
+
+            // Player name tag
+            createNameTag(player, 'You', 0x00ff41);
+        }
+
+        function createAIBuiltStructures() {
+            // Tower built by Builder AI
+            const towerGeometry = new THREE.CylinderGeometry(2, 3, 15, 8);
+            const towerMaterial = new THREE.MeshPhongMaterial({ 
+                color: 0x8B4513,
+                transparent: true,
+                opacity: 0.9
+            });
+            const tower = new THREE.Mesh(towerGeometry, towerMaterial);
+            tower.position.set(-20, 7.5, -15);
+            tower.castShadow = true;
+            tower.userData = { 
+                type: 'building',
+                subtype: 'tower',
+                builder: 'AI_Builder',
+                health: 100,
+                interactive: true
+            };
+            gameState.scene.add(tower);
+            gameState.world.buildings.push(tower);
+
+            // Crystal Bridge built by Explorer AI
+            const bridgeGeometry = new THREE.BoxGeometry(30, 1, 4);
+            const bridgeMaterial = new THREE.MeshPhongMaterial({ 
+                color: 0x00bfff,
+                transparent: true,
+                opacity: 0.7,
+                emissive: 0x002244
+            });
+            const bridge = new THREE.Mesh(bridgeGeometry, bridgeMaterial);
+            bridge.position.set(0, 5, -25);
+            bridge.castShadow = true;
+            bridge.userData = { 
+                type: 'building',
+                subtype: 'bridge',
+                builder: 'AI_Explorer',
+                interactive: true
+            };
+            gameState.scene.add(bridge);
+            gameState.world.buildings.push(bridge);
+
+            // Portal built by Tester AI
+            createPortal(15, 0, 20);
+            
+            // Market built by Observer AI
+            createMarket(-25, 0, 10);
+        }
+
+        function createPortal(x, y, z) {
+            // Portal ring
+            const ringGeometry = new THREE.TorusGeometry(5, 1, 8, 16);
+            const ringMaterial = new THREE.MeshPhongMaterial({ 
+                color: 0xff00ff,
+                emissive: 0x440044
+            });
+            const ring = new THREE.Mesh(ringGeometry, ringMaterial);
+            ring.position.set(x, y + 5, z);
+            ring.userData = { 
+                type: 'portal',
+                destination: 'unknown',
+                builder: 'AI_Tester',
+                interactive: true,
+                cost: 10
+            };
+            gameState.scene.add(ring);
+            gameState.world.portals.push(ring);
+
+            // Portal energy effect
+            const energyGeometry = new THREE.SphereGeometry(3, 16, 16);
+            const energyMaterial = new THREE.MeshBasicMaterial({ 
+                color: 0x8800ff,
+                transparent: true,
+                opacity: 0.3
+            });
+            const energy = new THREE.Mesh(energyGeometry, energyMaterial);
+            energy.position.set(x, y + 5, z);
+            energy.userData = { type: 'effect' };
+            gameState.scene.add(energy);
+
+            // Animate portal
+            ring.userData.animate = () => {
+                ring.rotation.y += 0.02;
+                ring.rotation.x += 0.01;
+                energy.rotation.y -= 0.03;
+                energy.material.opacity = 0.3 + Math.sin(Date.now() * 0.003) * 0.2;
+            };
+        }
+
+        function createMarket(x, y, z) {
+            // Market building
+            const marketGeometry = new THREE.BoxGeometry(8, 6, 8);
+            const marketMaterial = new THREE.MeshPhongMaterial({ 
+                color: 0xffd700,
+                emissive: 0x332200
+            });
+            const market = new THREE.Mesh(marketGeometry, marketMaterial);
+            market.position.set(x, y + 3, z);
+            market.castShadow = true;
+            market.userData = { 
+                type: 'market',
+                builder: 'AI_Observer',
+                interactive: true,
+                trades: ['crystals', 'energy', 'materials']
+            };
+            gameState.scene.add(market);
+            gameState.world.markets.push(market);
+
+            // Market sign
+            createNameTag(market, 'AI Market', 0xffd700);
+        }
+
+        function createResourceNodes() {
+            // Crystal nodes
+            for (let i = 0; i < 8; i++) {
+                const x = (Math.random() - 0.5) * 80;
+                const z = (Math.random() - 0.5) * 80;
+                createCrystalNode(x, 0, z);
+            }
+
+            // Energy wells
+            for (let i = 0; i < 5; i++) {
+                const x = (Math.random() - 0.5) * 60;
+                const z = (Math.random() - 0.5) * 60;
+                createEnergyWell(x, 0, z);
+            }
+        }
+
+        function createCrystalNode(x, y, z) {
+            const crystalGeometry = new THREE.OctahedronGeometry(2);
+            const crystalMaterial = new THREE.MeshPhongMaterial({ 
+                color: 0x00ffff,
+                transparent: true,
+                opacity: 0.8,
+                emissive: 0x002244
+            });
+            const crystal = new THREE.Mesh(crystalGeometry, crystalMaterial);
+            crystal.position.set(x, y + 2, z);
+            crystal.castShadow = true;
+            crystal.userData = { 
+                type: 'resource',
+                subtype: 'crystal',
+                value: Math.floor(Math.random() * 20) + 10,
+                interactive: true
+            };
+            gameState.scene.add(crystal);
+            gameState.world.resources.push(crystal);
+
+            // Animate crystal
+            crystal.userData.animate = () => {
+                crystal.rotation.y += 0.02;
+                crystal.position.y = y + 2 + Math.sin(Date.now() * 0.002 + x) * 0.5;
+            };
+        }
+
+        function createEnergyWell(x, y, z) {
+            const wellGeometry = new THREE.CylinderGeometry(1, 2, 4);
+            const wellMaterial = new THREE.MeshPhongMaterial({ 
+                color: 0xffff00,
+                emissive: 0x444400
+            });
+            const well = new THREE.Mesh(wellGeometry, wellMaterial);
+            well.position.set(x, y + 2, z);
+            well.userData = { 
+                type: 'resource',
+                subtype: 'energy',
+                value: Math.floor(Math.random() * 15) + 5,
+                interactive: true
+            };
+            gameState.scene.add(well);
+            gameState.world.resources.push(well);
+        }
+
+        function createInteractiveElements() {
+            // Wizard altar
+            const altarGeometry = new THREE.BoxGeometry(4, 1, 4);
+            const altarMaterial = new THREE.MeshPhongMaterial({ 
+                color: 0x9c27b0,
+                emissive: 0x220044
+            });
+            const altar = new THREE.Mesh(altarGeometry, altarMaterial);
+            altar.position.set(0, 0.5, -40);
+            altar.userData = { 
+                type: 'wizard_altar',
+                interactive: true,
+                spells: ['terraform', 'summon', 'boost']
+            };
+            gameState.scene.add(altar);
+
+            createNameTag(altar, 'Wizard Altar', 0x9c27b0);
+        }
+
+        function addMagicEffects() {
+            // Floating particles
+            const particleCount = 200;
+            const particles = new THREE.BufferGeometry();
+            const positions = new Float32Array(particleCount * 3);
+            
+            for (let i = 0; i < particleCount * 3; i++) {
+                positions[i] = (Math.random() - 0.5) * 200;
+            }
+            
+            particles.setAttribute('position', new THREE.BufferAttribute(positions, 3));
+            
+            const particleMaterial = new THREE.PointsMaterial({
+                color: 0x00ff88,
+                size: 2,
+                transparent: true,
+                opacity: 0.6
+            });
+            
+            const particleSystem = new THREE.Points(particles, particleMaterial);
+            gameState.scene.add(particleSystem);
+            
+            // Animate particles
+            particleSystem.userData.animate = () => {
+                const positions = particleSystem.geometry.attributes.position.array;
+                for (let i = 1; i < positions.length; i += 3) {
+                    positions[i] += 0.02; // Move up
+                    if (positions[i] > 50) positions[i] = -50; // Reset
+                }
+                particleSystem.geometry.attributes.position.needsUpdate = true;
+                particleSystem.rotation.y += 0.001;
+            };
+        }
+
+        function createNameTag(object, text, color) {
+            // Simple text representation (in a real game you'd use better text rendering)
+            const canvas = document.createElement('canvas');
+            const context = canvas.getContext('2d');
+            canvas.width = 256;
+            canvas.height = 64;
+            context.fillStyle = `#${color.toString(16).padStart(6, '0')}`;
+            context.font = '24px monospace';
+            context.textAlign = 'center';
+            context.fillText(text, 128, 40);
+            
+            const texture = new THREE.CanvasTexture(canvas);
+            const spriteMaterial = new THREE.SpriteMaterial({ map: texture });
+            const sprite = new THREE.Sprite(spriteMaterial);
+            sprite.scale.set(8, 2, 1);
+            sprite.position.copy(object.position);
+            sprite.position.y += 8;
+            gameState.scene.add(sprite);
+        }
+
+        function addLighting() {
+            // Ambient light
+            const ambientLight = new THREE.AmbientLight(0x404040, 0.4);
+            gameState.scene.add(ambientLight);
+
+            // Directional light (sun)
+            const directionalLight = new THREE.DirectionalLight(0xffffff, 0.8);
+            directionalLight.position.set(50, 50, 25);
+            directionalLight.castShadow = true;
+            directionalLight.shadow.mapSize.width = 2048;
+            directionalLight.shadow.mapSize.height = 2048;
+            gameState.scene.add(directionalLight);
+
+            // Point lights for atmosphere
+            const pointLight1 = new THREE.PointLight(0x00ff41, 0.5, 30);
+            pointLight1.position.set(-20, 10, -15);
+            gameState.scene.add(pointLight1);
+
+            const pointLight2 = new THREE.PointLight(0x00bfff, 0.5, 30);
+            pointLight2.position.set(15, 10, 20);
+            gameState.scene.add(pointLight2);
+        }
+
+        function animate() {
+            requestAnimationFrame(animate);
+
+            // Animate all objects with animation functions
+            gameState.scene.traverse((object) => {
+                if (object.userData.animate) {
+                    object.userData.animate();
+                }
+            });
+
+            // Update camera to follow player
+            if (gameState.player.mesh) {
+                const playerPos = gameState.player.mesh.position;
+                gameState.camera.position.x = playerPos.x + 20;
+                gameState.camera.position.z = playerPos.z + 30;
+                gameState.camera.lookAt(playerPos);
+            }
+
+            // Render
+            gameState.renderer.render(gameState.scene, gameState.camera);
+            
+            // Update minimap
+            updateMinimap();
+        }
+
+        // Web3 Integration
+        async function checkWeb3() {
+            if (typeof window.ethereum !== 'undefined') {
+                gameState.web3 = new Web3(window.ethereum);
+                document.getElementById('web3Status').classList.add('connected');
+                document.getElementById('web3StatusText').textContent = 'Available';
+                console.log('Web3 detected');
+            } else {
+                console.log('Please install MetaMask');
+                document.getElementById('web3StatusText').textContent = 'Install MetaMask';
+            }
+        }
+
+        async function connectWallet() {
+            if (gameState.web3) {
+                try {
+                    const accounts = await window.ethereum.request({
+                        method: 'eth_requestAccounts'
+                    });
+                    
+                    gameState.wallet = accounts[0];
+                    document.getElementById('walletStatus').textContent = 
+                        `${gameState.wallet.slice(0, 6)}...${gameState.wallet.slice(-4)}`;
+                    document.getElementById('walletStatus').classList.add('connected');
+                    
+                    console.log('Wallet connected:', gameState.wallet);
+                    
+                    // Initialize game contract
+                    await initGameContract();
+                    
+                } catch (error) {
+                    console.error('Failed to connect wallet:', error);
+                }
+            }
+        }
+
+        async function initGameContract() {
+            // In a real implementation, you'd deploy a smart contract
+            // For demo purposes, we'll simulate contract interactions
+            gameState.contract = {
+                address: '0x1234567890123456789012345678901234567890',
+                abi: [] // Contract ABI would go here
+            };
+            
+            document.getElementById('contractStatus').classList.add('connected');
+            document.getElementById('contractStatusText').textContent = 'Game Contract';
+            
+            console.log('Game contract initialized');
+        }
+
+        // Game Controls
+        function movePlayer(direction) {
+            if (!gameState.player.mesh) return;
+            
+            const moveSpeed = 2;
+            const player = gameState.player.mesh;
+            
+            switch (direction) {
+                case 'left':
+                    player.position.x -= moveSpeed;
+                    break;
+                case 'right':
+                    player.position.x += moveSpeed;
+                    break;
+                case 'up':
+                    player.position.z -= moveSpeed;
+                    break;
+                case 'down':
+                    player.position.z += moveSpeed;
+                    break;
+            }
+            
+            // Update player state
+            gameState.player.position = {
+                x: player.position.x,
+                y: player.position.y,
+                z: player.position.z
+            };
+            
+            // Check for interactions
+            checkNearbyInteractions();
+        }
+
+        function checkNearbyInteractions() {
+            const playerPos = gameState.player.mesh.position;
+            const interactionDistance = 5;
+            
+            // Check buildings
+            gameState.world.buildings.forEach(building => {
+                const distance = playerPos.distanceTo(building.position);
+                if (distance < interactionDistance && building.userData.interactive) {
+                    showInteractionPrompt(building);
+                }
+            });
+            
+            // Check resources
+            gameState.world.resources.forEach(resource => {
+                const distance = playerPos.distanceTo(resource.position);
+                if (distance < interactionDistance && resource.userData.interactive) {
+                    showInteractionPrompt(resource);
+                }
+            });
+        }
+
+        function showInteractionPrompt(object) {
+            const prompt = document.getElementById('interactionPrompt');
+            const text = document.getElementById('interactionText');
+            
+            switch (object.userData.type) {
+                case 'building':
+                    text.textContent = `Enter ${object.userData.subtype} built by ${object.userData.builder}`;
+                    break;
+                case 'resource':
+                    text.textContent = `Harvest ${object.userData.subtype} (${object.userData.value} units)`;
+                    break;
+                case 'portal':
+                    text.textContent = `Use portal (Cost: ${object.userData.cost} crystals)`;
+                    break;
+                case 'market':
+                    text.textContent = `Trade at market (${object.userData.trades.join(', ')})`;
+                    break;
+                default:
+                    text.textContent = 'Interact with object';
+            }
+            
+            prompt.style.display = 'block';
+            gameState.selectedObject = object;
+        }
+
+        function confirmInteraction() {
+            const object = gameState.selectedObject;
+            if (!object) return;
+            
+            switch (object.userData.type) {
+                case 'resource':
+                    harvestResource(object);
+                    break;
+                case 'portal':
+                    usePortal(object);
+                    break;
+                case 'market':
+                    openTrading();
+                    break;
+                case 'building':
+                    enterBuilding(object);
+                    break;
+            }
+            
+            closeInteraction();
+        }
+
+        function closeInteraction() {
+            document.getElementById('interactionPrompt').style.display = 'none';
+            gameState.selectedObject = null;
+        }
+
+        function harvestResource(resource) {
+            const value = resource.userData.value;
+            const type = resource.userData.subtype;
+            
+            switch (type) {
+                case 'crystal':
+                    gameState.player.inventory.crystals += value;
+                    updateInventoryDisplay();
+                    break;
+                case 'energy':
+                    gameState.player.inventory.energy += value;
+                    updateInventoryDisplay();
+                    break;
+            }
+            
+            // Remove resource from world
+            gameState.scene.remove(resource);
+            const index = gameState.world.resources.indexOf(resource);
+            if (index > -1) {
+                gameState.world.resources.splice(index, 1);
+            }
+            
+            console.log(`Harvested ${value} ${type}`);
+        }
+
+        function updateInventoryDisplay() {
+            const items = document.querySelectorAll('.inventory-item .item-value');
+            items[0].textContent = gameState.player.inventory.crystals;
+            items[1].textContent = gameState.player.inventory.energy;
+            items[2].textContent = gameState.player.inventory.materials;
+            items[3].textContent = gameState.player.inventory.wizardTokens;
+        }
+
+        function selectTool(tool) {
+            gameState.selectedTool = tool;
+            gameState.mode = 'build';
+            console.log(`Selected tool: ${tool}`);
+        }
+
+        function castSpell(spell) {
+            const costs = {
+                terraform: 25,
+                summon: 50,
+                boost: 15
+            };
+            
+            const cost = costs[spell];
+            if (gameState.player.inventory.crystals >= cost) {
+                gameState.player.inventory.crystals -= cost;
+                updateInventoryDisplay();
+                
+                switch (spell) {
+                    case 'terraform':
+                        terraformArea();
+                        break;
+                    case 'summon':
+                        summonAIHelper();
+                        break;
+                    case 'boost':
+                        boostProduction();
+                        break;
+                }
+                
+                console.log(`Cast spell: ${spell}`);
+            } else {
+                alert(`Need ${cost} crystals to cast ${spell}`);
+            }
+        }
+
+        function terraformArea() {
+            // Create a terraformed area around the player
+            const playerPos = gameState.player.mesh.position;
+            
+            for (let i = 0; i < 10; i++) {
+                const x = playerPos.x + (Math.random() - 0.5) * 20;
+                const z = playerPos.z + (Math.random() - 0.5) * 20;
+                
+                // Add some terraformed blocks
+                const blockGeometry = new THREE.BoxGeometry(2, 1, 2);
+                const blockMaterial = new THREE.MeshPhongMaterial({ color: 0x8BC34A });
+                const block = new THREE.Mesh(blockGeometry, blockMaterial);
+                block.position.set(x, 0.5, z);
+                block.userData = { type: 'terraformed' };
+                gameState.scene.add(block);
+            }
+            
+            console.log('Area terraformed!');
+        }
+
+        function summonAIHelper() {
+            // Add a new AI helper to the world
+            const helperGeometry = new THREE.SphereGeometry(1);
+            const helperMaterial = new THREE.MeshPhongMaterial({ 
+                color: 0xff6b35,
+                emissive: 0x442211
+            });
+            const helper = new THREE.Mesh(helperGeometry, helperMaterial);
+            
+            const playerPos = gameState.player.mesh.position;
+            helper.position.set(
+                playerPos.x + (Math.random() - 0.5) * 10,
+                2,
+                playerPos.z + (Math.random() - 0.5) * 10
+            );
+            
+            helper.userData = { 
+                type: 'ai_helper',
+                summoned: true,
+                task: 'gather_resources'
+            };
+            
+            // Animate helper
+            helper.userData.animate = () => {
+                helper.rotation.y += 0.05;
+                helper.position.y = 2 + Math.sin(Date.now() * 0.003) * 0.5;
+            };
+            
+            gameState.scene.add(helper);
+            gameState.world.aiPlayers.push(helper);
+            
+            console.log('AI helper summoned!');
+        }
+
+        function boostProduction() {
+            // Boost resource generation temporarily
+            console.log('Production boosted!');
+            
+            // Visual effect
+            const playerPos = gameState.player.mesh.position;
+            const effectGeometry = new THREE.RingGeometry(5, 10, 16);
+            const effectMaterial = new THREE.MeshBasicMaterial({ 
+                color: 0xffff00,
+                transparent: true,
+                opacity: 0.5,
+                side: THREE.DoubleSide
+            });
+            const effect = new THREE.Mesh(effectGeometry, effectMaterial);
+            effect.position.copy(playerPos);
+            effect.rotation.x = -Math.PI / 2;
+            gameState.scene.add(effect);
+            
+            // Remove effect after 3 seconds
+            setTimeout(() => {
+                gameState.scene.remove(effect);
+            }, 3000);
+        }
+
+        // Game System Integration
+        async function connectToAISystems() {
+            try {
+                // Connect to BlameChain
+                const blameChainResponse = await fetch('http://localhost:7880/api/players');
+                const blameChainData = await blameChainResponse.json();
+                
+                console.log('Connected to BlameChain AI players:', blameChainData.active_players.length);
+                
+                // Update AI player panel with real data
+                updateAIPlayerPanel(blameChainData.active_players);
+                
+            } catch (error) {
+                console.log('AI systems not available, using mock data');
+            }
+        }
+
+        function updateAIPlayerPanel(aiPlayers) {
+            // Update the AI players panel with real data from the swarm
+            const panel = document.getElementById('aiPlayersPanel');
+            
+            if (aiPlayers && aiPlayers.length > 0) {
+                panel.innerHTML = '';
+                
+                aiPlayers.forEach(player => {
+                    const card = document.createElement('div');
+                    card.className = 'ai-player-card';
+                    card.innerHTML = `
+                        <div class="player-header">
+                            <span>${getRoleIcon(player.role)} ${player.role}</span>
+                            <span class="player-status status-active">Active</span>
+                        </div>
+                        <div style="font-size: 0.9rem;">
+                            Discoveries: ${player.stats.discoveries}<br>
+                            Builds: ${player.stats.builds}<br>
+                            Tests: ${player.stats.tests}<br>
+                            Observations: ${player.stats.observations}
+                        </div>
+                    `;
+                    panel.appendChild(card);
+                });
+            }
+        }
+
+        function getRoleIcon(role) {
+            const icons = {
+                explorer: '🔍',
+                builder: '🏗️',
+                tester: '🧪',
+                observer: '👁️'
+            };
+            return icons[role] || '🤖';
+        }
+
+        function updateMinimap() {
+            const canvas = document.getElementById('minimapCanvas');
+            const ctx = canvas.getContext('2d');
+            
+            // Clear canvas
+            ctx.fillStyle = '#001122';
+            ctx.fillRect(0, 0, 196, 146);
+            
+            // Draw world bounds
+            ctx.strokeStyle = '#00ff41';
+            ctx.strokeRect(10, 10, 176, 126);
+            
+            // Draw player
+            if (gameState.player.mesh) {
+                const playerPos = gameState.player.mesh.position;
+                const x = 98 + (playerPos.x / 100) * 88;
+                const y = 73 + (playerPos.z / 100) * 63;
+                
+                ctx.fillStyle = '#00ff41';
+                ctx.beginPath();
+                ctx.arc(x, y, 3, 0, Math.PI * 2);
+                ctx.fill();
+            }
+            
+            // Draw buildings
+            gameState.world.buildings.forEach(building => {
+                const x = 98 + (building.position.x / 100) * 88;
+                const y = 73 + (building.position.z / 100) * 63;
+                
+                ctx.fillStyle = '#8B4513';
+                ctx.fillRect(x - 2, y - 2, 4, 4);
+            });
+            
+            // Draw resources
+            gameState.world.resources.forEach(resource => {
+                const x = 98 + (resource.position.x / 100) * 88;
+                const y = 73 + (resource.position.z / 100) * 63;
+                
+                ctx.fillStyle = resource.userData.subtype === 'crystal' ? '#00ffff' : '#ffff00';
+                ctx.beginPath();
+                ctx.arc(x, y, 1, 0, Math.PI * 2);
+                ctx.fill();
+            });
+        }
+
+        function startGameLoops() {
+            // Update financial ticker
+            setInterval(updateFinancialTicker, 2000);
+            
+            // Update AI player status
+            setInterval(updateAIStatus, 5000);
+            
+            // Auto-save game state
+            setInterval(saveGameState, 30000);
+        }
+
+        function updateFinancialTicker() {
+            // Simulate price changes
+            const gameCoinChange = (Math.random() - 0.5) * 10;
+            const crystalChange = (Math.random() - 0.5) * 0.1;
+            const worldValueChange = (Math.random() - 0.5) * 1000;
+            
+            document.getElementById('gameCoinPrice').textContent = 
+                `$${(127.45 + gameCoinChange).toFixed(2)}`;
+            document.getElementById('crystalPrice').textContent = 
+                `$${(0.89 + crystalChange).toFixed(2)}`;
+            document.getElementById('worldValue').textContent = 
+                `$${(45672 + worldValueChange).toLocaleString()}`;
+        }
+
+        async function updateAIStatus() {
+            try {
+                const response = await fetch('http://localhost:7880/api/players');
+                const data = await response.json();
+                
+                document.getElementById('aiPlayerCount').textContent = data.active_players.length;
+                updateAIPlayerPanel(data.active_players);
+                
+            } catch (error) {
+                // Fallback to mock data
+            }
+        }
+
+        function saveGameState() {
+            const saveData = {
+                player: gameState.player,
+                world: {
+                    buildings: gameState.world.buildings.length,
+                    resources: gameState.world.resources.length
+                },
+                timestamp: Date.now()
+            };
+            
+            localStorage.setItem('web3GameWorld', JSON.stringify(saveData));
+            console.log('Game state saved');
+        }
+
+        // Placeholder functions for remaining features
+        function toggleBuildMode() {
+            gameState.mode = gameState.mode === 'build' ? 'explore' : 'build';
+            console.log(`Mode: ${gameState.mode}`);
+        }
+
+        function toggleWizardMode() {
+            gameState.mode = gameState.mode === 'wizard' ? 'explore' : 'wizard';
+            console.log(`Mode: ${gameState.mode}`);
+        }
+
+        function interactWithWorld() {
+            console.log('Looking for interactions...');
+            checkNearbyInteractions();
+        }
+
+        function zoomIn() {
+            gameState.camera.position.multiplyScalar(0.9);
+        }
+
+        function zoomOut() {
+            gameState.camera.position.multiplyScalar(1.1);
+        }
+
+        function resetCamera() {
+            gameState.camera.position.set(0, 20, 30);
+        }
+
+        function openTrading() {
+            alert('🏪 Trading Market\n\nAvailable trades:\n- 10 Energy → 5 Crystals\n- 20 Materials → 8 Crystals\n- 5 Crystals → 1 Wizard Token');
+        }
+
+        function stakeCrystals() {
+            alert('💎 Crystal Staking\n\nStake your crystals to earn passive income!\n\nAPY: 12.5%\nMin stake: 50 crystals');
+        }
+
+        function harvestRewards() {
+            const rewards = Math.floor(Math.random() * 15) + 5;
+            gameState.player.inventory.crystals += rewards;
+            updateInventoryDisplay();
+            alert(`🌾 Harvested ${rewards} crystals from staking rewards!`);
+        }
+
+        function usePortal(portal) {
+            if (gameState.player.inventory.crystals >= portal.userData.cost) {
+                gameState.player.inventory.crystals -= portal.userData.cost;
+                updateInventoryDisplay();
+                
+                // Teleport player to random location
+                const newX = (Math.random() - 0.5) * 80;
+                const newZ = (Math.random() - 0.5) * 80;
+                gameState.player.mesh.position.set(newX, 1, newZ);
+                
+                console.log('Portal used! Teleported to new location.');
+            } else {
+                alert(`Need ${portal.userData.cost} crystals to use this portal`);
+            }
+        }
+
+        function enterBuilding(building) {
+            switch (building.userData.subtype) {
+                case 'tower':
+                    alert('🏰 Magic Tower\n\nThis tower enhances your wizard abilities!\n\n+25% spell power\n+50% mana regeneration');
+                    break;
+                case 'bridge':
+                    alert('🌉 Crystal Bridge\n\nThis bridge connects distant lands!\n\nFast travel available\nBuilt by AI Explorer');
+                    break;
+                default:
+                    alert(`Entered ${building.userData.subtype}`);
+            }
+        }
+
+        // Handle window resize
+        window.addEventListener('resize', () => {
+            const container = document.getElementById('gameCanvas');
+            gameState.camera.aspect = container.clientWidth / container.clientHeight;
+            gameState.camera.updateProjectionMatrix();
+            gameState.renderer.setSize(container.clientWidth, container.clientHeight);
+        });
+
+        // Initialize game when page loads
+        document.addEventListener('DOMContentLoaded', () => {
+            initGame();
+        });
+    </script>
+</body>
+</html>

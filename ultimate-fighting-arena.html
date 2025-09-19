@@ -1,0 +1,917 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Ultimate Fighting Arena - Multi-Dimensional Combat System</title>
+    <style>
+        body {
+            margin: 0;
+            padding: 0;
+            background: #000;
+            font-family: 'Courier New', monospace;
+            overflow: hidden;
+            color: #fff;
+        }
+
+        #gameCanvas {
+            display: block;
+            margin: 0 auto;
+            border: 2px solid #00ff00;
+            image-rendering: pixelated;
+            image-rendering: crisp-edges;
+        }
+
+        #ui {
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            padding: 10px;
+            background: rgba(0, 0, 0, 0.8);
+            display: flex;
+            justify-content: space-between;
+            z-index: 100;
+        }
+
+        .healthBar {
+            width: 300px;
+            height: 30px;
+            background: #333;
+            border: 2px solid #fff;
+            position: relative;
+        }
+
+        .healthFill {
+            height: 100%;
+            background: linear-gradient(to right, #ff0000, #ffff00, #00ff00);
+            transition: width 0.3s;
+        }
+
+        .specialBar {
+            width: 200px;
+            height: 20px;
+            background: #222;
+            border: 1px solid #0088ff;
+            margin-top: 5px;
+        }
+
+        .specialFill {
+            height: 100%;
+            background: linear-gradient(to right, #0088ff, #00ffff);
+            transition: width 0.3s;
+        }
+
+        #characterSelect {
+            position: fixed;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            background: rgba(0, 0, 0, 0.95);
+            border: 3px solid #00ff00;
+            padding: 20px;
+            z-index: 200;
+            text-align: center;
+        }
+
+        .characterOption {
+            display: inline-block;
+            margin: 10px;
+            padding: 20px;
+            border: 2px solid #666;
+            cursor: pointer;
+            font-size: 48px;
+            transition: all 0.2s;
+        }
+
+        .characterOption:hover {
+            border-color: #00ff00;
+            transform: scale(1.1);
+            box-shadow: 0 0 20px #00ff00;
+        }
+
+        #arenaSelect {
+            margin-top: 20px;
+        }
+
+        .arenaOption {
+            display: inline-block;
+            margin: 5px;
+            padding: 10px 20px;
+            border: 1px solid #666;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+
+        .arenaOption:hover {
+            border-color: #ff00ff;
+            box-shadow: 0 0 10px #ff00ff;
+        }
+
+        .modeOption, .difficultyOption {
+            display: inline-block;
+            margin: 5px;
+            padding: 10px 20px;
+            border: 2px solid #666;
+            cursor: pointer;
+            background: rgba(0, 0, 0, 0.5);
+            color: #fff;
+            transition: all 0.2s;
+        }
+
+        .modeOption:hover, .difficultyOption:hover {
+            transform: scale(1.05);
+            box-shadow: 0 0 15px currentColor;
+        }
+
+        #comboDisplay {
+            position: fixed;
+            bottom: 20px;
+            left: 50%;
+            transform: translateX(-50%);
+            font-size: 24px;
+            color: #ffff00;
+            text-shadow: 2px 2px 4px #000;
+            animation: comboFlash 0.5s ease-out;
+        }
+
+        @keyframes comboFlash {
+            0% { transform: translateX(-50%) scale(1.5); opacity: 0; }
+            50% { opacity: 1; }
+            100% { transform: translateX(-50%) scale(1); opacity: 1; }
+        }
+
+        #skillTree {
+            position: fixed;
+            right: 10px;
+            top: 100px;
+            background: rgba(0, 0, 0, 0.8);
+            border: 1px solid #ff00ff;
+            padding: 10px;
+            display: none;
+        }
+
+        .skillNode {
+            width: 40px;
+            height: 40px;
+            margin: 5px;
+            border: 2px solid #666;
+            display: inline-block;
+            cursor: pointer;
+            text-align: center;
+            line-height: 40px;
+            font-size: 20px;
+        }
+
+        .skillNode.unlocked {
+            border-color: #00ff00;
+            box-shadow: 0 0 10px #00ff00;
+        }
+
+        #itemSequence {
+            position: fixed;
+            bottom: 10px;
+            right: 10px;
+            background: rgba(0, 0, 0, 0.8);
+            border: 1px solid #ffaa00;
+            padding: 10px;
+        }
+
+        .sequenceItem {
+            display: inline-block;
+            margin: 2px;
+            font-size: 20px;
+            opacity: 0.5;
+        }
+
+        .sequenceItem.rare {
+            opacity: 1;
+            animation: itemGlow 2s infinite;
+        }
+
+        @keyframes itemGlow {
+            0%, 100% { filter: brightness(1); }
+            50% { filter: brightness(1.5) drop-shadow(0 0 10px #ffaa00); }
+        }
+
+        #colorLayer {
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            pointer-events: none;
+            mix-blend-mode: multiply;
+            opacity: 0.3;
+        }
+
+        #soundVisualizer {
+            position: fixed;
+            bottom: 0;
+            left: 0;
+            right: 0;
+            height: 50px;
+            background: rgba(0, 0, 0, 0.5);
+            display: flex;
+            align-items: flex-end;
+            justify-content: center;
+            gap: 2px;
+        }
+
+        .soundBar {
+            width: 4px;
+            background: linear-gradient(to top, #ff0000, #ffff00, #00ff00);
+            transition: height 0.1s;
+        }
+    </style>
+</head>
+<body>
+    <!-- Load AI Systems -->
+    <script src="REASONING-AGENT-COMBAT-AI.js"></script>
+    <script src="ultimate-fighting-arena-ai-bridge.js"></script>
+    <!-- UI Layer -->
+    <div id="ui">
+        <div class="player1">
+            <div class="playerName">Player 1</div>
+            <div class="healthBar">
+                <div class="healthFill" id="p1Health" style="width: 100%"></div>
+            </div>
+            <div class="specialBar">
+                <div class="specialFill" id="p1Special" style="width: 0%"></div>
+            </div>
+        </div>
+        <div class="timer" id="timer">99</div>
+        <div class="player2">
+            <div class="playerName">Player 2</div>
+            <div class="healthBar">
+                <div class="healthFill" id="p2Health" style="width: 100%"></div>
+            </div>
+            <div class="specialBar">
+                <div class="specialFill" id="p2Special" style="width: 0%"></div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Character Selection -->
+    <div id="characterSelect">
+        <h2>Select Your Fighter</h2>
+        <div id="characters">
+            <div class="characterOption" data-char="warrior">⚔️</div>
+            <div class="characterOption" data-char="mage">🧙</div>
+            <div class="characterOption" data-char="rogue">🗡️</div>
+            <div class="characterOption" data-char="robot">🤖</div>
+            <div class="characterOption" data-char="alien">👽</div>
+            <div class="characterOption" data-char="dragon">🐉</div>
+            <div class="characterOption" data-char="ninja">🥷</div>
+            <div class="characterOption" data-char="pirate">🏴‍☠️</div>
+        </div>
+        <div id="arenaSelect">
+            <h3>Select Arena</h3>
+            <div class="arenaOption" data-arena="bronze">Bronze Colosseum</div>
+            <div class="arenaOption" data-arena="silver">Silver Arena</div>
+            <div class="arenaOption" data-arena="gold">Golden Battleground</div>
+            <div class="arenaOption" data-arena="platinum">Platinum Stadium</div>
+            <div class="arenaOption" data-arena="master">Master's Domain</div>
+        </div>
+        <button id="startGame">FIGHT!</button>
+        <div style="margin-top: 20px;">
+            <h3>Game Mode</h3>
+            <button class="modeOption" data-mode="pvp">Player vs Player</button>
+            <button class="modeOption" data-mode="pve">Player vs AI</button>
+            <button class="modeOption" data-mode="demo">AI vs AI Demo</button>
+            <div id="difficultySelect" style="display: none; margin-top: 10px;">
+                <h4>AI Difficulty</h4>
+                <button class="difficultyOption" data-difficulty="easy">Easy</button>
+                <button class="difficultyOption" data-difficulty="medium">Medium</button>
+                <button class="difficultyOption" data-difficulty="hard">Hard</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Game Canvas -->
+    <canvas id="gameCanvas" width="1024" height="576"></canvas>
+
+    <!-- Combo Display -->
+    <div id="comboDisplay"></div>
+
+    <!-- Skill Tree -->
+    <div id="skillTree">
+        <h3>Skills</h3>
+        <div class="skillNode" data-skill="power">💪</div>
+        <div class="skillNode" data-skill="speed">⚡</div>
+        <div class="skillNode" data-skill="defense">🛡️</div>
+        <div class="skillNode" data-skill="special">✨</div>
+    </div>
+
+    <!-- Sequential Item System -->
+    <div id="itemSequence">
+        <h4>Collection</h4>
+        <div id="items"></div>
+    </div>
+
+    <!-- Color Layer System -->
+    <div id="colorLayer"></div>
+
+    <!-- Sound Visualizer -->
+    <div id="soundVisualizer"></div>
+
+    <script>
+        // Game Configuration
+        const config = {
+            width: 1024,
+            height: 576,
+            fps: 60,
+            gravity: 0.8,
+            friction: 0.85,
+            characters: {
+                warrior: { emoji: '⚔️', speed: 5, power: 8, defense: 7, special: 'Blade Storm' },
+                mage: { emoji: '🧙', speed: 4, power: 9, defense: 5, special: 'Meteor Shower' },
+                rogue: { emoji: '🗡️', speed: 9, power: 6, defense: 4, special: 'Shadow Strike' },
+                robot: { emoji: '🤖', speed: 6, power: 7, defense: 8, special: 'Laser Barrage' },
+                alien: { emoji: '👽', speed: 7, power: 6, defense: 6, special: 'Mind Control' },
+                dragon: { emoji: '🐉', speed: 5, power: 10, defense: 9, special: 'Fire Breath' },
+                ninja: { emoji: '🥷', speed: 10, power: 5, defense: 3, special: 'Smoke Bomb' },
+                pirate: { emoji: '🏴‍☠️', speed: 6, power: 8, defense: 6, special: 'Cannon Blast' }
+            },
+            arenas: {
+                bronze: { bg: '#8B4513', hazards: 1, effect: 'none' },
+                silver: { bg: '#C0C0C0', hazards: 2, effect: 'wind' },
+                gold: { bg: '#FFD700', hazards: 3, effect: 'fire' },
+                platinum: { bg: '#E5E4E2', hazards: 4, effect: 'ice' },
+                master: { bg: '#4B0082', hazards: 5, effect: 'chaos' }
+            }
+        };
+
+        // Audio Context for Sound System
+        const audioContext = new (window.AudioContext || window.webkitAudioContext)();
+        const soundEffects = {};
+
+        // Initialize Canvas
+        const canvas = document.getElementById('gameCanvas');
+        const ctx = canvas.getContext('2d');
+        ctx.imageSmoothingEnabled = false;
+
+        // Game State
+        let gameState = {
+            phase: 'selection',
+            players: {
+                p1: null,
+                p2: null
+            },
+            arena: null,
+            timer: 99,
+            combo: {
+                p1: [],
+                p2: []
+            },
+            items: [],
+            skills: {
+                p1: { power: 0, speed: 0, defense: 0, special: 0 },
+                p2: { power: 0, speed: 0, defense: 0, special: 0 }
+            },
+            colorLayers: [],
+            soundBars: [],
+            gameMode: 'pvp',
+            aiDifficulty: 'medium',
+            aiBridge: null
+        };
+
+        // Fighter Class
+        class Fighter {
+            constructor(x, y, character, player) {
+                this.x = x;
+                this.y = y;
+                this.character = character;
+                this.characterConfig = config.characters[character];
+                this.player = player;
+                this.width = 64;
+                this.height = 64;
+                this.velocityX = 0;
+                this.velocityY = 0;
+                this.health = 100;
+                this.special = 0;
+                this.state = 'idle';
+                this.facing = player === 'p1' ? 1 : -1;
+                this.animFrame = 0;
+                this.combo = [];
+                this.isBlocking = false;
+                this.isDashing = false;
+                this.specialActive = false;
+            }
+
+            update() {
+                // Apply physics
+                this.velocityY += config.gravity;
+                this.x += this.velocityX;
+                this.y += this.velocityY;
+
+                // Ground collision
+                if (this.y > canvas.height - 100) {
+                    this.y = canvas.height - 100;
+                    this.velocityY = 0;
+                    this.isDashing = false;
+                }
+
+                // Wall collision
+                if (this.x < 0) this.x = 0;
+                if (this.x > canvas.width - this.width) this.x = canvas.width - this.width;
+
+                // Apply friction
+                this.velocityX *= config.friction;
+
+                // Update animation
+                this.animFrame = (this.animFrame + 0.2) % 4;
+
+                // Update state
+                if (Math.abs(this.velocityX) < 0.1 && this.velocityY === 0) {
+                    this.state = 'idle';
+                }
+            }
+
+            draw() {
+                ctx.save();
+                ctx.translate(this.x + this.width / 2, this.y + this.height / 2);
+                ctx.scale(this.facing, 1);
+
+                // Draw shadow
+                ctx.fillStyle = 'rgba(0, 0, 0, 0.3)';
+                ctx.fillRect(-this.width / 2, this.height / 2 - 5, this.width, 10);
+
+                // Draw character with animation
+                const bounce = Math.sin(this.animFrame) * 5;
+                ctx.font = '48px Arial';
+                ctx.textAlign = 'center';
+                ctx.textBaseline = 'middle';
+
+                // Apply state effects
+                if (this.specialActive) {
+                    ctx.shadowBlur = 20;
+                    ctx.shadowColor = '#00ffff';
+                }
+                if (this.isBlocking) {
+                    ctx.globalAlpha = 0.7;
+                }
+
+                ctx.fillText(this.characterConfig.emoji, 0, bounce);
+                ctx.restore();
+
+                // Draw effects
+                if (this.state === 'attacking') {
+                    this.drawAttackEffect();
+                }
+            }
+
+            drawAttackEffect() {
+                ctx.strokeStyle = '#ffff00';
+                ctx.lineWidth = 3;
+                ctx.beginPath();
+                ctx.arc(this.x + this.width / 2, this.y + this.height / 2, 40, 0, Math.PI * 2);
+                ctx.stroke();
+            }
+
+            attack(type) {
+                this.state = 'attacking';
+                this.combo.push(type);
+                if (this.combo.length > 3) this.combo.shift();
+
+                // Check for special combos
+                if (this.combo.join('') === 'LLH') {
+                    this.executeSpecial();
+                }
+
+                playSoundEffect('attack');
+                updateColorLayer('attack');
+            }
+
+            executeSpecial() {
+                if (this.special >= 100) {
+                    this.specialActive = true;
+                    this.special = 0;
+                    showCombo(this.player, this.characterConfig.special);
+                    playSoundEffect('special');
+                    updateColorLayer('special');
+
+                    setTimeout(() => {
+                        this.specialActive = false;
+                    }, 2000);
+                }
+            }
+
+            takeDamage(amount) {
+                if (!this.isBlocking) {
+                    this.health -= amount;
+                    playSoundEffect('hit');
+                    updateColorLayer('damage');
+                } else {
+                    this.health -= amount * 0.3;
+                    playSoundEffect('block');
+                }
+
+                // Update health bar
+                document.getElementById(this.player + 'Health').style.width = this.health + '%';
+            }
+
+            buildSpecial(amount) {
+                this.special = Math.min(100, this.special + amount);
+                document.getElementById(this.player + 'Special').style.width = this.special + '%';
+            }
+        }
+
+        // Sound System
+        function createSoundEffect(type) {
+            const oscillator = audioContext.createOscillator();
+            const gainNode = audioContext.createGain();
+
+            oscillator.connect(gainNode);
+            gainNode.connect(audioContext.destination);
+
+            switch (type) {
+                case 'attack':
+                    oscillator.frequency.setValueAtTime(200, audioContext.currentTime);
+                    oscillator.frequency.exponentialRampToValueAtTime(100, audioContext.currentTime + 0.1);
+                    gainNode.gain.setValueAtTime(0.3, audioContext.currentTime);
+                    gainNode.gain.exponentialRampToValueAtTime(0.01, audioContext.currentTime + 0.1);
+                    break;
+                case 'hit':
+                    oscillator.frequency.setValueAtTime(150, audioContext.currentTime);
+                    oscillator.type = 'sawtooth';
+                    gainNode.gain.setValueAtTime(0.4, audioContext.currentTime);
+                    gainNode.gain.exponentialRampToValueAtTime(0.01, audioContext.currentTime + 0.2);
+                    break;
+                case 'special':
+                    oscillator.frequency.setValueAtTime(800, audioContext.currentTime);
+                    oscillator.frequency.exponentialRampToValueAtTime(50, audioContext.currentTime + 1);
+                    oscillator.type = 'sine';
+                    gainNode.gain.setValueAtTime(0.5, audioContext.currentTime);
+                    gainNode.gain.exponentialRampToValueAtTime(0.01, audioContext.currentTime + 1);
+                    break;
+                case 'block':
+                    oscillator.frequency.setValueAtTime(300, audioContext.currentTime);
+                    oscillator.type = 'triangle';
+                    gainNode.gain.setValueAtTime(0.2, audioContext.currentTime);
+                    gainNode.gain.exponentialRampToValueAtTime(0.01, audioContext.currentTime + 0.05);
+                    break;
+            }
+
+            oscillator.start(audioContext.currentTime);
+            oscillator.stop(audioContext.currentTime + 1);
+
+            updateSoundVisualizer(type);
+        }
+
+        function playSoundEffect(type) {
+            createSoundEffect(type);
+        }
+
+        // Color Layer System
+        function updateColorLayer(action) {
+            const colorLayer = document.getElementById('colorLayer');
+            const colors = {
+                attack: 'rgba(255, 255, 0, 0.3)',
+                damage: 'rgba(255, 0, 0, 0.3)',
+                special: 'rgba(0, 255, 255, 0.3)',
+                block: 'rgba(0, 255, 0, 0.3)'
+            };
+
+            colorLayer.style.background = colors[action];
+            setTimeout(() => {
+                colorLayer.style.background = 'transparent';
+            }, 200);
+        }
+
+        // Sound Visualizer
+        function initSoundVisualizer() {
+            const visualizer = document.getElementById('soundVisualizer');
+            for (let i = 0; i < 50; i++) {
+                const bar = document.createElement('div');
+                bar.className = 'soundBar';
+                bar.style.height = '0px';
+                visualizer.appendChild(bar);
+                gameState.soundBars.push(bar);
+            }
+        }
+
+        function updateSoundVisualizer(type) {
+            const intensity = {
+                attack: 30,
+                hit: 50,
+                special: 100,
+                block: 20
+            };
+
+            gameState.soundBars.forEach((bar, i) => {
+                const height = Math.random() * intensity[type];
+                bar.style.height = height + 'px';
+                setTimeout(() => {
+                    bar.style.height = '0px';
+                }, 100 + i * 10);
+            });
+        }
+
+        // Sequential Item System (like dino eggs)
+        function generateSequentialItem() {
+            const itemTypes = ['🥚', '🦖', '🦕', '🐉', '💎', '⭐', '🌟', '✨'];
+            const rarity = Math.random();
+            let item = {
+                type: itemTypes[Math.floor(Math.random() * itemTypes.length)],
+                id: Date.now() + Math.random(),
+                rarity: rarity < 0.1 ? 'legendary' : rarity < 0.3 ? 'rare' : 'common'
+            };
+
+            gameState.items.push(item);
+            updateItemDisplay();
+        }
+
+        function updateItemDisplay() {
+            const itemsDiv = document.getElementById('items');
+            itemsDiv.innerHTML = '';
+            gameState.items.slice(-10).forEach(item => {
+                const span = document.createElement('span');
+                span.className = 'sequenceItem ' + (item.rarity === 'rare' || item.rarity === 'legendary' ? 'rare' : '');
+                span.textContent = item.type;
+                itemsDiv.appendChild(span);
+            });
+        }
+
+        // Combo Display
+        function showCombo(player, text) {
+            const display = document.getElementById('comboDisplay');
+            display.textContent = text + '!';
+            display.style.animation = 'none';
+            setTimeout(() => {
+                display.style.animation = 'comboFlash 0.5s ease-out';
+            }, 10);
+        }
+
+        // Game Mode Selection
+        document.querySelectorAll('.modeOption').forEach(option => {
+            option.addEventListener('click', function() {
+                document.querySelectorAll('.modeOption').forEach(o => o.style.borderColor = '#666');
+                gameState.gameMode = this.dataset.mode;
+                this.style.borderColor = '#00ffff';
+                
+                // Show difficulty select for AI modes
+                if (gameState.gameMode === 'pve' || gameState.gameMode === 'demo') {
+                    document.getElementById('difficultySelect').style.display = 'block';
+                } else {
+                    document.getElementById('difficultySelect').style.display = 'none';
+                }
+                
+                // Auto-select characters for demo mode
+                if (gameState.gameMode === 'demo') {
+                    const chars = Object.keys(config.characters);
+                    gameState.players.p1 = chars[Math.floor(Math.random() * chars.length)];
+                    gameState.players.p2 = chars[Math.floor(Math.random() * chars.length)];
+                    document.querySelectorAll('.characterOption').forEach(opt => {
+                        if (opt.dataset.char === gameState.players.p1) opt.style.borderColor = '#00ff00';
+                        if (opt.dataset.char === gameState.players.p2) opt.style.borderColor = '#ff0000';
+                    });
+                }
+            });
+        });
+
+        // Difficulty Selection
+        document.querySelectorAll('.difficultyOption').forEach(option => {
+            option.addEventListener('click', function() {
+                document.querySelectorAll('.difficultyOption').forEach(o => o.style.borderColor = '#666');
+                gameState.aiDifficulty = this.dataset.difficulty;
+                this.style.borderColor = '#ffaa00';
+            });
+        });
+
+        // Character Selection
+        document.querySelectorAll('.characterOption').forEach(option => {
+            option.addEventListener('click', function() {
+                if (gameState.gameMode === 'demo') return; // Skip for demo mode
+                
+                const character = this.dataset.char;
+                if (!gameState.players.p1) {
+                    gameState.players.p1 = character;
+                    this.style.borderColor = '#00ff00';
+                    this.style.pointerEvents = 'none';
+                    
+                    // Auto-select P2 for PvE mode
+                    if (gameState.gameMode === 'pve') {
+                        const chars = Object.keys(config.characters).filter(c => c !== character);
+                        gameState.players.p2 = chars[Math.floor(Math.random() * chars.length)];
+                        document.querySelectorAll('.characterOption').forEach(opt => {
+                            if (opt.dataset.char === gameState.players.p2) {
+                                opt.style.borderColor = '#ff0000';
+                                opt.style.pointerEvents = 'none';
+                            }
+                        });
+                    }
+                } else if (!gameState.players.p2 && gameState.gameMode === 'pvp') {
+                    gameState.players.p2 = character;
+                    this.style.borderColor = '#ff0000';
+                    this.style.pointerEvents = 'none';
+                }
+            });
+        });
+
+        // Arena Selection
+        document.querySelectorAll('.arenaOption').forEach(option => {
+            option.addEventListener('click', function() {
+                document.querySelectorAll('.arenaOption').forEach(o => o.style.borderColor = '#666');
+                gameState.arena = this.dataset.arena;
+                this.style.borderColor = '#ff00ff';
+            });
+        });
+
+        // Start Game
+        document.getElementById('startGame').addEventListener('click', function() {
+            if (gameState.players.p1 && gameState.players.p2 && gameState.arena) {
+                document.getElementById('characterSelect').style.display = 'none';
+                startGame();
+            }
+        });
+
+        // Game Loop
+        let fighters = {};
+        let lastTime = 0;
+
+        async function startGame() {
+            gameState.phase = 'fighting';
+            
+            // Initialize fighters
+            fighters.p1 = new Fighter(200, 300, gameState.players.p1, 'p1');
+            fighters.p2 = new Fighter(700, 300, gameState.players.p2, 'p2');
+            
+            // Make fighters globally accessible for AI
+            window.fighters = fighters;
+
+            // Initialize AI if needed
+            if (gameState.gameMode === 'pve' || gameState.gameMode === 'demo') {
+                try {
+                    gameState.aiBridge = new FightingArenaAIBridge();
+                    await gameState.aiBridge.init();
+                    
+                    // Start AI control based on mode
+                    if (gameState.gameMode === 'pve') {
+                        gameState.aiBridge.startAIControl(fighters.p2, gameState.aiDifficulty);
+                        console.log('🤖 AI controlling Player 2');
+                    } else if (gameState.gameMode === 'demo') {
+                        gameState.aiBridge.startAIControl(fighters.p1, gameState.aiDifficulty);
+                        gameState.aiBridge.startAIControl(fighters.p2, gameState.aiDifficulty);
+                        console.log('🤖 AI controlling both players');
+                    }
+                } catch (error) {
+                    console.error('AI initialization error:', error);
+                }
+            }
+
+            // Initialize systems
+            initSoundVisualizer();
+            document.getElementById('skillTree').style.display = 'block';
+
+            // Start game loop
+            requestAnimationFrame(gameLoop);
+
+            // Start timer
+            setInterval(() => {
+                if (gameState.timer > 0) {
+                    gameState.timer--;
+                    document.getElementById('timer').textContent = gameState.timer;
+                }
+            }, 1000);
+
+            // Generate items periodically
+            setInterval(() => {
+                generateSequentialItem();
+            }, 5000);
+        }
+
+        function gameLoop(currentTime) {
+            const deltaTime = currentTime - lastTime;
+            lastTime = currentTime;
+
+            // Clear canvas
+            ctx.fillStyle = config.arenas[gameState.arena].bg;
+            ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+            // Draw arena floor
+            ctx.fillStyle = 'rgba(0, 0, 0, 0.2)';
+            ctx.fillRect(0, canvas.height - 100, canvas.width, 100);
+
+            // Update and draw fighters
+            Object.values(fighters).forEach(fighter => {
+                fighter.update();
+                fighter.draw();
+            });
+
+            // Check collisions
+            checkCollisions();
+
+            // Continue loop
+            if (gameState.phase === 'fighting') {
+                requestAnimationFrame(gameLoop);
+            }
+        }
+
+        function checkCollisions() {
+            const p1 = fighters.p1;
+            const p2 = fighters.p2;
+
+            if (Math.abs(p1.x - p2.x) < 80 && Math.abs(p1.y - p2.y) < 80) {
+                if (p1.state === 'attacking' && !p2.specialActive) {
+                    p2.takeDamage(p1.characterConfig.power);
+                    p1.buildSpecial(10);
+                }
+                if (p2.state === 'attacking' && !p1.specialActive) {
+                    p1.takeDamage(p2.characterConfig.power);
+                    p2.buildSpecial(10);
+                }
+            }
+        }
+
+        // Controls
+        const keys = {};
+        document.addEventListener('keydown', (e) => keys[e.key] = true);
+        document.addEventListener('keyup', (e) => keys[e.key] = false);
+
+        function handleControls() {
+            if (!fighters.p1 || !fighters.p2) return;
+
+            // Player 1 controls (WASD + F/G) - only if not AI controlled
+            if (gameState.gameMode !== 'demo') {
+                if (keys['a']) fighters.p1.velocityX = -fighters.p1.characterConfig.speed;
+                if (keys['d']) fighters.p1.velocityX = fighters.p1.characterConfig.speed;
+                if (keys['w'] && fighters.p1.velocityY === 0) fighters.p1.velocityY = -15;
+                if (keys['s']) fighters.p1.isBlocking = true;
+                else fighters.p1.isBlocking = false;
+                if (keys['f']) fighters.p1.attack('L');
+                if (keys['g']) fighters.p1.attack('H');
+            }
+
+            // Player 2 controls (Arrow keys + ,/.) - only if PvP mode
+            if (gameState.gameMode === 'pvp') {
+                if (keys['ArrowLeft']) fighters.p2.velocityX = -fighters.p2.characterConfig.speed;
+                if (keys['ArrowRight']) fighters.p2.velocityX = fighters.p2.characterConfig.speed;
+                if (keys['ArrowUp'] && fighters.p2.velocityY === 0) fighters.p2.velocityY = -15;
+                if (keys['ArrowDown']) fighters.p2.isBlocking = true;
+                else fighters.p2.isBlocking = false;
+                if (keys[',']) fighters.p2.attack('L');
+                if (keys['.']) fighters.p2.attack('H');
+            }
+        }
+
+        // Update controls in game loop
+        setInterval(handleControls, 16);
+
+        // Skill Tree System
+        document.querySelectorAll('.skillNode').forEach(node => {
+            node.addEventListener('click', function() {
+                const skill = this.dataset.skill;
+                this.classList.add('unlocked');
+                // Apply skill bonuses
+                gameState.skills.p1[skill]++;
+            });
+        });
+
+        // Initialize WebSocket for multiplayer (optional)
+        let ws;
+        function connectMultiplayer() {
+            try {
+                ws = new WebSocket('ws://localhost:8081');
+                ws.onmessage = (event) => {
+                    const data = JSON.parse(event.data);
+                    // Handle multiplayer updates
+                };
+            } catch (e) {
+                console.log('Multiplayer not available');
+            }
+        }
+
+        // Background music system integration
+        function initBackgroundMusic() {
+            // This would connect to the AI Music Reasoning Visualizer
+            // For now, we'll use Web Audio API to generate simple background music
+            const musicOscillator = audioContext.createOscillator();
+            const musicGain = audioContext.createGain();
+            
+            musicOscillator.connect(musicGain);
+            musicGain.connect(audioContext.destination);
+            
+            musicOscillator.frequency.setValueAtTime(110, audioContext.currentTime);
+            musicGain.gain.setValueAtTime(0.05, audioContext.currentTime);
+            
+            // Create a simple repeating pattern
+            const pattern = [110, 138.59, 164.81, 110, 146.83, 174.61, 110, 138.59];
+            let noteIndex = 0;
+            
+            setInterval(() => {
+                musicOscillator.frequency.setValueAtTime(pattern[noteIndex], audioContext.currentTime);
+                noteIndex = (noteIndex + 1) % pattern.length;
+            }, 500);
+        }
+
+        // Initialize on user interaction (for audio context)
+        document.addEventListener('click', () => {
+            if (audioContext.state === 'suspended') {
+                audioContext.resume();
+                initBackgroundMusic();
+            }
+        }, { once: true });
+    </script>
+</body>
+</html>

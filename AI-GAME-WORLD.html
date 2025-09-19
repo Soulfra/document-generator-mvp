@@ -1,0 +1,799 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>AI Game World - Watch AIs Design & Play</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            background: #0a0a0a;
+            color: #ffffff;
+            overflow: hidden;
+        }
+
+        #gameContainer {
+            display: flex;
+            height: 100vh;
+        }
+
+        /* AI Status Panel */
+        #aiPanel {
+            width: 350px;
+            background: rgba(20, 20, 20, 0.95);
+            padding: 20px;
+            overflow-y: auto;
+            border-right: 1px solid #333;
+        }
+
+        .ai-player-card {
+            background: rgba(40, 40, 40, 0.8);
+            border: 2px solid #444;
+            border-radius: 10px;
+            padding: 15px;
+            margin-bottom: 15px;
+            transition: all 0.3s;
+        }
+
+        .ai-player-card.active {
+            border-color: #0099ff;
+            box-shadow: 0 0 20px rgba(0, 153, 255, 0.3);
+        }
+
+        .ai-name {
+            font-size: 18px;
+            font-weight: bold;
+            color: #0099ff;
+            margin-bottom: 5px;
+        }
+
+        .ai-traits {
+            font-size: 12px;
+            color: #888;
+            margin-bottom: 10px;
+        }
+
+        .ai-status {
+            font-size: 14px;
+            margin: 5px 0;
+        }
+
+        .status-label {
+            color: #666;
+        }
+
+        .status-value {
+            color: #0099ff;
+            font-weight: 600;
+        }
+
+        /* Game World */
+        #gameWorld {
+            flex: 1;
+            position: relative;
+            background: radial-gradient(circle at center, #1a1a2e 0%, #0a0a0a 100%);
+        }
+
+        #worldCanvas {
+            width: 100%;
+            height: 100%;
+        }
+
+        /* AI Chat */
+        #aiChat {
+            position: absolute;
+            bottom: 20px;
+            left: 370px;
+            right: 20px;
+            height: 200px;
+            background: rgba(0, 0, 0, 0.9);
+            border: 1px solid #333;
+            border-radius: 10px;
+            padding: 15px;
+            overflow-y: auto;
+        }
+
+        .chat-message {
+            margin: 5px 0;
+            padding: 5px 10px;
+            border-radius: 5px;
+            font-size: 14px;
+            animation: fadeIn 0.3s ease-in;
+        }
+
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(10px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+
+        .chat-ai-name {
+            font-weight: bold;
+            margin-right: 5px;
+        }
+
+        .chat-thought {
+            color: #888;
+            font-style: italic;
+        }
+
+        .chat-action {
+            color: #0099ff;
+        }
+
+        .chat-discovery {
+            color: #00ff88;
+        }
+
+        /* Control Panel */
+        #controlPanel {
+            position: absolute;
+            top: 20px;
+            right: 20px;
+            background: rgba(0, 0, 0, 0.9);
+            border: 1px solid #333;
+            border-radius: 10px;
+            padding: 20px;
+            min-width: 250px;
+        }
+
+        .control-title {
+            font-size: 16px;
+            margin-bottom: 15px;
+            color: #0099ff;
+        }
+
+        .control-button {
+            display: block;
+            width: 100%;
+            padding: 10px;
+            margin: 5px 0;
+            background: rgba(0, 153, 255, 0.2);
+            border: 2px solid #0099ff;
+            color: #0099ff;
+            border-radius: 5px;
+            cursor: pointer;
+            transition: all 0.3s;
+        }
+
+        .control-button:hover {
+            background: rgba(0, 153, 255, 0.3);
+            transform: translateY(-1px);
+        }
+
+        /* Stats Display */
+        #statsDisplay {
+            position: absolute;
+            top: 20px;
+            left: 370px;
+            background: rgba(0, 0, 0, 0.9);
+            border: 1px solid #333;
+            border-radius: 10px;
+            padding: 15px;
+            min-width: 200px;
+        }
+
+        .stat-row {
+            display: flex;
+            justify-content: space-between;
+            margin: 5px 0;
+            font-size: 14px;
+        }
+
+        .stat-label {
+            color: #888;
+        }
+
+        .stat-value {
+            color: #00ff88;
+            font-weight: bold;
+        }
+
+        /* Design Phase Overlay */
+        #designPhase {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            background: rgba(0, 0, 0, 0.95);
+            border: 2px solid #0099ff;
+            border-radius: 20px;
+            padding: 40px;
+            text-align: center;
+            display: none;
+            z-index: 1000;
+        }
+
+        .design-title {
+            font-size: 24px;
+            color: #0099ff;
+            margin-bottom: 20px;
+        }
+
+        .design-preview {
+            width: 200px;
+            height: 200px;
+            margin: 20px auto;
+            background: rgba(255, 255, 255, 0.1);
+            border-radius: 10px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 48px;
+        }
+
+        .design-choices {
+            margin: 20px 0;
+            font-size: 14px;
+            text-align: left;
+        }
+
+        .design-choice {
+            margin: 5px 0;
+            padding: 5px;
+            background: rgba(0, 153, 255, 0.1);
+            border-radius: 5px;
+        }
+
+        /* Loading Screen */
+        #loadingScreen {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: #0a0a0a;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            z-index: 2000;
+        }
+
+        .loader {
+            text-align: center;
+        }
+
+        .loader-animation {
+            font-size: 48px;
+            animation: spin 2s linear infinite;
+        }
+
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+
+        .loader-text {
+            margin-top: 20px;
+            font-size: 18px;
+            color: #0099ff;
+        }
+    </style>
+</head>
+<body>
+    <!-- Loading Screen -->
+    <div id="loadingScreen">
+        <div class="loader">
+            <div class="loader-animation">🤖</div>
+            <div class="loader-text">Initializing AI Game World...</div>
+        </div>
+    </div>
+
+    <div id="gameContainer">
+        <!-- AI Players Panel -->
+        <div id="aiPanel">
+            <h2 style="margin-bottom: 20px;">AI Players</h2>
+            <div id="aiPlayersList"></div>
+        </div>
+
+        <!-- Game World -->
+        <div id="gameWorld">
+            <canvas id="worldCanvas"></canvas>
+            
+            <!-- Stats Display -->
+            <div id="statsDisplay">
+                <h3 style="margin-bottom: 10px; color: #0099ff;">Session Stats</h3>
+                <div class="stat-row">
+                    <span class="stat-label">Active AIs:</span>
+                    <span class="stat-value" id="activeAIs">0</span>
+                </div>
+                <div class="stat-row">
+                    <span class="stat-label">Total Discoveries:</span>
+                    <span class="stat-value" id="totalDiscoveries">0</span>
+                </div>
+                <div class="stat-row">
+                    <span class="stat-label">Avg Skill Level:</span>
+                    <span class="stat-value" id="avgSkillLevel">0.00</span>
+                </div>
+                <div class="stat-row">
+                    <span class="stat-label">Popular Action:</span>
+                    <span class="stat-value" id="popularAction">None</span>
+                </div>
+            </div>
+            
+            <!-- Control Panel -->
+            <div id="controlPanel">
+                <h3 class="control-title">🎮 Game Controls</h3>
+                <button class="control-button" onclick="addNewAI()">➕ Add New AI Player</button>
+                <button class="control-button" onclick="pauseGame()">⏸️ Pause Game</button>
+                <button class="control-button" onclick="speedUpTime()">⏩ Speed Up Time</button>
+                <button class="control-button" onclick="showStats()">📊 Detailed Stats</button>
+                <button class="control-button" onclick="resetWorld()">🔄 Reset World</button>
+            </div>
+            
+            <!-- AI Chat/Thoughts -->
+            <div id="aiChat">
+                <div style="color: #666; text-align: center; padding: 50px;">
+                    AI thoughts and actions will appear here...
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Design Phase Overlay -->
+    <div id="designPhase">
+        <div class="design-title">AI is Designing Their Character</div>
+        <div class="design-preview" id="designPreview">🎨</div>
+        <div class="design-choices" id="designChoices"></div>
+    </div>
+
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+    <script src="AI-CHARACTER-DESIGNER-PLAYER.js"></script>
+    <script>
+        // AI Game World Manager
+        class AIGameWorld {
+            constructor() {
+                this.scene = new THREE.Scene();
+                this.camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 1000);
+                this.renderer = new THREE.WebGLRenderer({ 
+                    canvas: document.getElementById('worldCanvas'),
+                    antialias: true 
+                });
+                
+                this.aiPlayers = [];
+                this.gameSession = null;
+                this.isPaused = false;
+                this.timeScale = 1;
+                
+                this.init();
+            }
+            
+            init() {
+                // Setup renderer
+                const container = document.getElementById('gameWorld');
+                this.renderer.setSize(container.clientWidth, container.clientHeight);
+                this.renderer.shadowMap.enabled = true;
+                
+                // Setup camera
+                this.camera.position.set(0, 15, 20);
+                this.camera.lookAt(0, 0, 0);
+                
+                // Lighting
+                const ambientLight = new THREE.AmbientLight(0xffffff, 0.6);
+                this.scene.add(ambientLight);
+                
+                const directionalLight = new THREE.DirectionalLight(0xffffff, 0.8);
+                directionalLight.position.set(10, 20, 10);
+                directionalLight.castShadow = true;
+                this.scene.add(directionalLight);
+                
+                // Create game world
+                this.createWorld();
+                
+                // Start game session
+                this.startGameSession();
+                
+                // Animation loop
+                this.animate();
+                
+                // Hide loading screen
+                setTimeout(() => {
+                    document.getElementById('loadingScreen').style.display = 'none';
+                }, 2000);
+            }
+            
+            createWorld() {
+                // Ground
+                const groundGeometry = new THREE.PlaneGeometry(50, 50);
+                const groundMaterial = new THREE.MeshStandardMaterial({ 
+                    color: 0x3a7d44,
+                    roughness: 0.8
+                });
+                const ground = new THREE.Mesh(groundGeometry, groundMaterial);
+                ground.rotation.x = -Math.PI / 2;
+                ground.receiveShadow = true;
+                this.scene.add(ground);
+                
+                // Grid helper
+                const gridHelper = new THREE.GridHelper(50, 50, 0x444444, 0x222222);
+                this.scene.add(gridHelper);
+                
+                // Add some environmental objects
+                this.addEnvironmentObjects();
+            }
+            
+            addEnvironmentObjects() {
+                // Trees
+                const treePositions = [
+                    { x: -10, z: -10 }, { x: 10, z: -10 },
+                    { x: -10, z: 10 }, { x: 10, z: 10 },
+                    { x: 0, z: -15 }, { x: 0, z: 15 }
+                ];
+                
+                treePositions.forEach(pos => {
+                    const trunkGeometry = new THREE.CylinderGeometry(0.5, 0.7, 3);
+                    const trunkMaterial = new THREE.MeshStandardMaterial({ color: 0x8B4513 });
+                    const trunk = new THREE.Mesh(trunkGeometry, trunkMaterial);
+                    trunk.position.set(pos.x, 1.5, pos.z);
+                    trunk.castShadow = true;
+                    this.scene.add(trunk);
+                    
+                    const leavesGeometry = new THREE.ConeGeometry(2, 4, 8);
+                    const leavesMaterial = new THREE.MeshStandardMaterial({ color: 0x228B22 });
+                    const leaves = new THREE.Mesh(leavesGeometry, leavesMaterial);
+                    leaves.position.set(pos.x, 5, pos.z);
+                    leaves.castShadow = true;
+                    this.scene.add(leaves);
+                });
+                
+                // Rocks
+                for (let i = 0; i < 10; i++) {
+                    const rockGeometry = new THREE.DodecahedronGeometry(Math.random() * 0.5 + 0.3);
+                    const rockMaterial = new THREE.MeshStandardMaterial({ 
+                        color: 0x808080,
+                        roughness: 0.9
+                    });
+                    const rock = new THREE.Mesh(rockGeometry, rockMaterial);
+                    rock.position.set(
+                        (Math.random() - 0.5) * 40,
+                        Math.random() * 0.3,
+                        (Math.random() - 0.5) * 40
+                    );
+                    rock.rotation.set(
+                        Math.random() * Math.PI,
+                        Math.random() * Math.PI,
+                        Math.random() * Math.PI
+                    );
+                    rock.castShadow = true;
+                    this.scene.add(rock);
+                }
+            }
+            
+            startGameSession() {
+                // Create AI session
+                this.gameSession = new AIGameSession(3); // Start with 3 AI players
+                
+                // Monitor AI creation
+                this.monitorAIPlayers();
+                
+                // Update stats periodically
+                setInterval(() => {
+                    if (!this.isPaused) {
+                        this.updateStats();
+                    }
+                }, 1000);
+            }
+            
+            monitorAIPlayers() {
+                // Check for new AI players
+                setInterval(() => {
+                    if (this.gameSession) {
+                        this.gameSession.players.forEach((aiPlayer, index) => {
+                            if (!this.aiPlayers.includes(aiPlayer)) {
+                                this.aiPlayers.push(aiPlayer);
+                                this.onNewAIPlayer(aiPlayer, index);
+                            }
+                        });
+                    }
+                }, 500);
+            }
+            
+            onNewAIPlayer(aiPlayer, index) {
+                // Create UI card for AI
+                this.createAICard(aiPlayer, index);
+                
+                // Monitor AI's actions
+                this.monitorAIActions(aiPlayer);
+                
+                // Show design phase
+                if (aiPlayer.currentState === 'designing') {
+                    this.showDesignPhase(aiPlayer);
+                }
+                
+                // Create 3D character when ready
+                this.waitForCharacterCreation(aiPlayer, index);
+            }
+            
+            createAICard(aiPlayer, index) {
+                const aiList = document.getElementById('aiPlayersList');
+                
+                const card = document.createElement('div');
+                card.className = 'ai-player-card';
+                card.id = `ai-card-${index}`;
+                
+                card.innerHTML = `
+                    <div class="ai-name">${aiPlayer.personality.name}</div>
+                    <div class="ai-traits">${aiPlayer.personality.traits.join(', ')}</div>
+                    <div class="ai-status">
+                        <span class="status-label">State:</span>
+                        <span class="status-value" id="ai-state-${index}">${aiPlayer.currentState}</span>
+                    </div>
+                    <div class="ai-status">
+                        <span class="status-label">Skill:</span>
+                        <span class="status-value" id="ai-skill-${index}">0.00</span>
+                    </div>
+                    <div class="ai-status">
+                        <span class="status-label">Mood:</span>
+                        <span class="status-value" id="ai-mood-${index}">Happy</span>
+                    </div>
+                `;
+                
+                aiList.appendChild(card);
+            }
+            
+            monitorAIActions(aiPlayer) {
+                // Override console.log temporarily to capture AI thoughts
+                const originalLog = console.log;
+                const chat = document.getElementById('aiChat');
+                
+                // Intercept AI logs
+                console.log = function(...args) {
+                    originalLog.apply(console, args);
+                    
+                    const message = args.join(' ');
+                    
+                    // Check if it's from this AI
+                    if (message.includes(aiPlayer.personality.name)) {
+                        const chatMessage = document.createElement('div');
+                        chatMessage.className = 'chat-message';
+                        
+                        if (message.includes('💭')) {
+                            chatMessage.innerHTML = `<span class="chat-ai-name">${aiPlayer.personality.name}:</span><span class="chat-thought">${message.split('💭')[1]}</span>`;
+                        } else if (message.includes('🎮')) {
+                            chatMessage.innerHTML = `<span class="chat-ai-name">${aiPlayer.personality.name}:</span><span class="chat-action">${message.split('🎮')[1]}</span>`;
+                        } else if (message.includes('✅')) {
+                            chatMessage.innerHTML = `<span class="chat-discovery">${message}</span>`;
+                        }
+                        
+                        if (chatMessage.innerHTML) {
+                            // Clear initial message if present
+                            if (chat.children[0]?.style?.textAlign === 'center') {
+                                chat.innerHTML = '';
+                            }
+                            
+                            chat.appendChild(chatMessage);
+                            chat.scrollTop = chat.scrollHeight;
+                            
+                            // Keep only last 20 messages
+                            while (chat.children.length > 20) {
+                                chat.removeChild(chat.firstChild);
+                            }
+                        }
+                    }
+                };
+            }
+            
+            showDesignPhase(aiPlayer) {
+                const designPhase = document.getElementById('designPhase');
+                const preview = document.getElementById('designPreview');
+                const choices = document.getElementById('designChoices');
+                
+                designPhase.style.display = 'block';
+                
+                // Update with AI's choices
+                const updateDesign = setInterval(() => {
+                    if (aiPlayer.characterDesign) {
+                        preview.textContent = this.getCharacterEmoji(aiPlayer.characterDesign);
+                        
+                        choices.innerHTML = `
+                            <div class="design-choice">Body: ${aiPlayer.characterDesign.bodyType}</div>
+                            <div class="design-choice">Primary Color: ${aiPlayer.characterDesign.colors.primary}</div>
+                            <div class="design-choice">Movement: ${aiPlayer.characterDesign.movementStyle}</div>
+                            <div class="design-choice">Features: ${Object.entries(aiPlayer.characterDesign.features)
+                                .filter(([k, v]) => v)
+                                .map(([k]) => k)
+                                .join(', ') || 'None'}</div>
+                        `;
+                        
+                        if (aiPlayer.currentState !== 'designing') {
+                            clearInterval(updateDesign);
+                            setTimeout(() => {
+                                designPhase.style.display = 'none';
+                            }, 2000);
+                        }
+                    }
+                }, 500);
+            }
+            
+            getCharacterEmoji(design) {
+                if (design.features.wings) return '🦋';
+                if (design.features.tail) return '🦊';
+                if (design.features.antennae) return '🐛';
+                if (design.features.ears) return '🐰';
+                if (design.bodyType === 'round') return '🟣';
+                if (design.bodyType === 'cube') return '🟦';
+                return '🤖';
+            }
+            
+            waitForCharacterCreation(aiPlayer, index) {
+                const checkInterval = setInterval(() => {
+                    if (aiPlayer.characterDesign && aiPlayer.currentState === 'playing') {
+                        clearInterval(checkInterval);
+                        this.create3DCharacter(aiPlayer, index);
+                    }
+                }, 1000);
+            }
+            
+            create3DCharacter(aiPlayer, index) {
+                // Create character group
+                const character = new THREE.Group();
+                
+                // Body
+                let bodyGeometry;
+                switch (aiPlayer.characterDesign.bodyType) {
+                    case 'round':
+                        bodyGeometry = new THREE.SphereGeometry(0.8, 32, 32);
+                        break;
+                    case 'athletic':
+                        bodyGeometry = new THREE.CapsuleGeometry(0.6, 1.2, 16, 32);
+                        break;
+                    case 'slim':
+                        bodyGeometry = new THREE.CylinderGeometry(0.4, 0.6, 1.5, 16);
+                        break;
+                    case 'cube':
+                        bodyGeometry = new THREE.BoxGeometry(1, 1, 1);
+                        break;
+                }
+                
+                const bodyMaterial = new THREE.MeshStandardMaterial({
+                    color: aiPlayer.characterDesign.colors.primary
+                });
+                const body = new THREE.Mesh(bodyGeometry, bodyMaterial);
+                body.castShadow = true;
+                character.add(body);
+                
+                // Head
+                const headGeometry = new THREE.SphereGeometry(0.4, 32, 32);
+                const headMaterial = new THREE.MeshStandardMaterial({
+                    color: aiPlayer.characterDesign.colors.secondary
+                });
+                const head = new THREE.Mesh(headGeometry, headMaterial);
+                head.position.y = 1.2;
+                head.castShadow = true;
+                character.add(head);
+                
+                // Position character
+                character.position.set(
+                    (index - 1) * 5,
+                    1,
+                    0
+                );
+                
+                this.scene.add(character);
+                aiPlayer.character3D = character;
+                
+                // Animate character based on AI actions
+                this.animateAICharacter(aiPlayer);
+            }
+            
+            animateAICharacter(aiPlayer) {
+                // Simple animation based on AI state
+                const animationLoop = setInterval(() => {
+                    if (!aiPlayer.character3D || this.isPaused) return;
+                    
+                    // Idle animation
+                    aiPlayer.character3D.rotation.y += 0.01;
+                    
+                    // Breathing
+                    const breathing = Math.sin(Date.now() * 0.001) * 0.02;
+                    aiPlayer.character3D.scale.set(1 + breathing, 1 - breathing * 0.5, 1 + breathing);
+                    
+                }, 16);
+            }
+            
+            updateStats() {
+                if (!this.gameSession) return;
+                
+                const stats = this.gameSession.getSessionStats();
+                
+                document.getElementById('activeAIs').textContent = stats.totalPlayers;
+                document.getElementById('totalDiscoveries').textContent = stats.totalDiscoveries;
+                document.getElementById('avgSkillLevel').textContent = stats.averageSkillLevel.toFixed(2);
+                document.getElementById('popularAction').textContent = stats.mostPopularAction || 'None';
+                
+                // Update individual AI stats
+                this.gameSession.players.forEach((player, index) => {
+                    const stateElement = document.getElementById(`ai-state-${index}`);
+                    const skillElement = document.getElementById(`ai-skill-${index}`);
+                    const moodElement = document.getElementById(`ai-mood-${index}`);
+                    
+                    if (stateElement) stateElement.textContent = player.currentState;
+                    if (skillElement) skillElement.textContent = player.gameKnowledge.skillLevel.toFixed(2);
+                    if (moodElement) {
+                        // Simple mood based on recent actions
+                        const recentActions = player.gameKnowledge.discoveries.slice(-5);
+                        const mood = recentActions.length > 3 ? 'Excited' : 
+                                    player.currentState === 'playing' ? 'Happy' : 'Contemplative';
+                        moodElement.textContent = mood;
+                    }
+                    
+                    // Update card active state
+                    const card = document.getElementById(`ai-card-${index}`);
+                    if (card) {
+                        card.classList.toggle('active', player.currentState === 'playing');
+                    }
+                });
+            }
+            
+            animate() {
+                requestAnimationFrame(() => this.animate());
+                
+                if (!this.isPaused) {
+                    // Rotate camera slowly
+                    const time = Date.now() * 0.0001 * this.timeScale;
+                    this.camera.position.x = Math.cos(time) * 25;
+                    this.camera.position.z = Math.sin(time) * 25;
+                    this.camera.lookAt(0, 0, 0);
+                    
+                    this.renderer.render(this.scene, this.camera);
+                }
+            }
+        }
+        
+        // Initialize world
+        let gameWorld;
+        window.addEventListener('load', () => {
+            gameWorld = new AIGameWorld();
+        });
+        
+        // Control functions
+        function addNewAI() {
+            if (gameWorld && gameWorld.gameSession) {
+                const newAI = new AICharacterDesignerPlayer();
+                gameWorld.gameSession.players.push(newAI);
+                console.log('➕ Added new AI player!');
+            }
+        }
+        
+        function pauseGame() {
+            if (gameWorld) {
+                gameWorld.isPaused = !gameWorld.isPaused;
+                event.target.textContent = gameWorld.isPaused ? '▶️ Resume Game' : '⏸️ Pause Game';
+            }
+        }
+        
+        function speedUpTime() {
+            if (gameWorld) {
+                gameWorld.timeScale = gameWorld.timeScale === 1 ? 2 : 1;
+                event.target.textContent = gameWorld.timeScale === 1 ? '⏩ Speed Up Time' : '⏪ Normal Speed';
+            }
+        }
+        
+        function showStats() {
+            if (gameWorld && gameWorld.gameSession) {
+                const stats = gameWorld.gameSession.getSessionStats();
+                console.log('📊 Detailed Session Stats:', stats);
+                
+                gameWorld.gameSession.players.forEach((player, index) => {
+                    console.log(`\n🤖 ${player.personality.name} Stats:`);
+                    console.log(`- Personality: ${player.personality.traits.join(', ')}`);
+                    console.log(`- Skill Level: ${player.gameKnowledge.skillLevel.toFixed(2)}`);
+                    console.log(`- Discoveries: ${player.gameKnowledge.discoveries.length}`);
+                    console.log(`- Favorite Color: ${player.personality.preferences.colors.favorite}`);
+                });
+            }
+        }
+        
+        function resetWorld() {
+            if (confirm('Reset the entire world and all AI players?')) {
+                location.reload();
+            }
+        }
+    </script>
+</body>
+</html>

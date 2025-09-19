@@ -1,0 +1,694 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>🌐 Device Mesh ARPANET - World Visualizer</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            font-family: 'Courier New', monospace;
+            background: #000;
+            color: #00ff00;
+            overflow: hidden;
+        }
+        
+        #container {
+            position: relative;
+            width: 100vw;
+            height: 100vh;
+        }
+        
+        #canvas {
+            position: absolute;
+            top: 0;
+            left: 0;
+        }
+        
+        #ui-overlay {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            pointer-events: none;
+            z-index: 100;
+        }
+        
+        .info-panel {
+            position: absolute;
+            background: rgba(0, 0, 0, 0.9);
+            border: 2px solid #00ff00;
+            border-radius: 10px;
+            padding: 20px;
+            color: #00ff00;
+            font-size: 12px;
+            backdrop-filter: blur(10px);
+            pointer-events: auto;
+        }
+        
+        #device-info {
+            top: 20px;
+            left: 20px;
+            min-width: 300px;
+        }
+        
+        #mesh-status {
+            top: 20px;
+            right: 20px;
+            min-width: 250px;
+        }
+        
+        #world-view {
+            bottom: 20px;
+            left: 20px;
+            min-width: 350px;
+            max-height: 300px;
+            overflow-y: auto;
+        }
+        
+        #controls {
+            bottom: 20px;
+            right: 20px;
+            min-width: 200px;
+        }
+        
+        .status-indicator {
+            display: inline-block;
+            width: 10px;
+            height: 10px;
+            border-radius: 50%;
+            margin-right: 5px;
+        }
+        
+        .status-active { background: #00ff00; }
+        .status-connecting { background: #ffff00; }
+        .status-offline { background: #ff0000; }
+        
+        .device-item {
+            margin: 5px 0;
+            padding: 5px;
+            background: rgba(0, 255, 0, 0.1);
+            border-radius: 3px;
+            font-size: 11px;
+        }
+        
+        .segment-grid {
+            display: grid;
+            grid-template-columns: repeat(8, 1fr);
+            gap: 2px;
+            margin: 10px 0;
+        }
+        
+        .segment-cell {
+            width: 20px;
+            height: 20px;
+            border: 1px solid #333;
+            font-size: 8px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+        
+        .segment-mine { background: #003300; color: #00ff00; }
+        .segment-visible { background: #000033; color: #0099ff; }
+        .segment-hidden { background: #330000; color: #666; }
+        
+        .btn {
+            background: rgba(0, 255, 0, 0.2);
+            border: 1px solid #00ff00;
+            color: #00ff00;
+            padding: 10px 15px;
+            border-radius: 5px;
+            cursor: pointer;
+            margin: 5px 0;
+            display: block;
+            width: 100%;
+            font-family: 'Courier New', monospace;
+        }
+        
+        .btn:hover {
+            background: rgba(0, 255, 0, 0.4);
+        }
+        
+        #mesh-pattern {
+            font-family: monospace;
+            font-size: 8px;
+            line-height: 1;
+            background: #111;
+            padding: 10px;
+            border-radius: 5px;
+            margin: 10px 0;
+            white-space: pre;
+        }
+        
+        .controls-section {
+            margin: 10px 0;
+        }
+        
+        .controls-section h4 {
+            margin-bottom: 5px;
+            color: #ffff00;
+        }
+    </style>
+</head>
+<body>
+    <div id="container">
+        <canvas id="canvas"></canvas>
+        
+        <div id="ui-overlay">
+            <div id="device-info" class="info-panel">
+                <h3>🔒 Device Identity</h3>
+                <div>ID: <span id="device-id">Connecting...</span></div>
+                <div>Fingerprint: <span id="device-fingerprint">Generating...</span></div>
+                <div>World Origin: <span id="world-origin">Calculating...</span></div>
+                <div>My Segments: <span id="my-segments">64</span></div>
+                
+                <h4 style="margin-top: 15px;">🧩 My World Slice</h4>
+                <div class="segment-grid" id="my-slice-grid"></div>
+            </div>
+            
+            <div id="mesh-status" class="info-panel">
+                <h3>🌐 Mesh Network</h3>
+                <div><span class="status-indicator status-active"></span>Network: <span id="network-status">Active</span></div>
+                <div>Discovered: <span id="discovered-count">0</span> devices</div>
+                <div>Handshakes: <span id="handshake-count">0</span> completed</div>
+                <div>Visible Segments: <span id="visible-segments">0</span></div>
+                
+                <h4 style="margin-top: 15px;">📡 Discovered Devices</h4>
+                <div id="device-list"></div>
+            </div>
+            
+            <div id="world-view" class="info-panel">
+                <h3>👁️ World View Through Mesh</h3>
+                <div>Total Visible World: <span id="total-segments">64</span> segments</div>
+                
+                <h4 style="margin-top: 10px;">🔍 Visibility Layers</h4>
+                <div id="visibility-layers"></div>
+                
+                <h4 style="margin-top: 10px;">🕸️ Handshake Mesh Pattern</h4>
+                <div id="mesh-pattern"></div>
+            </div>
+            
+            <div id="controls" class="info-panel">
+                <h3>🎮 Controls</h3>
+                
+                <div class="controls-section">
+                    <h4>View Mode</h4>
+                    <button class="btn" onclick="setViewMode('my_world')">My World Only</button>
+                    <button class="btn" onclick="setViewMode('visible_mesh')">Visible Mesh</button>
+                    <button class="btn" onclick="setViewMode('all_devices')">All Devices</button>
+                </div>
+                
+                <div class="controls-section">
+                    <h4>Mesh Display</h4>
+                    <button class="btn" onclick="toggleMeshLines()">Toggle Mesh Lines</button>
+                    <button class="btn" onclick="toggleHandshakeOverlay()">Toggle Handshake</button>
+                    <button class="btn" onclick="regenerateWorld()">Regenerate World</button>
+                </div>
+                
+                <div class="controls-section">
+                    <h4>Network</h4>
+                    <button class="btn" onclick="scanDevices()">Scan Devices</button>
+                    <button class="btn" onclick="broadcastPresence()">Broadcast Presence</button>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <script>
+        // Three.js scene setup
+        let scene, camera, renderer;
+        let myWorldGroup, visibleMeshGroup, meshLinesGroup;
+        let deviceMeshNetwork = null;
+        let viewMode = 'visible_mesh';
+        let showMeshLines = true;
+        let showHandshakeOverlay = true;
+        
+        // Simulated device mesh data (would connect to actual DEVICE-MESH-ARPANET.js)
+        let simulatedMeshData = {
+            deviceId: generateDeviceId(),
+            fingerprint: generateFingerprint(),
+            worldOrigin: { x: 0, y: 0, z: 0 },
+            mySegments: generateMySegments(),
+            discoveredDevices: new Map(),
+            visibilityLayers: new Map(),
+            handshakeMeshes: new Map()
+        };
+        
+        function init() {
+            // Initialize Three.js
+            scene = new THREE.Scene();
+            scene.fog = new THREE.FogExp2(0x000011, 0.002);
+            
+            camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 10000);
+            camera.position.set(50, 50, 50);
+            camera.lookAt(0, 0, 0);
+            
+            renderer = new THREE.WebGLRenderer({ canvas: document.getElementById('canvas'), antialias: true });
+            renderer.setSize(window.innerWidth, window.innerHeight);
+            renderer.setClearColor(0x000011);
+            renderer.shadowMap.enabled = true;
+            renderer.shadowMap.type = THREE.PCFShadowMap;
+            
+            // Lighting
+            const ambientLight = new THREE.AmbientLight(0x001122, 0.3);
+            scene.add(ambientLight);
+            
+            const directionalLight = new THREE.DirectionalLight(0x00ff00, 0.8);
+            directionalLight.position.set(100, 100, 50);
+            directionalLight.castShadow = true;
+            scene.add(directionalLight);
+            
+            // Groups for different world elements
+            myWorldGroup = new THREE.Group();
+            visibleMeshGroup = new THREE.Group();
+            meshLinesGroup = new THREE.Group();
+            
+            scene.add(myWorldGroup);
+            scene.add(visibleMeshGroup);
+            scene.add(meshLinesGroup);
+            
+            // Initialize UI
+            updateDeviceInfo();
+            updateMeshStatus();
+            
+            // Start mesh visualization
+            visualizeMyWorld();
+            
+            // Start device discovery simulation
+            simulateDeviceDiscovery();
+            
+            // Start render loop
+            animate();
+            
+            // Camera controls
+            setupCameraControls();
+        }
+        
+        function generateDeviceId() {
+            return Array.from({length: 16}, () => Math.floor(Math.random() * 16).toString(16)).join('');
+        }
+        
+        function generateFingerprint() {
+            return Array.from({length: 64}, () => Math.floor(Math.random() * 16).toString(16)).join('');
+        }
+        
+        function generateMySegments() {
+            const segments = [];
+            for (let i = 0; i < 64; i++) {
+                segments.push({
+                    id: i,
+                    coordinates: calculateSegmentCoordinates(i),
+                    type: ['voxels', 'entities', 'objects', 'portals', 'data_nodes'][Math.floor(Math.random() * 5)],
+                    density: Math.random(),
+                    color: '#' + Math.floor(Math.random()*16777215).toString(16)
+                });
+            }
+            return segments;
+        }
+        
+        function calculateSegmentCoordinates(segmentIndex) {
+            const segmentSize = 12.5;
+            const gridX = segmentIndex % 8;
+            const gridY = Math.floor(segmentIndex / 8) % 8;
+            const gridZ = Math.floor(segmentIndex / 64);
+            
+            return {
+                x: (gridX - 4) * segmentSize,
+                y: (gridY - 4) * segmentSize,
+                z: (gridZ - 4) * segmentSize,
+                size: segmentSize
+            };
+        }
+        
+        function visualizeMyWorld() {
+            // Clear existing world
+            myWorldGroup.clear();
+            
+            simulatedMeshData.mySegments.forEach(segment => {
+                const geometry = new THREE.BoxGeometry(
+                    segment.coordinates.size * 0.8,
+                    segment.coordinates.size * 0.8,
+                    segment.coordinates.size * 0.8
+                );
+                
+                const material = new THREE.MeshPhongMaterial({
+                    color: segment.color,
+                    transparent: true,
+                    opacity: 0.6 + (segment.density * 0.4),
+                    wireframe: segment.type === 'portals'
+                });
+                
+                const mesh = new THREE.Mesh(geometry, material);
+                mesh.position.set(
+                    segment.coordinates.x,
+                    segment.coordinates.y,
+                    segment.coordinates.z
+                );
+                
+                mesh.castShadow = true;
+                mesh.receiveShadow = true;
+                
+                myWorldGroup.add(mesh);
+                
+                // Add segment type indicator
+                if (segment.type === 'portals') {
+                    const ringGeometry = new THREE.RingGeometry(segment.coordinates.size * 0.4, segment.coordinates.size * 0.5, 8);
+                    const ringMaterial = new THREE.MeshBasicMaterial({
+                        color: 0x00ffff,
+                        transparent: true,
+                        opacity: 0.8,
+                        side: THREE.DoubleSide
+                    });
+                    const ring = new THREE.Mesh(ringGeometry, ringMaterial);
+                    ring.position.copy(mesh.position);
+                    ring.position.y += segment.coordinates.size * 0.6;
+                    myWorldGroup.add(ring);
+                }
+            });
+            
+            console.log('🧩 My world visualized:', simulatedMeshData.mySegments.length, 'segments');
+        }
+        
+        function simulateDeviceDiscovery() {
+            // Simulate discovering other devices over time
+            setTimeout(() => {
+                const deviceId = generateDeviceId();
+                simulatedMeshData.discoveredDevices.set(deviceId, {
+                    deviceId: deviceId,
+                    address: '192.168.1.' + (100 + Math.floor(Math.random() * 50)),
+                    worldOrigin: {
+                        x: (Math.random() - 0.5) * 200,
+                        y: (Math.random() - 0.5) * 200,
+                        z: (Math.random() - 0.5) * 200
+                    },
+                    handshakeComplete: false
+                });
+                
+                console.log('🔍 Discovered device:', deviceId);
+                updateMeshStatus();
+                
+                // Simulate handshake completion
+                setTimeout(() => {
+                    simulateHandshakeComplete(deviceId);
+                }, 2000 + Math.random() * 3000);
+                
+            }, 3000 + Math.random() * 5000);
+            
+            // Continue discovering devices
+            setTimeout(() => simulateDeviceDiscovery(), 10000 + Math.random() * 15000);
+        }
+        
+        function simulateHandshakeComplete(deviceId) {
+            const device = simulatedMeshData.discoveredDevices.get(deviceId);
+            if (!device) return;
+            
+            device.handshakeComplete = true;
+            
+            // Generate visibility mask
+            const visibilityMask = [];
+            for (let i = 0; i < 64; i++) {
+                visibilityMask.push({
+                    segmentIndex: i,
+                    visible: Math.random() > 0.6,
+                    opacity: Math.random() * 0.8 + 0.2,
+                    accessLevel: Math.random() > 0.7 ? 'full' : 'limited'
+                });
+            }
+            
+            simulatedMeshData.visibilityLayers.set(deviceId, {
+                deviceId: deviceId,
+                visibilityMask: visibilityMask,
+                meshPattern: generateMeshPattern(deviceId)
+            });
+            
+            console.log('🤝 Handshake completed with:', deviceId);
+            visualizeVisibleMesh(deviceId);
+            updateMeshStatus();
+            updateWorldView();
+        }
+        
+        function generateMeshPattern(deviceId) {
+            let pattern = '';
+            for (let y = 0; y < 8; y++) {
+                for (let x = 0; x < 8; x++) {
+                    const hash = parseInt((simulatedMeshData.deviceId + deviceId).substring((y*8+x)%30, (y*8+x)%30+2), 16);
+                    pattern += hash > 128 ? '█' : '░';
+                }
+                pattern += '\n';
+            }
+            return pattern;
+        }
+        
+        function visualizeVisibleMesh(deviceId) {
+            const visibilityLayer = simulatedMeshData.visibilityLayers.get(deviceId);
+            const device = simulatedMeshData.discoveredDevices.get(deviceId);
+            
+            if (!visibilityLayer || !device) return;
+            
+            visibilityLayer.visibilityMask.forEach(mask => {
+                if (!mask.visible) return;
+                
+                const coordinates = calculateSegmentCoordinates(mask.segmentIndex);
+                
+                // Offset by device's world origin
+                coordinates.x += device.worldOrigin.x;
+                coordinates.y += device.worldOrigin.y;
+                coordinates.z += device.worldOrigin.z;
+                
+                const geometry = new THREE.BoxGeometry(
+                    coordinates.size * 0.6,
+                    coordinates.size * 0.6,
+                    coordinates.size * 0.6
+                );
+                
+                const material = new THREE.MeshPhongMaterial({
+                    color: 0x0099ff,
+                    transparent: true,
+                    opacity: mask.opacity * 0.5,
+                    wireframe: mask.accessLevel === 'limited'
+                });
+                
+                const mesh = new THREE.Mesh(geometry, material);
+                mesh.position.set(coordinates.x, coordinates.y, coordinates.z);
+                mesh.userData = { deviceId: deviceId, segmentIndex: mask.segmentIndex };
+                
+                visibleMeshGroup.add(mesh);
+            });
+            
+            // Create mesh connection line
+            if (showMeshLines) {
+                const lineGeometry = new THREE.BufferGeometry();
+                const positions = [
+                    0, 0, 0,  // My world center
+                    device.worldOrigin.x, device.worldOrigin.y, device.worldOrigin.z  // Other device center
+                ];
+                lineGeometry.setAttribute('position', new THREE.Float32BufferAttribute(positions, 3));
+                
+                const lineMaterial = new THREE.LineBasicMaterial({
+                    color: 0x00ffff,
+                    transparent: true,
+                    opacity: 0.6
+                });
+                
+                const line = new THREE.Line(lineGeometry, lineMaterial);
+                meshLinesGroup.add(line);
+            }
+        }
+        
+        function updateDeviceInfo() {
+            document.getElementById('device-id').textContent = simulatedMeshData.deviceId;
+            document.getElementById('device-fingerprint').textContent = simulatedMeshData.fingerprint.substring(0, 16) + '...';
+            document.getElementById('world-origin').textContent = 
+                \`(\${simulatedMeshData.worldOrigin.x}, \${simulatedMeshData.worldOrigin.y}, \${simulatedMeshData.worldOrigin.z})\`;
+            document.getElementById('my-segments').textContent = simulatedMeshData.mySegments.length;
+            
+            // Update my slice grid
+            const grid = document.getElementById('my-slice-grid');
+            grid.innerHTML = '';
+            
+            for (let i = 0; i < 64; i++) {
+                const cell = document.createElement('div');
+                cell.className = 'segment-cell segment-mine';
+                cell.textContent = i.toString(16).toUpperCase();
+                cell.title = \`Segment \${i}: \${simulatedMeshData.mySegments[i].type}\`;
+                grid.appendChild(cell);
+            }
+        }
+        
+        function updateMeshStatus() {
+            document.getElementById('discovered-count').textContent = simulatedMeshData.discoveredDevices.size;
+            document.getElementById('handshake-count').textContent = 
+                Array.from(simulatedMeshData.discoveredDevices.values()).filter(d => d.handshakeComplete).length;
+            
+            let visibleSegments = simulatedMeshData.mySegments.length;
+            simulatedMeshData.visibilityLayers.forEach(layer => {
+                visibleSegments += layer.visibilityMask.filter(m => m.visible).length;
+            });
+            document.getElementById('visible-segments').textContent = visibleSegments;
+            
+            // Update device list
+            const deviceList = document.getElementById('device-list');
+            deviceList.innerHTML = '';
+            
+            simulatedMeshData.discoveredDevices.forEach(device => {
+                const deviceItem = document.createElement('div');
+                deviceItem.className = 'device-item';
+                deviceItem.innerHTML = \`
+                    <span class="status-indicator \${device.handshakeComplete ? 'status-active' : 'status-connecting'}"></span>
+                    \${device.deviceId.substring(0, 8)}...
+                    <br><small>\${device.address}</small>
+                \`;
+                deviceList.appendChild(deviceItem);
+            });
+        }
+        
+        function updateWorldView() {
+            let totalSegments = simulatedMeshData.mySegments.length;
+            simulatedMeshData.visibilityLayers.forEach(layer => {
+                totalSegments += layer.visibilityMask.filter(m => m.visible).length;
+            });
+            document.getElementById('total-segments').textContent = totalSegments;
+            
+            // Update visibility layers
+            const layersDiv = document.getElementById('visibility-layers');
+            layersDiv.innerHTML = '';
+            
+            simulatedMeshData.visibilityLayers.forEach((layer, deviceId) => {
+                const visibleCount = layer.visibilityMask.filter(m => m.visible).length;
+                const layerDiv = document.createElement('div');
+                layerDiv.className = 'device-item';
+                layerDiv.innerHTML = \`
+                    Device \${deviceId.substring(0, 8)}...: \${visibleCount}/64 segments visible
+                \`;
+                layersDiv.appendChild(layerDiv);
+            });
+            
+            // Update mesh pattern (show first discovered device's pattern)
+            const meshPatternDiv = document.getElementById('mesh-pattern');
+            const firstLayer = Array.from(simulatedMeshData.visibilityLayers.values())[0];
+            if (firstLayer) {
+                meshPatternDiv.textContent = firstLayer.meshPattern;
+            } else {
+                meshPatternDiv.textContent = 'No handshake meshes yet...';
+            }
+        }
+        
+        function animate() {
+            requestAnimationFrame(animate);
+            
+            // Rotate world slightly
+            if (myWorldGroup) {
+                myWorldGroup.rotation.y += 0.002;
+            }
+            if (visibleMeshGroup) {
+                visibleMeshGroup.rotation.y += 0.001;
+            }
+            
+            // Pulse mesh lines
+            if (meshLinesGroup && showMeshLines) {
+                const pulse = Math.sin(Date.now() * 0.003) * 0.3 + 0.7;
+                meshLinesGroup.children.forEach(line => {
+                    line.material.opacity = pulse;
+                });
+            }
+            
+            renderer.render(scene, camera);
+        }
+        
+        function setupCameraControls() {
+            let mouseDown = false;
+            let mouseX = 0, mouseY = 0;
+            
+            document.addEventListener('mousedown', (event) => {
+                mouseDown = true;
+                mouseX = event.clientX;
+                mouseY = event.clientY;
+            });
+            
+            document.addEventListener('mouseup', () => {
+                mouseDown = false;
+            });
+            
+            document.addEventListener('mousemove', (event) => {
+                if (!mouseDown) return;
+                
+                const deltaX = event.clientX - mouseX;
+                const deltaY = event.clientY - mouseY;
+                
+                camera.position.x = camera.position.x * Math.cos(deltaX * 0.01) - camera.position.z * Math.sin(deltaX * 0.01);
+                camera.position.z = camera.position.x * Math.sin(deltaX * 0.01) + camera.position.z * Math.cos(deltaX * 0.01);
+                camera.position.y += deltaY * 0.5;
+                
+                camera.lookAt(0, 0, 0);
+                
+                mouseX = event.clientX;
+                mouseY = event.clientY;
+            });
+            
+            document.addEventListener('wheel', (event) => {
+                const scale = event.deltaY > 0 ? 1.1 : 0.9;
+                camera.position.multiplyScalar(scale);
+                camera.lookAt(0, 0, 0);
+            });
+        }
+        
+        // Control functions
+        function setViewMode(mode) {
+            viewMode = mode;
+            
+            myWorldGroup.visible = mode === 'my_world' || mode === 'visible_mesh';
+            visibleMeshGroup.visible = mode === 'visible_mesh' || mode === 'all_devices';
+            meshLinesGroup.visible = mode === 'visible_mesh' || mode === 'all_devices';
+            
+            console.log('👁️ View mode changed to:', mode);
+        }
+        
+        function toggleMeshLines() {
+            showMeshLines = !showMeshLines;
+            meshLinesGroup.visible = showMeshLines;
+            console.log('🕸️ Mesh lines:', showMeshLines ? 'ON' : 'OFF');
+        }
+        
+        function toggleHandshakeOverlay() {
+            showHandshakeOverlay = !showHandshakeOverlay;
+            // Implementation for handshake overlay
+            console.log('🤝 Handshake overlay:', showHandshakeOverlay ? 'ON' : 'OFF');
+        }
+        
+        function regenerateWorld() {
+            simulatedMeshData.mySegments = generateMySegments();
+            visualizeMyWorld();
+            updateDeviceInfo();
+            console.log('🔄 World regenerated');
+        }
+        
+        function scanDevices() {
+            console.log('📡 Scanning for devices...');
+            simulateDeviceDiscovery();
+        }
+        
+        function broadcastPresence() {
+            console.log('📢 Broadcasting presence to network');
+        }
+        
+        // Initialize when page loads
+        window.addEventListener('load', init);
+        
+        console.log('🌐 Device Mesh ARPANET Visualizer loaded');
+        console.log('Features:');
+        console.log('  ✅ Device-specific world slices');
+        console.log('  ✅ Handshake-based visibility');
+        console.log('  ✅ Mesh pattern visualization');
+        console.log('  ✅ Real-time device discovery');
+        console.log('  ✅ Interactive 3D world view');
+        console.log('  ✅ Segment-level visibility control');
+    </script>
+</body>
+</html>

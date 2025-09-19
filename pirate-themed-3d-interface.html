@@ -1,0 +1,813 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>🏴‍☠️ Pirate Command & Control - Anomaly Defense Interface</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            background: linear-gradient(135deg, #0a0f29 0%, #1a1a3a 100%);
+            font-family: 'Courier New', monospace;
+            color: #00ffff;
+            overflow: hidden;
+            position: relative;
+        }
+        
+        .pirate-hud {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            pointer-events: none;
+            z-index: 1000;
+        }
+        
+        .compass-overlay {
+            position: absolute;
+            top: 20px;
+            right: 20px;
+            width: 150px;
+            height: 150px;
+            border: 3px solid #ffd700;
+            border-radius: 50%;
+            background: radial-gradient(circle, rgba(255, 215, 0, 0.1) 0%, transparent 70%);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 24px;
+            animation: compassSpin 10s linear infinite;
+        }
+        
+        @keyframes compassSpin {
+            from { transform: rotate(0deg); }
+            to { transform: rotate(360deg); }
+        }
+        
+        .treasure-map-corner {
+            position: absolute;
+            bottom: 20px;
+            left: 20px;
+            width: 200px;
+            height: 150px;
+            background: rgba(139, 69, 19, 0.3);
+            border: 2px solid #8b4513;
+            border-radius: 5px;
+            padding: 10px;
+            font-size: 12px;
+            overflow-y: auto;
+            pointer-events: auto;
+        }
+        
+        .anomaly-radar {
+            position: absolute;
+            top: 50%;
+            left: 20px;
+            transform: translateY(-50%);
+            width: 200px;
+            height: 200px;
+            border: 2px solid #ff4444;
+            border-radius: 50%;
+            background: radial-gradient(circle, rgba(255, 68, 68, 0.1) 0%, transparent 70%);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+        
+        .radar-sweep {
+            position: absolute;
+            width: 2px;
+            height: 100px;
+            background: linear-gradient(to top, transparent, #ff4444);
+            transform-origin: bottom center;
+            animation: radarSweep 3s linear infinite;
+        }
+        
+        @keyframes radarSweep {
+            from { transform: rotate(0deg); }
+            to { transform: rotate(360deg); }
+        }
+        
+        .ship-status-panel {
+            position: absolute;
+            top: 20px;
+            left: 50%;
+            transform: translateX(-50%);
+            background: rgba(0, 0, 0, 0.7);
+            border: 2px solid #ffd700;
+            padding: 15px;
+            border-radius: 10px;
+            min-width: 400px;
+            text-align: center;
+        }
+        
+        .control-panel {
+            position: absolute;
+            bottom: 20px;
+            right: 20px;
+            background: rgba(0, 0, 0, 0.8);
+            border: 2px solid #00ffff;
+            padding: 15px;
+            border-radius: 10px;
+            pointer-events: auto;
+        }
+        
+        .button {
+            background: linear-gradient(45deg, #ff6b35, #ff8500);
+            border: none;
+            color: white;
+            padding: 8px 15px;
+            margin: 5px;
+            border-radius: 5px;
+            cursor: pointer;
+            font-family: 'Courier New', monospace;
+            font-weight: bold;
+            transition: all 0.3s;
+        }
+        
+        .button:hover {
+            transform: scale(1.1);
+            box-shadow: 0 0 20px rgba(255, 107, 53, 0.5);
+        }
+        
+        .quantum-interference {
+            position: absolute;
+            width: 100%;
+            height: 100%;
+            background: 
+                repeating-linear-gradient(
+                    45deg,
+                    transparent,
+                    transparent 2px,
+                    rgba(255, 0, 255, 0.03) 2px,
+                    rgba(255, 0, 255, 0.03) 4px
+                );
+            pointer-events: none;
+            animation: quantumFlicker 0.5s infinite alternate;
+        }
+        
+        @keyframes quantumFlicker {
+            0% { opacity: 0.3; }
+            100% { opacity: 0.1; }
+        }
+        
+        .cryptonote-shield {
+            position: absolute;
+            top: 50%;
+            right: 250px;
+            transform: translateY(-50%);
+            width: 100px;
+            height: 100px;
+            border: 3px solid #8800ff;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            background: radial-gradient(circle, rgba(136, 0, 255, 0.2) 0%, transparent 70%);
+            animation: shieldPulse 2s ease-in-out infinite;
+        }
+        
+        @keyframes shieldPulse {
+            0%, 100% { transform: translateY(-50%) scale(1); }
+            50% { transform: translateY(-50%) scale(1.1); }
+        }
+        
+        #threejs-container {
+            width: 100%;
+            height: 100vh;
+            position: relative;
+            z-index: 1;
+        }
+        
+        .log-stream {
+            position: absolute;
+            bottom: 180px;
+            left: 20px;
+            width: 300px;
+            height: 200px;
+            background: rgba(0, 0, 0, 0.8);
+            border: 1px solid #00ffff;
+            padding: 10px;
+            font-size: 10px;
+            overflow-y: auto;
+            pointer-events: auto;
+        }
+        
+        .log-entry {
+            margin-bottom: 5px;
+            color: #00ff00;
+        }
+        
+        .log-entry.warning {
+            color: #ffaa00;
+        }
+        
+        .log-entry.error {
+            color: #ff4444;
+        }
+        
+        .log-entry.anomaly {
+            color: #ff00ff;
+            font-weight: bold;
+        }
+    </style>
+</head>
+<body>
+    <!-- Three.js Container -->
+    <div id="threejs-container"></div>
+    
+    <!-- Quantum Interference Overlay -->
+    <div class="quantum-interference"></div>
+    
+    <!-- Pirate HUD Overlay -->
+    <div class="pirate-hud">
+        <!-- Navigation Compass -->
+        <div class="compass-overlay">
+            🧭
+        </div>
+        
+        <!-- Ship Status Panel -->
+        <div class="ship-status-panel">
+            <h3>🏴‍☠️ SS ANOMALY HUNTER - STATUS REPORT</h3>
+            <div style="display: flex; justify-content: space-between; margin-top: 10px;">
+                <div>Hull: <span id="hull-status" style="color: #00ff00;">100%</span></div>
+                <div>Quantum Shield: <span id="quantum-shield" style="color: #8800ff;">ACTIVE</span></div>
+                <div>Anomalies: <span id="anomaly-count" style="color: #ff4444;">0</span></div>
+            </div>
+        </div>
+        
+        <!-- Anomaly Radar -->
+        <div class="anomaly-radar">
+            <div class="radar-sweep"></div>
+            <div style="text-align: center; font-size: 12px;">
+                ANOMALY<br>RADAR
+            </div>
+        </div>
+        
+        <!-- CryptoNote Shield -->
+        <div class="cryptonote-shield">
+            🛡️
+        </div>
+        
+        <!-- Treasure Map (System Info) -->
+        <div class="treasure-map-corner">
+            <h4>🗺️ TREASURE MAP</h4>
+            <div id="system-info" style="font-size: 10px; margin-top: 10px;">
+                <div>📍 Current Position: Sea of Code</div>
+                <div>🌊 Weather: Quantum Storms</div>
+                <div>💰 Bounty: High-Value Anomalies</div>
+                <div>⚔️ Threat Level: Variable</div>
+            </div>
+        </div>
+        
+        <!-- Control Panel -->
+        <div class="control-panel">
+            <h4>⚓ COMMAND CONTROLS</h4>
+            <div style="margin-top: 10px;">
+                <button class="button" onclick="fireCannons()">🎯 FIRE CANNONS</button>
+                <button class="button" onclick="deployNet()">🕸️ DEPLOY NET</button><br>
+                <button class="button" onclick="raiseFlag()">🏴‍☠️ RAISE FLAG</button>
+                <button class="button" onclick="emergencyDive()">💨 DIVE DIVE</button><br>
+                <button class="button" onclick="toggleQuantumShield()">🛡️ QUANTUM SHIELD</button>
+            </div>
+        </div>
+        
+        <!-- Live Log Stream -->
+        <div class="log-stream" id="log-stream">
+            <div class="log-entry">🏴‍☠️ Pirate Command Interface Online</div>
+            <div class="log-entry">🔍 Anomaly detection systems active</div>
+            <div class="log-entry">🛡️ CryptoNote defense shields engaged</div>
+        </div>
+    </div>
+
+    <!-- Three.js and Dependencies -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/dat-gui/0.7.7/dat.gui.min.js"></script>
+    
+    <script>
+        // 🏴‍☠️ PIRATE THEMED 3D INTERFACE
+        // Integrates anomaly detection with visual pirate command interface
+        
+        let scene, camera, renderer, ship, ocean, particles;
+        let anomalies = [];
+        let quantumInterferences = [];
+        let cryptonoteShields = [];
+        let pirateFleet = [];
+        
+        // Initialize the 3D pirate world
+        function initPirate3DWorld() {
+            // Scene setup
+            scene = new THREE.Scene();
+            scene.fog = new THREE.Fog(0x0a0f29, 1, 1000);
+            
+            // Camera setup
+            camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 2000);
+            camera.position.set(0, 150, 300);
+            camera.lookAt(0, 0, 0);
+            
+            // Renderer setup
+            renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true });
+            renderer.setSize(window.innerWidth, window.innerHeight);
+            renderer.setClearColor(0x0a0f29, 1);
+            renderer.shadowMap.enabled = true;
+            renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+            
+            document.getElementById('threejs-container').appendChild(renderer.domElement);
+            
+            // Create pirate ship
+            createPirateShip();
+            
+            // Create ocean
+            createOcean();
+            
+            // Create atmosphere
+            createAtmosphere();
+            
+            // Create anomaly particles
+            createAnomalyParticles();
+            
+            // Create quantum interference patterns
+            createQuantumInterferences();
+            
+            // Create CryptoNote defense shields
+            createCryptoNoteShields();
+            
+            // Add lighting
+            setupLighting();
+            
+            // Start animation loop
+            animate();
+            
+            // Start anomaly detection simulation
+            startAnomalyDetection();
+            
+            console.log('🏴‍☠️ Pirate 3D Interface initialized');
+            logMessage('🏴‍☠️ All systems operational, ready to hunt anomalies!');
+        }
+        
+        function createPirateShip() {
+            const shipGroup = new THREE.Group();
+            
+            // Hull
+            const hullGeometry = new THREE.BoxGeometry(60, 15, 8);
+            const hullMaterial = new THREE.MeshLambertMaterial({ color: 0x8B4513 });
+            const hull = new THREE.Mesh(hullGeometry, hullMaterial);
+            hull.position.y = 0;
+            shipGroup.add(hull);
+            
+            // Mast
+            const mastGeometry = new THREE.CylinderGeometry(1, 1, 80);
+            const mastMaterial = new THREE.MeshLambertMaterial({ color: 0x654321 });
+            const mast = new THREE.Mesh(mastGeometry, mastMaterial);
+            mast.position.y = 40;
+            shipGroup.add(mast);
+            
+            // Main Sail
+            const sailGeometry = new THREE.PlaneGeometry(40, 60);
+            const sailMaterial = new THREE.MeshLambertMaterial({ 
+                color: 0xffffff, 
+                transparent: true, 
+                opacity: 0.8,
+                side: THREE.DoubleSide
+            });
+            const sail = new THREE.Mesh(sailGeometry, sailMaterial);
+            sail.position.set(0, 30, 5);
+            shipGroup.add(sail);
+            
+            // Pirate Flag
+            const flagGeometry = new THREE.PlaneGeometry(15, 10);
+            const flagMaterial = new THREE.MeshLambertMaterial({ 
+                color: 0x000000,
+                transparent: true,
+                opacity: 0.9,
+                side: THREE.DoubleSide
+            });
+            const flag = new THREE.Mesh(flagGeometry, flagMaterial);
+            flag.position.set(0, 70, 2);
+            shipGroup.add(flag);
+            
+            // Cannons
+            for (let i = 0; i < 6; i++) {
+                const cannonGeometry = new THREE.CylinderGeometry(1, 1.5, 8);
+                const cannonMaterial = new THREE.MeshLambertMaterial({ color: 0x333333 });
+                const cannon = new THREE.Mesh(cannonGeometry, cannonMaterial);
+                cannon.rotation.z = Math.PI / 2;
+                cannon.position.set((i - 2.5) * 8, 5, i % 2 === 0 ? 6 : -6);
+                shipGroup.add(cannon);
+            }
+            
+            ship = shipGroup;
+            ship.position.y = 20;
+            scene.add(ship);
+        }
+        
+        function createOcean() {
+            const oceanGeometry = new THREE.PlaneGeometry(2000, 2000, 100, 100);
+            const oceanMaterial = new THREE.MeshLambertMaterial({ 
+                color: 0x0066aa,
+                transparent: true,
+                opacity: 0.8
+            });
+            
+            ocean = new THREE.Mesh(oceanGeometry, oceanMaterial);
+            ocean.rotation.x = -Math.PI / 2;
+            ocean.position.y = -10;
+            scene.add(ocean);
+            
+            // Add wave animation
+            const vertices = ocean.geometry.attributes.position.array;
+            for (let i = 0; i < vertices.length; i += 3) {
+                vertices[i + 2] = Math.sin(vertices[i] * 0.01) * Math.cos(vertices[i + 1] * 0.01) * 2;
+            }
+            ocean.geometry.attributes.position.needsUpdate = true;
+        }
+        
+        function createAtmosphere() {
+            // Stars
+            const starsGeometry = new THREE.BufferGeometry();
+            const starsMaterial = new THREE.PointsMaterial({ color: 0xffffff, size: 2 });
+            
+            const starsVertices = [];
+            for (let i = 0; i < 1000; i++) {
+                const x = (Math.random() - 0.5) * 2000;
+                const y = Math.random() * 500 + 200;
+                const z = (Math.random() - 0.5) * 2000;
+                starsVertices.push(x, y, z);
+            }
+            
+            starsGeometry.setAttribute('position', new THREE.Float32BufferAttribute(starsVertices, 3));
+            const stars = new THREE.Points(starsGeometry, starsMaterial);
+            scene.add(stars);
+            
+            // Moon
+            const moonGeometry = new THREE.SphereGeometry(30, 32, 32);
+            const moonMaterial = new THREE.MeshLambertMaterial({ color: 0xffffcc });
+            const moon = new THREE.Mesh(moonGeometry, moonMaterial);
+            moon.position.set(-500, 400, -800);
+            scene.add(moon);
+        }
+        
+        function createAnomalyParticles() {
+            const particleCount = 200;
+            const particlesGeometry = new THREE.BufferGeometry();
+            const particlesMaterial = new THREE.PointsMaterial({
+                color: 0xff4444,
+                size: 4,
+                transparent: true,
+                opacity: 0.8
+            });
+            
+            const positions = new Float32Array(particleCount * 3);
+            const velocities = new Float32Array(particleCount * 3);
+            
+            for (let i = 0; i < particleCount * 3; i += 3) {
+                positions[i] = (Math.random() - 0.5) * 400;
+                positions[i + 1] = Math.random() * 200 + 50;
+                positions[i + 2] = (Math.random() - 0.5) * 400;
+                
+                velocities[i] = (Math.random() - 0.5) * 0.5;
+                velocities[i + 1] = (Math.random() - 0.5) * 0.2;
+                velocities[i + 2] = (Math.random() - 0.5) * 0.5;
+            }
+            
+            particlesGeometry.setAttribute('position', new THREE.BufferAttribute(positions, 3));
+            particlesGeometry.userData = { velocities: velocities };
+            
+            particles = new THREE.Points(particlesGeometry, particlesMaterial);
+            scene.add(particles);
+        }
+        
+        function createQuantumInterferences() {
+            for (let i = 0; i < 10; i++) {
+                const interferenceGeometry = new THREE.RingGeometry(10, 15, 16);
+                const interferenceMaterial = new THREE.MeshBasicMaterial({
+                    color: 0xff00ff,
+                    transparent: true,
+                    opacity: 0.3,
+                    side: THREE.DoubleSide
+                });
+                
+                const interference = new THREE.Mesh(interferenceGeometry, interferenceMaterial);
+                interference.position.set(
+                    (Math.random() - 0.5) * 800,
+                    Math.random() * 300 + 50,
+                    (Math.random() - 0.5) * 800
+                );
+                interference.rotation.x = Math.random() * Math.PI;
+                interference.rotation.y = Math.random() * Math.PI;
+                
+                quantumInterferences.push(interference);
+                scene.add(interference);
+            }
+        }
+        
+        function createCryptoNoteShields() {
+            for (let i = 0; i < 5; i++) {
+                const shieldGeometry = new THREE.SphereGeometry(20, 16, 16);
+                const shieldMaterial = new THREE.MeshBasicMaterial({
+                    color: 0x8800ff,
+                    transparent: true,
+                    opacity: 0.2,
+                    wireframe: true
+                });
+                
+                const shield = new THREE.Mesh(shieldGeometry, shieldMaterial);
+                shield.position.set(
+                    (Math.random() - 0.5) * 600,
+                    Math.random() * 200 + 100,
+                    (Math.random() - 0.5) * 600
+                );
+                
+                cryptonoteShields.push(shield);
+                scene.add(shield);
+            }
+        }
+        
+        function setupLighting() {
+            // Ambient light
+            const ambientLight = new THREE.AmbientLight(0x404040, 0.4);
+            scene.add(ambientLight);
+            
+            // Directional light (moonlight)
+            const directionalLight = new THREE.DirectionalLight(0xffffff, 0.8);
+            directionalLight.position.set(-500, 400, -800);
+            directionalLight.castShadow = true;
+            directionalLight.shadow.mapSize.width = 2048;
+            directionalLight.shadow.mapSize.height = 2048;
+            scene.add(directionalLight);
+            
+            // Point light (ship lantern)
+            const shipLight = new THREE.PointLight(0xffd700, 1, 100);
+            shipLight.position.set(0, 50, 0);
+            ship.add(shipLight);
+        }
+        
+        function animate() {
+            requestAnimationFrame(animate);
+            
+            const time = Date.now() * 0.001;
+            
+            // Animate ship bobbing
+            if (ship) {
+                ship.position.y = 20 + Math.sin(time * 0.5) * 3;
+                ship.rotation.z = Math.sin(time * 0.3) * 0.02;
+                ship.rotation.x = Math.sin(time * 0.4) * 0.01;
+            }
+            
+            // Animate ocean waves
+            if (ocean) {
+                const vertices = ocean.geometry.attributes.position.array;
+                for (let i = 0; i < vertices.length; i += 3) {
+                    const x = vertices[i];
+                    const y = vertices[i + 1];
+                    vertices[i + 2] = Math.sin(x * 0.01 + time) * Math.cos(y * 0.01 + time * 0.7) * 3;
+                }
+                ocean.geometry.attributes.position.needsUpdate = true;
+            }
+            
+            // Animate anomaly particles
+            if (particles) {
+                const positions = particles.geometry.attributes.position.array;
+                const velocities = particles.geometry.userData.velocities;
+                
+                for (let i = 0; i < positions.length; i += 3) {
+                    positions[i] += velocities[i];
+                    positions[i + 1] += velocities[i + 1];
+                    positions[i + 2] += velocities[i + 2];
+                    
+                    // Reset particles that go too far
+                    if (Math.abs(positions[i]) > 300 || positions[i + 1] > 300 || Math.abs(positions[i + 2]) > 300) {
+                        positions[i] = (Math.random() - 0.5) * 200;
+                        positions[i + 1] = Math.random() * 100 + 50;
+                        positions[i + 2] = (Math.random() - 0.5) * 200;
+                    }
+                }
+                particles.geometry.attributes.position.needsUpdate = true;
+            }
+            
+            // Animate quantum interferences
+            quantumInterferences.forEach((interference, index) => {
+                interference.rotation.x += 0.01 * (index + 1);
+                interference.rotation.y += 0.005 * (index + 1);
+                interference.scale.setScalar(1 + Math.sin(time * 2 + index) * 0.2);
+            });
+            
+            // Animate CryptoNote shields
+            cryptonoteShields.forEach((shield, index) => {
+                shield.rotation.x += 0.008 * (index + 1);
+                shield.rotation.y += 0.012 * (index + 1);
+                shield.rotation.z += 0.004 * (index + 1);
+            });
+            
+            // Camera rotation around ship
+            if (camera && ship) {
+                const radius = 300;
+                camera.position.x = Math.cos(time * 0.1) * radius;
+                camera.position.z = Math.sin(time * 0.1) * radius;
+                camera.lookAt(ship.position);
+            }
+            
+            renderer.render(scene, camera);
+        }
+        
+        function startAnomalyDetection() {
+            setInterval(() => {
+                // Simulate anomaly detection
+                const anomalyDetected = Math.random() < 0.15;
+                
+                if (anomalyDetected) {
+                    const anomalyType = Math.random() < 0.5 ? 'suspicious_low' : 'suspicious_high';
+                    const confidence = anomalyType === 'suspicious_low' ? 
+                        Math.random() * 30 + 10 : 
+                        Math.random() * 10 + 90;
+                    
+                    detectAnomaly(anomalyType, confidence);
+                }
+                
+                // Update system status
+                updateSystemStatus();
+            }, 2000);
+        }
+        
+        function detectAnomaly(type, confidence) {
+            const anomalyCount = document.getElementById('anomaly-count');
+            const currentCount = parseInt(anomalyCount.textContent);
+            anomalyCount.textContent = currentCount + 1;
+            
+            const logClass = type === 'suspicious_low' ? 'warning' : 'anomaly';
+            logMessage(`🔍 ANOMALY DETECTED: ${type} (${confidence.toFixed(1)}% confidence)`, logClass);
+            
+            // Create visual anomaly marker in 3D space
+            createAnomalyMarker(type);
+            
+            // Trigger quantum interference
+            if (Math.random() < 0.3) {
+                logMessage('⚡ Quantum interference detected! Activating CryptoNote shields...', 'error');
+                activateQuantumDefense();
+            }
+        }
+        
+        function createAnomalyMarker(type) {
+            const markerGeometry = new THREE.OctahedronGeometry(5);
+            const markerMaterial = new THREE.MeshBasicMaterial({
+                color: type === 'suspicious_low' ? 0xffaa00 : 0xff0066,
+                transparent: true,
+                opacity: 0.8
+            });
+            
+            const marker = new THREE.Mesh(markerGeometry, markerMaterial);
+            marker.position.set(
+                (Math.random() - 0.5) * 400,
+                Math.random() * 200 + 50,
+                (Math.random() - 0.5) * 400
+            );
+            
+            scene.add(marker);
+            
+            // Auto-remove after 10 seconds
+            setTimeout(() => {
+                scene.remove(marker);
+            }, 10000);
+        }
+        
+        function activateQuantumDefense() {
+            // Pulse all CryptoNote shields
+            cryptonoteShields.forEach(shield => {
+                shield.material.opacity = 0.6;
+                setTimeout(() => {
+                    shield.material.opacity = 0.2;
+                }, 1000);
+            });
+            
+            // Update shield status
+            document.getElementById('quantum-shield').style.color = '#ff4444';
+            document.getElementById('quantum-shield').textContent = 'DEFENDING';
+            
+            setTimeout(() => {
+                document.getElementById('quantum-shield').style.color = '#8800ff';
+                document.getElementById('quantum-shield').textContent = 'ACTIVE';
+            }, 3000);
+        }
+        
+        function updateSystemStatus() {
+            const hullStatus = document.getElementById('hull-status');
+            const currentHull = parseInt(hullStatus.textContent);
+            
+            // Randomly damage/repair hull
+            const change = Math.random() < 0.7 ? -1 : 2;
+            const newHull = Math.max(0, Math.min(100, currentHull + change));
+            
+            hullStatus.textContent = newHull + '%';
+            hullStatus.style.color = newHull > 80 ? '#00ff00' : newHull > 50 ? '#ffaa00' : '#ff4444';
+            
+            if (newHull < 25) {
+                logMessage('💀 CRITICAL: Hull integrity compromised!', 'error');
+            }
+        }
+        
+        function logMessage(message, className = 'log-entry') {
+            const logStream = document.getElementById('log-stream');
+            const entry = document.createElement('div');
+            entry.className = `log-entry ${className}`;
+            entry.textContent = `[${new Date().toLocaleTimeString()}] ${message}`;
+            
+            logStream.appendChild(entry);
+            logStream.scrollTop = logStream.scrollHeight;
+            
+            // Keep only last 50 messages
+            while (logStream.children.length > 50) {
+                logStream.removeChild(logStream.firstChild);
+            }
+        }
+        
+        // Pirate Control Functions
+        function fireCannons() {
+            logMessage('💥 FIRE CANNONS! Targeting detected anomalies!', 'warning');
+            
+            // Visual cannon fire effect
+            for (let i = 0; i < 6; i++) {
+                setTimeout(() => {
+                    const flash = new THREE.Mesh(
+                        new THREE.SphereGeometry(3),
+                        new THREE.MeshBasicMaterial({ color: 0xff6600 })
+                    );
+                    flash.position.set((i - 2.5) * 8, 25, i % 2 === 0 ? 16 : -16);
+                    ship.add(flash);
+                    
+                    setTimeout(() => ship.remove(flash), 200);
+                }, i * 100);
+            }
+        }
+        
+        function deployNet() {
+            logMessage('🕸️ DEPLOYING ANOMALY NET! Capturing suspicious patterns...', 'warning');
+            
+            // Reset anomaly count
+            document.getElementById('anomaly-count').textContent = '0';
+        }
+        
+        function raiseFlag() {
+            logMessage('🏴‍☠️ RAISING THE BLACK FLAG! No quarter for quantum pirates!', 'warning');
+        }
+        
+        function emergencyDive() {
+            logMessage('💨 EMERGENCY DIVE! Evading quantum attack patterns!', 'error');
+            
+            // Ship dive animation
+            if (ship) {
+                const originalY = ship.position.y;
+                const diveAnimation = setInterval(() => {
+                    ship.position.y -= 2;
+                    if (ship.position.y <= -30) {
+                        clearInterval(diveAnimation);
+                        setTimeout(() => {
+                            const surfaceAnimation = setInterval(() => {
+                                ship.position.y += 1;
+                                if (ship.position.y >= originalY) {
+                                    ship.position.y = originalY;
+                                    clearInterval(surfaceAnimation);
+                                }
+                            }, 50);
+                        }, 2000);
+                    }
+                }, 50);
+            }
+        }
+        
+        function toggleQuantumShield() {
+            const shieldStatus = document.getElementById('quantum-shield');
+            const isActive = shieldStatus.textContent === 'ACTIVE';
+            
+            if (isActive) {
+                shieldStatus.textContent = 'DISABLED';
+                shieldStatus.style.color = '#666666';
+                logMessage('🛡️ Quantum shields DISABLED. Vulnerability increased!', 'warning');
+            } else {
+                shieldStatus.textContent = 'ACTIVE';
+                shieldStatus.style.color = '#8800ff';
+                logMessage('🛡️ Quantum shields ACTIVATED. CryptoNote defense online!', 'log-entry');
+            }
+        }
+        
+        // Handle window resize
+        window.addEventListener('resize', () => {
+            camera.aspect = window.innerWidth / window.innerHeight;
+            camera.updateProjectionMatrix();
+            renderer.setSize(window.innerWidth, window.innerHeight);
+        });
+        
+        // Initialize everything when page loads
+        window.addEventListener('load', initPirate3DWorld);
+        
+        console.log('🏴‍☠️ PIRATE THEMED 3D INTERFACE LOADED');
+        console.log('⚔️ Ready to hunt anomalies in the quantum seas!');
+        console.log('🛡️ CryptoNote defense systems standing by...');
+    </script>
+</body>
+</html>

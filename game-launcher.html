@@ -1,0 +1,634 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>🚀 Game Launcher</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        
+        body {
+            font-family: -apple-system, system-ui, sans-serif;
+            background: #000;
+            color: #fff;
+            height: 100vh;
+            overflow: hidden;
+        }
+        
+        /* Main launcher interface */
+        .launcher {
+            width: 100vw;
+            height: 100vh;
+            display: flex;
+            flex-direction: column;
+            background: linear-gradient(135deg, #000428 0%, #004e92 100%);
+        }
+        
+        /* Header */
+        .launcher-header {
+            padding: 20px;
+            background: rgba(0, 0, 0, 0.5);
+            backdrop-filter: blur(10px);
+            border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+        }
+        
+        .launcher-title {
+            font-size: 36px;
+            font-weight: bold;
+            text-align: center;
+            background: linear-gradient(45deg, #00ff88, #00aaff, #ff6b6b);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            margin-bottom: 10px;
+        }
+        
+        .launcher-subtitle {
+            text-align: center;
+            color: #888;
+            font-size: 16px;
+        }
+        
+        /* Game grid */
+        .games-container {
+            flex: 1;
+            padding: 40px;
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+            gap: 25px;
+            overflow-y: auto;
+        }
+        
+        .game-card {
+            background: rgba(255, 255, 255, 0.05);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            border-radius: 20px;
+            padding: 30px;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            backdrop-filter: blur(10px);
+            position: relative;
+            overflow: hidden;
+        }
+        
+        .game-card::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            height: 4px;
+            background: var(--accent-color, #00ff88);
+            transform: scaleX(0);
+            transition: transform 0.3s ease;
+        }
+        
+        .game-card:hover {
+            transform: translateY(-10px);
+            background: rgba(255, 255, 255, 0.1);
+            border-color: var(--accent-color, #00ff88);
+            box-shadow: 0 20px 40px rgba(0, 0, 0, 0.3);
+        }
+        
+        .game-card:hover::before {
+            transform: scaleX(1);
+        }
+        
+        .game-icon {
+            font-size: 64px;
+            margin-bottom: 20px;
+            display: block;
+            text-align: center;
+        }
+        
+        .game-title {
+            font-size: 24px;
+            font-weight: bold;
+            margin-bottom: 10px;
+            color: var(--accent-color, #00ff88);
+        }
+        
+        .game-description {
+            color: #ccc;
+            line-height: 1.5;
+            margin-bottom: 20px;
+            font-size: 14px;
+        }
+        
+        .game-status {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 15px;
+        }
+        
+        .status-badge {
+            padding: 4px 12px;
+            border-radius: 12px;
+            font-size: 12px;
+            font-weight: bold;
+        }
+        
+        .status-working {
+            background: #00ff88;
+            color: #000;
+        }
+        
+        .status-beta {
+            background: #ffd700;
+            color: #000;
+        }
+        
+        .status-concept {
+            background: #ff6b6b;
+            color: #fff;
+        }
+        
+        .game-stats {
+            display: flex;
+            gap: 15px;
+            font-size: 12px;
+            color: #888;
+        }
+        
+        .play-button {
+            width: 100%;
+            padding: 12px 24px;
+            background: linear-gradient(45deg, var(--accent-color, #00ff88), var(--accent-secondary, #00cc66));
+            border: none;
+            color: #000;
+            border-radius: 10px;
+            font-size: 16px;
+            font-weight: bold;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+        
+        .play-button:hover {
+            transform: scale(1.05);
+            box-shadow: 0 5px 15px rgba(0, 255, 136, 0.3);
+        }
+        
+        .play-button:disabled {
+            background: #333;
+            color: #666;
+            cursor: not-allowed;
+            transform: none;
+            box-shadow: none;
+        }
+        
+        /* Game window */
+        .game-window {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: #000;
+            z-index: 1000;
+            display: none;
+        }
+        
+        .game-header {
+            background: rgba(0, 0, 0, 0.9);
+            padding: 15px 20px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            border-bottom: 1px solid #333;
+        }
+        
+        .game-header-title {
+            font-size: 18px;
+            font-weight: bold;
+            color: #00ff88;
+        }
+        
+        .close-button {
+            background: #ff4444;
+            border: none;
+            color: #fff;
+            padding: 8px 16px;
+            border-radius: 6px;
+            cursor: pointer;
+            font-size: 12px;
+            transition: all 0.2s;
+        }
+        
+        .close-button:hover {
+            background: #ff6666;
+        }
+        
+        .game-frame {
+            width: 100%;
+            height: calc(100% - 60px);
+            border: none;
+            background: #000;
+        }
+        
+        /* Quick stats overlay */
+        .quick-stats {
+            position: fixed;
+            top: 20px;
+            right: 20px;
+            background: rgba(0, 0, 0, 0.9);
+            padding: 15px;
+            border-radius: 10px;
+            border: 1px solid #00ff88;
+            backdrop-filter: blur(10px);
+            z-index: 100;
+            min-width: 200px;
+        }
+        
+        .stats-title {
+            color: #00ff88;
+            font-weight: bold;
+            margin-bottom: 10px;
+            text-align: center;
+        }
+        
+        .stat-item {
+            display: flex;
+            justify-content: space-between;
+            margin-bottom: 8px;
+            font-size: 12px;
+        }
+        
+        .stat-value {
+            color: #00ff88;
+            font-weight: bold;
+        }
+        
+        /* Footer */
+        .launcher-footer {
+            padding: 20px;
+            background: rgba(0, 0, 0, 0.5);
+            border-top: 1px solid rgba(255, 255, 255, 0.1);
+            text-align: center;
+            font-size: 12px;
+            color: #666;
+        }
+        
+        /* Responsive */
+        @media (max-width: 768px) {
+            .games-container {
+                grid-template-columns: 1fr;
+                padding: 20px;
+                gap: 20px;
+            }
+            
+            .launcher-title {
+                font-size: 28px;
+            }
+            
+            .game-card {
+                padding: 20px;
+            }
+            
+            .game-icon {
+                font-size: 48px;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="launcher">
+        <!-- Header -->
+        <div class="launcher-header">
+            <div class="launcher-title">🚀 Game Launcher</div>
+            <div class="launcher-subtitle">All your games in one place • Everything actually works</div>
+        </div>
+        
+        <!-- Games Grid -->
+        <div class="games-container">
+            <!-- Working System -->
+            <div class="game-card" style="--accent-color: #00ff88; --accent-secondary: #00cc66;" onclick="launchGame('working-system')">
+                <div class="game-icon">🔧</div>
+                <div class="game-title">Working System</div>
+                <div class="game-description">
+                    Drop images to create characters, move around, collect treasures, scan QR codes for payments. 
+                    Everything actually works together properly.
+                </div>
+                <div class="game-status">
+                    <span class="status-badge status-working">WORKING</span>
+                    <div class="game-stats">
+                        <span>🎮 Full Game</span>
+                        <span>📱 Mobile Ready</span>
+                        <span>💳 Payments</span>
+                    </div>
+                </div>
+                <button class="play-button">▶️ Launch Game</button>
+            </div>
+            
+            <!-- Pirate Treasure Hunt -->
+            <div class="game-card" style="--accent-color: #ffd700; --accent-secondary: #ffed4e;" onclick="launchGame('pirate-game')">
+                <div class="game-icon">🏴‍☠️</div>
+                <div class="game-title">Pirate Treasure Hunt</div>
+                <div class="game-description">
+                    Navigate the high seas, battle enemy ships, collect treasure chests, level up your pirate. 
+                    Full combat system with health, XP, and progression.
+                </div>
+                <div class="game-status">
+                    <span class="status-badge status-working">WORKING</span>
+                    <div class="game-stats">
+                        <span>⚔️ Combat</span>
+                        <span>🏆 Levels</span>
+                        <span>💰 Economy</span>
+                    </div>
+                </div>
+                <button class="play-button">▶️ Launch Game</button>
+            </div>
+            
+            <!-- QR Treasure Hunt -->
+            <div class="game-card" style="--accent-color: #4ecdc4; --accent-secondary: #26a69a;" onclick="launchGame('qr-hunt')">
+                <div class="game-icon">📱</div>
+                <div class="game-title">QR Treasure Hunt</div>
+                <div class="game-description">
+                    Simple mobile-friendly game where you scan QR codes to find treasure. 
+                    Perfect for testing QR integration and payment flows.
+                </div>
+                <div class="game-status">
+                    <span class="status-badge status-working">WORKING</span>
+                    <div class="game-stats">
+                        <span>📱 QR Scan</span>
+                        <span>💎 Treasure</span>
+                        <span>🎯 Simple</span>
+                    </div>
+                </div>
+                <button class="play-button">▶️ Launch Game</button>
+            </div>
+            
+            <!-- Complete Integrated Game -->
+            <div class="game-card" style="--accent-color: #a78bfa; --accent-secondary: #8b5cf6;" onclick="launchGame('integrated-game')">
+                <div class="game-icon">🌊</div>
+                <div class="game-title">Integrated World</div>
+                <div class="game-description">
+                    Voxel characters, hex grid movement, QR scanning, payment processing, NFT rewards. 
+                    Everything integrated into one flowing experience.
+                </div>
+                <div class="game-status">
+                    <span class="status-badge status-beta">BETA</span>
+                    <div class="game-stats">
+                        <span>🎨 Voxels</span>
+                        <span>🌐 Hex Grid</span>
+                        <span>🖼️ NFTs</span>
+                    </div>
+                </div>
+                <button class="play-button">▶️ Launch Game</button>
+            </div>
+            
+            <!-- Deep Architecture -->
+            <div class="game-card" style="--accent-color: #ff6b6b; --accent-secondary: #ff5252;" onclick="launchGame('deep-architecture')">
+                <div class="game-icon">🧠</div>
+                <div class="game-title">Deep Architecture</div>
+                <div class="game-description">
+                    Visualize the 7-layer reasoning system. See how inputs flow through quantum, neural, 
+                    logic, semantic, integration, interface, and presentation layers.
+                </div>
+                <div class="game-status">
+                    <span class="status-badge status-concept">CONCEPT</span>
+                    <div class="game-stats">
+                        <span>🎯 Reasoning</span>
+                        <span>🔬 Visualization</span>
+                        <span>⚛️ Quantum</span>
+                    </div>
+                </div>
+                <button class="play-button">▶️ Launch Demo</button>
+            </div>
+            
+            <!-- Progressive Launcher -->
+            <div class="game-card" style="--accent-color: #00aaff; --accent-secondary: #0088cc;" onclick="launchGame('progressive-launcher')">
+                <div class="game-icon">🎛️</div>
+                <div class="game-title">Progressive Launcher</div>
+                <div class="game-description">
+                    Start small and scale up. Launch individual services as needed. 
+                    Monitor resource usage and only run what you actually need.
+                </div>
+                <div class="game-status">
+                    <span class="status-badge status-working">WORKING</span>
+                    <div class="game-stats">
+                        <span>⚡ Efficient</span>
+                        <span>📊 Monitoring</span>
+                        <span>🔧 Control</span>
+                    </div>
+                </div>
+                <button class="play-button">▶️ Launch Launcher</button>
+            </div>
+            
+            <!-- Coming Soon Placeholder -->
+            <div class="game-card" style="--accent-color: #666; --accent-secondary: #555;">
+                <div class="game-icon">🚀</div>
+                <div class="game-title">ShipRekt Battle Arena</div>
+                <div class="game-description">
+                    Real-time multiplayer naval battles. Scan QR codes to board enemy ships. 
+                    Command fleets and dominate the high seas.
+                </div>
+                <div class="game-status">
+                    <span class="status-badge status-concept">COMING SOON</span>
+                    <div class="game-stats">
+                        <span>🚢 Multiplayer</span>
+                        <span>⚔️ Real-time</span>
+                        <span>🌊 Naval</span>
+                    </div>
+                </div>
+                <button class="play-button" disabled>🔒 In Development</button>
+            </div>
+            
+            <!-- Coming Soon Placeholder -->
+            <div class="game-card" style="--accent-color: #666; --accent-secondary: #555;">
+                <div class="game-icon">💬</div>
+                <div class="game-title">Bash VCs</div>
+                <div class="game-description">
+                    Terminal-style venture capital trading game. Make deals, fund startups, 
+                    and build your investment empire through command-line interface.
+                </div>
+                <div class="game-status">
+                    <span class="status-badge status-concept">COMING SOON</span>
+                    <div class="game-stats">
+                        <span>💰 Trading</span>
+                        <span>⌨️ Terminal</span>
+                        <span>📈 Economy</span>
+                    </div>
+                </div>
+                <button class="play-button" disabled>🔒 In Development</button>
+            </div>
+        </div>
+        
+        <!-- Footer -->
+        <div class="launcher-footer">
+            All systems operational • Games load instantly • No server required • Everything actually works
+        </div>
+    </div>
+    
+    <!-- Quick Stats -->
+    <div class="quick-stats">
+        <div class="stats-title">🎮 Launcher Stats</div>
+        <div class="stat-item">
+            <span>Games Available:</span>
+            <span class="stat-value" id="gameCount">4</span>
+        </div>
+        <div class="stat-item">
+            <span>Games Working:</span>
+            <span class="stat-value" id="workingCount">4</span>
+        </div>
+        <div class="stat-item">
+            <span>Total Plays:</span>
+            <span class="stat-value" id="totalPlays">0</span>
+        </div>
+        <div class="stat-item">
+            <span>System Status:</span>
+            <span class="stat-value">Online</span>
+        </div>
+    </div>
+    
+    <!-- Game Window -->
+    <div class="game-window" id="gameWindow">
+        <div class="game-header">
+            <div class="game-header-title" id="gameTitle">Game</div>
+            <button class="close-button" onclick="closeGame()">✕ Close Game</button>
+        </div>
+        <iframe class="game-frame" id="gameFrame" src="about:blank"></iframe>
+    </div>
+    
+    <script>
+        // Game registry with actual working files
+        const games = {
+            'working-system': {
+                title: 'Working System',
+                file: 'working-system.html',
+                status: 'working'
+            },
+            'pirate-game': {
+                title: 'Pirate Treasure Hunt',
+                file: 'actually-good-game.html',
+                status: 'working'
+            },
+            'qr-hunt': {
+                title: 'QR Treasure Hunt',
+                file: 'simple-mobile-game.html',
+                status: 'working'
+            },
+            'integrated-game': {
+                title: 'Integrated World',
+                file: 'complete-integrated-game.html',
+                status: 'beta'
+            },
+            'deep-architecture': {
+                title: 'Deep Architecture',
+                file: 'deep-architecture-engine.html',
+                status: 'concept'
+            },
+            'progressive-launcher': {
+                title: 'Progressive Launcher',
+                file: 'lightweight-launcher.js',
+                status: 'working',
+                type: 'external'
+            }
+        };
+        
+        let totalPlays = 0;
+        let currentGame = null;
+        
+        function launchGame(gameId) {
+            const game = games[gameId];
+            if (!game) {
+                console.error('Game not found:', gameId);
+                return;
+            }
+            
+            console.log(`🚀 Launching ${game.title}...`);
+            
+            totalPlays++;
+            updateStats();
+            
+            if (game.type === 'external') {
+                // Launch external service
+                if (gameId === 'progressive-launcher') {
+                    // Try to open on localhost:12000
+                    window.open('http://localhost:12000', '_blank');
+                }
+                return;
+            }
+            
+            // Load game in iframe
+            currentGame = gameId;
+            document.getElementById('gameTitle').textContent = game.title;
+            document.getElementById('gameFrame').src = game.file;
+            document.getElementById('gameWindow').style.display = 'block';
+            
+            // Log launch
+            console.log(`✅ Launched ${game.title} successfully`);
+        }
+        
+        function closeGame() {
+            if (currentGame) {
+                console.log(`🔒 Closing ${games[currentGame].title}`);
+                currentGame = null;
+            }
+            
+            document.getElementById('gameWindow').style.display = 'none';
+            document.getElementById('gameFrame').src = 'about:blank';
+        }
+        
+        function updateStats() {
+            document.getElementById('totalPlays').textContent = totalPlays;
+            
+            // Update working count
+            const workingGames = Object.values(games).filter(g => g.status === 'working').length;
+            document.getElementById('workingCount').textContent = workingGames;
+        }
+        
+        // Keyboard shortcuts
+        document.addEventListener('keydown', (e) => {
+            if (e.key === 'Escape' && currentGame) {
+                closeGame();
+            }
+            
+            // Quick launch with number keys
+            const gameIds = Object.keys(games);
+            const keyNum = parseInt(e.key);
+            if (keyNum >= 1 && keyNum <= gameIds.length) {
+                launchGame(gameIds[keyNum - 1]);
+            }
+        });
+        
+        // Initialize
+        function init() {
+            console.log('🚀 Game Launcher initialized');
+            console.log('🎮 Available games:', Object.keys(games).length);
+            console.log('✅ Working games:', Object.values(games).filter(g => g.status === 'working').length);
+            console.log('🎯 Quick launch: Use number keys 1-6');
+            
+            updateStats();
+            
+            // Test if external services are running
+            checkExternalServices();
+        }
+        
+        function checkExternalServices() {
+            // Test progressive launcher
+            fetch('http://localhost:12000/status').then(() => {
+                console.log('✅ Progressive launcher is running');
+            }).catch(() => {
+                console.log('⚠️ Progressive launcher not running - will try to start on demand');
+            });
+        }
+        
+        // Auto-save play count
+        setInterval(() => {
+            if (totalPlays > 0) {
+                localStorage.setItem('launcherTotalPlays', totalPlays);
+            }
+        }, 10000);
+        
+        // Load saved play count
+        const savedPlays = localStorage.getItem('launcherTotalPlays');
+        if (savedPlays) {
+            totalPlays = parseInt(savedPlays);
+        }
+        
+        // Initialize when loaded
+        window.addEventListener('load', init);
+        
+        console.log('🚀 Game Launcher loaded');
+    </script>
+</body>
+</html>

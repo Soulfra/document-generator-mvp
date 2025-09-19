@@ -1,0 +1,840 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>🚀 Enhanced Business Demo - Crypto + Maps + Sprites + GIFs</title>
+    
+    <!-- Leaflet CSS for maps -->
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+    
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
+            background: #0a0a0a;
+            color: #ffffff;
+            overflow-x: hidden;
+        }
+
+        /* Animated gradient background */
+        .animated-bg {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: linear-gradient(45deg, #1a1a2e, #16213e, #0f3460, #e94560);
+            background-size: 400% 400%;
+            animation: gradientShift 15s ease infinite;
+            z-index: -1;
+        }
+
+        @keyframes gradientShift {
+            0% { background-position: 0% 50%; }
+            50% { background-position: 100% 50%; }
+            100% { background-position: 0% 50%; }
+        }
+
+        /* Header */
+        .header {
+            background: rgba(0, 0, 0, 0.8);
+            backdrop-filter: blur(20px);
+            padding: 20px;
+            box-shadow: 0 4px 20px rgba(0, 0, 0, 0.3);
+            position: relative;
+            overflow: hidden;
+        }
+
+        .header::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: -100%;
+            width: 100%;
+            height: 100%;
+            background: linear-gradient(90deg, transparent, rgba(233, 69, 96, 0.3), transparent);
+            animation: sweep 6s infinite;
+        }
+
+        @keyframes sweep {
+            0% { left: -100%; }
+            100% { left: 100%; }
+        }
+
+        .header h1 {
+            text-align: center;
+            font-size: 3em;
+            background: linear-gradient(45deg, #00ff88, #00bbff, #ff00ff);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            text-shadow: 0 0 30px rgba(0, 255, 136, 0.5);
+            margin-bottom: 10px;
+        }
+
+        .header p {
+            text-align: center;
+            color: #888;
+            font-size: 1.2em;
+        }
+
+        /* Main container */
+        .container {
+            max-width: 1400px;
+            margin: 0 auto;
+            padding: 20px;
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 20px;
+        }
+
+        /* Crypto prices panel */
+        .crypto-panel {
+            background: rgba(255, 255, 255, 0.05);
+            backdrop-filter: blur(10px);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            border-radius: 15px;
+            padding: 20px;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .crypto-panel h2 {
+            color: #00ff88;
+            margin-bottom: 20px;
+            font-size: 1.8em;
+            text-transform: uppercase;
+            letter-spacing: 2px;
+        }
+
+        .price-card {
+            background: rgba(255, 255, 255, 0.05);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            border-radius: 10px;
+            padding: 15px;
+            margin-bottom: 15px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            transition: all 0.3s ease;
+            cursor: pointer;
+        }
+
+        .price-card:hover {
+            transform: translateX(5px);
+            border-color: #00ff88;
+            box-shadow: 0 0 20px rgba(0, 255, 136, 0.3);
+        }
+
+        .price-card.positive {
+            border-color: #00ff88;
+        }
+
+        .price-card.negative {
+            border-color: #ff4444;
+        }
+
+        .crypto-info {
+            display: flex;
+            align-items: center;
+            gap: 15px;
+        }
+
+        .crypto-icon {
+            width: 50px;
+            height: 50px;
+            background: linear-gradient(45deg, #ffd700, #ff8c00);
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-weight: bold;
+            font-size: 1.2em;
+        }
+
+        .crypto-details h3 {
+            margin: 0;
+            font-size: 1.4em;
+        }
+
+        .crypto-price {
+            font-size: 1.8em;
+            font-weight: bold;
+        }
+
+        .price-change {
+            font-size: 1.2em;
+            margin-top: 5px;
+        }
+
+        .price-change.positive {
+            color: #00ff88;
+        }
+
+        .price-change.negative {
+            color: #ff4444;
+        }
+
+        /* Map container */
+        .map-panel {
+            background: rgba(255, 255, 255, 0.05);
+            backdrop-filter: blur(10px);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            border-radius: 15px;
+            overflow: hidden;
+        }
+
+        #map {
+            height: 500px;
+            width: 100%;
+            border-radius: 15px;
+        }
+
+        /* Sprite showcase */
+        .sprite-showcase {
+            grid-column: 1 / -1;
+            background: rgba(255, 255, 255, 0.05);
+            backdrop-filter: blur(10px);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            border-radius: 15px;
+            padding: 20px;
+        }
+
+        .sprite-showcase h2 {
+            color: #ff00ff;
+            margin-bottom: 20px;
+            font-size: 1.8em;
+            text-transform: uppercase;
+            letter-spacing: 2px;
+        }
+
+        .sprite-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
+            gap: 20px;
+        }
+
+        .sprite-item {
+            background: rgba(255, 255, 255, 0.05);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            border-radius: 10px;
+            padding: 15px;
+            text-align: center;
+            transition: all 0.3s ease;
+        }
+
+        .sprite-item:hover {
+            transform: translateY(-5px);
+            border-color: #ff00ff;
+            box-shadow: 0 10px 30px rgba(255, 0, 255, 0.3);
+        }
+
+        .sprite-canvas {
+            width: 100%;
+            height: 120px;
+            background: #000;
+            border-radius: 5px;
+            margin-bottom: 10px;
+            image-rendering: pixelated;
+            position: relative;
+        }
+
+        /* GIF preview */
+        .gif-preview {
+            grid-column: 1 / -1;
+            background: rgba(255, 255, 255, 0.05);
+            backdrop-filter: blur(10px);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            border-radius: 15px;
+            padding: 20px;
+            text-align: center;
+        }
+
+        .gif-container {
+            display: flex;
+            justify-content: center;
+            gap: 20px;
+            flex-wrap: wrap;
+            margin-top: 20px;
+        }
+
+        .gif-item {
+            background: rgba(0, 0, 0, 0.5);
+            border-radius: 10px;
+            padding: 10px;
+            transition: all 0.3s ease;
+        }
+
+        .gif-item:hover {
+            transform: scale(1.05);
+            box-shadow: 0 0 30px rgba(0, 255, 255, 0.5);
+        }
+
+        /* Control panel */
+        .control-panel {
+            grid-column: 1 / -1;
+            background: rgba(255, 255, 255, 0.05);
+            backdrop-filter: blur(10px);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            border-radius: 15px;
+            padding: 20px;
+            text-align: center;
+        }
+
+        .button-group {
+            display: flex;
+            justify-content: center;
+            gap: 15px;
+            margin-top: 20px;
+        }
+
+        button {
+            background: linear-gradient(45deg, #00ff88, #00bbff);
+            border: none;
+            color: #000;
+            padding: 12px 30px;
+            border-radius: 25px;
+            font-size: 1.1em;
+            font-weight: bold;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+        }
+
+        button:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 10px 30px rgba(0, 255, 136, 0.4);
+        }
+
+        button:active {
+            transform: translateY(0);
+        }
+
+        /* Loading animation */
+        .loading {
+            display: inline-block;
+            width: 20px;
+            height: 20px;
+            border: 3px solid rgba(255, 255, 255, 0.3);
+            border-radius: 50%;
+            border-top-color: #00ff88;
+            animation: spin 1s ease-in-out infinite;
+        }
+
+        @keyframes spin {
+            to { transform: rotate(360deg); }
+        }
+
+        /* Status message */
+        .status-message {
+            background: rgba(0, 255, 136, 0.2);
+            border: 1px solid #00ff88;
+            border-radius: 10px;
+            padding: 15px;
+            margin: 20px 0;
+            text-align: center;
+            font-size: 1.1em;
+            display: none;
+        }
+
+        .status-message.show {
+            display: block;
+            animation: slideIn 0.5s ease;
+        }
+
+        @keyframes slideIn {
+            from {
+                opacity: 0;
+                transform: translateY(-20px);
+            }
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+
+        /* Responsive */
+        @media (max-width: 768px) {
+            .container {
+                grid-template-columns: 1fr;
+            }
+            
+            .header h1 {
+                font-size: 2em;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="animated-bg"></div>
+
+    <div class="header">
+        <h1>🚀 Enhanced Business Demo</h1>
+        <p>Real-time Crypto Prices + Maps + Sprites + GIF Generation</p>
+    </div>
+
+    <div class="container">
+        <!-- Crypto Prices Panel -->
+        <div class="crypto-panel">
+            <h2>💰 Live Crypto Prices</h2>
+            
+            <div class="price-card positive" id="btc-card">
+                <div class="crypto-info">
+                    <div class="crypto-icon">₿</div>
+                    <div class="crypto-details">
+                        <h3>Bitcoin (BTC)</h3>
+                        <div class="crypto-price" id="btc-price">$45,234</div>
+                        <div class="price-change positive" id="btc-change">+5.23%</div>
+                    </div>
+                </div>
+                <canvas class="price-spark" id="btc-spark" width="100" height="40"></canvas>
+            </div>
+
+            <div class="price-card negative" id="eth-card">
+                <div class="crypto-info">
+                    <div class="crypto-icon" style="background: linear-gradient(45deg, #627eea, #3c3c3d);">Ξ</div>
+                    <div class="crypto-details">
+                        <h3>Ethereum (ETH)</h3>
+                        <div class="crypto-price" id="eth-price">$2,843</div>
+                        <div class="price-change negative" id="eth-change">-2.14%</div>
+                    </div>
+                </div>
+                <canvas class="price-spark" id="eth-spark" width="100" height="40"></canvas>
+            </div>
+
+            <div class="price-card positive" id="scythe-card">
+                <div class="crypto-info">
+                    <div class="crypto-icon" style="background: linear-gradient(45deg, #ff00ff, #00ffff);">⚔️</div>
+                    <div class="crypto-details">
+                        <h3>SCYTHE Token</h3>
+                        <div class="crypto-price" id="scythe-price">$127.45</div>
+                        <div class="price-change positive" id="scythe-change">+12.67%</div>
+                    </div>
+                </div>
+                <canvas class="price-spark" id="scythe-spark" width="100" height="40"></canvas>
+            </div>
+
+            <div class="status-message" id="price-status">
+                <span class="loading"></span> Connecting to price feeds...
+            </div>
+        </div>
+
+        <!-- Map Panel -->
+        <div class="map-panel">
+            <div id="map"></div>
+        </div>
+
+        <!-- Sprite Showcase -->
+        <div class="sprite-showcase">
+            <h2>🎨 Business Location Sprites</h2>
+            <div class="sprite-grid" id="sprite-grid">
+                <!-- Sprites will be dynamically added here -->
+            </div>
+        </div>
+
+        <!-- GIF Preview -->
+        <div class="gif-preview">
+            <h2>🎬 Generated Animations</h2>
+            <div class="gif-container" id="gif-container">
+                <!-- GIFs will be displayed here -->
+            </div>
+        </div>
+
+        <!-- Control Panel -->
+        <div class="control-panel">
+            <h2>🎮 Demo Controls</h2>
+            <div class="button-group">
+                <button onclick="startDemo()">🚀 Start Full Demo</button>
+                <button onclick="generateBusinessSprite()">🎨 Generate Sprite</button>
+                <button onclick="createPriceGIF()">📈 Create Price GIF</button>
+                <button onclick="addRandomBusiness()">📍 Add Business</button>
+                <button onclick="toggleRealtime()">⚡ Toggle Real-time</button>
+            </div>
+            <div class="status-message" id="demo-status">
+                Ready to showcase the power of integrated business data!
+            </div>
+        </div>
+    </div>
+
+    <!-- Leaflet JS -->
+    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+    
+    <script>
+        // Global variables
+        let map;
+        let priceWebSocket;
+        let gifWebSocket;
+        let realtimeEnabled = true;
+        let businesses = [];
+        let priceHistory = {
+            btc: [],
+            eth: [],
+            scythe: []
+        };
+
+        // Sample business locations
+        const sampleBusinesses = [
+            { name: "Tech Startup Hub", lat: 37.7749, lng: -122.4194, type: "tech", city: "San Francisco" },
+            { name: "Crypto Trading Desk", lat: 40.7128, lng: -74.0060, type: "finance", city: "New York" },
+            { name: "Gaming Studio", lat: 35.6762, lng: 139.6503, type: "gaming", city: "Tokyo" },
+            { name: "AI Research Lab", lat: 51.5074, lng: -0.1278, type: "ai", city: "London" },
+            { name: "Blockchain Ventures", lat: 1.3521, lng: 103.8198, type: "blockchain", city: "Singapore" }
+        ];
+
+        // Initialize map
+        function initializeMap() {
+            map = L.map('map').setView([20, 0], 2);
+            
+            // Dark theme tile layer
+            L.tileLayer('https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png', {
+                attribution: '© OpenStreetMap contributors © CARTO',
+                subdomains: 'abcd',
+                maxZoom: 20
+            }).addTo(map);
+
+            // Add initial businesses
+            sampleBusinesses.forEach(business => {
+                addBusinessMarker(business);
+            });
+        }
+
+        // Add business marker to map
+        function addBusinessMarker(business) {
+            const icon = L.divIcon({
+                className: 'custom-marker',
+                html: `<div style="background: linear-gradient(45deg, #00ff88, #00bbff); width: 40px; height: 40px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 20px; box-shadow: 0 0 20px rgba(0, 255, 136, 0.5);">${getBusinessEmoji(business.type)}</div>`,
+                iconSize: [40, 40]
+            });
+
+            const marker = L.marker([business.lat, business.lng], { icon })
+                .addTo(map)
+                .bindPopup(`
+                    <div style="text-align: center;">
+                        <h3>${business.name}</h3>
+                        <p>${business.city}</p>
+                        <button onclick="generateLocationSprite('${business.name}', ${business.lat}, ${business.lng})">Generate Sprite</button>
+                    </div>
+                `);
+
+            businesses.push({ ...business, marker });
+        }
+
+        // Get emoji for business type
+        function getBusinessEmoji(type) {
+            const emojis = {
+                tech: '💻',
+                finance: '💰',
+                gaming: '🎮',
+                ai: '🤖',
+                blockchain: '⛓️',
+                default: '🏢'
+            };
+            return emojis[type] || emojis.default;
+        }
+
+        // Initialize WebSocket connections
+        function initializeWebSockets() {
+            // Simulate price WebSocket
+            simulatePriceUpdates();
+            
+            // Show connection status
+            showStatus('price-status', '✅ Connected to price feeds!', 'show');
+        }
+
+        // Simulate real-time price updates
+        function simulatePriceUpdates() {
+            if (!realtimeEnabled) return;
+
+            // Update prices every 2 seconds
+            setInterval(() => {
+                if (!realtimeEnabled) return;
+
+                // Simulate price changes
+                updateCryptoPrice('btc', 45000 + Math.random() * 2000, (Math.random() - 0.5) * 10);
+                updateCryptoPrice('eth', 2800 + Math.random() * 200, (Math.random() - 0.5) * 8);
+                updateCryptoPrice('scythe', 120 + Math.random() * 20, (Math.random() - 0.5) * 20);
+            }, 2000);
+        }
+
+        // Update crypto price display
+        function updateCryptoPrice(symbol, price, change) {
+            const priceEl = document.getElementById(`${symbol}-price`);
+            const changeEl = document.getElementById(`${symbol}-change`);
+            const cardEl = document.getElementById(`${symbol}-card`);
+
+            priceEl.textContent = `$${price.toFixed(2)}`;
+            changeEl.textContent = `${change >= 0 ? '+' : ''}${change.toFixed(2)}%`;
+            
+            // Update styling
+            if (change >= 0) {
+                changeEl.className = 'price-change positive';
+                cardEl.className = 'price-card positive';
+            } else {
+                changeEl.className = 'price-change negative';
+                cardEl.className = 'price-card negative';
+            }
+
+            // Add to history
+            priceHistory[symbol].push(price);
+            if (priceHistory[symbol].length > 20) {
+                priceHistory[symbol].shift();
+            }
+
+            // Update sparkline
+            drawSparkline(symbol, priceHistory[symbol]);
+        }
+
+        // Draw sparkline chart
+        function drawSparkline(symbol, data) {
+            const canvas = document.getElementById(`${symbol}-spark`);
+            const ctx = canvas.getContext('2d');
+            
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+            
+            if (data.length < 2) return;
+
+            const max = Math.max(...data);
+            const min = Math.min(...data);
+            const range = max - min || 1;
+            
+            ctx.strokeStyle = data[data.length - 1] > data[0] ? '#00ff88' : '#ff4444';
+            ctx.lineWidth = 2;
+            
+            ctx.beginPath();
+            data.forEach((value, i) => {
+                const x = (i / (data.length - 1)) * canvas.width;
+                const y = canvas.height - ((value - min) / range) * canvas.height;
+                
+                if (i === 0) {
+                    ctx.moveTo(x, y);
+                } else {
+                    ctx.lineTo(x, y);
+                }
+            });
+            ctx.stroke();
+        }
+
+        // Generate sprite from business location
+        function generateLocationSprite(name, lat, lng) {
+            const spriteItem = document.createElement('div');
+            spriteItem.className = 'sprite-item';
+            
+            const canvas = document.createElement('canvas');
+            canvas.className = 'sprite-canvas';
+            canvas.width = 128;
+            canvas.height = 128;
+            
+            const ctx = canvas.getContext('2d');
+            
+            // Create pixelated business sprite
+            drawBusinessSprite(ctx, name);
+            
+            spriteItem.innerHTML = `
+                <div class="sprite-canvas-container"></div>
+                <h4>${name}</h4>
+                <p style="color: #888; font-size: 0.9em;">${lat.toFixed(2)}, ${lng.toFixed(2)}</p>
+            `;
+            
+            spriteItem.querySelector('.sprite-canvas-container').appendChild(canvas);
+            document.getElementById('sprite-grid').appendChild(spriteItem);
+            
+            // Animate appearance
+            spriteItem.style.opacity = '0';
+            spriteItem.style.transform = 'scale(0.8)';
+            setTimeout(() => {
+                spriteItem.style.transition = 'all 0.5s ease';
+                spriteItem.style.opacity = '1';
+                spriteItem.style.transform = 'scale(1)';
+            }, 100);
+            
+            showStatus('demo-status', `✅ Generated sprite for ${name}!`, 'show');
+        }
+
+        // Draw pixelated business sprite
+        function drawBusinessSprite(ctx, name) {
+            const pixelSize = 8;
+            const width = ctx.canvas.width / pixelSize;
+            const height = ctx.canvas.height / pixelSize;
+            
+            // Generate random but consistent colors based on name
+            const hue = name.split('').reduce((sum, char) => sum + char.charCodeAt(0), 0) % 360;
+            
+            // Draw pixelated building
+            for (let y = 0; y < height; y++) {
+                for (let x = 0; x < width; x++) {
+                    let color = 'transparent';
+                    
+                    // Building shape
+                    if (y > height * 0.3) {
+                        if (x > width * 0.2 && x < width * 0.8) {
+                            // Building body
+                            color = `hsl(${hue}, 70%, 40%)`;
+                            
+                            // Windows
+                            if (y % 3 === 1 && x % 3 === 1) {
+                                color = Math.random() > 0.3 ? '#ffff00' : '#333333';
+                            }
+                        }
+                    }
+                    
+                    // Draw pixel
+                    if (color !== 'transparent') {
+                        ctx.fillStyle = color;
+                        ctx.fillRect(x * pixelSize, y * pixelSize, pixelSize, pixelSize);
+                    }
+                }
+            }
+            
+            // Add glow effect
+            ctx.shadowColor = `hsl(${hue}, 100%, 50%)`;
+            ctx.shadowBlur = 20;
+        }
+
+        // Create animated GIF from price data
+        function createPriceGIF() {
+            showStatus('demo-status', '🎬 Generating price animation GIF...', 'show');
+            
+            // Simulate GIF generation
+            setTimeout(() => {
+                const gifItem = document.createElement('div');
+                gifItem.className = 'gif-item';
+                
+                // Create animated canvas
+                const canvas = document.createElement('canvas');
+                canvas.width = 200;
+                canvas.height = 150;
+                
+                animatePriceChart(canvas);
+                
+                gifItem.appendChild(canvas);
+                document.getElementById('gif-container').appendChild(gifItem);
+                
+                showStatus('demo-status', '✅ Price GIF generated!', 'show');
+            }, 1500);
+        }
+
+        // Animate price chart
+        function animatePriceChart(canvas) {
+            const ctx = canvas.getContext('2d');
+            let frame = 0;
+            
+            function animate() {
+                ctx.fillStyle = '#000';
+                ctx.fillRect(0, 0, canvas.width, canvas.height);
+                
+                // Draw animated chart
+                ctx.strokeStyle = '#00ff88';
+                ctx.lineWidth = 3;
+                ctx.beginPath();
+                
+                for (let i = 0; i < canvas.width; i += 10) {
+                    const y = canvas.height / 2 + Math.sin((i + frame) * 0.05) * 30;
+                    if (i === 0) {
+                        ctx.moveTo(i, y);
+                    } else {
+                        ctx.lineTo(i, y);
+                    }
+                }
+                
+                ctx.stroke();
+                
+                frame += 2;
+                requestAnimationFrame(animate);
+            }
+            
+            animate();
+        }
+
+        // Generate random business sprite
+        function generateBusinessSprite() {
+            const types = ['tech', 'finance', 'gaming', 'ai', 'blockchain'];
+            const cities = ['Berlin', 'Dubai', 'Seoul', 'Mumbai', 'Sydney'];
+            
+            const randomType = types[Math.floor(Math.random() * types.length)];
+            const randomCity = cities[Math.floor(Math.random() * cities.length)];
+            const randomLat = (Math.random() - 0.5) * 180;
+            const randomLng = (Math.random() - 0.5) * 360;
+            
+            generateLocationSprite(`${randomType.toUpperCase()} Corp - ${randomCity}`, randomLat, randomLng);
+        }
+
+        // Add random business to map
+        function addRandomBusiness() {
+            const types = ['tech', 'finance', 'gaming', 'ai', 'blockchain'];
+            const names = ['Innovations Ltd', 'Ventures Inc', 'Solutions Corp', 'Systems Co', 'Labs LLC'];
+            
+            const business = {
+                name: `${types[Math.floor(Math.random() * types.length)].toUpperCase()} ${names[Math.floor(Math.random() * names.length)]}`,
+                lat: (Math.random() - 0.5) * 160,
+                lng: (Math.random() - 0.5) * 320,
+                type: types[Math.floor(Math.random() * types.length)],
+                city: 'Virtual City'
+            };
+            
+            addBusinessMarker(business);
+            showStatus('demo-status', `✅ Added ${business.name} to the map!`, 'show');
+        }
+
+        // Toggle real-time updates
+        function toggleRealtime() {
+            realtimeEnabled = !realtimeEnabled;
+            showStatus('demo-status', `⚡ Real-time updates ${realtimeEnabled ? 'enabled' : 'disabled'}!`, 'show');
+        }
+
+        // Show status message
+        function showStatus(elementId, message, className) {
+            const element = document.getElementById(elementId);
+            element.textContent = message;
+            element.className = `status-message ${className}`;
+            
+            if (className === 'show') {
+                setTimeout(() => {
+                    element.className = 'status-message';
+                }, 3000);
+            }
+        }
+
+        // Start the full demo
+        function startDemo() {
+            showStatus('demo-status', '🚀 Starting full demo experience...', 'show');
+            
+            // Generate multiple sprites
+            setTimeout(() => generateBusinessSprite(), 500);
+            setTimeout(() => generateBusinessSprite(), 1000);
+            setTimeout(() => generateBusinessSprite(), 1500);
+            
+            // Create price GIFs
+            setTimeout(() => createPriceGIF(), 2000);
+            
+            // Add new businesses
+            setTimeout(() => addRandomBusiness(), 2500);
+            setTimeout(() => addRandomBusiness(), 3000);
+            
+            // Final message
+            setTimeout(() => {
+                showStatus('demo-status', '🎉 Demo complete! All systems integrated!', 'show');
+            }, 3500);
+        }
+
+        // Initialize everything on load
+        window.addEventListener('load', () => {
+            initializeMap();
+            initializeWebSockets();
+            showStatus('demo-status', '✅ All systems ready!', 'show');
+        });
+
+        // Add some initial price data
+        for (let i = 0; i < 10; i++) {
+            priceHistory.btc.push(45000 + Math.random() * 1000);
+            priceHistory.eth.push(2800 + Math.random() * 100);
+            priceHistory.scythe.push(120 + Math.random() * 10);
+        }
+    </script>
+</body>
+</html>

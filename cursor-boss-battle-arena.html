@@ -1,0 +1,791 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>👊 Cursor Boss Battle Arena 👊</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+            cursor: crosshair;
+            user-select: none;
+        }
+        
+        body {
+            font-family: 'Arial Black', sans-serif;
+            background: #000;
+            color: #fff;
+            overflow: hidden;
+            position: relative;
+        }
+        
+        /* Battle Arena */
+        #battleArena {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100vw;
+            height: 100vh;
+            background: radial-gradient(circle at center, #1a1a1a, #000);
+        }
+        
+        /* Boss Hand */
+        .boss-hand {
+            position: absolute;
+            width: 300px;
+            height: 400px;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            transition: all 0.3s ease;
+            filter: drop-shadow(0 0 20px rgba(255, 0, 0, 0.5));
+        }
+        
+        .boss-hand.master-hand {
+            background: url('data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100"><path d="M50 10 Q30 30 20 50 T30 90 Q50 95 70 90 T80 50 Q70 30 50 10" fill="%23fff" stroke="%23000" stroke-width="2"/></svg>') no-repeat center;
+            background-size: contain;
+        }
+        
+        .boss-hand.attacking {
+            animation: hand-attack 0.5s ease;
+        }
+        
+        @keyframes hand-attack {
+            0% { transform: translate(-50%, -50%) scale(1); }
+            50% { transform: translate(-50%, -50%) scale(1.3); }
+            100% { transform: translate(-50%, -50%) scale(1); }
+        }
+        
+        /* Critical Zones */
+        .critical-zone {
+            position: absolute;
+            border: 2px dashed #ff0;
+            border-radius: 50%;
+            animation: pulse-critical 1s infinite;
+            pointer-events: none;
+        }
+        
+        @keyframes pulse-critical {
+            0%, 100% { opacity: 0.3; transform: scale(1); }
+            50% { opacity: 0.8; transform: scale(1.1); }
+        }
+        
+        /* Damage Numbers */
+        .damage-number {
+            position: absolute;
+            font-size: 24px;
+            font-weight: bold;
+            pointer-events: none;
+            animation: damage-float 1s ease-out forwards;
+            text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.8);
+        }
+        
+        .damage-number.critical {
+            color: #ff0000;
+            font-size: 36px;
+            animation: damage-float-critical 1s ease-out forwards;
+        }
+        
+        .damage-number.normal {
+            color: #ffff00;
+        }
+        
+        .damage-number.combo {
+            color: #00ffff;
+        }
+        
+        @keyframes damage-float {
+            0% { transform: translateY(0) scale(0.5); opacity: 1; }
+            100% { transform: translateY(-50px) scale(1); opacity: 0; }
+        }
+        
+        @keyframes damage-float-critical {
+            0% { transform: translateY(0) scale(0.5) rotate(0deg); opacity: 1; }
+            50% { transform: translateY(-30px) scale(1.5) rotate(10deg); opacity: 1; }
+            100% { transform: translateY(-70px) scale(1) rotate(-5deg); opacity: 0; }
+        }
+        
+        /* Health Bars */
+        .health-bar-container {
+            position: fixed;
+            top: 20px;
+            left: 50%;
+            transform: translateX(-50%);
+            width: 60%;
+            background: rgba(0, 0, 0, 0.8);
+            border: 3px solid #fff;
+            border-radius: 20px;
+            padding: 5px;
+        }
+        
+        .boss-name {
+            text-align: center;
+            font-size: 24px;
+            margin-bottom: 5px;
+            text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.8);
+        }
+        
+        .health-bar {
+            height: 30px;
+            background: linear-gradient(to right, #ff0000, #ff6600);
+            border-radius: 15px;
+            transition: width 0.3s ease;
+            position: relative;
+            overflow: hidden;
+        }
+        
+        .health-bar::after {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: linear-gradient(to bottom, rgba(255, 255, 255, 0.3), transparent);
+        }
+        
+        .health-text {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            font-size: 18px;
+            text-shadow: 1px 1px 2px rgba(0, 0, 0, 0.8);
+        }
+        
+        /* Combo Counter */
+        .combo-counter {
+            position: fixed;
+            top: 100px;
+            right: 20px;
+            font-size: 48px;
+            color: #00ffff;
+            text-shadow: 3px 3px 6px rgba(0, 0, 0, 0.8);
+            display: none;
+        }
+        
+        .combo-counter.active {
+            display: block;
+            animation: combo-pulse 0.3s ease;
+        }
+        
+        @keyframes combo-pulse {
+            0% { transform: scale(1); }
+            50% { transform: scale(1.2); }
+            100% { transform: scale(1); }
+        }
+        
+        /* Attack Telegraph */
+        .attack-telegraph {
+            position: absolute;
+            border: 3px solid #ff0000;
+            background: rgba(255, 0, 0, 0.2);
+            animation: telegraph-pulse 1s infinite;
+            pointer-events: none;
+        }
+        
+        @keyframes telegraph-pulse {
+            0%, 100% { opacity: 0.3; }
+            50% { opacity: 0.8; }
+        }
+        
+        /* Special Effects */
+        .screen-shake {
+            animation: shake 0.3s;
+        }
+        
+        @keyframes shake {
+            0%, 100% { transform: translateX(0); }
+            25% { transform: translateX(-10px); }
+            75% { transform: translateX(10px); }
+        }
+        
+        .screen-flash {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: white;
+            opacity: 0;
+            pointer-events: none;
+            z-index: 9999;
+        }
+        
+        .screen-flash.active {
+            animation: flash 0.2s;
+        }
+        
+        @keyframes flash {
+            0% { opacity: 0; }
+            50% { opacity: 0.3; }
+            100% { opacity: 0; }
+        }
+        
+        /* Power-ups */
+        .power-up {
+            position: absolute;
+            width: 40px;
+            height: 40px;
+            border-radius: 50%;
+            background: radial-gradient(circle, #00ff00, #008800);
+            border: 2px solid #00ff00;
+            animation: power-up-float 2s ease-in-out infinite;
+            cursor: pointer;
+        }
+        
+        @keyframes power-up-float {
+            0%, 100% { transform: translateY(0) rotate(0deg); }
+            50% { transform: translateY(-10px) rotate(180deg); }
+        }
+        
+        /* Phase Transition */
+        .phase-banner {
+            position: fixed;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%) scale(0);
+            font-size: 72px;
+            color: #ff0000;
+            text-shadow: 4px 4px 8px rgba(0, 0, 0, 0.8);
+            pointer-events: none;
+            z-index: 1000;
+        }
+        
+        .phase-banner.active {
+            animation: phase-announcement 2s ease;
+        }
+        
+        @keyframes phase-announcement {
+            0% { transform: translate(-50%, -50%) scale(0) rotate(-180deg); opacity: 0; }
+            50% { transform: translate(-50%, -50%) scale(1.5) rotate(0deg); opacity: 1; }
+            100% { transform: translate(-50%, -50%) scale(1) rotate(0deg); opacity: 0; }
+        }
+        
+        /* Victory/Defeat Screen */
+        .result-screen {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0, 0, 0, 0.9);
+            display: none;
+            align-items: center;
+            justify-content: center;
+            flex-direction: column;
+            z-index: 2000;
+        }
+        
+        .result-screen.active {
+            display: flex;
+        }
+        
+        .result-title {
+            font-size: 96px;
+            margin-bottom: 20px;
+            text-shadow: 4px 4px 8px rgba(0, 0, 0, 0.8);
+        }
+        
+        .victory { color: #00ff00; }
+        .defeat { color: #ff0000; }
+        
+        .result-stats {
+            font-size: 24px;
+            text-align: center;
+            line-height: 1.5;
+        }
+        
+        /* HUD */
+        .hud {
+            position: fixed;
+            bottom: 20px;
+            left: 20px;
+            font-size: 18px;
+            background: rgba(0, 0, 0, 0.8);
+            padding: 15px;
+            border-radius: 10px;
+            border: 2px solid #fff;
+        }
+        
+        .hud-item {
+            margin: 5px 0;
+        }
+        
+        /* Special Attack Effects */
+        .laser-beam {
+            position: absolute;
+            height: 10px;
+            background: linear-gradient(to right, transparent, #ff0000, #ff6600, #ff0000, transparent);
+            transform-origin: left center;
+            animation: laser-fire 0.5s ease;
+        }
+        
+        @keyframes laser-fire {
+            0% { width: 0; opacity: 0; }
+            50% { width: 100%; opacity: 1; }
+            100% { width: 100%; opacity: 0; }
+        }
+        
+        /* Particle Effects */
+        .particle {
+            position: absolute;
+            width: 4px;
+            height: 4px;
+            background: #fff;
+            border-radius: 50%;
+            pointer-events: none;
+        }
+        
+        /* Instructions */
+        .instructions {
+            position: fixed;
+            top: 20px;
+            right: 20px;
+            background: rgba(0, 0, 0, 0.8);
+            padding: 15px;
+            border-radius: 10px;
+            border: 2px solid #fff;
+            font-size: 14px;
+            max-width: 300px;
+        }
+        
+        .instructions h3 {
+            margin-bottom: 10px;
+            color: #00ff00;
+        }
+        
+        .instructions ul {
+            list-style: none;
+            padding: 0;
+        }
+        
+        .instructions li {
+            margin: 5px 0;
+        }
+    </style>
+</head>
+<body>
+    <!-- Battle Arena -->
+    <div id="battleArena">
+        <!-- Boss Hand Entity -->
+        <div class="boss-hand master-hand" id="bossHand">
+            <!-- Critical zones will be added dynamically -->
+        </div>
+        
+        <!-- Health Bar -->
+        <div class="health-bar-container">
+            <div class="boss-name" id="bossName">Master Hand</div>
+            <div style="position: relative;">
+                <div class="health-bar" id="healthBar" style="width: 100%;">
+                    <div class="health-text" id="healthText">1000 / 1000</div>
+                </div>
+            </div>
+        </div>
+        
+        <!-- Combo Counter -->
+        <div class="combo-counter" id="comboCounter">
+            <div>COMBO</div>
+            <div id="comboCount">0</div>
+        </div>
+        
+        <!-- Phase Banner -->
+        <div class="phase-banner" id="phaseBanner">PHASE 2</div>
+        
+        <!-- Screen Effects -->
+        <div class="screen-flash" id="screenFlash"></div>
+        
+        <!-- Result Screen -->
+        <div class="result-screen" id="resultScreen">
+            <div class="result-title" id="resultTitle">VICTORY!</div>
+            <div class="result-stats" id="resultStats">
+                <div>Total Damage: <span id="totalDamage">0</span></div>
+                <div>Highest Combo: <span id="highestCombo">0</span></div>
+                <div>Critical Hits: <span id="criticalHits">0</span></div>
+                <div>Time: <span id="battleTime">0:00</span></div>
+            </div>
+        </div>
+        
+        <!-- HUD -->
+        <div class="hud">
+            <div class="hud-item">Click Power: <span id="clickPower">10</span></div>
+            <div class="hud-item">Multiplier: <span id="multiplier">x1.0</span></div>
+            <div class="hud-item">Phase: <span id="currentPhase">1</span></div>
+        </div>
+        
+        <!-- Instructions -->
+        <div class="instructions">
+            <h3>How to Fight:</h3>
+            <ul>
+                <li>🖱️ Click on the boss to deal damage</li>
+                <li>🎯 Hit yellow zones for critical damage</li>
+                <li>⚡ Click rapidly to build combos</li>
+                <li>🚫 Avoid red attack zones</li>
+                <li>💚 Collect green power-ups</li>
+            </ul>
+        </div>
+    </div>
+    
+    <script>
+        class CursorBossBattleArena {
+            constructor() {
+                this.boss = {
+                    maxHealth: 1000,
+                    currentHealth: 1000,
+                    phase: 1,
+                    position: { x: window.innerWidth / 2, y: window.innerHeight / 2 },
+                    isAttacking: false
+                };
+                
+                this.player = {
+                    clickPower: 10,
+                    comboCount: 0,
+                    lastClickTime: 0,
+                    multiplier: 1.0,
+                    stats: {
+                        totalDamage: 0,
+                        highestCombo: 0,
+                        criticalHits: 0,
+                        startTime: Date.now()
+                    }
+                };
+                
+                this.criticalZones = [];
+                this.particles = [];
+                this.damageNumbers = [];
+                
+                this.init();
+            }
+            
+            init() {
+                // Event listeners
+                document.addEventListener('click', (e) => this.handleClick(e));
+                document.addEventListener('mousemove', (e) => this.handleMouseMove(e));
+                
+                // Create critical zones
+                this.createCriticalZones();
+                
+                // Start game loop
+                this.gameLoop();
+                
+                // Start boss AI
+                this.startBossAI();
+                
+                console.log('👊 Cursor Boss Battle Arena initialized!');
+            }
+            
+            handleClick(e) {
+                const clickPos = { x: e.clientX, y: e.clientY };
+                
+                // Check if clicking on boss
+                const bossElement = document.getElementById('bossHand');
+                const bossRect = bossElement.getBoundingClientRect();
+                
+                if (this.isPointInRect(clickPos, bossRect)) {
+                    // Calculate damage
+                    let damage = this.player.clickPower;
+                    let isCritical = false;
+                    
+                    // Check critical zones
+                    for (const zone of this.criticalZones) {
+                        if (this.isPointInCircle(clickPos, zone)) {
+                            damage *= 2;
+                            isCritical = true;
+                            this.player.stats.criticalHits++;
+                            break;
+                        }
+                    }
+                    
+                    // Apply combo multiplier
+                    const now = Date.now();
+                    if (now - this.player.lastClickTime < 1000) {
+                        this.player.comboCount++;
+                        this.player.multiplier = 1 + (this.player.comboCount * 0.1);
+                    } else {
+                        if (this.player.comboCount > this.player.stats.highestCombo) {
+                            this.player.stats.highestCombo = this.player.comboCount;
+                        }
+                        this.player.comboCount = 1;
+                        this.player.multiplier = 1.0;
+                    }
+                    this.player.lastClickTime = now;
+                    
+                    damage = Math.floor(damage * this.player.multiplier);
+                    
+                    // Apply damage
+                    this.dealDamage(damage, clickPos, isCritical);
+                    
+                    // Visual feedback
+                    this.createHitEffect(clickPos);
+                    
+                    // Update combo display
+                    this.updateComboDisplay();
+                }
+            }
+            
+            dealDamage(damage, position, isCritical) {
+                this.boss.currentHealth = Math.max(0, this.boss.currentHealth - damage);
+                this.player.stats.totalDamage += damage;
+                
+                // Create damage number
+                this.createDamageNumber(damage, position, isCritical);
+                
+                // Update health bar
+                this.updateHealthBar();
+                
+                // Check phase transition
+                this.checkPhaseTransition();
+                
+                // Screen effects
+                if (isCritical) {
+                    this.screenFlash();
+                    this.screenShake();
+                }
+                
+                // Check victory
+                if (this.boss.currentHealth <= 0) {
+                    this.victory();
+                }
+                
+                // Update HUD
+                this.updateHUD();
+            }
+            
+            createDamageNumber(damage, position, isCritical) {
+                const damageElement = document.createElement('div');
+                damageElement.className = `damage-number ${isCritical ? 'critical' : 'normal'}`;
+                damageElement.textContent = damage;
+                damageElement.style.left = position.x + 'px';
+                damageElement.style.top = position.y + 'px';
+                
+                document.getElementById('battleArena').appendChild(damageElement);
+                
+                // Remove after animation
+                setTimeout(() => damageElement.remove(), 1000);
+            }
+            
+            createHitEffect(position) {
+                // Create particles
+                for (let i = 0; i < 10; i++) {
+                    const particle = document.createElement('div');
+                    particle.className = 'particle';
+                    particle.style.left = position.x + 'px';
+                    particle.style.top = position.y + 'px';
+                    
+                    const angle = (Math.PI * 2 * i) / 10;
+                    const velocity = 5 + Math.random() * 5;
+                    
+                    document.getElementById('battleArena').appendChild(particle);
+                    
+                    // Animate particle
+                    let frame = 0;
+                    const animate = () => {
+                        frame++;
+                        particle.style.left = position.x + Math.cos(angle) * velocity * frame + 'px';
+                        particle.style.top = position.y + Math.sin(angle) * velocity * frame + 'px';
+                        particle.style.opacity = 1 - (frame / 30);
+                        
+                        if (frame < 30) {
+                            requestAnimationFrame(animate);
+                        } else {
+                            particle.remove();
+                        }
+                    };
+                    
+                    requestAnimationFrame(animate);
+                }
+            }
+            
+            createCriticalZones() {
+                // Create 3 critical zones on the boss
+                const positions = [
+                    { x: 0.3, y: 0.3 }, // Top left
+                    { x: 0.7, y: 0.3 }, // Top right
+                    { x: 0.5, y: 0.7 }  // Bottom center
+                ];
+                
+                positions.forEach(pos => {
+                    const zone = document.createElement('div');
+                    zone.className = 'critical-zone';
+                    zone.style.width = '60px';
+                    zone.style.height = '60px';
+                    zone.style.left = `${pos.x * 100}%`;
+                    zone.style.top = `${pos.y * 100}%`;
+                    zone.style.transform = 'translate(-50%, -50%)';
+                    
+                    document.getElementById('bossHand').appendChild(zone);
+                    
+                    // Store zone data
+                    this.criticalZones.push({
+                        element: zone,
+                        x: pos.x,
+                        y: pos.y,
+                        radius: 30
+                    });
+                });
+            }
+            
+            updateHealthBar() {
+                const healthPercent = (this.boss.currentHealth / this.boss.maxHealth) * 100;
+                document.getElementById('healthBar').style.width = healthPercent + '%';
+                document.getElementById('healthText').textContent = 
+                    `${this.boss.currentHealth} / ${this.boss.maxHealth}`;
+            }
+            
+            updateComboDisplay() {
+                const comboElement = document.getElementById('comboCounter');
+                const comboCount = document.getElementById('comboCount');
+                
+                if (this.player.comboCount > 1) {
+                    comboElement.classList.add('active');
+                    comboCount.textContent = this.player.comboCount;
+                } else {
+                    comboElement.classList.remove('active');
+                }
+            }
+            
+            updateHUD() {
+                document.getElementById('clickPower').textContent = 
+                    Math.floor(this.player.clickPower * this.player.multiplier);
+                document.getElementById('multiplier').textContent = 
+                    `x${this.player.multiplier.toFixed(1)}`;
+                document.getElementById('currentPhase').textContent = this.boss.phase;
+            }
+            
+            checkPhaseTransition() {
+                const healthPercent = (this.boss.currentHealth / this.boss.maxHealth) * 100;
+                let newPhase = 1;
+                
+                if (healthPercent <= 75) newPhase = 2;
+                if (healthPercent <= 50) newPhase = 3;
+                if (healthPercent <= 25) newPhase = 4;
+                
+                if (newPhase > this.boss.phase) {
+                    this.boss.phase = newPhase;
+                    this.announcePhase(newPhase);
+                }
+            }
+            
+            announcePhase(phase) {
+                const banner = document.getElementById('phaseBanner');
+                banner.textContent = `PHASE ${phase}`;
+                banner.classList.add('active');
+                
+                setTimeout(() => banner.classList.remove('active'), 2000);
+                
+                // Make boss more aggressive
+                this.boss.attackSpeed = 1 + (phase - 1) * 0.2;
+            }
+            
+            screenFlash() {
+                const flash = document.getElementById('screenFlash');
+                flash.classList.add('active');
+                setTimeout(() => flash.classList.remove('active'), 200);
+            }
+            
+            screenShake() {
+                document.getElementById('battleArena').classList.add('screen-shake');
+                setTimeout(() => {
+                    document.getElementById('battleArena').classList.remove('screen-shake');
+                }, 300);
+            }
+            
+            startBossAI() {
+                // Simple boss AI that performs attacks
+                setInterval(() => {
+                    if (!this.boss.isAttacking && Math.random() < 0.3) {
+                        this.performBossAttack();
+                    }
+                }, 2000);
+            }
+            
+            performBossAttack() {
+                this.boss.isAttacking = true;
+                const bossElement = document.getElementById('bossHand');
+                
+                // Telegraph attack
+                const telegraph = document.createElement('div');
+                telegraph.className = 'attack-telegraph';
+                telegraph.style.width = '200px';
+                telegraph.style.height = '200px';
+                telegraph.style.borderRadius = '50%';
+                telegraph.style.left = '50%';
+                telegraph.style.top = '50%';
+                telegraph.style.transform = 'translate(-50%, -50%)';
+                
+                document.getElementById('battleArena').appendChild(telegraph);
+                
+                // Execute attack after telegraph
+                setTimeout(() => {
+                    telegraph.remove();
+                    bossElement.classList.add('attacking');
+                    
+                    // Check if player is in attack zone
+                    // (Simplified - in real game would check cursor position)
+                    
+                    setTimeout(() => {
+                        bossElement.classList.remove('attacking');
+                        this.boss.isAttacking = false;
+                    }, 500);
+                }, 1000);
+            }
+            
+            victory() {
+                const endTime = Date.now();
+                const battleTime = Math.floor((endTime - this.player.stats.startTime) / 1000);
+                const minutes = Math.floor(battleTime / 60);
+                const seconds = battleTime % 60;
+                
+                document.getElementById('resultTitle').textContent = 'VICTORY!';
+                document.getElementById('resultTitle').className = 'result-title victory';
+                document.getElementById('totalDamage').textContent = this.player.stats.totalDamage;
+                document.getElementById('highestCombo').textContent = this.player.stats.highestCombo;
+                document.getElementById('criticalHits').textContent = this.player.stats.criticalHits;
+                document.getElementById('battleTime').textContent = `${minutes}:${seconds.toString().padStart(2, '0')}`;
+                
+                document.getElementById('resultScreen').classList.add('active');
+            }
+            
+            gameLoop() {
+                // Main game loop for animations and updates
+                requestAnimationFrame(() => this.gameLoop());
+            }
+            
+            // Utility methods
+            isPointInRect(point, rect) {
+                return point.x >= rect.left && point.x <= rect.right &&
+                       point.y >= rect.top && point.y <= rect.bottom;
+            }
+            
+            isPointInCircle(point, zone) {
+                const bossElement = document.getElementById('bossHand');
+                const bossRect = bossElement.getBoundingClientRect();
+                const zoneX = bossRect.left + (zone.x * bossRect.width);
+                const zoneY = bossRect.top + (zone.y * bossRect.height);
+                
+                const distance = Math.sqrt(
+                    Math.pow(point.x - zoneX, 2) + 
+                    Math.pow(point.y - zoneY, 2)
+                );
+                
+                return distance <= zone.radius;
+            }
+            
+            handleMouseMove(e) {
+                // Could add cursor trail effects here
+            }
+        }
+        
+        // Initialize arena
+        const arena = new CursorBossBattleArena();
+        
+        console.log('👊 CURSOR BOSS BATTLE ARENA');
+        console.log('========================');
+        console.log('Click on the boss hand to deal damage!');
+        console.log('Target yellow zones for critical hits!');
+        console.log('Build combos with rapid clicks!');
+    </script>
+</body>
+</html>

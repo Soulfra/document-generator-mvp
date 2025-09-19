@@ -1,0 +1,284 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>🎮 Quick Gaming Test</title>
+    <style>
+        body { background: #000; color: #00ff00; font-family: monospace; padding: 20px; }
+        .test-box { border: 1px solid #00ff00; padding: 15px; margin: 10px 0; }
+        button { background: #00ff00; color: #000; padding: 10px 20px; border: none; cursor: pointer; margin: 5px; }
+        .result { background: #112; padding: 10px; margin: 5px 0; }
+    </style>
+</head>
+<body>
+    <h1>🎮 GAMING PLATFORM TEST</h1>
+    
+    <div class="test-box">
+        <h2>🔧 SERVICE TESTS</h2>
+        <button onclick="testService('Master Router', 'http://localhost:5555')">Test Master Router</button>
+        <button onclick="testService('Gaming Engine', 'http://localhost:8888/api/status')">Test Gaming Engine</button>
+        <button onclick="testService('Character Theater', 'http://localhost:9950')">Test Character Theater</button>
+        <button onclick="testService('Auth Service', 'http://localhost:6666')">Test Auth Service</button>
+        <div id="serviceResults"></div>
+    </div>
+    
+    <div class="test-box">
+        <h2>🎯 ROUTING TESTS</h2>
+        <button onclick="testRoute('/game')">Test /game Route</button>
+        <button onclick="testRoute('/character')">Test /character Route</button>
+        <button onclick="testRoute('/chat')">Test /chat Route</button>
+        <div id="routingResults"></div>
+    </div>
+    
+    <div class="test-box">
+        <h2>🔐 AUTH TESTS</h2>
+        <button onclick="testLogin()">Test Login (alice/password)</button>
+        <button onclick="testAuthRoute()">Test Authenticated Route</button>
+        <div id="authResults"></div>
+    </div>
+    
+    <div class="test-box">
+        <h2>🎮 ACTUAL GAMING TEST</h2>
+        <button onclick="startGame()">START GAME</button>
+        <button onclick="loadCharacter()">LOAD CHARACTER</button>
+        <button onclick="joinChat()">JOIN CHAT</button>
+        <div id="gameResults"></div>
+    </div>
+
+    <script>
+        let authToken = null;
+        
+        async function testService(name, url) {
+            const resultsDiv = document.getElementById('serviceResults');
+            
+            try {
+                const response = await fetch(url);
+                const status = response.ok ? '✅' : '❌';
+                const contentType = response.headers.get('content-type') || 'unknown';
+                
+                resultsDiv.innerHTML += `
+                    <div class="result">
+                        ${status} ${name}: ${response.status} (${contentType})
+                    </div>
+                `;
+            } catch (error) {
+                resultsDiv.innerHTML += `
+                    <div class="result">
+                        ❌ ${name}: ${error.message}
+                    </div>
+                `;
+            }
+        }
+        
+        async function testRoute(route) {
+            const resultsDiv = document.getElementById('routingResults');
+            
+            try {
+                const response = await fetch(`http://localhost:5555${route}`);
+                const status = response.ok ? '✅' : '❌';
+                const text = await response.text();
+                const isHTML = text.includes('<!DOCTYPE html>');
+                const isJSON = text.startsWith('{');
+                
+                resultsDiv.innerHTML += `
+                    <div class="result">
+                        ${status} ${route}: ${response.status} (${isHTML ? 'HTML' : isJSON ? 'JSON' : 'OTHER'})
+                        <br>Preview: ${text.substring(0, 100)}...
+                    </div>
+                `;
+            } catch (error) {
+                resultsDiv.innerHTML += `
+                    <div class="result">
+                        ❌ ${route}: ${error.message}
+                    </div>
+                `;
+            }
+        }
+        
+        async function testLogin() {
+            const resultsDiv = document.getElementById('authResults');
+            
+            try {
+                const response = await fetch('http://localhost:6666/api/login', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ username: 'alice', password: 'password' })
+                });
+                
+                if (response.ok) {
+                    const data = await response.json();
+                    authToken = data.token;
+                    
+                    resultsDiv.innerHTML += `
+                        <div class="result">
+                            ✅ Login Success!<br>
+                            User: ${data.user.username} (${data.user.tier})<br>
+                            Level: ${data.gaming.level}, XP: ${data.gaming.experience}<br>
+                            Token: ${data.token.substring(0, 20)}...
+                        </div>
+                    `;
+                } else {
+                    const error = await response.text();
+                    resultsDiv.innerHTML += `
+                        <div class="result">
+                            ❌ Login Failed: ${response.status}<br>
+                            ${error}
+                        </div>
+                    `;
+                }
+            } catch (error) {
+                resultsDiv.innerHTML += `
+                    <div class="result">
+                        ❌ Login Error: ${error.message}
+                    </div>
+                `;
+            }
+        }
+        
+        async function testAuthRoute() {
+            const resultsDiv = document.getElementById('authResults');
+            
+            if (!authToken) {
+                resultsDiv.innerHTML += `
+                    <div class="result">
+                        ❌ No auth token - login first!
+                    </div>
+                `;
+                return;
+            }
+            
+            try {
+                const response = await fetch('http://localhost:6666/api/gaming/profile', {
+                    headers: { 'Authorization': `Bearer ${authToken}` }
+                });
+                
+                if (response.ok) {
+                    const data = await response.json();
+                    resultsDiv.innerHTML += `
+                        <div class="result">
+                            ✅ Auth Route Success!<br>
+                            Profile: ${data.profile.displayName}<br>
+                            Games Played: ${data.profile.gamesPlayed}<br>
+                            Play Time: ${data.profile.totalPlayTime}ms
+                        </div>
+                    `;
+                } else {
+                    resultsDiv.innerHTML += `
+                        <div class="result">
+                            ❌ Auth Route Failed: ${response.status}
+                        </div>
+                    `;
+                }
+            } catch (error) {
+                resultsDiv.innerHTML += `
+                    <div class="result">
+                        ❌ Auth Route Error: ${error.message}
+                    </div>
+                `;
+            }
+        }
+        
+        async function startGame() {
+            const resultsDiv = document.getElementById('gameResults');
+            
+            try {
+                // Try to start a gaming session
+                const response = await fetch('http://localhost:8888/api/status');
+                const data = await response.json();
+                
+                if (data.status === 'running') {
+                    resultsDiv.innerHTML += `
+                        <div class="result">
+                            🎮 GAME STARTED!<br>
+                            World: ${data.world.voxels} voxels loaded<br>
+                            FPS: ${data.performance.fps}<br>
+                            Entities: ${data.world.entities}
+                        </div>
+                    `;
+                    
+                    // Try to open game in new window
+                    window.open('http://localhost:8888/game', '_blank');
+                    
+                } else {
+                    resultsDiv.innerHTML += `
+                        <div class="result">
+                            ❌ Game engine not ready
+                        </div>
+                    `;
+                }
+            } catch (error) {
+                resultsDiv.innerHTML += `
+                    <div class="result">
+                        ❌ Game Start Error: ${error.message}
+                    </div>
+                `;
+            }
+        }
+        
+        async function loadCharacter() {
+            const resultsDiv = document.getElementById('gameResults');
+            
+            try {
+                const response = await fetch('http://localhost:9950');
+                
+                if (response.ok) {
+                    resultsDiv.innerHTML += `
+                        <div class="result">
+                            🎭 CHARACTER THEATER LOADED!<br>
+                            Opening character interface...
+                        </div>
+                    `;
+                    
+                    // Open character theater
+                    window.open('http://localhost:9950', '_blank');
+                    
+                } else {
+                    resultsDiv.innerHTML += `
+                        <div class="result">
+                            ❌ Character theater unavailable
+                        </div>
+                    `;
+                }
+            } catch (error) {
+                resultsDiv.innerHTML += `
+                    <div class="result">
+                        ❌ Character Load Error: ${error.message}
+                    </div>
+                `;
+            }
+        }
+        
+        async function joinChat() {
+            const resultsDiv = document.getElementById('gameResults');
+            
+            try {
+                const response = await fetch('http://localhost:8800');
+                
+                if (response.ok) {
+                    resultsDiv.innerHTML += `
+                        <div class="result">
+                            💬 CHAT SYSTEM READY!<br>
+                            Opening spatial chat...
+                        </div>
+                    `;
+                    
+                    // Open spatial router
+                    window.open('http://localhost:8800', '_blank');
+                    
+                } else {
+                    resultsDiv.innerHTML += `
+                        <div class="result">
+                            ❌ Chat system unavailable: ${response.status}
+                        </div>
+                    `;
+                }
+            } catch (error) {
+                resultsDiv.innerHTML += `
+                    <div class="result">
+                        ❌ Chat Join Error: ${error.message}
+                    </div>
+                `;
+            }
+        }
+    </script>
+</body>
+</html>

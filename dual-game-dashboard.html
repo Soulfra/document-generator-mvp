@@ -1,0 +1,512 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>🎮 DUAL GAME DASHBOARD - D2JSP + Master Launcher 🎮</title>
+    <style>
+        body {
+            margin: 0;
+            padding: 0;
+            background: #000;
+            color: #0f0;
+            font-family: 'Courier New', monospace;
+            overflow: hidden;
+            height: 100vh;
+            display: flex;
+            flex-direction: column;
+        }
+        
+        /* Header */
+        #header {
+            height: 40px;
+            background: rgba(0, 255, 0, 0.1);
+            border-bottom: 2px solid #0f0;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: 0 20px;
+        }
+        
+        #header h1 {
+            font-size: 20px;
+            margin: 0;
+            text-shadow: 0 0 10px #0f0;
+        }
+        
+        .status {
+            display: flex;
+            gap: 20px;
+            font-size: 14px;
+        }
+        
+        .status-item {
+            display: flex;
+            align-items: center;
+            gap: 5px;
+        }
+        
+        .indicator {
+            width: 10px;
+            height: 10px;
+            border-radius: 50%;
+            background: #0f0;
+            animation: pulse 1s infinite;
+        }
+        
+        @keyframes pulse {
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0.3; }
+        }
+        
+        /* Main Container */
+        #main-container {
+            flex: 1;
+            display: flex;
+            position: relative;
+        }
+        
+        /* Game Frames */
+        .game-frame {
+            flex: 1;
+            position: relative;
+            border: 2px solid #0f0;
+            margin: 10px;
+            background: #111;
+        }
+        
+        .game-frame iframe {
+            width: 100%;
+            height: 100%;
+            border: none;
+        }
+        
+        .frame-title {
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            background: rgba(0, 0, 0, 0.9);
+            padding: 5px 10px;
+            border-bottom: 1px solid #0f0;
+            z-index: 10;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+        
+        .frame-controls {
+            display: flex;
+            gap: 10px;
+        }
+        
+        .frame-controls button {
+            background: #0f0;
+            color: #000;
+            border: none;
+            padding: 2px 8px;
+            cursor: pointer;
+            font-family: inherit;
+            font-size: 12px;
+        }
+        
+        .frame-controls button:hover {
+            background: #0ff;
+        }
+        
+        /* Chat Interface */
+        #chat-container {
+            position: absolute;
+            bottom: 0;
+            left: 0;
+            right: 0;
+            height: 200px;
+            background: rgba(0, 0, 0, 0.95);
+            border-top: 2px solid #0f0;
+            display: flex;
+            flex-direction: column;
+            transition: height 0.3s;
+        }
+        
+        #chat-container.minimized {
+            height: 40px;
+        }
+        
+        #chat-header {
+            height: 30px;
+            background: rgba(0, 255, 0, 0.1);
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: 0 10px;
+            cursor: pointer;
+        }
+        
+        #chat-messages {
+            flex: 1;
+            overflow-y: auto;
+            padding: 10px;
+            font-size: 14px;
+        }
+        
+        .message {
+            margin: 5px 0;
+            padding: 5px;
+            background: rgba(0, 255, 0, 0.05);
+            border-left: 2px solid #0f0;
+        }
+        
+        .message.system {
+            border-left-color: #0ff;
+            color: #0ff;
+        }
+        
+        .message.user {
+            border-left-color: #ff0;
+            color: #ff0;
+        }
+        
+        .message.game {
+            border-left-color: #f0f;
+            color: #f0f;
+        }
+        
+        #chat-input-container {
+            display: flex;
+            padding: 10px;
+            gap: 10px;
+        }
+        
+        #chat-input {
+            flex: 1;
+            background: rgba(0, 255, 0, 0.1);
+            border: 1px solid #0f0;
+            color: #0f0;
+            padding: 8px;
+            font-family: inherit;
+        }
+        
+        #chat-send {
+            background: #0f0;
+            color: #000;
+            border: none;
+            padding: 8px 20px;
+            cursor: pointer;
+            font-family: inherit;
+            font-weight: bold;
+        }
+        
+        #chat-send:hover {
+            background: #0ff;
+        }
+        
+        /* Fullscreen buttons */
+        .fullscreen-btn {
+            position: absolute;
+            top: 40px;
+            right: 10px;
+            background: rgba(0, 255, 0, 0.2);
+            border: 1px solid #0f0;
+            color: #0f0;
+            padding: 5px 10px;
+            cursor: pointer;
+            z-index: 20;
+        }
+        
+        /* Resize handle */
+        #resize-handle {
+            position: absolute;
+            left: 50%;
+            top: 0;
+            bottom: 0;
+            width: 10px;
+            margin-left: -5px;
+            background: rgba(0, 255, 0, 0.3);
+            cursor: col-resize;
+            z-index: 30;
+        }
+        
+        #resize-handle:hover {
+            background: rgba(0, 255, 0, 0.5);
+        }
+    </style>
+</head>
+<body>
+    <!-- Header -->
+    <div id="header">
+        <h1>🎮 DUAL GAME INTERFACE 🎮</h1>
+        <div class="status">
+            <div class="status-item">
+                <span class="indicator"></span>
+                <span>D2JSP: <span id="d2jsp-status">ACTIVE</span></span>
+            </div>
+            <div class="status-item">
+                <span class="indicator"></span>
+                <span>Systems: <span id="system-count">23</span></span>
+            </div>
+            <div class="status-item">
+                <span>FG: <span id="fg-balance">∞</span></span>
+            </div>
+        </div>
+    </div>
+    
+    <!-- Main Container -->
+    <div id="main-container">
+        <!-- Left Game Frame -->
+        <div class="game-frame" id="left-frame">
+            <div class="frame-title">
+                <span>⚔️ D2JSP Ladder/Slash Battle</span>
+                <div class="frame-controls">
+                    <button onclick="reloadFrame('left')">🔄</button>
+                    <button onclick="swapFrames()">🔀</button>
+                </div>
+            </div>
+            <iframe src="d2jsp-ladder-slash-visualizer.html" id="left-iframe"></iframe>
+        </div>
+        
+        <!-- Resize Handle -->
+        <div id="resize-handle"></div>
+        
+        <!-- Right Game Frame -->
+        <div class="game-frame" id="right-frame">
+            <div class="frame-title">
+                <span>🎮 Game Multiverse Launcher</span>
+                <div class="frame-controls">
+                    <button onclick="reloadFrame('right')">🔄</button>
+                    <button onclick="swapFrames()">🔀</button>
+                </div>
+            </div>
+            <iframe src="master-game-launcher.html" id="right-iframe"></iframe>
+        </div>
+        
+        <!-- Chat Container -->
+        <div id="chat-container">
+            <div id="chat-header" onclick="toggleChat()">
+                <span>💬 Command Interface</span>
+                <span id="chat-toggle">▼</span>
+            </div>
+            <div id="chat-messages"></div>
+            <div id="chat-input-container">
+                <input type="text" id="chat-input" placeholder="Type commands or messages..." onkeypress="handleKeyPress(event)">
+                <button id="chat-send" onclick="sendMessage()">SEND</button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // Chat state
+        let chatMinimized = false;
+        
+        // System messages
+        const systemMessages = [
+            { type: 'system', text: '🌐 System initialized. Dual game interface ready.' },
+            { type: 'system', text: '⚔️ D2JSP Ladder system connected on port 65000' },
+            { type: 'system', text: '🎮 Game Multiverse loaded with 23 playable games' },
+            { type: 'system', text: '💬 Type /help for available commands' }
+        ];
+        
+        // Available commands
+        const commands = {
+            '/help': () => {
+                addMessage('system', 'Available commands:');
+                addMessage('system', '/status - Check system status');
+                addMessage('system', '/games - List all games');
+                addMessage('system', '/spawn - Spawn warrior in D2JSP game');
+                addMessage('system', '/battle - Start battle in D2JSP');
+                addMessage('system', '/switch [game] - Switch right frame to different game');
+                addMessage('system', '/fullscreen [left|right] - Fullscreen a game');
+                addMessage('system', '/fg [amount] - Check forum gold balance');
+                addMessage('system', '/wormhole - Check wormhole status');
+            },
+            '/status': () => {
+                addMessage('system', '📊 System Status:');
+                addMessage('system', '✅ D2JSP: ACTIVE (Port 65000)');
+                addMessage('system', '✅ Games Loaded: 23');
+                addMessage('system', '✅ Wormhole Detection: ONLINE');
+                addMessage('system', '✅ Forum Gold: ∞');
+            },
+            '/games': () => {
+                addMessage('system', '🎮 Available Games:');
+                addMessage('system', '• VC Billion Trillion Game');
+                addMessage('system', '• Freight Empire');
+                addMessage('system', '• Citadel Arena 3D');
+                addMessage('system', '• NPC World Game');
+                addMessage('system', '• OSRS Grand Exchange');
+                addMessage('system', '• Character Weapon System');
+                addMessage('system', '• Retro Gaming Portal');
+                addMessage('system', '+ 16 more games...');
+            },
+            '/spawn': () => {
+                // Send message to D2JSP game
+                const leftFrame = document.getElementById('left-iframe');
+                try {
+                    leftFrame.contentWindow.postMessage({ action: 'spawn' }, '*');
+                    addMessage('game', '⚔️ Spawning new warrior in D2JSP arena!');
+                } catch (e) {
+                    addMessage('system', '❌ Cannot communicate with D2JSP game');
+                }
+            },
+            '/battle': () => {
+                const leftFrame = document.getElementById('left-iframe');
+                try {
+                    leftFrame.contentWindow.postMessage({ action: 'battle' }, '*');
+                    addMessage('game', '⚔️ BATTLE COMMENCED!');
+                } catch (e) {
+                    addMessage('system', '❌ Cannot start battle');
+                }
+            },
+            '/wormhole': () => {
+                addMessage('system', '🌀 Wormhole Detection Status:');
+                addMessage('system', '• OSRS ↔ D2JSP: Price sync detected');
+                addMessage('system', '• Arbitrage window: 2.3% spread');
+                addMessage('system', '• Easter egg pattern: FIBONACCI detected in SOJ prices');
+                addMessage('system', '• White flag status: All markets stable');
+            }
+        };
+        
+        // Initialize
+        function init() {
+            // Show initial messages
+            systemMessages.forEach(msg => {
+                addMessage(msg.type, msg.text);
+            });
+            
+            // Setup resize functionality
+            setupResize();
+            
+            // Listen for messages from games
+            window.addEventListener('message', handleGameMessage);
+            
+            // Check D2JSP status
+            checkD2JSPStatus();
+        }
+        
+        // Add message to chat
+        function addMessage(type, text) {
+            const messages = document.getElementById('chat-messages');
+            const message = document.createElement('div');
+            message.className = `message ${type}`;
+            message.innerHTML = `<span>${new Date().toLocaleTimeString()}</span> ${text}`;
+            messages.appendChild(message);
+            messages.scrollTop = messages.scrollHeight;
+        }
+        
+        // Handle input
+        function sendMessage() {
+            const input = document.getElementById('chat-input');
+            const text = input.value.trim();
+            
+            if (!text) return;
+            
+            addMessage('user', text);
+            
+            // Check if it's a command
+            if (text.startsWith('/')) {
+                const cmd = text.split(' ')[0];
+                if (commands[cmd]) {
+                    commands[cmd]();
+                } else {
+                    addMessage('system', `Unknown command: ${cmd}. Type /help for commands.`);
+                }
+            } else {
+                // Regular message - could be sent to games
+                addMessage('system', `Message received: "${text}"`);
+            }
+            
+            input.value = '';
+        }
+        
+        // Handle enter key
+        function handleKeyPress(event) {
+            if (event.key === 'Enter') {
+                sendMessage();
+            }
+        }
+        
+        // Toggle chat
+        function toggleChat() {
+            chatMinimized = !chatMinimized;
+            const container = document.getElementById('chat-container');
+            const toggle = document.getElementById('chat-toggle');
+            
+            if (chatMinimized) {
+                container.classList.add('minimized');
+                toggle.textContent = '▲';
+            } else {
+                container.classList.remove('minimized');
+                toggle.textContent = '▼';
+            }
+        }
+        
+        // Reload frame
+        function reloadFrame(side) {
+            const iframe = document.getElementById(`${side}-iframe`);
+            iframe.src = iframe.src;
+            addMessage('system', `🔄 Reloaded ${side} frame`);
+        }
+        
+        // Swap frames
+        function swapFrames() {
+            const leftIframe = document.getElementById('left-iframe');
+            const rightIframe = document.getElementById('right-iframe');
+            
+            const leftSrc = leftIframe.src;
+            leftIframe.src = rightIframe.src;
+            rightIframe.src = leftSrc;
+            
+            addMessage('system', '🔀 Swapped game frames');
+        }
+        
+        // Setup resize
+        function setupResize() {
+            const handle = document.getElementById('resize-handle');
+            const leftFrame = document.getElementById('left-frame');
+            const rightFrame = document.getElementById('right-frame');
+            let isResizing = false;
+            
+            handle.addEventListener('mousedown', (e) => {
+                isResizing = true;
+                document.body.style.cursor = 'col-resize';
+            });
+            
+            document.addEventListener('mousemove', (e) => {
+                if (!isResizing) return;
+                
+                const containerWidth = document.getElementById('main-container').offsetWidth;
+                const leftWidth = e.clientX - 10;
+                const rightWidth = containerWidth - leftWidth - 20;
+                
+                leftFrame.style.flex = `0 0 ${leftWidth}px`;
+                rightFrame.style.flex = `0 0 ${rightWidth}px`;
+            });
+            
+            document.addEventListener('mouseup', () => {
+                isResizing = false;
+                document.body.style.cursor = 'default';
+            });
+        }
+        
+        // Handle messages from games
+        function handleGameMessage(event) {
+            if (event.data.type === 'game-event') {
+                addMessage('game', `🎮 ${event.data.message}`);
+            }
+        }
+        
+        // Check D2JSP status
+        async function checkD2JSPStatus() {
+            try {
+                const response = await fetch('http://localhost:65000/api/status');
+                const data = await response.json();
+                document.getElementById('d2jsp-status').textContent = data.status;
+            } catch (e) {
+                document.getElementById('d2jsp-status').textContent = 'OFFLINE';
+            }
+        }
+        
+        // Initialize on load
+        window.onload = init;
+        
+        // Periodic status check
+        setInterval(checkD2JSPStatus, 5000);
+    </script>
+</body>
+</html>

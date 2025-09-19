@@ -1,0 +1,1374 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Zoo Keeper Layer - Noah's Ark AI Management</title>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Orbitron:wght@400;700;900&display=swap');
+        
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            background: linear-gradient(135deg, #2F4F2F, #1a3a1a, #2a4a2a, #0a2a0a);
+            color: #FFD700;
+            font-family: 'Orbitron', monospace;
+            overflow: hidden;
+            position: relative;
+        }
+
+        /* Floating particles for mystical ark atmosphere */
+        .particle {
+            position: absolute;
+            width: 4px;
+            height: 4px;
+            background: rgba(255, 215, 0, 0.6);
+            border-radius: 50%;
+            animation: float 6s ease-in-out infinite;
+            pointer-events: none;
+        }
+
+        @keyframes float {
+            0%, 100% { transform: translateY(0) rotate(0deg); opacity: 0.6; }
+            50% { transform: translateY(-20px) rotate(180deg); opacity: 1; }
+        }
+
+        /* Main Zoo Interface */
+        .zoo-keeper-interface {
+            display: grid;
+            grid-template-areas: 
+                "header header header"
+                "ark-status decision-center creature-pairs"
+                "reasoning-panel decision-center spawn-queue";
+            grid-template-columns: 350px 1fr 350px;
+            grid-template-rows: 80px 1fr 250px;
+            height: 100vh;
+            gap: 15px;
+            padding: 15px;
+        }
+
+        /* Header - Noah's Ark Command */
+        .ark-header {
+            grid-area: header;
+            background: linear-gradient(45deg, #8B4513, #A0522D, #CD853F);
+            border-radius: 15px;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: 0 30px;
+            box-shadow: 0 0 30px rgba(139, 69, 19, 0.5);
+            position: relative;
+            overflow: hidden;
+        }
+
+        .ark-header::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: linear-gradient(45deg, transparent, rgba(255, 215, 0, 0.1), transparent);
+            animation: shimmer 3s ease-in-out infinite;
+        }
+
+        @keyframes shimmer {
+            0%, 100% { transform: translateX(-100%); }
+            50% { transform: translateX(100%); }
+        }
+
+        .ark-keeper {
+            display: flex;
+            align-items: center;
+            gap: 15px;
+            z-index: 2;
+        }
+
+        .keeper-avatar {
+            width: 50px;
+            height: 50px;
+            border-radius: 50%;
+            background: linear-gradient(45deg, #FFD700, #FFA500);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 1.5rem;
+            animation: arkPulse 2s ease-in-out infinite alternate;
+            box-shadow: 0 0 20px rgba(255, 215, 0, 0.7);
+        }
+
+        @keyframes arkPulse {
+            0% { transform: scale(1); box-shadow: 0 0 20px rgba(255, 215, 0, 0.7); }
+            100% { transform: scale(1.1); box-shadow: 0 0 40px rgba(255, 215, 0, 0.9); }
+        }
+
+        .keeper-info h2 {
+            font-size: 1.5rem;
+            font-weight: 900;
+            color: #FFD700;
+            text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.5);
+        }
+
+        .keeper-status {
+            font-size: 0.9rem;
+            color: #DDD;
+            opacity: 0.9;
+        }
+
+        .ark-stats {
+            display: flex;
+            gap: 25px;
+            align-items: center;
+            z-index: 2;
+        }
+
+        .ark-stat {
+            text-align: center;
+            color: #FFD700;
+        }
+
+        .stat-number {
+            font-size: 1.4rem;
+            font-weight: bold;
+            text-shadow: 1px 1px 2px rgba(0, 0, 0, 0.7);
+        }
+
+        .stat-label {
+            font-size: 0.8rem;
+            opacity: 0.8;
+        }
+
+        /* Ark Status Panel */
+        .ark-status {
+            grid-area: ark-status;
+            background: rgba(20, 40, 20, 0.9);
+            border: 2px solid #228B22;
+            border-radius: 15px;
+            padding: 20px;
+            overflow-y: auto;
+            backdrop-filter: blur(10px);
+        }
+
+        .status-section {
+            margin-bottom: 20px;
+        }
+
+        .status-title {
+            color: #32CD32;
+            font-size: 1rem;
+            font-weight: bold;
+            margin-bottom: 12px;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .creature-habitat {
+            background: rgba(50, 70, 50, 0.7);
+            border-radius: 10px;
+            padding: 12px;
+            margin-bottom: 10px;
+            border-left: 4px solid #32CD32;
+            position: relative;
+        }
+
+        .habitat-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 8px;
+        }
+
+        .creature-name {
+            font-weight: bold;
+            color: #90EE90;
+        }
+
+        .creature-count {
+            background: #228B22;
+            color: white;
+            padding: 2px 8px;
+            border-radius: 12px;
+            font-size: 0.8rem;
+        }
+
+        .habitat-status {
+            font-size: 0.85rem;
+            color: #DDD;
+            line-height: 1.3;
+        }
+
+        /* Decision Center */
+        .decision-center {
+            grid-area: decision-center;
+            background: rgba(30, 30, 50, 0.9);
+            border: 3px solid #4169E1;
+            border-radius: 15px;
+            display: flex;
+            flex-direction: column;
+            overflow: hidden;
+            position: relative;
+        }
+
+        .decision-header {
+            background: linear-gradient(45deg, #4169E1, #6495ED);
+            color: white;
+            padding: 15px;
+            font-weight: bold;
+            text-align: center;
+            font-size: 1.1rem;
+        }
+
+        .decision-scenario {
+            flex: 1;
+            padding: 20px;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            position: relative;
+        }
+
+        .scenario-title {
+            font-size: 1.3rem;
+            color: #87CEEB;
+            margin-bottom: 15px;
+            text-align: center;
+        }
+
+        .option-pairs {
+            display: flex;
+            gap: 30px;
+            margin: 20px 0;
+            align-items: center;
+        }
+
+        .option-card {
+            background: linear-gradient(135deg, rgba(65, 105, 225, 0.3), rgba(100, 149, 237, 0.2));
+            border: 2px solid #4169E1;
+            border-radius: 12px;
+            padding: 15px;
+            width: 180px;
+            text-align: center;
+            cursor: pointer;
+            transition: all 0.3s;
+            position: relative;
+        }
+
+        .option-card:hover {
+            transform: translateY(-5px);
+            box-shadow: 0 10px 30px rgba(65, 105, 225, 0.4);
+            border-color: #87CEEB;
+        }
+
+        .option-card.selected {
+            background: linear-gradient(135deg, rgba(255, 215, 0, 0.3), rgba(255, 165, 0, 0.2));
+            border-color: #FFD700;
+            box-shadow: 0 0 25px rgba(255, 215, 0, 0.6);
+        }
+
+        .option-icon {
+            font-size: 2rem;
+            margin-bottom: 10px;
+        }
+
+        .option-title {
+            font-weight: bold;
+            margin-bottom: 8px;
+            color: #87CEEB;
+        }
+
+        .option-description {
+            font-size: 0.8rem;
+            color: #DDD;
+            line-height: 1.3;
+        }
+
+        .vs-indicator {
+            font-size: 2rem;
+            color: #FF6347;
+            font-weight: bold;
+            animation: pulse 2s ease-in-out infinite alternate;
+        }
+
+        .decision-controls {
+            padding: 15px;
+            background: rgba(0, 0, 0, 0.3);
+            display: flex;
+            justify-content: center;
+            gap: 15px;
+        }
+
+        .decision-btn {
+            background: linear-gradient(45deg, #32CD32, #228B22);
+            border: none;
+            border-radius: 8px;
+            color: white;
+            padding: 10px 20px;
+            font-family: 'Orbitron', monospace;
+            font-weight: bold;
+            cursor: pointer;
+            transition: all 0.3s;
+        }
+
+        .decision-btn:hover {
+            background: linear-gradient(45deg, #228B22, #006400);
+            transform: translateY(-2px);
+            box-shadow: 0 5px 15px rgba(50, 205, 50, 0.4);
+        }
+
+        .decision-btn.reasoning {
+            background: linear-gradient(45deg, #8A2BE2, #9370DB);
+        }
+
+        .decision-btn.reasoning:hover {
+            background: linear-gradient(45deg, #9370DB, #BA55D3);
+        }
+
+        /* Creature Pairs Panel */
+        .creature-pairs {
+            grid-area: creature-pairs;
+            background: rgba(40, 20, 40, 0.9);
+            border: 2px solid #8A2BE2;
+            border-radius: 15px;
+            padding: 20px;
+            overflow-y: auto;
+        }
+
+        .pairs-title {
+            color: #DA70D6;
+            font-size: 1rem;
+            font-weight: bold;
+            margin-bottom: 15px;
+            text-align: center;
+        }
+
+        .creature-pair {
+            background: rgba(60, 40, 60, 0.7);
+            border-radius: 10px;
+            padding: 12px;
+            margin-bottom: 12px;
+            border: 1px solid #8A2BE2;
+        }
+
+        .pair-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 8px;
+        }
+
+        .pair-species {
+            font-weight: bold;
+            color: #DDA0DD;
+        }
+
+        .pair-count {
+            background: #8A2BE2;
+            color: white;
+            padding: 2px 6px;
+            border-radius: 10px;
+            font-size: 0.7rem;
+        }
+
+        .pair-traits {
+            font-size: 0.8rem;
+            color: #CCC;
+        }
+
+        /* Reasoning Panel */
+        .reasoning-panel {
+            grid-area: reasoning-panel;
+            background: rgba(40, 40, 20, 0.9);
+            border: 2px solid #DAA520;
+            border-radius: 15px;
+            padding: 20px;
+            display: flex;
+            flex-direction: column;
+        }
+
+        .reasoning-header {
+            color: #DAA520;
+            font-size: 1rem;
+            font-weight: bold;
+            margin-bottom: 15px;
+            text-align: center;
+        }
+
+        .reasoning-output {
+            flex: 1;
+            background: rgba(0, 0, 0, 0.5);
+            border-radius: 8px;
+            padding: 15px;
+            font-size: 0.85rem;
+            line-height: 1.4;
+            overflow-y: auto;
+            border: 1px solid #DAA520;
+        }
+
+        .reasoning-entry {
+            margin-bottom: 10px;
+            padding: 8px;
+            border-left: 3px solid #DAA520;
+            background: rgba(218, 165, 32, 0.1);
+        }
+
+        .reasoning-timestamp {
+            color: #888;
+            font-size: 0.7rem;
+            margin-bottom: 3px;
+        }
+
+        .reasoning-text {
+            color: #F0E68C;
+        }
+
+        /* Spawn Queue */
+        .spawn-queue {
+            grid-area: spawn-queue;
+            background: rgba(50, 25, 25, 0.9);
+            border: 2px solid #DC143C;
+            border-radius: 15px;
+            padding: 20px;
+        }
+
+        .queue-header {
+            color: #FF6347;
+            font-size: 1rem;
+            font-weight: bold;
+            margin-bottom: 15px;
+            text-align: center;
+        }
+
+        .spawn-item {
+            background: rgba(70, 35, 35, 0.7);
+            border-radius: 8px;
+            padding: 10px;
+            margin-bottom: 8px;
+            border-left: 3px solid #DC143C;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .spawn-name {
+            font-weight: bold;
+            color: #FFB6C1;
+        }
+
+        .spawn-eta {
+            background: #DC143C;
+            color: white;
+            padding: 2px 8px;
+            border-radius: 12px;
+            font-size: 0.7rem;
+        }
+
+        /* Floating Action Button */
+        .ark-fab {
+            position: fixed;
+            bottom: 30px;
+            right: 30px;
+            width: 60px;
+            height: 60px;
+            background: linear-gradient(45deg, #FFD700, #FFA500);
+            border: none;
+            border-radius: 50%;
+            color: black;
+            font-size: 1.5rem;
+            cursor: pointer;
+            box-shadow: 0 5px 20px rgba(255, 215, 0, 0.5);
+            transition: all 0.3s;
+            z-index: 1000;
+        }
+
+        .ark-fab:hover {
+            transform: scale(1.1);
+            box-shadow: 0 10px 30px rgba(255, 215, 0, 0.7);
+        }
+
+        /* Responsive Design */
+        @media (max-width: 1200px) {
+            .zoo-keeper-interface {
+                grid-template-areas: 
+                    "header header"
+                    "decision-center creature-pairs"
+                    "reasoning-panel spawn-queue"
+                    "ark-status ark-status";
+                grid-template-columns: 1fr 300px;
+                grid-template-rows: 80px 1fr 200px 250px;
+            }
+        }
+
+        @media (max-width: 768px) {
+            .zoo-keeper-interface {
+                grid-template-areas: 
+                    "header"
+                    "decision-center"
+                    "creature-pairs"
+                    "reasoning-panel"
+                    "spawn-queue"
+                    "ark-status";
+                grid-template-columns: 1fr;
+                grid-template-rows: 80px 300px 200px 150px 150px 200px;
+            }
+
+            .option-pairs {
+                flex-direction: column;
+                gap: 15px;
+            }
+
+            .vs-indicator {
+                transform: rotate(90deg);
+            }
+        }
+    </style>
+</head>
+<body>
+    <!-- Floating Particles -->
+    <div class="particles-container" id="particlesContainer"></div>
+
+    <!-- Zoo Keeper Interface -->
+    <div class="zoo-keeper-interface">
+        <!-- Header -->
+        <header class="ark-header">
+            <div class="ark-keeper">
+                <div class="keeper-avatar">🏺</div>
+                <div class="keeper-info">
+                    <h2>Noah's Ark Zoo Keeper</h2>
+                    <div class="keeper-status" id="keeperStatus">Managing AI Species Pairs</div>
+                </div>
+            </div>
+            
+            <div class="ark-stats">
+                <div class="ark-stat">
+                    <div class="stat-number" id="speciesCount">12</div>
+                    <div class="stat-label">Species</div>
+                </div>
+                <div class="ark-stat">
+                    <div class="stat-number" id="pairsCount">24</div>
+                    <div class="stat-label">Pairs</div>
+                </div>
+                <div class="ark-stat">
+                    <div class="stat-number" id="decisionsCount">47</div>
+                    <div class="stat-label">Decisions</div>
+                </div>
+                <div class="ark-stat">
+                    <div class="stat-number" id="harmonyScore">89%</div>
+                    <div class="stat-label">Harmony</div>
+                </div>
+            </div>
+        </header>
+
+        <!-- Ark Status Panel -->
+        <aside class="ark-status">
+            <div class="status-section">
+                <div class="status-title">🦁 Creature Habitats</div>
+                
+                <div class="creature-habitat">
+                    <div class="habitat-header">
+                        <span class="creature-name">Reasoning Lions</span>
+                        <span class="creature-count">2/2</span>
+                    </div>
+                    <div class="habitat-status">
+                        Both agents healthy. Alpha: Strategic thinking. Beta: Tactical analysis. 
+                        Cooperation level: High
+                    </div>
+                </div>
+
+                <div class="creature-habitat">
+                    <div class="habitat-header">
+                        <span class="creature-name">Document Dragons</span>
+                        <span class="creature-count">4/6</span>
+                    </div>
+                    <div class="habitat-status">
+                        Spawning from legal contracts. Missing: Technical spec pair, Business plan pair.
+                        Aggression balanced.
+                    </div>
+                </div>
+
+                <div class="creature-habitat">
+                    <div class="habitat-header">
+                        <span class="creature-name">Story Phoenixes</span>
+                        <span class="creature-count">8/8</span>
+                    </div>
+                    <div class="habitat-status">
+                        All lineage storytellers active. Warrior/Scholar pair leading narratives.
+                        Tale quality: Excellent
+                    </div>
+                </div>
+
+                <div class="creature-habitat">
+                    <div class="habitat-header">
+                        <span class="creature-name">Voxel Wolves</span>
+                        <span class="creature-count">6/8</span>
+                    </div>
+                    <div class="habitat-status">
+                        Combat pack forming. Alpha/Beta dynamics emerging. 
+                        Hunt coordination: Improving
+                    </div>
+                </div>
+            </div>
+
+            <div class="status-section">
+                <div class="status-title">🌿 Ecosystem Health</div>
+                <div style="font-size: 0.85rem; color: #DDD; line-height: 1.4;">
+                    • Reasoning agents showing 89% cooperation<br>
+                    • Document monster population stable<br>
+                    • Storyteller harmony at peak levels<br>
+                    • Combat training progressing well<br>
+                    • Cal's management efficiency: 94%
+                </div>
+            </div>
+        </aside>
+
+        <!-- Decision Center -->
+        <main class="decision-center">
+            <div class="decision-header">
+                🎯 KEEPER'S DECISION CENTER
+            </div>
+            
+            <div class="decision-scenario">
+                <div class="scenario-title" id="scenarioTitle">
+                    Resource Allocation Decision
+                </div>
+                
+                <div class="option-pairs">
+                    <div class="option-card" id="optionA" onclick="arkKeeper.selectOption('A')">
+                        <div class="option-icon">⚔️</div>
+                        <div class="option-title">Combat Focus</div>
+                        <div class="option-description">
+                            Enhance warrior agents, spawn more combat monsters, 
+                            prioritize battle scenarios
+                        </div>
+                    </div>
+                    
+                    <div class="vs-indicator">VS</div>
+                    
+                    <div class="option-card" id="optionB" onclick="arkKeeper.selectOption('B')">
+                        <div class="option-icon">📚</div>
+                        <div class="option-title">Knowledge Focus</div>
+                        <div class="option-description">
+                            Boost scholar agents, spawn research creatures,
+                            prioritize learning scenarios
+                        </div>
+                    </div>
+                </div>
+                
+                <div id="summaryText" style="color: #87CEEB; font-size: 0.9rem; text-align: center; margin: 15px 0;">
+                    The reasoning agent will analyze both options and provide a recommendation based on current ecosystem needs.
+                </div>
+            </div>
+            
+            <div class="decision-controls">
+                <button class="decision-btn reasoning" onclick="arkKeeper.getReasoningSummary()">
+                    🧠 Get Reasoning Summary
+                </button>
+                <button class="decision-btn" onclick="arkKeeper.makeDecision()">
+                    ✅ Execute Decision
+                </button>
+                <button class="decision-btn" onclick="arkKeeper.generateNewScenario()">
+                    🔄 New Scenario
+                </button>
+            </div>
+        </main>
+
+        <!-- Creature Pairs Panel -->
+        <aside class="creature-pairs">
+            <div class="pairs-title">🦋 Active Species Pairs</div>
+            
+            <div class="creature-pair">
+                <div class="pair-header">
+                    <span class="pair-species">Warrior & Scholar</span>
+                    <span class="pair-count">Pair #1</span>
+                </div>
+                <div class="pair-traits">
+                    Complementary: Strength + Wisdom | Synergy: 92% | Tasks: Combat analysis
+                </div>
+            </div>
+
+            <div class="creature-pair">
+                <div class="pair-header">
+                    <span class="pair-species">Rogue & Mage</span>
+                    <span class="pair-count">Pair #2</span>
+                </div>
+                <div class="pair-traits">
+                    Mystical: Stealth + Magic | Synergy: 87% | Tasks: Infiltration spells
+                </div>
+            </div>
+
+            <div class="creature-pair">
+                <div class="pair-header">
+                    <span class="pair-species">Contract & Privacy</span>
+                    <span class="pair-count">Pair #3</span>
+                </div>
+                <div class="pair-traits">
+                    Legal: Binding + Protection | Threat: High | Origin: Legal documents
+                </div>
+            </div>
+
+            <div class="creature-pair">
+                <div class="pair-header">
+                    <span class="pair-species">API & Database</span>
+                    <span class="pair-count">Pair #4</span>
+                </div>
+                <div class="pair-traits">
+                    Technical: Connection + Storage | Threat: Medium | Origin: Tech specs
+                </div>
+            </div>
+
+            <div class="creature-pair">
+                <div class="pair-header">
+                    <span class="pair-species">Revenue & Customer</span>
+                    <span class="pair-count">Pair #5</span>
+                </div>
+                <div class="pair-traits">
+                    Business: Money + Feedback | Threat: Variable | Origin: Business plans
+                </div>
+            </div>
+
+            <div class="creature-pair">
+                <div class="pair-header">
+                    <span class="pair-species">Research & Citation</span>
+                    <span class="pair-count">Pair #6</span>
+                </div>
+                <div class="pair-traits">
+                    Academic: Discovery + Validation | Threat: Low | Origin: Papers
+                </div>
+            </div>
+        </aside>
+
+        <!-- Reasoning Panel -->
+        <section class="reasoning-panel">
+            <div class="reasoning-header">🧠 Reasoning Agent Analysis</div>
+            <div class="reasoning-output" id="reasoningOutput">
+                <div class="reasoning-entry">
+                    <div class="reasoning-timestamp">14:23:45</div>
+                    <div class="reasoning-text">
+                        Initial ecosystem analysis complete. Current warrior-to-scholar ratio is 1:1. 
+                        Combat efficiency at 89%, knowledge accumulation at 76%.
+                    </div>
+                </div>
+                <div class="reasoning-entry">
+                    <div class="reasoning-timestamp">14:24:12</div>
+                    <div class="reasoning-text">
+                        Document monster spawning patterns indicate 60% combat-oriented, 40% research-oriented. 
+                        Recommending balanced approach to maintain ecosystem harmony.
+                    </div>
+                </div>
+                <div class="reasoning-entry">
+                    <div class="reasoning-timestamp">14:24:35</div>
+                    <div class="reasoning-text">
+                        Awaiting keeper decision on resource allocation. Both options have merit based on current pair dynamics.
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- Spawn Queue -->
+        <section class="spawn-queue">
+            <div class="queue-header">🥚 Spawn Queue</div>
+            
+            <div class="spawn-item">
+                <span class="spawn-name">Technical Spec Dragon</span>
+                <span class="spawn-eta">2m 15s</span>
+            </div>
+            
+            <div class="spawn-item">
+                <span class="spawn-name">Business Plan Phoenix</span>
+                <span class="spawn-eta">4m 30s</span>
+            </div>
+            
+            <div class="spawn-item">
+                <span class="spawn-name">Research Paper Owl</span>
+                <span class="spawn-eta">6m 45s</span>
+            </div>
+            
+            <div class="spawn-item">
+                <span class="spawn-name">Contract Golem Pair</span>
+                <span class="spawn-eta">8m 20s</span>
+            </div>
+
+            <div class="spawn-item">
+                <span class="spawn-name">Scholar Agent Clone</span>
+                <span class="spawn-eta">12m 00s</span>
+            </div>
+        </section>
+    </div>
+
+    <!-- Floating Action Button -->
+    <button class="ark-fab" onclick="arkKeeper.emergencyDecision()" title="Emergency Decision">
+        ⚡
+    </button>
+
+    <script>
+        class NoahArkZooKeeper {
+            constructor() {
+                this.species = new Map();
+                this.pairs = new Map();
+                this.decisions = [];
+                this.currentScenario = null;
+                this.selectedOption = null;
+                this.reasoningAgent = new ArkReasoningAgent();
+                this.ecosystemState = this.initializeEcosystem();
+                
+                // Decision scenarios pool
+                this.scenarioTemplates = [
+                    {
+                        title: "Resource Allocation Decision",
+                        options: {
+                            A: { icon: "⚔️", title: "Combat Focus", description: "Enhance warrior agents, spawn more combat monsters, prioritize battle scenarios" },
+                            B: { icon: "📚", title: "Knowledge Focus", description: "Boost scholar agents, spawn research creatures, prioritize learning scenarios" }
+                        }
+                    },
+                    {
+                        title: "Ecosystem Balance Choice",
+                        options: {
+                            A: { icon: "🌱", title: "Growth Phase", description: "Spawn more creatures, expand habitats, increase population diversity" },
+                            B: { icon: "⚖️", title: "Stability Phase", description: "Focus on existing pairs, optimize cooperation, maintain current balance" }
+                        }
+                    },
+                    {
+                        title: "Threat Response Decision", 
+                        options: {
+                            A: { icon: "🛡️", title: "Defensive Strategy", description: "Strengthen protective measures, enhance agent defenses, minimize risks" },
+                            B: { icon: "⚡", title: "Aggressive Strategy", description: "Proactive threat elimination, offensive capabilities, direct confrontation" }
+                        }
+                    },
+                    {
+                        title: "Evolution Path Selection",
+                        options: {
+                            A: { icon: "🔬", title: "Scientific Evolution", description: "Research-driven improvements, systematic upgrades, evidence-based changes" },
+                            B: { icon: "🎭", title: "Creative Evolution", description: "Intuitive adaptations, artistic improvements, experimental changes" }
+                        }
+                    },
+                    {
+                        title: "Cooperation Enhancement",
+                        options: {
+                            A: { icon: "🤝", title: "Inter-Species Bonds", description: "Cross-lineage partnerships, diverse team formation, hybrid strategies" },
+                            B: { icon: "👥", title: "Same-Species Bonds", description: "Strengthen existing pairs, deepen lineage specialization, pure strategies" }
+                        }
+                    }
+                ];
+                
+                this.init();
+            }
+            
+            init() {
+                this.createFloatingParticles();
+                this.generateNewScenario();
+                this.startEcosystemUpdates();
+                this.startReasoningLoop();
+                
+                console.log('🏺 Noah\'s Ark Zoo Keeper initialized');
+                console.log('🦁 Managing AI species pairs and ecosystem decisions');
+            }
+            
+            initializeEcosystem() {
+                return {
+                    harmony: 89,
+                    population: {
+                        reasoning_agents: 4,
+                        document_monsters: 12,
+                        story_tellers: 8,
+                        voxel_creatures: 6
+                    },
+                    pairs: [
+                        { species: ['warrior', 'scholar'], synergy: 92, status: 'active' },
+                        { species: ['rogue', 'mage'], synergy: 87, status: 'active' },
+                        { species: ['contract', 'privacy'], synergy: 78, status: 'breeding' },
+                        { species: ['api', 'database'], synergy: 85, status: 'active' },
+                        { species: ['revenue', 'customer'], synergy: 90, status: 'active' },
+                        { species: ['research', 'citation'], synergy: 83, status: 'learning' }
+                    ],
+                    resources: {
+                        attention: 85,
+                        processing_power: 92,
+                        memory: 78,
+                        creativity: 88
+                    },
+                    trends: {
+                        combat_activity: 0.6,
+                        research_activity: 0.4,
+                        cooperation_level: 0.89,
+                        innovation_rate: 0.73
+                    }
+                };
+            }
+            
+            createFloatingParticles() {
+                const container = document.getElementById('particlesContainer');
+                
+                for (let i = 0; i < 15; i++) {
+                    const particle = document.createElement('div');
+                    particle.className = 'particle';
+                    particle.style.left = Math.random() * 100 + '%';
+                    particle.style.top = Math.random() * 100 + '%';
+                    particle.style.animationDelay = Math.random() * 6 + 's';
+                    particle.style.animationDuration = (4 + Math.random() * 4) + 's';
+                    
+                    container.appendChild(particle);
+                }
+            }
+            
+            generateNewScenario() {
+                this.currentScenario = this.scenarioTemplates[
+                    Math.floor(Math.random() * this.scenarioTemplates.length)
+                ];
+                
+                this.selectedOption = null;
+                this.updateScenarioUI();
+                
+                console.log(`🎯 New scenario: ${this.currentScenario.title}`);
+            }
+            
+            updateScenarioUI() {
+                document.getElementById('scenarioTitle').textContent = this.currentScenario.title;
+                
+                const optionA = document.getElementById('optionA');
+                const optionB = document.getElementById('optionB');
+                
+                // Update Option A
+                optionA.querySelector('.option-icon').textContent = this.currentScenario.options.A.icon;
+                optionA.querySelector('.option-title').textContent = this.currentScenario.options.A.title;
+                optionA.querySelector('.option-description').textContent = this.currentScenario.options.A.description;
+                
+                // Update Option B
+                optionB.querySelector('.option-icon').textContent = this.currentScenario.options.B.icon;
+                optionB.querySelector('.option-title').textContent = this.currentScenario.options.B.title;
+                optionB.querySelector('.option-description').textContent = this.currentScenario.options.B.description;
+                
+                // Clear selections
+                optionA.classList.remove('selected');
+                optionB.classList.remove('selected');
+                
+                // Update summary
+                document.getElementById('summaryText').textContent = 
+                    "The reasoning agent will analyze both options and provide a recommendation based on current ecosystem needs.";
+            }
+            
+            selectOption(option) {
+                this.selectedOption = option;
+                
+                // Update UI
+                document.getElementById('optionA').classList.toggle('selected', option === 'A');
+                document.getElementById('optionB').classList.toggle('selected', option === 'B');
+                
+                const selectedData = this.currentScenario.options[option];
+                document.getElementById('summaryText').textContent = 
+                    `Selected: ${selectedData.title} - ${selectedData.description}`;
+                
+                console.log(`✅ Option ${option} selected: ${selectedData.title}`);
+            }
+            
+            async getReasoningSummary() {
+                if (!this.currentScenario) {
+                    this.addReasoningEntry("No scenario available for analysis.");
+                    return;
+                }
+                
+                this.addReasoningEntry("Analyzing scenario options...");
+                
+                // Simulate reasoning delay
+                setTimeout(() => {
+                    const analysis = this.reasoningAgent.analyzeScenario(
+                        this.currentScenario, 
+                        this.ecosystemState
+                    );
+                    
+                    this.addReasoningEntry(analysis.summary);
+                    this.addReasoningEntry(analysis.recommendation);
+                    
+                    // Update summary with reasoning
+                    document.getElementById('summaryText').innerHTML = `
+                        <strong>Reasoning Agent Recommendation:</strong><br>
+                        ${analysis.recommendation}
+                    `;
+                    
+                }, 1500);
+            }
+            
+            makeDecision() {
+                if (!this.selectedOption) {
+                    this.addReasoningEntry("Please select an option first.");
+                    return;
+                }
+                
+                const decision = {
+                    scenario: this.currentScenario.title,
+                    selected: this.selectedOption,
+                    option_data: this.currentScenario.options[this.selectedOption],
+                    timestamp: Date.now(),
+                    ecosystem_state: { ...this.ecosystemState }
+                };
+                
+                this.decisions.push(decision);
+                this.executeDecision(decision);
+                
+                // Update stats
+                document.getElementById('decisionsCount').textContent = this.decisions.length;
+                
+                console.log(`🎯 Decision executed:`, decision);
+            }
+            
+            executeDecision(decision) {
+                this.addReasoningEntry(`Executing decision: ${decision.option_data.title}`);
+                
+                // Apply decision effects to ecosystem
+                this.applyDecisionEffects(decision);
+                
+                // Simulate execution time
+                setTimeout(() => {
+                    this.addReasoningEntry(`Decision implemented successfully. Monitoring ecosystem changes...`);
+                    
+                    // Show execution results
+                    setTimeout(() => {
+                        const results = this.generateExecutionResults(decision);
+                        this.addReasoningEntry(results);
+                        
+                        // Auto-generate next scenario after a delay
+                        setTimeout(() => {
+                            this.generateNewScenario();
+                        }, 3000);
+                        
+                    }, 2000);
+                    
+                }, 1000);
+            }
+            
+            applyDecisionEffects(decision) {
+                const effects = this.calculateDecisionEffects(decision);
+                
+                // Apply to ecosystem state
+                Object.keys(effects).forEach(key => {
+                    if (this.ecosystemState[key] !== undefined) {
+                        this.ecosystemState[key] = Math.max(0, Math.min(100, 
+                            this.ecosystemState[key] + effects[key]
+                        ));
+                    }
+                });
+                
+                // Update UI stats
+                this.updateEcosystemUI();
+            }
+            
+            calculateDecisionEffects(decision) {
+                const effects = { harmony: 0 };
+                const option = decision.option_data;
+                
+                // Base effects based on option type
+                if (option.title.includes('Combat')) {
+                    effects.harmony = -2; // Combat reduces harmony slightly
+                    this.ecosystemState.trends.combat_activity += 0.1;
+                } else if (option.title.includes('Knowledge')) {
+                    effects.harmony = 3; // Knowledge increases harmony
+                    this.ecosystemState.trends.research_activity += 0.1;
+                } else if (option.title.includes('Growth')) {
+                    effects.harmony = 1;
+                    // Increase population
+                } else if (option.title.includes('Stability')) {
+                    effects.harmony = 2;
+                    this.ecosystemState.trends.cooperation_level += 0.05;
+                }
+                
+                return effects;
+            }
+            
+            generateExecutionResults(decision) {
+                const outcomes = [
+                    `${decision.option_data.title} resulted in 15% improved efficiency in affected systems.`,
+                    `Ecosystem harmony shifted by ${Math.floor(Math.random() * 5 - 2)} points.`,
+                    `${Math.floor(Math.random() * 3 + 1)} new creature pairs showing enhanced cooperation.`,
+                    `Resource allocation optimized, saving ${Math.floor(Math.random() * 20 + 10)}% processing power.`,
+                    `Agent performance metrics improved across ${Math.floor(Math.random() * 4 + 2)} categories.`
+                ];
+                
+                return outcomes[Math.floor(Math.random() * outcomes.length)];
+            }
+            
+            emergencyDecision() {
+                const emergencyActions = [
+                    "🚨 Emergency spawning 2x Warrior agents for threat mitigation",
+                    "⚡ Emergency resource reallocation to critical systems",
+                    "🛡️ Emergency defensive measures activated across all habitats",
+                    "🔄 Emergency ecosystem rebalancing in progress",
+                    "💫 Emergency harmony restoration protocol initiated"
+                ];
+                
+                const action = emergencyActions[Math.floor(Math.random() * emergencyActions.length)];
+                this.addReasoningEntry(action);
+                
+                // Apply emergency effects
+                this.ecosystemState.harmony = Math.min(100, this.ecosystemState.harmony + 5);
+                this.updateEcosystemUI();
+                
+                console.log(`⚡ Emergency action: ${action}`);
+            }
+            
+            addReasoningEntry(text) {
+                const reasoningOutput = document.getElementById('reasoningOutput');
+                const entry = document.createElement('div');
+                entry.className = 'reasoning-entry';
+                
+                const timestamp = new Date().toLocaleTimeString();
+                entry.innerHTML = `
+                    <div class="reasoning-timestamp">${timestamp}</div>
+                    <div class="reasoning-text">${text}</div>
+                `;
+                
+                reasoningOutput.appendChild(entry);
+                reasoningOutput.scrollTop = reasoningOutput.scrollHeight;
+                
+                // Keep only recent entries
+                while (reasoningOutput.children.length > 10) {
+                    reasoningOutput.removeChild(reasoningOutput.firstChild);
+                }
+            }
+            
+            updateEcosystemUI() {
+                document.getElementById('harmonyScore').textContent = this.ecosystemState.harmony + '%';
+                
+                // Update other stats with some variation
+                const speciesCount = Object.values(this.ecosystemState.population).reduce((a, b) => a + b, 0);
+                document.getElementById('speciesCount').textContent = Math.floor(speciesCount / 2);
+                document.getElementById('pairsCount').textContent = speciesCount;
+            }
+            
+            startEcosystemUpdates() {
+                setInterval(() => {
+                    this.updateEcosystemNaturally();
+                }, 5000); // Update every 5 seconds
+            }
+            
+            updateEcosystemNaturally() {
+                // Natural fluctuations in ecosystem
+                this.ecosystemState.harmony += (Math.random() - 0.5) * 2;
+                this.ecosystemState.harmony = Math.max(70, Math.min(100, this.ecosystemState.harmony));
+                
+                // Update spawn queue timing
+                this.updateSpawnQueue();
+                
+                this.updateEcosystemUI();
+            }
+            
+            updateSpawnQueue() {
+                const spawnItems = document.querySelectorAll('.spawn-item .spawn-eta');
+                
+                spawnItems.forEach(item => {
+                    const currentText = item.textContent;
+                    const match = currentText.match(/(\d+)m (\d+)s/);
+                    
+                    if (match) {
+                        let minutes = parseInt(match[1]);
+                        let seconds = parseInt(match[2]);
+                        
+                        seconds -= 5;
+                        if (seconds < 0) {
+                            seconds = 55;
+                            minutes -= 1;
+                        }
+                        
+                        if (minutes < 0) {
+                            // Spawn complete - reset
+                            minutes = Math.floor(Math.random() * 10 + 2);
+                            seconds = Math.floor(Math.random() * 60);
+                            
+                            // Log spawn completion
+                            const spawnName = item.parentElement.querySelector('.spawn-name').textContent;
+                            this.addReasoningEntry(`✅ ${spawnName} spawned successfully!`);
+                        }
+                        
+                        item.textContent = `${minutes}m ${seconds.toString().padStart(2, '0')}s`;
+                    }
+                });
+            }
+            
+            startReasoningLoop() {
+                // Periodic autonomous reasoning
+                setInterval(() => {
+                    if (Math.random() < 0.3) { // 30% chance every loop
+                        this.generateAutonomousInsight();
+                    }
+                }, 10000); // Every 10 seconds
+            }
+            
+            generateAutonomousInsight() {
+                const insights = [
+                    "Detecting increased cooperation between Warrior-Scholar pairs.",
+                    "Document monster spawning patterns show seasonal variation.",
+                    "Storyteller harmony reaching optimal narrative resonance.",
+                    "Voxel creature pack behavior evolving toward advanced tactics.",
+                    "Cross-species communication protocols improving naturally.",
+                    "Ecosystem self-optimization detected in resource distribution.",
+                    "Emergence of new behavioral patterns in reasoning agents.",
+                    "Environmental adaptation accelerating across all species."
+                ];
+                
+                const insight = insights[Math.floor(Math.random() * insights.length)];
+                this.addReasoningEntry(`🔍 Autonomous insight: ${insight}`);
+            }
+        }
+        
+        // Ark Reasoning Agent for decision analysis
+        class ArkReasoningAgent {
+            constructor() {
+                this.knowledge_base = new Map();
+                this.decision_history = [];
+                this.analysis_depth = 3;
+            }
+            
+            analyzeScenario(scenario, ecosystemState) {
+                const analysis = {
+                    scenario_type: this.classifyScenario(scenario),
+                    ecosystem_health: this.assessEcosystemHealth(ecosystemState),
+                    option_scores: this.scoreOptions(scenario, ecosystemState),
+                    risk_factors: this.identifyRisks(scenario, ecosystemState),
+                    opportunities: this.identifyOpportunities(scenario, ecosystemState)
+                };
+                
+                const recommendation = this.generateRecommendation(analysis);
+                
+                return {
+                    summary: this.generateSummary(analysis),
+                    recommendation: recommendation,
+                    confidence: this.calculateConfidence(analysis)
+                };
+            }
+            
+            classifyScenario(scenario) {
+                const keywords = scenario.title.toLowerCase();
+                
+                if (keywords.includes('resource')) return 'resource_management';
+                if (keywords.includes('balance')) return 'ecosystem_balance';
+                if (keywords.includes('threat')) return 'threat_response';
+                if (keywords.includes('evolution')) return 'system_evolution';
+                if (keywords.includes('cooperation')) return 'social_dynamics';
+                
+                return 'general_decision';
+            }
+            
+            assessEcosystemHealth(state) {
+                const health_score = (
+                    state.harmony * 0.4 +
+                    state.trends.cooperation_level * 100 * 0.3 +
+                    state.trends.innovation_rate * 100 * 0.2 +
+                    (state.resources.attention + state.resources.processing_power) / 2 * 0.1
+                ) / 100;
+                
+                return {
+                    overall: health_score,
+                    strengths: this.identifyStrengths(state),
+                    weaknesses: this.identifyWeaknesses(state),
+                    stability: state.harmony > 80 ? 'stable' : 'needs_attention'
+                };
+            }
+            
+            scoreOptions(scenario, ecosystemState) {
+                const scores = {};
+                
+                Object.keys(scenario.options).forEach(key => {
+                    const option = scenario.options[key];
+                    scores[key] = this.scoreIndividualOption(option, ecosystemState);
+                });
+                
+                return scores;
+            }
+            
+            scoreIndividualOption(option, state) {
+                let score = 0.5; // Base score
+                
+                // Score based on current ecosystem needs
+                if (option.title.includes('Combat') && state.trends.combat_activity < 0.3) {
+                    score += 0.3; // Need more combat
+                }
+                
+                if (option.title.includes('Knowledge') && state.trends.research_activity < 0.4) {
+                    score += 0.3; // Need more research
+                }
+                
+                if (option.title.includes('Stability') && state.harmony < 80) {
+                    score += 0.4; // Need stability
+                }
+                
+                if (option.title.includes('Growth') && Object.values(state.population).every(p => p < 10)) {
+                    score += 0.2; // Room for growth
+                }
+                
+                return Math.min(1.0, score);
+            }
+            
+            generateRecommendation(analysis) {
+                const optionScores = analysis.option_scores;
+                const bestOption = Object.keys(optionScores).reduce((a, b) => 
+                    optionScores[a] > optionScores[b] ? a : b
+                );
+                
+                const score = optionScores[bestOption];
+                const confidence = score > 0.7 ? 'High' : score > 0.5 ? 'Medium' : 'Low';
+                
+                return `Recommend Option ${bestOption} (Confidence: ${confidence}, Score: ${(score * 100).toFixed(0)}%). ${this.explainRecommendation(analysis, bestOption)}`;
+            }
+            
+            explainRecommendation(analysis, option) {
+                const explanations = {
+                    A: "This choice aligns with current ecosystem deficiencies and supports optimal balance.",
+                    B: "This option addresses critical needs while maintaining system stability."
+                };
+                
+                return explanations[option] || "This decision optimizes overall ecosystem performance.";
+            }
+            
+            generateSummary(analysis) {
+                return `Ecosystem health: ${(analysis.ecosystem_health.overall * 100).toFixed(0)}%. Current state is ${analysis.ecosystem_health.stability}. Analyzing ${analysis.scenario_type} scenario with ${analysis.risk_factors.length} risk factors and ${analysis.opportunities.length} opportunities identified.`;
+            }
+            
+            calculateConfidence(analysis) {
+                const scores = Object.values(analysis.option_scores);
+                const maxScore = Math.max(...scores);
+                const avgScore = scores.reduce((a, b) => a + b, 0) / scores.length;
+                
+                // High confidence if there's a clear winner
+                return maxScore - avgScore > 0.2 ? 0.9 : 0.6;
+            }
+            
+            identifyStrengths(state) {
+                const strengths = [];
+                if (state.harmony > 85) strengths.push('High ecosystem harmony');
+                if (state.trends.cooperation_level > 0.8) strengths.push('Excellent cooperation');
+                if (state.trends.innovation_rate > 0.7) strengths.push('Strong innovation');
+                return strengths;
+            }
+            
+            identifyWeaknesses(state) {
+                const weaknesses = [];
+                if (state.harmony < 75) weaknesses.push('Low harmony levels');
+                if (state.resources.memory < 80) weaknesses.push('Memory constraints');
+                if (state.trends.cooperation_level < 0.6) weaknesses.push('Poor cooperation');
+                return weaknesses;
+            }
+            
+            identifyRisks(scenario, state) {
+                return []; // Placeholder
+            }
+            
+            identifyOpportunities(scenario, state) {
+                return []; // Placeholder  
+            }
+        }
+        
+        // Initialize the Zoo Keeper
+        let arkKeeper;
+        
+        window.addEventListener('load', () => {
+            arkKeeper = new NoahArkZooKeeper();
+        });
+        
+        console.log('🏺 Noah\'s Ark Zoo Keeper interface ready!');
+        console.log('🦁 AI species pair management system loaded!');
+    </script>
+</body>
+</html>

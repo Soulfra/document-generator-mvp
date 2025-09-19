@@ -1,0 +1,864 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>⚔️ AI Agent Combat Visualizer</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            font-family: 'Courier New', monospace;
+            background: linear-gradient(135deg, #1a0000 0%, #2d0000 50%, #4d1010 100%);
+            color: #ff6b6b;
+            min-height: 100vh;
+            overflow-x: hidden;
+        }
+        
+        .header {
+            text-align: center;
+            padding: 20px;
+            background: rgba(255, 0, 0, 0.1);
+            border-bottom: 2px solid #ff6b6b;
+            box-shadow: 0 5px 20px rgba(255, 107, 107, 0.3);
+        }
+        
+        .header h1 {
+            font-size: 2.5em;
+            margin-bottom: 10px;
+            text-shadow: 0 0 20px #ff6b6b;
+            animation: battle-glow 3s ease-in-out infinite alternate;
+        }
+        
+        @keyframes battle-glow {
+            from { text-shadow: 0 0 20px #ff6b6b; }
+            to { text-shadow: 0 0 40px #ff6b6b, 0 0 60px #ff0000; }
+        }
+        
+        .combat-arena {
+            display: grid;
+            grid-template-columns: 1fr 400px 1fr;
+            gap: 20px;
+            padding: 20px;
+            min-height: 80vh;
+            align-items: center;
+        }
+        
+        .combatant {
+            background: rgba(0, 0, 0, 0.7);
+            border: 3px solid #ff6b6b;
+            border-radius: 20px;
+            padding: 30px;
+            text-align: center;
+            position: relative;
+            transition: all 0.5s ease;
+            box-shadow: 0 10px 30px rgba(255, 107, 107, 0.2);
+        }
+        
+        .combatant.attacking {
+            animation: attack-pulse 1s ease-in-out;
+            transform: scale(1.05);
+            border-color: #ffff00;
+            box-shadow: 0 0 50px rgba(255, 255, 0, 0.8);
+        }
+        
+        @keyframes attack-pulse {
+            0%, 100% { transform: scale(1.05); }
+            50% { transform: scale(1.15); }
+        }
+        
+        .combatant.defending {
+            animation: defend-shake 0.5s ease-in-out;
+            border-color: #00ff00;
+        }
+        
+        @keyframes defend-shake {
+            0%, 100% { transform: translateX(0); }
+            25% { transform: translateX(-5px); }
+            75% { transform: translateX(5px); }
+        }
+        
+        .combatant.critical {
+            animation: critical-hit 1.5s ease-in-out;
+            border-color: #ff00ff;
+            box-shadow: 0 0 80px rgba(255, 0, 255, 0.9);
+        }
+        
+        @keyframes critical-hit {
+            0% { transform: scale(1); }
+            25% { transform: scale(1.2) rotate(5deg); }
+            50% { transform: scale(1.1) rotate(-3deg); }
+            75% { transform: scale(1.15) rotate(2deg); }
+            100% { transform: scale(1) rotate(0deg); }
+        }
+        
+        .combatant-avatar {
+            width: 120px;
+            height: 120px;
+            border-radius: 50%;
+            background: linear-gradient(45deg, #ff6b6b, #ff8e8e);
+            margin: 0 auto 20px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 3em;
+            border: 3px solid #ffffff;
+            box-shadow: 0 0 20px rgba(255, 107, 107, 0.5);
+        }
+        
+        .combatant-name {
+            font-size: 1.5em;
+            font-weight: bold;
+            margin-bottom: 10px;
+            color: #ffffff;
+        }
+        
+        .combatant-class {
+            color: #ffaa00;
+            font-size: 1.1em;
+            margin-bottom: 20px;
+            font-weight: bold;
+        }
+        
+        .hp-bar, .mp-bar {
+            width: 100%;
+            height: 20px;
+            background: rgba(0, 0, 0, 0.8);
+            border-radius: 10px;
+            margin: 10px 0;
+            overflow: hidden;
+            border: 2px solid #333;
+        }
+        
+        .hp-fill {
+            height: 100%;
+            background: linear-gradient(90deg, #ff4444, #ff8888);
+            transition: width 1s ease;
+            border-radius: 8px;
+        }
+        
+        .mp-fill {
+            height: 100%;
+            background: linear-gradient(90deg, #4444ff, #8888ff);
+            transition: width 1s ease;
+            border-radius: 8px;
+        }
+        
+        .stats {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 10px;
+            margin-top: 20px;
+            font-size: 0.9em;
+        }
+        
+        .stat {
+            background: rgba(255, 255, 255, 0.1);
+            padding: 8px;
+            border-radius: 5px;
+            text-align: left;
+        }
+        
+        .battle-log {
+            background: rgba(0, 0, 0, 0.9);
+            border: 3px solid #ff6b6b;
+            border-radius: 15px;
+            padding: 20px;
+            max-height: 600px;
+            overflow-y: auto;
+            font-family: 'Courier New', monospace;
+        }
+        
+        .battle-log h3 {
+            text-align: center;
+            margin-bottom: 15px;
+            color: #ffff00;
+            text-shadow: 0 0 10px #ffff00;
+        }
+        
+        .log-entry {
+            padding: 8px 0;
+            border-bottom: 1px solid rgba(255, 107, 107, 0.2);
+            animation: fade-in 0.5s ease;
+        }
+        
+        @keyframes fade-in {
+            from { opacity: 0; transform: translateX(-20px); }
+            to { opacity: 1; transform: translateX(0); }
+        }
+        
+        .log-timestamp {
+            color: #888;
+            font-size: 0.8em;
+        }
+        
+        .log-action {
+            color: #ff6b6b;
+            font-weight: bold;
+        }
+        
+        .log-damage {
+            color: #ffff00;
+            font-weight: bold;
+        }
+        
+        .log-critical {
+            color: #ff00ff;
+            font-weight: bold;
+            animation: pulse 1s infinite;
+        }
+        
+        @keyframes pulse {
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0.5; }
+        }
+        
+        .log-heal {
+            color: #00ff00;
+        }
+        
+        .controls-panel {
+            position: fixed;
+            bottom: 20px;
+            left: 50%;
+            transform: translateX(-50%);
+            background: rgba(0, 0, 0, 0.9);
+            border: 2px solid #ff6b6b;
+            border-radius: 10px;
+            padding: 15px;
+            display: flex;
+            gap: 10px;
+        }
+        
+        .control-btn {
+            background: linear-gradient(45deg, #ff6b6b, #ff8e8e);
+            color: #000;
+            border: none;
+            padding: 10px 20px;
+            border-radius: 5px;
+            cursor: pointer;
+            font-weight: bold;
+            transition: all 0.3s ease;
+            font-family: inherit;
+        }
+        
+        .control-btn:hover {
+            transform: scale(1.05);
+            box-shadow: 0 5px 15px rgba(255, 107, 107, 0.5);
+        }
+        
+        .control-btn:active {
+            transform: scale(0.95);
+        }
+        
+        .floating-damage {
+            position: absolute;
+            font-size: 2em;
+            font-weight: bold;
+            color: #ffff00;
+            text-shadow: 2px 2px 4px #000;
+            pointer-events: none;
+            animation: float-up 2s ease-out forwards;
+            z-index: 1000;
+        }
+        
+        @keyframes float-up {
+            0% {
+                opacity: 1;
+                transform: translateY(0) scale(1);
+            }
+            100% {
+                opacity: 0;
+                transform: translateY(-100px) scale(1.5);
+            }
+        }
+        
+        .critical-text {
+            color: #ff00ff !important;
+            font-size: 1.2em !important;
+        }
+        
+        .legendary-text {
+            color: #ffd700 !important;
+            font-size: 1.3em !important;
+            animation: legendary-sparkle 2s infinite;
+        }
+        
+        @keyframes legendary-sparkle {
+            0%, 100% { text-shadow: 2px 2px 4px #000, 0 0 10px #ffd700; }
+            50% { text-shadow: 2px 2px 4px #000, 0 0 20px #ffd700, 0 0 30px #ffd700; }
+        }
+        
+        .hop-indicator {
+            position: absolute;
+            top: 10px;
+            right: 10px;
+            background: #ff6b6b;
+            color: #000;
+            padding: 5px 10px;
+            border-radius: 15px;
+            font-weight: bold;
+            font-size: 0.9em;
+        }
+        
+        .provider-badge {
+            position: absolute;
+            bottom: 10px;
+            left: 10px;
+            background: rgba(255, 255, 255, 0.2);
+            padding: 5px 10px;
+            border-radius: 10px;
+            font-size: 0.8em;
+            color: #fff;
+        }
+        
+        .battle-status {
+            text-align: center;
+            padding: 15px;
+            background: rgba(255, 107, 107, 0.1);
+            border: 1px solid #ff6b6b;
+            border-radius: 10px;
+            margin: 20px;
+            font-size: 1.2em;
+        }
+        
+        .victory {
+            background: rgba(0, 255, 0, 0.2) !important;
+            border-color: #00ff00 !important;
+            color: #00ff00;
+            animation: victory-flash 2s infinite;
+        }
+        
+        @keyframes victory-flash {
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0.7; }
+        }
+        
+        .defeat {
+            background: rgba(255, 0, 0, 0.2) !important;
+            border-color: #ff0000 !important;
+            color: #ff0000;
+        }
+    </style>
+</head>
+<body>
+    <div class="header">
+        <h1>⚔️ AI AGENT COMBAT VISUALIZER</h1>
+        <p>Multi-Hop Chain Battles in Real Time</p>
+    </div>
+
+    <div id="battleStatus" class="battle-status">
+        🔍 Loading active battles...
+    </div>
+
+    <div class="combat-arena" id="combatArena">
+        <div class="combatant" id="leftCombatant">
+            <div class="hop-indicator" id="leftHop">Hop 0</div>
+            <div class="provider-badge" id="leftProvider">Local Agent</div>
+            <div class="combatant-avatar">🤖</div>
+            <div class="combatant-name" id="leftName">Agent Initializing...</div>
+            <div class="combatant-class" id="leftClass">Multi-LLM Fighter</div>
+            
+            <div class="hp-bar">
+                <div class="hp-fill" id="leftHP" style="width: 100%"></div>
+            </div>
+            <div style="font-size: 0.9em; margin: 5px 0;">Health: <span id="leftHPText">100%</span></div>
+            
+            <div class="mp-bar">
+                <div class="mp-fill" id="leftMP" style="width: 100%"></div>
+            </div>
+            <div style="font-size: 0.9em; margin: 5px 0;">Compute: <span id="leftMPText">100%</span></div>
+            
+            <div class="stats">
+                <div class="stat">Power: <span id="leftPower">0</span></div>
+                <div class="stat">Cost: <span id="leftCost">$0.00</span></div>
+                <div class="stat">Tokens: <span id="leftTokens">0</span></div>
+                <div class="stat">Latency: <span id="leftLatency">0ms</span></div>
+            </div>
+        </div>
+
+        <div class="battle-log">
+            <h3>📜 Battle Log</h3>
+            <div id="logContainer">
+                <div class="log-entry">
+                    <span class="log-timestamp">[00:00]</span>
+                    <span class="log-action">Battle system initialized</span>
+                </div>
+                <div class="log-entry">
+                    <span class="log-timestamp">[00:01]</span>
+                    <span class="log-action">Searching for active multi-hop chains...</span>
+                </div>
+            </div>
+        </div>
+
+        <div class="combatant" id="rightCombatant">
+            <div class="hop-indicator" id="rightHop">Hop 1</div>
+            <div class="provider-badge" id="rightProvider">External API</div>
+            <div class="combatant-avatar">🌐</div>
+            <div class="combatant-name" id="rightName">API Provider</div>
+            <div class="combatant-class" id="rightClass">Cloud Warrior</div>
+            
+            <div class="hp-bar">
+                <div class="hp-fill" id="rightHP" style="width: 100%"></div>
+            </div>
+            <div style="font-size: 0.9em; margin: 5px 0;">Health: <span id="rightHPText">100%</span></div>
+            
+            <div class="mp-bar">
+                <div class="mp-fill" id="rightMP" style="width: 100%"></div>
+            </div>
+            <div style="font-size: 0.9em; margin: 5px 0;">Compute: <span id="rightMPText">100%</span></div>
+            
+            <div class="stats">
+                <div class="stat">Power: <span id="rightPower">0</span></div>
+                <div class="stat">Cost: <span id="rightCost">$0.00</span></div>
+                <div class="stat">Tokens: <span id="rightTokens">0</span></div>
+                <div class="stat">Latency: <span id="rightLatency">0ms</span></div>
+            </div>
+        </div>
+    </div>
+
+    <div class="controls-panel">
+        <button class="control-btn" onclick="startBattle()">⚔️ Start Battle</button>
+        <button class="control-btn" onclick="pauseBattle()">⏸️ Pause</button>
+        <button class="control-btn" onclick="nextHop()">⏭️ Next Hop</button>
+        <button class="control-btn" onclick="resetBattle()">🔄 Reset</button>
+        <button class="control-btn" onclick="loadRealBattle()">📡 Load Real</button>
+    </div>
+
+    <script>
+        let currentBattle = null;
+        let battleState = 'idle'; // idle, running, paused, completed
+        let currentHop = 0;
+        let battleTimer = null;
+        let websocket = null;
+        
+        // Connect to real-time battle data
+        function connectToBattleStream() {
+            try {
+                websocket = new WebSocket('ws://localhost:8082');
+                
+                websocket.onopen = function() {
+                    console.log('Connected to battle stream');
+                    updateBattleStatus('🟢 Connected to battle servers');
+                };
+                
+                websocket.onmessage = function(event) {
+                    const data = JSON.parse(event.data);
+                    handleBattleUpdate(data);
+                };
+                
+                websocket.onclose = function() {
+                    updateBattleStatus('🟡 Reconnecting to battle servers...');
+                    setTimeout(connectToBattleStream, 3000);
+                };
+                
+                websocket.onerror = function(error) {
+                    console.error('Battle stream error:', error);
+                    updateBattleStatus('🔴 Battle stream connection error');
+                };
+            } catch (error) {
+                console.log('WebSocket not available, using simulation mode');
+                updateBattleStatus('🟡 Simulation mode - No real battles');
+                startSimulatedBattle();
+            }
+        }
+        
+        function handleBattleUpdate(data) {
+            console.log('Battle update received:', data);
+            
+            if (data.type === 'combat_result') {
+                displayRealBattle(data.data);
+            } else if (data.type === 'agent_action') {
+                displayAgentAction(data.data);
+            } else if (data.type === 'hop_complete') {
+                displayHopComplete(data.data);
+            }
+        }
+        
+        function updateBattleStatus(message) {
+            document.getElementById('battleStatus').innerHTML = message;
+        }
+        
+        // Load real battle data from the API
+        async function loadRealBattle() {
+            try {
+                updateBattleStatus('🔍 Loading real battle data...');
+                
+                const response = await fetch('http://localhost:3335/api/combat/active');
+                if (response.ok) {
+                    const data = await response.json();
+                    if (data.active_battles && data.active_battles.length > 0) {
+                        currentBattle = data.active_battles[0];
+                        displayRealBattle(currentBattle);
+                        updateBattleStatus(`📡 Loaded real battle: ${currentBattle.id}`);
+                    } else {
+                        updateBattleStatus('⚠️ No active battles found, starting simulation');
+                        startSimulatedBattle();
+                    }
+                } else {
+                    throw new Error('API not responding');
+                }
+            } catch (error) {
+                console.error('Error loading real battle:', error);
+                updateBattleStatus('⚠️ Cannot connect to battle API, starting simulation');
+                startSimulatedBattle();
+            }
+        }
+        
+        function displayRealBattle(battle) {
+            // Display real 8-hop chain as combat
+            const hops = battle.progress.split('/');
+            const currentHopNum = parseInt(hops[0]) || 0;
+            const totalHops = parseInt(hops[1]) || 8;
+            
+            updateBattleDisplay({
+                leftCombatant: {
+                    name: battle.agent || 'Mystery Agent',
+                    class: 'Multi-LLM Fighter',
+                    provider: 'Local System',
+                    hop: currentHopNum,
+                    health: Math.max(20, 100 - (currentHopNum * 12)),
+                    mana: Math.max(10, 100 - (battle.cost * 1000)),
+                    power: currentHopNum * 150,
+                    cost: battle.cost || 0,
+                    tokens: Math.floor(Math.random() * 500) + 200,
+                    latency: Math.floor(Math.random() * 1000) + 500
+                },
+                rightCombatant: {
+                    name: getProviderName(battle.pattern),
+                    class: 'Cloud Warrior',
+                    provider: battle.pattern || 'Unknown',
+                    hop: Math.min(currentHopNum + 1, totalHops),
+                    health: Math.floor(Math.random() * 50) + 50,
+                    mana: Math.floor(Math.random() * 80) + 20,
+                    power: Math.floor(Math.random() * 200) + 100,
+                    cost: Math.random() * 0.05,
+                    tokens: Math.floor(Math.random() * 800) + 300,
+                    latency: Math.floor(Math.random() * 2000) + 800
+                }
+            });
+            
+            // Add to battle log
+            addToBattleLog(`Real battle loaded: ${battle.id}`, 'action');
+            addToBattleLog(`Pattern: ${battle.pattern}`, 'action');
+            addToBattleLog(`Progress: ${battle.progress} hops completed`, 'action');
+            addToBattleLog(`Battle rarity: ${battle.rarity.toUpperCase()}`, battle.rarity === 'legendary' ? 'legendary' : 'action');
+        }
+        
+        function getProviderName(pattern) {
+            const providers = {
+                'anthropic': 'Claude Sage',
+                'openai': 'GPT Overlord', 
+                'deepseek': 'DeepSeek Warrior',
+                'cohere': 'Cohere Guardian',
+                'standard': 'API Collective',
+                'legendary': 'Legendary Entity'
+            };
+            
+            for (const [key, name] of Object.entries(providers)) {
+                if (pattern && pattern.toLowerCase().includes(key)) {
+                    return name;
+                }
+            }
+            
+            return 'Unknown Entity';
+        }
+        
+        // Simulate a battle when no real data is available
+        function startSimulatedBattle() {
+            if (battleState === 'running') return;
+            
+            battleState = 'running';
+            currentHop = 0;
+            
+            updateBattleStatus('⚔️ Battle in progress - 8 Hop Combat Simulation');
+            addToBattleLog('SIMULATED BATTLE STARTED', 'critical');
+            addToBattleLog('8-hop multi-LLM chain battle initiated!', 'action');
+            
+            // Initialize combatants
+            const providers = ['Local Ollama', 'Claude 3.5 Sonnet', 'GPT-4', 'DeepSeek Chat', 'Cohere Command', 'Gemini Pro', 'Mistral Large', 'Legendary Entity'];
+            
+            simulateHopSequence(providers);
+        }
+        
+        function simulateHopSequence(providers) {
+            if (currentHop >= 8 || battleState !== 'running') {
+                completeBattle();
+                return;
+            }
+            
+            const leftProvider = currentHop === 0 ? 'Local Agent' : providers[currentHop - 1];
+            const rightProvider = providers[currentHop];
+            
+            // Simulate combat between current hop and next
+            const combatData = generateCombatData(leftProvider, rightProvider, currentHop);
+            
+            updateBattleDisplay(combatData);
+            simulateCombatRound(combatData);
+            
+            // Move to next hop after delay
+            setTimeout(() => {
+                currentHop++;
+                simulateHopSequence(providers);
+            }, 3000);
+        }
+        
+        function generateCombatData(leftName, rightName, hop) {
+            const leftHealth = Math.max(20, 100 - (hop * 10) - Math.random() * 20);
+            const rightHealth = Math.max(30, 100 - Math.random() * 40);
+            
+            return {
+                leftCombatant: {
+                    name: leftName,
+                    class: hop === 0 ? 'Local Fighter' : 'API Veteran', 
+                    provider: leftName,
+                    hop: hop,
+                    health: leftHealth,
+                    mana: Math.max(10, 100 - (hop * 15)),
+                    power: hop * 100 + Math.random() * 100,
+                    cost: hop * 0.01 + Math.random() * 0.02,
+                    tokens: Math.floor(Math.random() * 600) + 200,
+                    latency: Math.floor(Math.random() * 1500) + 300
+                },
+                rightCombatant: {
+                    name: rightName,
+                    class: rightName.includes('Legendary') ? 'Legendary Boss' : 'Cloud Warrior',
+                    provider: rightName,
+                    hop: hop + 1,
+                    health: rightHealth,
+                    mana: Math.floor(Math.random() * 90) + 10,
+                    power: Math.floor(Math.random() * 250) + 150,
+                    cost: Math.random() * 0.08,
+                    tokens: Math.floor(Math.random() * 1000) + 400,
+                    latency: Math.floor(Math.random() * 2500) + 500
+                }
+            };
+        }
+        
+        function updateBattleDisplay(data) {
+            // Update left combatant
+            document.getElementById('leftName').textContent = data.leftCombatant.name;
+            document.getElementById('leftClass').textContent = data.leftCombatant.class;
+            document.getElementById('leftProvider').textContent = data.leftCombatant.provider;
+            document.getElementById('leftHop').textContent = `Hop ${data.leftCombatant.hop}`;
+            
+            // Update left stats
+            updateHealthBar('left', data.leftCombatant.health);
+            updateManaBar('left', data.leftCombatant.mana);
+            document.getElementById('leftPower').textContent = Math.floor(data.leftCombatant.power);
+            document.getElementById('leftCost').textContent = `$${data.leftCombatant.cost.toFixed(4)}`;
+            document.getElementById('leftTokens').textContent = data.leftCombatant.tokens;
+            document.getElementById('leftLatency').textContent = `${data.leftCombatant.latency}ms`;
+            
+            // Update right combatant
+            document.getElementById('rightName').textContent = data.rightCombatant.name;
+            document.getElementById('rightClass').textContent = data.rightCombatant.class;
+            document.getElementById('rightProvider').textContent = data.rightCombatant.provider;
+            document.getElementById('rightHop').textContent = `Hop ${data.rightCombatant.hop}`;
+            
+            // Update right stats
+            updateHealthBar('right', data.rightCombatant.health);
+            updateManaBar('right', data.rightCombatant.mana);
+            document.getElementById('rightPower').textContent = Math.floor(data.rightCombatant.power);
+            document.getElementById('rightCost').textContent = `$${data.rightCombatant.cost.toFixed(4)}`;
+            document.getElementById('rightTokens').textContent = data.rightCombatant.tokens;
+            document.getElementById('rightLatency').textContent = `${data.rightCombatant.latency}ms`;
+        }
+        
+        function updateHealthBar(side, health) {
+            const healthPercent = Math.max(0, Math.min(100, health));
+            document.getElementById(`${side}HP`).style.width = `${healthPercent}%`;
+            document.getElementById(`${side}HPText`).textContent = `${Math.floor(healthPercent)}%`;
+        }
+        
+        function updateManaBar(side, mana) {
+            const manaPercent = Math.max(0, Math.min(100, mana));
+            document.getElementById(`${side}MP`).style.width = `${manaPercent}%`;
+            document.getElementById(`${side}MPText`).textContent = `${Math.floor(manaPercent)}%`;
+        }
+        
+        function simulateCombatRound(data) {
+            const leftCombatant = document.getElementById('leftCombatant');
+            const rightCombatant = document.getElementById('rightCombatant');
+            
+            // Determine who attacks first (based on latency)
+            const leftAttacksFirst = data.leftCombatant.latency < data.rightCombatant.latency;
+            
+            setTimeout(() => {
+                if (leftAttacksFirst) {
+                    executeAttack('left', 'right', data.leftCombatant, data.rightCombatant);
+                } else {
+                    executeAttack('right', 'left', data.rightCombatant, data.leftCombatant);
+                }
+            }, 500);
+            
+            setTimeout(() => {
+                if (leftAttacksFirst) {
+                    executeAttack('right', 'left', data.rightCombatant, data.leftCombatant);
+                } else {
+                    executeAttack('left', 'right', data.leftCombatant, data.rightCombatant);
+                }
+            }, 1500);
+        }
+        
+        function executeAttack(attackerSide, defenderSide, attackerData, defenderData) {
+            const attacker = document.getElementById(`${attackerSide}Combatant`);
+            const defender = document.getElementById(`${defenderSide}Combatant`);
+            
+            // Apply attack animation
+            attacker.classList.add('attacking');
+            defender.classList.add('defending');
+            
+            // Calculate damage
+            const baseDamage = Math.floor(attackerData.power * 0.1 + Math.random() * 50);
+            const isCritical = Math.random() < 0.15;
+            const isLegendary = Math.random() < 0.05;
+            
+            let damage = baseDamage;
+            let damageClass = '';
+            
+            if (isLegendary) {
+                damage *= 3;
+                damageClass = 'legendary';
+                defender.classList.add('critical');
+                addToBattleLog(`${attackerData.name} unleashes LEGENDARY ATTACK!`, 'legendary');
+            } else if (isCritical) {
+                damage *= 2;
+                damageClass = 'critical';
+                defender.classList.add('critical');
+                addToBattleLog(`${attackerData.name} lands a CRITICAL HIT!`, 'critical');
+            }
+            
+            // Show floating damage
+            showFloatingDamage(defender, damage, damageClass);
+            
+            // Add to battle log
+            const action = isLegendary ? 'LEGENDARY STRIKE' : isCritical ? 'CRITICAL STRIKE' : 'ATTACK';
+            addToBattleLog(`${attackerData.name} uses ${action}`, 'action');
+            addToBattleLog(`${defenderData.name} takes ${damage} damage`, 'damage');
+            
+            // Clean up animations
+            setTimeout(() => {
+                attacker.classList.remove('attacking');
+                defender.classList.remove('defending', 'critical');
+            }, 1000);
+        }
+        
+        function showFloatingDamage(target, damage, cssClass = '') {
+            const damageElement = document.createElement('div');
+            damageElement.className = `floating-damage ${cssClass}`;
+            damageElement.textContent = `-${damage}`;
+            
+            const rect = target.getBoundingClientRect();
+            damageElement.style.left = `${rect.left + rect.width / 2}px`;
+            damageElement.style.top = `${rect.top + rect.height / 2}px`;
+            
+            document.body.appendChild(damageElement);
+            
+            setTimeout(() => {
+                damageElement.remove();
+            }, 2000);
+        }
+        
+        function addToBattleLog(message, type = 'action') {
+            const logContainer = document.getElementById('logContainer');
+            const entry = document.createElement('div');
+            entry.className = 'log-entry';
+            
+            const timestamp = new Date().toLocaleTimeString();
+            const cssClass = type === 'legendary' ? 'log-critical legendary-text' :
+                           type === 'critical' ? 'log-critical' :
+                           type === 'damage' ? 'log-damage' :
+                           type === 'heal' ? 'log-heal' : 'log-action';
+            
+            entry.innerHTML = `
+                <span class="log-timestamp">[${timestamp}]</span>
+                <span class="${cssClass}">${message}</span>
+            `;
+            
+            logContainer.appendChild(entry);
+            logContainer.scrollTop = logContainer.scrollHeight;
+            
+            // Keep only last 20 entries
+            while (logContainer.children.length > 20) {
+                logContainer.removeChild(logContainer.firstChild);
+            }
+        }
+        
+        function completeBattle() {
+            battleState = 'completed';
+            
+            const winner = Math.random() > 0.5 ? 'Agent' : 'API Coalition';
+            const rarity = Math.random() > 0.9 ? 'LEGENDARY' : Math.random() > 0.7 ? 'RARE' : 'NORMAL';
+            
+            addToBattleLog('🏆 BATTLE COMPLETED!', 'critical');
+            addToBattleLog(`Winner: ${winner}`, 'action');
+            addToBattleLog(`Battle Rarity: ${rarity}`, rarity.toLowerCase());
+            
+            updateBattleStatus(`🏆 Battle Complete! Winner: ${winner} (${rarity})`);
+            
+            if (rarity === 'LEGENDARY') {
+                updateBattleStatus(`🌟 LEGENDARY VICTORY! ${winner} emerges triumphant!`);
+                document.getElementById('battleStatus').classList.add('victory');
+            }
+        }
+        
+        // Control functions
+        function startBattle() {
+            if (battleState === 'idle' || battleState === 'completed') {
+                startSimulatedBattle();
+            } else if (battleState === 'paused') {
+                battleState = 'running';
+                updateBattleStatus('⚔️ Battle resumed');
+            }
+        }
+        
+        function pauseBattle() {
+            if (battleState === 'running') {
+                battleState = 'paused';
+                updateBattleStatus('⏸️ Battle paused');
+            }
+        }
+        
+        function nextHop() {
+            if (currentHop < 7) {
+                addToBattleLog(`⏭️ Skipping to Hop ${currentHop + 1}`, 'action');
+                currentHop++;
+            }
+        }
+        
+        function resetBattle() {
+            battleState = 'idle';
+            currentHop = 0;
+            document.getElementById('logContainer').innerHTML = `
+                <div class="log-entry">
+                    <span class="log-timestamp">[${new Date().toLocaleTimeString()}]</span>
+                    <span class="log-action">Battle system reset</span>
+                </div>
+            `;
+            updateBattleStatus('🔄 Ready for battle');
+            document.getElementById('battleStatus').classList.remove('victory', 'defeat');
+        }
+        
+        // Initialize combat visualizer
+        function init() {
+            console.log('⚔️ Initializing Combat Visualizer');
+            
+            // Connect to battle stream
+            connectToBattleStream();
+            
+            // Try to load real battle data
+            setTimeout(loadRealBattle, 2000);
+            
+            console.log('✅ Combat Visualizer ready!');
+        }
+        
+        // Start the visualizer
+        window.addEventListener('DOMContentLoaded', init);
+    </script>
+</body>
+</html>

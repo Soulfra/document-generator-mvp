@@ -1,0 +1,1132 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>🌍 SOULFRA 3D World Engine - Document to Living Character</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            font-family: 'Courier New', monospace;
+            background: linear-gradient(135deg, #0a0a0a 0%, #1a1a2e 50%, #16213e 100%);
+            color: #00ff41;
+            overflow: hidden;
+            height: 100vh;
+        }
+        
+        .world-container {
+            position: relative;
+            width: 100vw;
+            height: 100vh;
+            background: radial-gradient(circle at center, #001122 0%, #000000 70%);
+        }
+        
+        #world-canvas {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            cursor: crosshair;
+        }
+        
+        .hud {
+            position: absolute;
+            top: 20px;
+            left: 20px;
+            z-index: 1000;
+            background: rgba(0, 0, 0, 0.8);
+            border: 2px solid #00ff41;
+            border-radius: 10px;
+            padding: 15px;
+            max-width: 350px;
+        }
+        
+        .hud h2 {
+            color: #00ff41;
+            margin-bottom: 10px;
+            text-shadow: 0 0 10px #00ff41;
+            animation: glow 2s ease-in-out infinite alternate;
+        }
+        
+        @keyframes glow {
+            from { text-shadow: 0 0 10px #00ff41; }
+            to { text-shadow: 0 0 20px #00ff41, 0 0 30px #00ff41; }
+        }
+        
+        .drop-zone {
+            position: absolute;
+            top: 50%;
+            right: 20px;
+            transform: translateY(-50%);
+            width: 300px;
+            height: 200px;
+            border: 3px dashed #00ff41;
+            border-radius: 15px;
+            background: rgba(0, 255, 65, 0.1);
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            z-index: 1000;
+            transition: all 0.3s ease;
+            cursor: pointer;
+        }
+        
+        .drop-zone:hover, .drop-zone.drag-over {
+            background: rgba(0, 255, 65, 0.2);
+            border-color: #ffff00;
+            transform: translateY(-50%) scale(1.1);
+            box-shadow: 0 0 30px rgba(0, 255, 65, 0.5);
+        }
+        
+        .drop-text {
+            font-size: 18px;
+            text-align: center;
+            color: #00ff41;
+            margin-bottom: 10px;
+        }
+        
+        .drop-subtext {
+            font-size: 12px;
+            color: #888;
+            text-align: center;
+        }
+        
+        .character-panel {
+            position: absolute;
+            bottom: 20px;
+            left: 20px;
+            right: 20px;
+            height: 150px;
+            background: rgba(0, 0, 0, 0.9);
+            border: 2px solid #00ff41;
+            border-radius: 10px;
+            padding: 15px;
+            z-index: 1000;
+            overflow-x: auto;
+            display: flex;
+            gap: 15px;
+        }
+        
+        .character-card {
+            min-width: 200px;
+            background: rgba(0, 255, 65, 0.1);
+            border: 1px solid #00ff41;
+            border-radius: 8px;
+            padding: 10px;
+            text-align: center;
+            cursor: pointer;
+            transition: all 0.3s ease;
+        }
+        
+        .character-card:hover {
+            background: rgba(0, 255, 65, 0.2);
+            transform: scale(1.05);
+        }
+        
+        .character-avatar {
+            width: 60px;
+            height: 60px;
+            background: linear-gradient(45deg, #00ff41, #ffff00);
+            border-radius: 50%;
+            margin: 0 auto 8px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 24px;
+            animation: pulse 2s infinite;
+        }
+        
+        @keyframes pulse {
+            0%, 100% { transform: scale(1); }
+            50% { transform: scale(1.1); }
+        }
+        
+        .character-name {
+            font-size: 14px;
+            font-weight: bold;
+            margin-bottom: 4px;
+        }
+        
+        .character-type {
+            font-size: 10px;
+            color: #888;
+        }
+        
+        .controls {
+            position: absolute;
+            top: 20px;
+            right: 350px;
+            z-index: 1000;
+            background: rgba(0, 0, 0, 0.8);
+            border: 2px solid #00ff41;
+            border-radius: 10px;
+            padding: 15px;
+        }
+        
+        .control-button {
+            background: linear-gradient(135deg, #00ff41, #008f25);
+            border: none;
+            color: #000;
+            padding: 8px 16px;
+            margin: 4px;
+            border-radius: 5px;
+            cursor: pointer;
+            font-family: inherit;
+            font-size: 12px;
+            transition: all 0.3s ease;
+        }
+        
+        .control-button:hover {
+            background: linear-gradient(135deg, #ffff00, #ff8800);
+            transform: scale(1.1);
+        }
+        
+        .world-stats {
+            position: absolute;
+            bottom: 180px;
+            right: 20px;
+            background: rgba(0, 0, 0, 0.8);
+            border: 1px solid #00ff41;
+            border-radius: 8px;
+            padding: 10px;
+            font-size: 11px;
+            min-width: 200px;
+        }
+        
+        .loading-overlay {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0, 0, 0, 0.8);
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            z-index: 2000;
+            display: none;
+        }
+        
+        .loading-text {
+            font-size: 24px;
+            color: #00ff41;
+            margin-bottom: 20px;
+            animation: glow 1s ease-in-out infinite alternate;
+        }
+        
+        .progress-bar {
+            width: 300px;
+            height: 20px;
+            background: rgba(0, 0, 0, 0.5);
+            border: 2px solid #00ff41;
+            border-radius: 10px;
+            overflow: hidden;
+        }
+        
+        .progress-fill {
+            height: 100%;
+            background: linear-gradient(90deg, #00ff41, #ffff00);
+            width: 0%;
+            transition: width 0.5s ease;
+            animation: shimmer 2s infinite;
+        }
+        
+        @keyframes shimmer {
+            0% { background-position: -300px 0; }
+            100% { background-position: 300px 0; }
+        }
+    </style>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+</head>
+<body>
+    <div class="world-container">
+        <canvas id="world-canvas"></canvas>
+        
+        <!-- HUD -->
+        <div class="hud">
+            <h2>🌍 SOULFRA WORLD</h2>
+            <div>👁️ Active Characters: <span id="character-count">0</span></div>
+            <div>🎯 Camera: <span id="camera-pos">0, 0, 0</span></div>
+            <div>⚡ FPS: <span id="fps-counter">60</span></div>
+            <div>🔄 Status: <span id="world-status">Ready</span></div>
+            <div>📊 Voxels: <span id="voxel-count">0</span></div>
+        </div>
+        
+        <!-- Document Drop Zone -->
+        <div class="drop-zone" id="drop-zone">
+            <div class="drop-text">📄 DROP DOCUMENT HERE</div>
+            <div class="drop-subtext">
+                Drag any document to create a living character<br>
+                Supports: PDF, TXT, MD, JSON, Code files
+            </div>
+        </div>
+        
+        <!-- Controls -->
+        <div class="controls">
+            <h3>🎮 World Controls</h3>
+            <button class="control-button" onclick="worldEngine.resetCamera()">Reset View</button>
+            <button class="control-button" onclick="worldEngine.toggleWireframe()">Wireframe</button>
+            <button class="control-button" onclick="worldEngine.addRandomVoxel()">Add Voxel</button>
+            <button class="control-button" onclick="worldEngine.clearWorld()">Clear World</button>
+            <br>
+            <button class="control-button" onclick="worldEngine.togglePhysics()">Physics</button>
+            <button class="control-button" onclick="worldEngine.toggleFog()">Fog</button>
+            <button class="control-button" onclick="worldEngine.exportWorld()">Export</button>
+        </div>
+        
+        <!-- Character Panel -->
+        <div class="character-panel" id="character-panel">
+            <div style="display: flex; align-items: center; color: #888; font-size: 14px;">
+                👥 Active Characters - Click to control, WASD to move
+            </div>
+        </div>
+        
+        <!-- World Stats -->
+        <div class="world-stats">
+            <h4>📊 World Statistics</h4>
+            <div>Render Calls: <span id="render-calls">0</span></div>
+            <div>Triangles: <span id="triangle-count">0</span></div>
+            <div>Memory: <span id="memory-usage">0 MB</span></div>
+            <div>Physics Objects: <span id="physics-objects">0</span></div>
+        </div>
+        
+        <!-- Loading Overlay -->
+        <div class="loading-overlay" id="loading-overlay">
+            <div class="loading-text">🧠 Creating Character from Document...</div>
+            <div class="progress-bar">
+                <div class="progress-fill" id="progress-fill"></div>
+            </div>
+            <div style="margin-top: 10px; font-size: 14px; color: #888;" id="loading-step">
+                Analyzing document structure...
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // SOULFRA 3D WORLD ENGINE
+        class SoulFra3DWorldEngine {
+            constructor() {
+                this.scene = null;
+                this.camera = null;
+                this.renderer = null;
+                this.canvas = null;
+                
+                // World properties
+                this.world = {
+                    characters: new Map(),
+                    voxels: new Map(),
+                    physics: true,
+                    fog: true,
+                    wireframe: false
+                };
+                
+                // Human-scale dimensions (in meters)
+                this.humanScale = {
+                    height: 1.8,        // Average human height
+                    width: 0.6,         // Shoulder width
+                    depth: 0.3,         // Body depth
+                    eyeLevel: 1.65,     // Eye level from ground
+                    armReach: 0.8,      // Arm reach
+                    stepHeight: 0.2     // Max step height
+                };
+                
+                // Voxel world settings
+                this.voxelSize = 0.5;   // 50cm voxels for human scale
+                this.worldSize = 100;   // 100x100 world
+                
+                // Character creation pipeline
+                this.characterPipeline = {
+                    documentAnalyzer: null,
+                    personalityGenerator: null,
+                    appearanceGenerator: null,
+                    behaviorSystem: null
+                };
+                
+                // Movement and physics
+                this.physics = {
+                    gravity: -9.81,
+                    friction: 0.8,
+                    jumpForce: 5.0
+                };
+                
+                // Input handling
+                this.keys = {};
+                this.mouse = { x: 0, y: 0 };
+                this.selectedCharacter = null;
+                
+                console.log('🌍 SOULFRA 3D World Engine initializing...');
+                this.init();
+            }
+            
+            init() {
+                this.setupCanvas();
+                this.setupScene();
+                this.setupCamera();
+                this.setupRenderer();
+                this.setupLighting();
+                this.setupControls();
+                this.setupPhysics();
+                this.createInitialWorld();
+                this.setupEventListeners();
+                this.startRenderLoop();
+                
+                console.log('✅ SOULFRA World Engine ready');
+                this.updateStatus('World Ready - Drop documents to create characters!');
+            }
+            
+            setupCanvas() {
+                this.canvas = document.getElementById('world-canvas');
+                this.canvas.width = window.innerWidth;
+                this.canvas.height = window.innerHeight;
+            }
+            
+            setupScene() {
+                this.scene = new THREE.Scene();
+                
+                // Add fog for atmosphere
+                this.scene.fog = new THREE.Fog(0x001122, 10, 100);
+                
+                // Skybox
+                const skyGeometry = new THREE.SphereGeometry(200, 32, 32);
+                const skyMaterial = new THREE.MeshBasicMaterial({
+                    color: 0x001122,
+                    side: THREE.BackSide
+                });
+                const sky = new THREE.Mesh(skyGeometry, skyMaterial);
+                this.scene.add(sky);
+            }
+            
+            setupCamera() {
+                const aspect = window.innerWidth / window.innerHeight;
+                this.camera = new THREE.PerspectiveCamera(75, aspect, 0.1, 1000);
+                
+                // Position camera at human eye level
+                this.camera.position.set(0, this.humanScale.eyeLevel + 2, 5);
+                this.camera.lookAt(0, this.humanScale.eyeLevel, 0);
+            }
+            
+            setupRenderer() {
+                this.renderer = new THREE.WebGLRenderer({
+                    canvas: this.canvas,
+                    antialias: true,
+                    alpha: true
+                });
+                
+                this.renderer.setSize(window.innerWidth, window.innerHeight);
+                this.renderer.setPixelRatio(window.devicePixelRatio);
+                this.renderer.shadowMap.enabled = true;
+                this.renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+                this.renderer.setClearColor(0x000000, 1);
+            }
+            
+            setupLighting() {
+                // Ambient light
+                const ambientLight = new THREE.AmbientLight(0x404040, 0.3);
+                this.scene.add(ambientLight);
+                
+                // Directional light (sun)
+                const directionalLight = new THREE.DirectionalLight(0xffffff, 0.8);
+                directionalLight.position.set(10, 20, 10);
+                directionalLight.castShadow = true;
+                directionalLight.shadow.mapSize.width = 2048;
+                directionalLight.shadow.mapSize.height = 2048;
+                this.scene.add(directionalLight);
+                
+                // Point lights for atmosphere
+                const pointLight1 = new THREE.PointLight(0x00ff41, 0.5, 20);
+                pointLight1.position.set(-5, this.humanScale.eyeLevel, -5);
+                this.scene.add(pointLight1);
+                
+                const pointLight2 = new THREE.PointLight(0xffff00, 0.3, 15);
+                pointLight2.position.set(5, this.humanScale.eyeLevel, 5);
+                this.scene.add(pointLight2);
+            }
+            
+            setupControls() {
+                // Mouse controls for camera
+                this.canvas.addEventListener('mousemove', (e) => {
+                    if (e.buttons === 1) { // Left mouse button
+                        const deltaX = e.movementX * 0.002;
+                        const deltaY = e.movementY * 0.002;
+                        
+                        this.camera.position.x += Math.cos(deltaX) * 0.1;
+                        this.camera.position.z += Math.sin(deltaX) * 0.1;
+                        this.camera.position.y -= deltaY;
+                        
+                        this.camera.lookAt(0, this.humanScale.eyeLevel, 0);
+                    }
+                });
+                
+                // Keyboard controls
+                document.addEventListener('keydown', (e) => {
+                    this.keys[e.code] = true;
+                    this.handleKeyPress(e.code);
+                });
+                
+                document.addEventListener('keyup', (e) => {
+                    this.keys[e.code] = false;
+                });
+                
+                // Mouse wheel for zoom
+                this.canvas.addEventListener('wheel', (e) => {
+                    const zoomSpeed = 0.1;
+                    const forward = new THREE.Vector3(0, 0, -1);
+                    forward.applyQuaternion(this.camera.quaternion);
+                    forward.multiplyScalar(e.deltaY > 0 ? zoomSpeed : -zoomSpeed);
+                    this.camera.position.add(forward);
+                });
+            }
+            
+            setupPhysics() {
+                // Simple physics simulation
+                this.physicsWorld = {
+                    objects: [],
+                    gravity: this.physics.gravity,
+                    update: () => {
+                        this.physicsWorld.objects.forEach(obj => {
+                            if (obj.velocity) {
+                                // Apply gravity
+                                obj.velocity.y += this.physics.gravity * 0.016; // 60fps
+                                
+                                // Update position
+                                obj.position.add(obj.velocity.clone().multiplyScalar(0.016));
+                                
+                                // Ground collision
+                                if (obj.position.y <= this.humanScale.stepHeight) {
+                                    obj.position.y = this.humanScale.stepHeight;
+                                    obj.velocity.y = 0;
+                                    obj.velocity.multiplyScalar(this.physics.friction);
+                                }
+                                
+                                // Update mesh position
+                                if (obj.mesh) {
+                                    obj.mesh.position.copy(obj.position);
+                                }
+                            }
+                        });
+                    }
+                };
+            }
+            
+            createInitialWorld() {
+                // Create ground plane (human-scale)
+                const groundGeometry = new THREE.PlaneGeometry(this.worldSize, this.worldSize);
+                const groundMaterial = new THREE.MeshLambertMaterial({
+                    color: 0x444444,
+                    transparent: true,
+                    opacity: 0.8
+                });
+                const ground = new THREE.Mesh(groundGeometry, groundMaterial);
+                ground.rotation.x = -Math.PI / 2;
+                ground.receiveShadow = true;
+                this.scene.add(ground);
+                
+                // Add some initial voxels for reference
+                this.addVoxel(0, 0.25, 0, 0x00ff41);
+                this.addVoxel(2, 0.25, 0, 0xffff00);
+                this.addVoxel(-2, 0.25, 0, 0xff4444);
+                
+                // Create reference human-scale objects
+                this.createReferenceObjects();
+            }
+            
+            createReferenceObjects() {
+                // Human-scale reference cube (1 meter cube)
+                const refGeometry = new THREE.BoxGeometry(1, 1, 1);
+                const refMaterial = new THREE.MeshLambertMaterial({
+                    color: 0x666666,
+                    wireframe: true
+                });
+                const refCube = new THREE.Mesh(refGeometry, refMaterial);
+                refCube.position.set(5, 0.5, 5);
+                this.scene.add(refCube);
+                
+                // Human-scale door frame (2m tall, 1m wide)
+                const doorGeometry = new THREE.BoxGeometry(1, 2, 0.1);
+                const doorMaterial = new THREE.MeshLambertMaterial({
+                    color: 0x8B4513,
+                    transparent: true,
+                    opacity: 0.7
+                });
+                const door = new THREE.Mesh(doorGeometry, doorMaterial);
+                door.position.set(-5, 1, 0);
+                this.scene.add(door);
+            }
+            
+            setupEventListeners() {
+                // Document drop handling
+                const dropZone = document.getElementById('drop-zone');
+                
+                dropZone.addEventListener('dragover', (e) => {
+                    e.preventDefault();
+                    dropZone.classList.add('drag-over');
+                });
+                
+                dropZone.addEventListener('dragleave', () => {
+                    dropZone.classList.remove('drag-over');
+                });
+                
+                dropZone.addEventListener('drop', (e) => {
+                    e.preventDefault();
+                    dropZone.classList.remove('drag-over');
+                    
+                    const files = Array.from(e.dataTransfer.files);
+                    files.forEach(file => this.processDocument(file));
+                });
+                
+                // Click to upload
+                dropZone.addEventListener('click', () => {
+                    const input = document.createElement('input');
+                    input.type = 'file';
+                    input.multiple = true;
+                    input.accept = '.txt,.md,.pdf,.json,.js,.py,.html,.css';
+                    input.onchange = (e) => {
+                        Array.from(e.target.files).forEach(file => this.processDocument(file));
+                    };
+                    input.click();
+                });
+                
+                // Window resize
+                window.addEventListener('resize', () => {
+                    this.camera.aspect = window.innerWidth / window.innerHeight;
+                    this.camera.updateProjectionMatrix();
+                    this.renderer.setSize(window.innerWidth, window.innerHeight);
+                });
+            }
+            
+            async processDocument(file) {
+                console.log(`📄 Processing document: ${file.name}`);
+                this.showLoading();
+                
+                try {
+                    // Read document content
+                    const content = await this.readFileContent(file);
+                    
+                    // Analyze document with AI
+                    this.updateLoadingStep('Analyzing document with AI...');
+                    const analysis = await this.analyzeDocument(content, file.name);
+                    
+                    // Create character based on analysis
+                    this.updateLoadingStep('Generating character appearance...');
+                    const character = await this.createCharacterFromAnalysis(analysis);
+                    
+                    // Add character to world
+                    this.updateLoadingStep('Adding character to world...');
+                    this.addCharacterToWorld(character);
+                    
+                    this.hideLoading();
+                    this.updateStatus(`Character created from ${file.name}!`);
+                    
+                } catch (error) {
+                    console.error('Error processing document:', error);
+                    this.hideLoading();
+                    this.updateStatus(`Error: ${error.message}`);
+                }
+            }
+            
+            async readFileContent(file) {
+                return new Promise((resolve, reject) => {
+                    const reader = new FileReader();
+                    reader.onload = (e) => resolve(e.target.result);
+                    reader.onerror = reject;
+                    reader.readAsText(file);
+                });
+            }
+            
+            async analyzeDocument(content, filename) {
+                // Simulate AI analysis (would connect to actual AI service)
+                this.updateProgress(25);
+                
+                const analysis = {
+                    type: this.detectDocumentType(filename, content),
+                    personality: this.extractPersonality(content),
+                    skills: this.extractSkills(content),
+                    appearance: this.generateAppearance(content),
+                    behavior: this.generateBehavior(content),
+                    name: this.generateName(filename, content)
+                };
+                
+                this.updateProgress(50);
+                
+                // Simulate processing time
+                await this.delay(1000);
+                
+                return analysis;
+            }
+            
+            detectDocumentType(filename, content) {
+                const ext = filename.split('.').pop().toLowerCase();
+                const types = {
+                    'pdf': 'document',
+                    'txt': 'note',
+                    'md': 'documentation',
+                    'json': 'data',
+                    'js': 'code',
+                    'py': 'code',
+                    'html': 'web',
+                    'css': 'design'
+                };
+                return types[ext] || 'unknown';
+            }
+            
+            extractPersonality(content) {
+                // Simple personality extraction based on content
+                const traits = [];
+                
+                if (content.includes('function') || content.includes('class')) {
+                    traits.push('logical', 'systematic');
+                }
+                if (content.includes('!') || content.includes('amazing') || content.includes('awesome')) {
+                    traits.push('enthusiastic', 'energetic');
+                }
+                if (content.includes('problem') || content.includes('issue') || content.includes('bug')) {
+                    traits.push('problem-solver', 'analytical');
+                }
+                if (content.includes('creative') || content.includes('design') || content.includes('art')) {
+                    traits.push('creative', 'artistic');
+                }
+                
+                return traits.length > 0 ? traits : ['neutral', 'balanced'];
+            }
+            
+            extractSkills(content) {
+                const skills = [];
+                const skillKeywords = {
+                    'programming': ['function', 'class', 'variable', 'code', 'script'],
+                    'writing': ['article', 'story', 'paragraph', 'chapter'],
+                    'design': ['color', 'layout', 'style', 'visual'],
+                    'analysis': ['data', 'statistics', 'report', 'analysis'],
+                    'communication': ['meeting', 'discussion', 'presentation']
+                };
+                
+                Object.entries(skillKeywords).forEach(([skill, keywords]) => {
+                    if (keywords.some(keyword => content.toLowerCase().includes(keyword))) {
+                        skills.push(skill);
+                    }
+                });
+                
+                return skills.length > 0 ? skills : ['general'];
+            }
+            
+            generateAppearance(content) {
+                // Generate appearance based on document content
+                const colors = {
+                    'code': 0x00ff41,
+                    'document': 0x4169E1,
+                    'data': 0xFFD700,
+                    'web': 0xFF6347,
+                    'design': 0xFF69B4,
+                    'default': 0x808080
+                };
+                
+                const contentLength = content.length;
+                const size = Math.min(Math.max(contentLength / 1000, 0.8), 2.0); // Scale based on content
+                
+                return {
+                    color: colors[this.detectDocumentType('', content)] || colors.default,
+                    size: size,
+                    shape: contentLength > 5000 ? 'tall' : contentLength > 1000 ? 'normal' : 'small'
+                };
+            }
+            
+            generateBehavior(content) {
+                return {
+                    movement_speed: Math.random() * 2 + 1,
+                    interaction_radius: Math.random() * 3 + 2,
+                    activity_level: content.length > 2000 ? 'high' : 'normal'
+                };
+            }
+            
+            generateName(filename, content) {
+                const baseName = filename.replace(/\.[^/.]+$/, "").replace(/[^a-zA-Z0-9]/g, '');
+                const prefixes = ['Soul', 'Mind', 'Spirit', 'Code', 'Data', 'Doc'];
+                const prefix = prefixes[Math.floor(Math.random() * prefixes.length)];
+                return `${prefix}${baseName.slice(0, 8)}`;
+            }
+            
+            async createCharacterFromAnalysis(analysis) {
+                this.updateProgress(75);
+                
+                // Create 3D character mesh
+                const geometry = this.createCharacterGeometry(analysis.appearance);
+                const material = new THREE.MeshLambertMaterial({
+                    color: analysis.appearance.color,
+                    transparent: true,
+                    opacity: 0.9
+                });
+                
+                const mesh = new THREE.Mesh(geometry, material);
+                mesh.castShadow = true;
+                mesh.receiveShadow = true;
+                
+                // Create character object
+                const character = {
+                    id: `char_${Date.now()}_${Math.random().toString(36).substr(2, 6)}`,
+                    name: analysis.name,
+                    type: analysis.type,
+                    personality: analysis.personality,
+                    skills: analysis.skills,
+                    appearance: analysis.appearance,
+                    behavior: analysis.behavior,
+                    mesh: mesh,
+                    position: new THREE.Vector3(
+                        (Math.random() - 0.5) * 10,
+                        this.humanScale.height / 2,
+                        (Math.random() - 0.5) * 10
+                    ),
+                    velocity: new THREE.Vector3(0, 0, 0),
+                    health: 100,
+                    energy: 100,
+                    mood: 'neutral',
+                    lastAction: Date.now()
+                };
+                
+                // Set initial position
+                character.mesh.position.copy(character.position);
+                
+                this.updateProgress(100);
+                await this.delay(500);
+                
+                return character;
+            }
+            
+            createCharacterGeometry(appearance) {
+                // Create human-scale character geometry
+                const group = new THREE.Group();
+                
+                // Body (human proportions)
+                const bodyGeometry = new THREE.BoxGeometry(
+                    this.humanScale.width * 0.8,
+                    this.humanScale.height * 0.6,
+                    this.humanScale.depth * 0.8
+                );
+                const body = new THREE.Mesh(bodyGeometry);
+                body.position.y = this.humanScale.height * 0.3;
+                group.add(body);
+                
+                // Head
+                const headGeometry = new THREE.SphereGeometry(this.humanScale.width * 0.3);
+                const head = new THREE.Mesh(headGeometry);
+                head.position.y = this.humanScale.height * 0.8;
+                group.add(head);
+                
+                // Arms
+                const armGeometry = new THREE.BoxGeometry(0.15, this.humanScale.height * 0.4, 0.15);
+                const leftArm = new THREE.Mesh(armGeometry);
+                leftArm.position.set(-this.humanScale.width * 0.5, this.humanScale.height * 0.5, 0);
+                const rightArm = new THREE.Mesh(armGeometry);
+                rightArm.position.set(this.humanScale.width * 0.5, this.humanScale.height * 0.5, 0);
+                group.add(leftArm, rightArm);
+                
+                // Legs
+                const legGeometry = new THREE.BoxGeometry(0.2, this.humanScale.height * 0.5, 0.2);
+                const leftLeg = new THREE.Mesh(legGeometry);
+                leftLeg.position.set(-this.humanScale.width * 0.2, this.humanScale.height * 0.25, 0);
+                const rightLeg = new THREE.Mesh(legGeometry);
+                rightLeg.position.set(this.humanScale.width * 0.2, this.humanScale.height * 0.25, 0);
+                group.add(leftLeg, rightLeg);
+                
+                return group;
+            }
+            
+            addCharacterToWorld(character) {
+                // Add to scene
+                this.scene.add(character.mesh);
+                
+                // Add to physics world
+                this.physicsWorld.objects.push(character);
+                
+                // Store in characters map
+                this.world.characters.set(character.id, character);
+                
+                // Add to character panel
+                this.addCharacterToPanel(character);
+                
+                // Update stats
+                this.updateStats();
+                
+                console.log(`✅ Character added: ${character.name} (${character.type})`);
+            }
+            
+            addCharacterToPanel(character) {
+                const panel = document.getElementById('character-panel');
+                
+                const card = document.createElement('div');
+                card.className = 'character-card';
+                card.id = `card-${character.id}`;
+                card.onclick = () => this.selectCharacter(character.id);
+                
+                card.innerHTML = `
+                    <div class="character-avatar" style="background: linear-gradient(45deg, ${this.colorToHex(character.appearance.color)}, #ffff00)">
+                        ${this.getCharacterEmoji(character.type)}
+                    </div>
+                    <div class="character-name">${character.name}</div>
+                    <div class="character-type">${character.type} • ${character.skills.join(', ')}</div>
+                `;
+                
+                panel.appendChild(card);
+            }
+            
+            getCharacterEmoji(type) {
+                const emojis = {
+                    'code': '👨‍💻',
+                    'document': '📝',
+                    'data': '📊',
+                    'web': '🌐',
+                    'design': '🎨',
+                    'note': '📋',
+                    'unknown': '🤖'
+                };
+                return emojis[type] || emojis.unknown;
+            }
+            
+            colorToHex(color) {
+                return `#${color.toString(16).padStart(6, '0')}`;
+            }
+            
+            selectCharacter(characterId) {
+                this.selectedCharacter = characterId;
+                const character = this.world.characters.get(characterId);
+                
+                if (character) {
+                    // Focus camera on character
+                    this.camera.lookAt(character.position);
+                    
+                    // Highlight character card
+                    document.querySelectorAll('.character-card').forEach(card => {
+                        card.style.border = '1px solid #00ff41';
+                    });
+                    document.getElementById(`card-${characterId}`).style.border = '3px solid #ffff00';
+                    
+                    this.updateStatus(`Selected: ${character.name} (${character.type})`);
+                    console.log(`👤 Selected character: ${character.name}`);
+                }
+            }
+            
+            handleKeyPress(code) {
+                if (!this.selectedCharacter) return;
+                
+                const character = this.world.characters.get(this.selectedCharacter);
+                if (!character) return;
+                
+                const moveSpeed = character.behavior.movement_speed * 0.1;
+                
+                switch (code) {
+                    case 'KeyW':
+                        character.velocity.z -= moveSpeed;
+                        break;
+                    case 'KeyS':
+                        character.velocity.z += moveSpeed;
+                        break;
+                    case 'KeyA':
+                        character.velocity.x -= moveSpeed;
+                        break;
+                    case 'KeyD':
+                        character.velocity.x += moveSpeed;
+                        break;
+                    case 'Space':
+                        if (Math.abs(character.velocity.y) < 0.1) {
+                            character.velocity.y = this.physics.jumpForce;
+                        }
+                        break;
+                }
+            }
+            
+            addVoxel(x, y, z, color = 0x00ff41) {
+                const geometry = new THREE.BoxGeometry(this.voxelSize, this.voxelSize, this.voxelSize);
+                const material = new THREE.MeshLambertMaterial({ color: color });
+                const voxel = new THREE.Mesh(geometry, material);
+                
+                voxel.position.set(x, y, z);
+                voxel.castShadow = true;
+                voxel.receiveShadow = true;
+                
+                this.scene.add(voxel);
+                
+                const voxelId = `${x}_${y}_${z}`;
+                this.world.voxels.set(voxelId, voxel);
+                
+                this.updateStats();
+            }
+            
+            startRenderLoop() {
+                const animate = () => {
+                    requestAnimationFrame(animate);
+                    
+                    // Update physics
+                    if (this.world.physics) {
+                        this.physicsWorld.update();
+                    }
+                    
+                    // Update characters
+                    this.updateCharacters();
+                    
+                    // Render scene
+                    this.renderer.render(this.scene, this.camera);
+                    
+                    // Update stats
+                    this.updateRenderStats();
+                };
+                
+                animate();
+            }
+            
+            updateCharacters() {
+                this.world.characters.forEach(character => {
+                    // Simple AI behavior
+                    if (!this.selectedCharacter || this.selectedCharacter !== character.id) {
+                        // Autonomous movement
+                        if (Math.random() < 0.01) { // 1% chance per frame
+                            character.velocity.x += (Math.random() - 0.5) * 0.1;
+                            character.velocity.z += (Math.random() - 0.5) * 0.1;
+                        }
+                    }
+                    
+                    // Limit velocity
+                    const maxSpeed = character.behavior.movement_speed * 0.05;
+                    character.velocity.x = Math.max(-maxSpeed, Math.min(maxSpeed, character.velocity.x));
+                    character.velocity.z = Math.max(-maxSpeed, Math.min(maxSpeed, character.velocity.z));
+                });
+            }
+            
+            // Control methods
+            resetCamera() {
+                this.camera.position.set(0, this.humanScale.eyeLevel + 2, 5);
+                this.camera.lookAt(0, this.humanScale.eyeLevel, 0);
+            }
+            
+            toggleWireframe() {
+                this.world.wireframe = !this.world.wireframe;
+                this.scene.traverse((object) => {
+                    if (object.material) {
+                        object.material.wireframe = this.world.wireframe;
+                    }
+                });
+            }
+            
+            addRandomVoxel() {
+                const x = (Math.random() - 0.5) * 20;
+                const y = Math.random() * 3 + 0.25;
+                const z = (Math.random() - 0.5) * 20;
+                const color = Math.random() * 0xffffff;
+                this.addVoxel(x, y, z, color);
+            }
+            
+            clearWorld() {
+                // Remove all voxels
+                this.world.voxels.forEach(voxel => {
+                    this.scene.remove(voxel);
+                });
+                this.world.voxels.clear();
+                
+                // Remove all characters
+                this.world.characters.forEach(character => {
+                    this.scene.remove(character.mesh);
+                });
+                this.world.characters.clear();
+                
+                // Clear character panel
+                const panel = document.getElementById('character-panel');
+                const cards = panel.querySelectorAll('.character-card');
+                cards.forEach(card => card.remove());
+                
+                this.updateStats();
+                this.updateStatus('World cleared');
+            }
+            
+            togglePhysics() {
+                this.world.physics = !this.world.physics;
+                this.updateStatus(`Physics: ${this.world.physics ? 'ON' : 'OFF'}`);
+            }
+            
+            toggleFog() {
+                this.world.fog = !this.world.fog;
+                this.scene.fog = this.world.fog ? new THREE.Fog(0x001122, 10, 100) : null;
+                this.updateStatus(`Fog: ${this.world.fog ? 'ON' : 'OFF'}`);
+            }
+            
+            exportWorld() {
+                const worldData = {
+                    characters: Array.from(this.world.characters.values()).map(char => ({
+                        name: char.name,
+                        type: char.type,
+                        personality: char.personality,
+                        skills: char.skills,
+                        position: char.position.toArray()
+                    })),
+                    voxels: Array.from(this.world.voxels.keys()),
+                    timestamp: new Date().toISOString()
+                };
+                
+                const blob = new Blob([JSON.stringify(worldData, null, 2)], { type: 'application/json' });
+                const url = URL.createObjectURL(blob);
+                const a = document.createElement('a');
+                a.href = url;
+                a.download = 'soulfra-world.json';
+                a.click();
+                URL.revokeObjectURL(url);
+                
+                this.updateStatus('World exported!');
+            }
+            
+            // UI update methods
+            updateStats() {
+                document.getElementById('character-count').textContent = this.world.characters.size;
+                document.getElementById('voxel-count').textContent = this.world.voxels.size;
+                document.getElementById('physics-objects').textContent = this.physicsWorld.objects.length;
+            }
+            
+            updateRenderStats() {
+                const info = this.renderer.info;
+                document.getElementById('render-calls').textContent = info.render.calls;
+                document.getElementById('triangle-count').textContent = info.render.triangles;
+                document.getElementById('memory-usage').textContent = Math.round(info.memory.geometries + info.memory.textures) + ' MB';
+                
+                // Update camera position
+                const pos = this.camera.position;
+                document.getElementById('camera-pos').textContent = 
+                    `${pos.x.toFixed(1)}, ${pos.y.toFixed(1)}, ${pos.z.toFixed(1)}`;
+            }
+            
+            updateStatus(message) {
+                document.getElementById('world-status').textContent = message;
+            }
+            
+            showLoading() {
+                document.getElementById('loading-overlay').style.display = 'flex';
+                this.updateProgress(0);
+            }
+            
+            hideLoading() {
+                document.getElementById('loading-overlay').style.display = 'none';
+            }
+            
+            updateProgress(percent) {
+                document.getElementById('progress-fill').style.width = percent + '%';
+            }
+            
+            updateLoadingStep(step) {
+                document.getElementById('loading-step').textContent = step;
+            }
+            
+            delay(ms) {
+                return new Promise(resolve => setTimeout(resolve, ms));
+            }
+        }
+        
+        // Initialize the SOULFRA 3D World Engine
+        let worldEngine;
+        window.addEventListener('load', () => {
+            worldEngine = new SoulFra3DWorldEngine();
+        });
+    </script>
+</body>
+</html>

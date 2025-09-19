@@ -1,0 +1,1291 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+    <title>ShipRekt Empire - Personal Mesh Hotspot</title>
+    
+    <!-- PWA Setup -->
+    <link rel="manifest" href="shiprekt-manifest.json">
+    <meta name="theme-color" content="#000000">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    <link rel="apple-touch-icon" href="data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNk+M9QDwADhgGAWjR9awAAAABJRU5ErkJggg==">
+    
+    <style>
+        * { 
+            margin: 0; 
+            padding: 0; 
+            box-sizing: border-box; 
+            touch-action: manipulation;
+        }
+        
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', system-ui;
+            background: #000;
+            color: #fff;
+            overflow: hidden;
+            height: 100vh;
+            width: 100vw;
+            position: fixed;
+        }
+        
+        /* Glass Layer Effect */
+        .glass-layer {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: linear-gradient(135deg, 
+                rgba(255,255,255,0.1) 0%,
+                rgba(255,255,255,0.05) 50%,
+                rgba(255,255,255,0.1) 100%);
+            backdrop-filter: blur(10px);
+            -webkit-backdrop-filter: blur(10px);
+            border: 1px solid rgba(255,255,255,0.2);
+            z-index: 10;
+            pointer-events: none;
+        }
+        
+        /* Game Container */
+        .game-world {
+            position: absolute;
+            width: 100%;
+            height: 100%;
+            background: 
+                radial-gradient(circle at 20% 30%, rgba(0,100,255,0.3), transparent),
+                radial-gradient(circle at 80% 70%, rgba(255,0,100,0.3), transparent),
+                linear-gradient(180deg, #001122, #000);
+            overflow: hidden;
+        }
+        
+        /* Floating Islands/Ships */
+        .ship {
+            position: absolute;
+            width: 80px;
+            height: 40px;
+            background: linear-gradient(45deg, #333, #666);
+            border-radius: 20px 5px;
+            border: 2px solid #00ff00;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            animation: float 3s ease-in-out infinite;
+        }
+        
+        .ship:active {
+            transform: scale(0.95);
+        }
+        
+        .ship::before {
+            content: '🚢';
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            font-size: 20px;
+        }
+        
+        @keyframes float {
+            0%, 100% { transform: translateY(0px); }
+            50% { transform: translateY(-10px); }
+        }
+        
+        /* Your Ship (Player) */
+        .player-ship {
+            background: linear-gradient(45deg, #FFD700, #FFA500);
+            border-color: #FFD700;
+            box-shadow: 0 0 20px rgba(255,215,0,0.5);
+            z-index: 5;
+        }
+        
+        .player-ship::before {
+            content: '👑';
+        }
+        
+        /* Touch Controls */
+        .controls {
+            position: fixed;
+            bottom: 20px;
+            left: 50%;
+            transform: translateX(-50%);
+            display: flex;
+            gap: 15px;
+            z-index: 100;
+        }
+        
+        .control-btn {
+            width: 60px;
+            height: 60px;
+            background: rgba(0,0,0,0.7);
+            border: 2px solid #00ff00;
+            border-radius: 50%;
+            color: #00ff00;
+            font-size: 24px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            cursor: pointer;
+            user-select: none;
+            transition: all 0.2s;
+        }
+        
+        .control-btn:active {
+            background: rgba(0,255,0,0.2);
+            transform: scale(0.9);
+        }
+        
+        /* HUD Elements */
+        .hud {
+            position: fixed;
+            top: 20px;
+            left: 20px;
+            right: 20px;
+            display: flex;
+            justify-content: space-between;
+            z-index: 100;
+        }
+        
+        .hud-panel {
+            background: rgba(0,0,0,0.8);
+            border: 1px solid rgba(0,255,0,0.5);
+            border-radius: 10px;
+            padding: 10px 15px;
+            font-size: 14px;
+            backdrop-filter: blur(5px);
+        }
+        
+        .empire-value {
+            color: #FFD700;
+            font-weight: bold;
+            font-size: 18px;
+        }
+        
+        /* Social Panel */
+        .social-panel {
+            position: fixed;
+            top: 100px;
+            right: 20px;
+            background: rgba(0,0,0,0.9);
+            border: 2px solid #00ff00;
+            border-radius: 15px;
+            padding: 15px;
+            max-width: 200px;
+            z-index: 100;
+        }
+        
+        .friend {
+            display: flex;
+            align-items: center;
+            margin: 10px 0;
+            padding: 8px;
+            background: rgba(0,255,0,0.1);
+            border-radius: 8px;
+            cursor: pointer;
+        }
+        
+        .friend:active {
+            background: rgba(0,255,0,0.2);
+        }
+        
+        /* QR Code Scanner */
+        .qr-scanner {
+            position: fixed;
+            bottom: 100px;
+            right: 20px;
+            width: 60px;
+            height: 60px;
+            background: rgba(255,255,255,0.9);
+            border: 2px solid #00ff00;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            cursor: pointer;
+            z-index: 100;
+        }
+        
+        .qr-scanner:active {
+            transform: scale(0.9);
+        }
+        
+        /* Map Layer */
+        .map-layer {
+            position: fixed;
+            bottom: 0;
+            left: 0;
+            width: 100%;
+            height: 150px;
+            background: rgba(0,50,0,0.3);
+            border-top: 1px solid rgba(0,255,0,0.3);
+            backdrop-filter: blur(5px);
+            z-index: 5;
+            display: none;
+        }
+        
+        /* Notifications */
+        .notification {
+            position: fixed;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            background: rgba(0,255,0,0.9);
+            color: #000;
+            padding: 20px 30px;
+            border-radius: 15px;
+            font-weight: bold;
+            z-index: 200;
+            animation: notification 3s ease-in-out;
+        }
+        
+        @keyframes notification {
+            0%, 100% { opacity: 0; transform: translate(-50%, -50%) scale(0.8); }
+            10%, 90% { opacity: 1; transform: translate(-50%, -50%) scale(1); }
+        }
+        
+        /* Responsive adjustments */
+        @media (max-width: 480px) {
+            .ship { width: 60px; height: 30px; }
+            .control-btn { width: 50px; height: 50px; font-size: 20px; }
+            .hud-panel { font-size: 12px; padding: 8px 12px; }
+        }
+        
+        /* Snapchat/Social Media Optimizations */
+        .snapchat-ready {
+            /* Optimized for vertical screens */
+            height: 100vh;
+            height: 100dvh; /* Dynamic viewport height */
+        }
+        
+        /* Device Ecosystem Panel */
+        .device-ecosystem {
+            position: fixed;
+            left: 20px;
+            top: 100px;
+            background: rgba(0,0,0,0.9);
+            border: 2px solid #0ff;
+            border-radius: 15px;
+            padding: 15px;
+            max-width: 250px;
+            max-height: 300px;
+            overflow-y: auto;
+            z-index: 100;
+            display: none;
+        }
+        
+        .device-ecosystem.visible {
+            display: block;
+        }
+        
+        .connected-device {
+            display: flex;
+            align-items: center;
+            margin: 8px 0;
+            padding: 10px;
+            background: rgba(0,255,255,0.1);
+            border-radius: 8px;
+            border-left: 3px solid;
+            cursor: pointer;
+            transition: all 0.3s ease;
+        }
+        
+        .connected-device:active {
+            background: rgba(0,255,255,0.2);
+            transform: scale(0.98);
+        }
+        
+        .device-trust-0 { border-left-color: #666; }
+        .device-trust-1 { border-left-color: #888; }
+        .device-trust-2 { border-left-color: #999; }
+        .device-trust-3 { border-left-color: #0f0; }
+        .device-trust-4 { border-left-color: #0ff; }
+        .device-trust-5 { border-left-color: #ff0; }
+        .device-trust-6 { border-left-color: #f0f; }
+        
+        .device-icon {
+            margin-right: 10px;
+            font-size: 20px;
+            width: 25px;
+            text-align: center;
+        }
+        
+        .device-info {
+            flex: 1;
+            font-size: 12px;
+        }
+        
+        .device-name {
+            font-weight: bold;
+            color: #0ff;
+        }
+        
+        .device-status {
+            color: #ccc;
+            font-size: 10px;
+        }
+        
+        .device-distance {
+            font-size: 10px;
+            color: #ff0;
+        }
+        
+        /* Personal Hotspot Panel */
+        .hotspot-panel {
+            position: fixed;
+            bottom: 180px;
+            left: 20px;
+            background: rgba(0,50,0,0.9);
+            border: 2px solid #0f0;
+            border-radius: 15px;
+            padding: 15px;
+            max-width: 200px;
+            z-index: 100;
+            display: none;
+        }
+        
+        .hotspot-panel.visible {
+            display: block;
+        }
+        
+        .hotspot-qr {
+            text-align: center;
+            margin: 10px 0;
+            padding: 20px;
+            background: #fff;
+            border-radius: 10px;
+            color: #000;
+            font-family: monospace;
+            font-size: 8px;
+            word-break: break-all;
+        }
+        
+        .pool-status {
+            margin: 8px 0;
+            padding: 8px;
+            background: rgba(255,255,255,0.1);
+            border-radius: 5px;
+            font-size: 11px;
+        }
+        
+        .pool-name {
+            font-weight: bold;
+            color: #0f0;
+        }
+        
+        .pool-health {
+            font-size: 10px;
+            margin-top: 3px;
+        }
+        
+        .pool-health-bar {
+            width: 100%;
+            height: 4px;
+            background: rgba(255,255,255,0.2);
+            border-radius: 2px;
+            margin-top: 2px;
+            overflow: hidden;
+        }
+        
+        .pool-health-fill {
+            height: 100%;
+            background: linear-gradient(90deg, #f00, #ff0, #0f0);
+            transition: width 0.5s ease;
+        }
+        
+        /* Proximity Alerts */
+        .proximity-alert {
+            position: fixed;
+            top: 70px;
+            left: 50%;
+            transform: translateX(-50%);
+            background: rgba(0,255,255,0.9);
+            color: #000;
+            padding: 10px 20px;
+            border-radius: 20px;
+            font-weight: bold;
+            z-index: 200;
+            animation: pulse 2s ease-in-out;
+        }
+        
+        @keyframes pulse {
+            0%, 100% { transform: translateX(-50%) scale(1); }
+            50% { transform: translateX(-50%) scale(1.1); }
+        }
+        
+        /* Enhanced Controls */
+        .mesh-controls {
+            position: fixed;
+            bottom: 20px;
+            right: 20px;
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+            z-index: 100;
+        }
+        
+        .mesh-btn {
+            width: 50px;
+            height: 50px;
+            background: rgba(0,0,0,0.8);
+            border: 2px solid #0ff;
+            border-radius: 50%;
+            color: #0ff;
+            font-size: 18px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            cursor: pointer;
+            user-select: none;
+            transition: all 0.2s;
+        }
+        
+        .mesh-btn:active {
+            background: rgba(0,255,255,0.2);
+            transform: scale(0.9);
+        }
+        
+        .mesh-btn.active {
+            background: rgba(0,255,255,0.3);
+            box-shadow: 0 0 15px rgba(0,255,255,0.5);
+        }
+        
+        /* Network Status Indicator */
+        .network-status {
+            position: fixed;
+            top: 20px;
+            right: 20px;
+            background: rgba(0,0,0,0.8);
+            border: 1px solid rgba(0,255,255,0.5);
+            border-radius: 10px;
+            padding: 8px 12px;
+            font-size: 12px;
+            z-index: 100;
+        }
+        
+        .status-indicator {
+            display: inline-block;
+            width: 8px;
+            height: 8px;
+            border-radius: 50%;
+            margin-right: 5px;
+        }
+        
+        .status-connected { background: #0f0; }
+        .status-scanning { background: #ff0; animation: blink 1s infinite; }
+        .status-disconnected { background: #f00; }
+        
+        @keyframes blink {
+            0%, 50% { opacity: 1; }
+            51%, 100% { opacity: 0.3; }
+        }
+        
+        /* Accessibility */
+        @media (prefers-reduced-motion: reduce) {
+            .ship { animation: none; }
+            * { transition: none !important; }
+            .proximity-alert { animation: none; }
+            .status-scanning { animation: none; }
+        }
+    </style>
+</head>
+<body class="snapchat-ready">
+    <!-- Glass Layer Effect -->
+    <div class="glass-layer"></div>
+    
+    <!-- Game World -->
+    <div class="game-world" id="gameWorld">
+        <!-- Player Ship -->
+        <div class="ship player-ship" id="playerShip" style="left: 50%; top: 70%;"></div>
+        
+        <!-- Enemy/Neutral Ships -->
+        <div class="ship" style="left: 20%; top: 30%;" data-type="agent"></div>
+        <div class="ship" style="left: 70%; top: 20%;" data-type="crypto"></div>
+        <div class="ship" style="left: 80%; top: 50%;" data-type="gaming"></div>
+        <div class="ship" style="left: 30%; top: 60%;" data-type="economy"></div>
+    </div>
+    
+    <!-- HUD -->
+    <div class="hud">
+        <div class="hud-panel">
+            <div>Empire Value</div>
+            <div class="empire-value" id="empireValue">$156,000</div>
+        </div>
+        <div class="hud-panel">
+            <div>Ships: <span id="shipCount">5</span></div>
+            <div>Online: <span id="onlineCount">3</span></div>
+        </div>
+    </div>
+    
+    <!-- Device Ecosystem Panel -->
+    <div class="device-ecosystem" id="deviceEcosystem">
+        <h4>🌐 Device Mesh</h4>
+        <div id="connectedDevices">
+            <div class="connected-device device-trust-6" onclick="viewDevice('self')">
+                <div class="device-icon">👑</div>
+                <div class="device-info">
+                    <div class="device-name">Your Device</div>
+                    <div class="device-status">Elite • Host</div>
+                    <div class="device-distance">0m • Intimate Pool</div>
+                </div>
+            </div>
+        </div>
+        <div style="margin-top: 10px; text-align: center;">
+            <button onclick="scanForDevices()" style="background: #0ff; color: #000; border: none; padding: 8px 16px; border-radius: 20px; font-size: 12px;">
+                Scan Area
+            </button>
+        </div>
+    </div>
+    
+    <!-- Personal Hotspot Panel -->
+    <div class="hotspot-panel" id="hotspotPanel">
+        <h4>📶 Personal Hotspot</h4>
+        <div class="hotspot-qr" id="hotspotQR">
+            MESH_HOTSPOT_ABC123
+        </div>
+        <div style="text-align: center; margin: 10px 0;">
+            <button onclick="regenerateHotspot()" style="background: #0f0; color: #000; border: none; padding: 6px 12px; border-radius: 15px; font-size: 11px;">
+                Regenerate
+            </button>
+        </div>
+        <div id="poolStatuses">
+            <div class="pool-status">
+                <div class="pool-name">Intimate Pool</div>
+                <div class="pool-health">Health: <span id="intimateHealth">95%</span></div>
+                <div class="pool-health-bar">
+                    <div class="pool-health-fill" style="width: 95%"></div>
+                </div>
+            </div>
+            <div class="pool-status">
+                <div class="pool-name">Local Pool</div>
+                <div class="pool-health">Health: <span id="localHealth">78%</span></div>
+                <div class="pool-health-bar">
+                    <div class="pool-health-fill" style="width: 78%"></div>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <!-- Network Status -->
+    <div class="network-status">
+        <span class="status-indicator status-connected" id="networkIndicator"></span>
+        <span id="networkStatus">Mesh Active</span>
+    </div>
+    
+    <!-- QR Scanner -->
+    <div class="qr-scanner" onclick="scanQR()">
+        📱
+    </div>
+    
+    <!-- Touch Controls -->
+    <div class="controls">
+        <div class="control-btn" onpointerdown="moveShip('left')" onpointerup="stopMove()">⬅️</div>
+        <div class="control-btn" onpointerdown="attack()" onpointerup="stopAttack()">⚔️</div>
+        <div class="control-btn" onpointerdown="moveShip('right')" onpointerup="stopMove()">➡️</div>
+        <div class="control-btn" onclick="toggleMap()">🗺️</div>
+    </div>
+    
+    <!-- Mesh Controls -->
+    <div class="mesh-controls">
+        <div class="mesh-btn" id="meshToggle" onclick="toggleDeviceEcosystem()" title="Device Mesh">🌐</div>
+        <div class="mesh-btn" id="hotspotToggle" onclick="toggleHotspot()" title="Personal Hotspot">📶</div>
+        <div class="mesh-btn" onclick="broadcastPresence()" title="Broadcast Presence">📡</div>
+        <div class="mesh-btn" onclick="requestVoiceVerification()" title="Voice Verify">🎤</div>
+    </div>
+    
+    <!-- Map Layer (Hidden by default) -->
+    <div class="map-layer" id="mapLayer">
+        <div style="padding: 20px; text-align: center;">
+            <h4>🗺️ Empire Map</h4>
+            <p>Scanning for nearby players...</p>
+            <div style="margin-top: 10px;">
+                <span style="color: #FFD700;">📍 You</span> | 
+                <span style="color: #00ff00;">📍 Mike (2.3km)</span>
+            </div>
+        </div>
+    </div>
+    
+    <script>
+        // Enhanced Mesh Networking State
+        let meshState = {
+            playerPosition: { x: 50, y: 70 },
+            empireValue: 156000,
+            ships: 5,
+            onlinePlayers: 3,
+            isMoving: false,
+            currentDirection: null,
+            
+            // Proximity mesh networking
+            deviceId: 'device_' + Math.random().toString(36).substring(2, 15),
+            trustLevel: 6, // Self starts at max trust
+            connectedDevices: new Map(),
+            resourcePools: {
+                intimate: { health: 0.95, participants: 1, myContribution: 100 },
+                local: { health: 0.78, participants: 3, myContribution: 250 },
+                network: { health: 0.65, participants: 8, myContribution: 400 },
+                regional: { health: 0.82, participants: 25, myContribution: 150 },
+                country: { health: 0.91, participants: 1247, myContribution: 50 }
+            },
+            
+            // Personal hotspot
+            hotspotCode: null,
+            hotspotActive: false,
+            lastCodeGeneration: 0,
+            
+            // Proximity scanning
+            wifiNetworks: new Set(),
+            bluetoothDevices: new Set(),
+            rfidTags: new Set(),
+            nearbyQRCodes: new Set(),
+            
+            // Spatial positioning
+            spatialPosition: { x: 0, y: 0, z: 0 },
+            proximityRange: {
+                detection: 500,
+                interaction: 100,
+                execution: 10,
+                influence: 50
+            }
+        };
+        
+        // PWA Registration
+        if ('serviceWorker' in navigator) {
+            navigator.serviceWorker.register('shiprekt-sw.js')
+                .then(reg => console.log('PWA registered'))
+                .catch(err => console.log('PWA registration failed'));
+        }
+        
+        // Touch/Movement Controls
+        function moveShip(direction) {
+            gameState.isMoving = true;
+            gameState.currentDirection = direction;
+            
+            const playerShip = document.getElementById('playerShip');
+            const moveSpeed = 2; // pixels per frame
+            
+            function animateMove() {
+                if (!gameState.isMoving) return;
+                
+                if (direction === 'left' && gameState.playerPosition.x > 5) {
+                    gameState.playerPosition.x -= moveSpeed;
+                } else if (direction === 'right' && gameState.playerPosition.x < 95) {
+                    gameState.playerPosition.x += moveSpeed;
+                }
+                
+                playerShip.style.left = gameState.playerPosition.x + '%';
+                requestAnimationFrame(animateMove);
+            }
+            
+            animateMove();
+            
+            // Haptic feedback
+            if (navigator.vibrate) {
+                navigator.vibrate(50);
+            }
+        }
+        
+        function stopMove() {
+            gameState.isMoving = false;
+        }
+        
+        function attack() {
+            showNotification('💥 Firing cannons!');
+            
+            // Visual effect
+            const playerShip = document.getElementById('playerShip');
+            playerShip.style.boxShadow = '0 0 30px rgba(255,0,0,0.8)';
+            
+            setTimeout(() => {
+                playerShip.style.boxShadow = '0 0 20px rgba(255,215,0,0.5)';
+            }, 300);
+            
+            // Haptic feedback
+            if (navigator.vibrate) {
+                navigator.vibrate([100, 50, 100]);
+            }
+            
+            // Increase empire value
+            gameState.empireValue += Math.floor(Math.random() * 1000) + 500;
+            updateHUD();
+        }
+        
+        function stopAttack() {
+            // Stop attack animation
+        }
+        
+        // QR Code Scanner
+        function scanQR() {
+            showNotification('📱 Scanning for empire codes...');
+            
+            // Simulate QR scan result
+            setTimeout(() => {
+                const codes = [
+                    'Found Agent System! +$5,000',
+                    'Discovered Crypto Wallet! +$10,000',
+                    'Unlocked Gaming Platform! +$7,500',
+                    'Connected to Friend\'s Empire! +$2,000'
+                ];
+                
+                const result = codes[Math.floor(Math.random() * codes.length)];
+                showNotification('🎉 ' + result);
+                
+                // Add bonus value
+                gameState.empireValue += parseInt(result.match(/\$([0-9,]+)/)[1].replace(',', ''));
+                updateHUD();
+            }, 2000);
+        }
+        
+        // Device Ecosystem Management
+        function toggleDeviceEcosystem() {
+            const panel = document.getElementById('deviceEcosystem');
+            const toggle = document.getElementById('meshToggle');
+            
+            panel.classList.toggle('visible');
+            toggle.classList.toggle('active');
+            
+            if (panel.classList.contains('visible')) {
+                updateDeviceList();
+                // Start real-time updates
+                startDeviceEcosystemUpdates();
+            } else {
+                stopDeviceEcosystemUpdates();
+            }
+        }
+        
+        function toggleHotspot() {
+            const panel = document.getElementById('hotspotPanel');
+            const toggle = document.getElementById('hotspotToggle');
+            
+            panel.classList.toggle('visible');
+            toggle.classList.toggle('active');
+            
+            if (panel.classList.contains('visible')) {
+                if (!meshState.hotspotCode || Date.now() - meshState.lastCodeGeneration > 300000) {
+                    generateHotspotCode();
+                }
+                updatePoolStatuses();
+            }
+        }
+        
+        function generateHotspotCode() {
+            // Generate enhanced hotspot code with spatial and proximity data
+            const hotspotData = {
+                deviceId: meshState.deviceId,
+                trustLevel: meshState.trustLevel,
+                spatialPosition: meshState.spatialPosition,
+                proximityRange: meshState.proximityRange,
+                activeNetworks: {
+                    wifi: meshState.wifiNetworks.size,
+                    bluetooth: meshState.bluetoothDevices.size,
+                    rfid: meshState.rfidTags.size
+                },
+                poolParticipation: Object.keys(meshState.resourcePools).map(pool => ({
+                    pool,
+                    health: meshState.resourcePools[pool].health,
+                    participants: meshState.resourcePools[pool].participants
+                })),
+                capabilities: ['3d-positioning', 'range-detection', 'resource-pooling', 'voice-verification'],
+                timestamp: Date.now()
+            };
+            
+            meshState.hotspotCode = btoa(JSON.stringify(hotspotData));
+            meshState.lastCodeGeneration = Date.now();
+            
+            // Display shortened code for mobile
+            const shortCode = meshState.hotspotCode.substring(0, 20) + '...';
+            document.getElementById('hotspotQR').textContent = shortCode;
+            
+            showNotification('📶 Hotspot code generated! Share for instant mesh connection.');
+        }
+        
+        function regenerateHotspot() {
+            generateHotspotCode();
+            showNotification('🔄 Hotspot code refreshed!');
+        }
+        
+        function scanForDevices() {
+            showNotification('🌐 Scanning for nearby devices...');
+            document.getElementById('networkStatus').textContent = 'Scanning...';
+            document.getElementById('networkIndicator').className = 'status-indicator status-scanning';
+            
+            // Simulate device discovery
+            setTimeout(() => {
+                discoverNearbyDevices();
+                document.getElementById('networkStatus').textContent = 'Mesh Active';
+                document.getElementById('networkIndicator').className = 'status-indicator status-connected';
+            }, 3000);
+        }
+        
+        function discoverNearbyDevices() {
+            // Simulate discovering devices at different trust levels and distances
+            const mockDevices = [
+                {
+                    id: 'device_mike_phone',
+                    name: 'Mike\'s Phone',
+                    trustLevel: 4,
+                    distance: 25,
+                    proximity: 'bluetooth',
+                    status: 'Trusted • Same WiFi',
+                    icon: '📱',
+                    pool: 'Local Pool'
+                },
+                {
+                    id: 'device_friend_laptop',
+                    name: 'Friend\'s Laptop',
+                    trustLevel: 3,
+                    distance: 150,
+                    proximity: 'wifi',
+                    status: 'Familiar • Network',
+                    icon: '💻',
+                    pool: 'Network Pool'
+                },
+                {
+                    id: 'device_unknown_tablet',
+                    name: 'Unknown Tablet',
+                    trustLevel: 1,
+                    distance: 75,
+                    proximity: 'bluetooth',
+                    status: 'Detected • Bluetooth',
+                    icon: '📱',
+                    pool: 'Local Pool'
+                }
+            ];
+            
+            // Add discovered devices to mesh state
+            mockDevices.forEach(device => {
+                meshState.connectedDevices.set(device.id, device);
+            });
+            
+            updateDeviceList();
+            showNotification(`🔍 Found ${mockDevices.length} nearby devices!`);
+        }
+        
+        function updateDeviceList() {
+            const container = document.getElementById('connectedDevices');
+            
+            // Keep the self device entry
+            const selfDevice = container.querySelector('.device-trust-6');
+            container.innerHTML = '';
+            container.appendChild(selfDevice);
+            
+            // Add connected devices
+            meshState.connectedDevices.forEach((device, deviceId) => {
+                const deviceElement = document.createElement('div');
+                deviceElement.className = `connected-device device-trust-${device.trustLevel}`;
+                deviceElement.onclick = () => viewDevice(deviceId);
+                
+                deviceElement.innerHTML = `
+                    <div class="device-icon">${device.icon}</div>
+                    <div class="device-info">
+                        <div class="device-name">${device.name}</div>
+                        <div class="device-status">${device.status}</div>
+                        <div class="device-distance">${device.distance}m • ${device.pool}</div>
+                    </div>
+                `;
+                
+                container.appendChild(deviceElement);
+            });
+        }
+        
+        function viewDevice(deviceId) {
+            if (deviceId === 'self') {
+                showNotification('👑 Your Device - Elite Trust Level');
+                return;
+            }
+            
+            const device = meshState.connectedDevices.get(deviceId);
+            if (device) {
+                const trustNames = ['Unknown', 'Detected', 'Recognized', 'Familiar', 'Trusted', 'Verified', 'Elite'];
+                const trustName = trustNames[device.trustLevel] || 'Unknown';
+                
+                showNotification(`${device.icon} ${device.name} - ${trustName} (${device.distance}m)`);
+                
+                // Boost connection if clicked
+                if (device.distance < meshState.proximityRange.interaction) {
+                    boostDeviceConnection(deviceId);
+                }
+            }
+        }
+        
+        function boostDeviceConnection(deviceId) {
+            const device = meshState.connectedDevices.get(deviceId);
+            if (device && device.trustLevel < 6) {
+                device.trustLevel = Math.min(6, device.trustLevel + 1);
+                updateDeviceList();
+                
+                // Add to empire value based on trust boost
+                meshState.empireValue += 1000 * device.trustLevel;
+                updateHUD();
+                
+                showProximityAlert(`🤝 Trust boost with ${device.name}!`);
+            }
+        }
+        
+        function broadcastPresence() {
+            showNotification('📡 Broadcasting mesh presence...');
+            
+            // Simulate presence broadcast
+            setTimeout(() => {
+                // Increase online player count
+                meshState.onlinePlayers += Math.floor(Math.random() * 3) + 1;
+                updateHUD();
+                showNotification('📡 Presence broadcasted! New devices may discover you.');
+            }, 1500);
+        }
+        
+        function requestVoiceVerification() {
+            showNotification('🎤 Starting voice verification...');
+            
+            // Simulate voice verification process
+            setTimeout(() => {
+                showNotification('🎤 Voice pattern recorded! Trust levels may increase.');
+                
+                // Boost trust levels for nearby devices
+                meshState.connectedDevices.forEach((device, deviceId) => {
+                    if (device.distance < 50 && device.trustLevel >= 3) {
+                        device.trustLevel = Math.min(6, device.trustLevel + 1);
+                    }
+                });
+                
+                updateDeviceList();
+            }, 3000);
+        }
+        
+        // Map Integration
+        function toggleMap() {
+            const mapLayer = document.getElementById('mapLayer');
+            const isVisible = mapLayer.style.display === 'block';
+            
+            mapLayer.style.display = isVisible ? 'none' : 'block';
+            
+            if (!isVisible && navigator.geolocation) {
+                navigator.geolocation.getCurrentPosition(
+                    pos => {
+                        mapLayer.innerHTML = \`
+                            <div style="padding: 20px; text-align: center;">
+                                <h4>🗺️ Your Location</h4>
+                                <p>Lat: \${pos.coords.latitude.toFixed(4)}</p>
+                                <p>Lng: \${pos.coords.longitude.toFixed(4)}</p>
+                                <div style="margin-top: 10px;">
+                                    <button onclick="findNearbyPlayers()" style="background: #00ff00; color: #000; border: none; padding: 10px; border-radius: 5px;">
+                                        Find Nearby Players
+                                    </button>
+                                </div>
+                            </div>
+                        \`;
+                    },
+                    err => {
+                        showNotification('📍 Location access needed for map features');
+                    }
+                );
+            }
+        }
+        
+        function findNearbyPlayers() {
+            showNotification('🔍 Scanning area for other empires...');
+            // Integrate with your backend to find real players nearby
+        }
+        
+        // Resource Pool Management
+        function updatePoolStatuses() {
+            Object.keys(meshState.resourcePools).forEach(poolName => {
+                const pool = meshState.resourcePools[poolName];
+                const healthElement = document.getElementById(poolName + 'Health');
+                
+                if (healthElement) {
+                    const healthPercent = Math.round(pool.health * 100);
+                    healthElement.textContent = healthPercent + '%';
+                    
+                    // Update health bar if it exists
+                    const healthBar = healthElement.parentElement.parentElement.querySelector('.pool-health-fill');
+                    if (healthBar) {
+                        healthBar.style.width = healthPercent + '%';
+                    }
+                }
+            });
+        }
+        
+        function simulatePoolDecay() {
+            // Simulate resource pool decay and regeneration
+            Object.keys(meshState.resourcePools).forEach(poolName => {
+                const pool = meshState.resourcePools[poolName];
+                
+                // Decay pools slightly over time
+                pool.health = Math.max(0.1, pool.health - 0.01);
+                
+                // Regenerate based on participants and contributions
+                const regeneration = Math.min(0.05, pool.participants * 0.01);
+                pool.health = Math.min(1.0, pool.health + regeneration);
+                
+                // Emergency alert for critical pools
+                if (pool.health < 0.3) {
+                    showProximityAlert(`⚠️ ${poolName} pool needs help!`);
+                }
+            });
+            
+            updatePoolStatuses();
+        }
+        
+        function contributeToPool(poolName) {
+            const pool = meshState.resourcePools[poolName];
+            if (pool) {
+                pool.myContribution += 50;
+                pool.health = Math.min(1.0, pool.health + 0.05);
+                
+                // Add empire value for contribution
+                meshState.empireValue += 500;
+                updateHUD();
+                updatePoolStatuses();
+                
+                showNotification(`💎 Contributed to ${poolName} pool! +$500`);
+            }
+        }
+        
+        // Proximity Alerts and Updates
+        function showProximityAlert(message) {
+            const alert = document.createElement('div');
+            alert.className = 'proximity-alert';
+            alert.textContent = message;
+            document.body.appendChild(alert);
+            
+            setTimeout(() => {
+                alert.remove();
+            }, 4000);
+        }
+        
+        function startDeviceEcosystemUpdates() {
+            // Start real-time device ecosystem updates
+            meshState.ecosystemUpdateInterval = setInterval(() => {
+                updateDeviceProximity();
+                simulateNetworkActivity();
+            }, 5000);
+        }
+        
+        function stopDeviceEcosystemUpdates() {
+            if (meshState.ecosystemUpdateInterval) {
+                clearInterval(meshState.ecosystemUpdateInterval);
+                meshState.ecosystemUpdateInterval = null;
+            }
+        }
+        
+        function updateDeviceProximity() {
+            // Simulate device movement and proximity changes
+            meshState.connectedDevices.forEach((device, deviceId) => {
+                // Random movement within realistic bounds
+                const movement = (Math.random() - 0.5) * 10; // ±5m movement
+                device.distance = Math.max(5, Math.min(500, device.distance + movement));
+                
+                // Update proximity benefits based on distance
+                if (device.distance < 50 && Math.random() < 0.1) {
+                    // Close proximity bonus
+                    meshState.empireValue += 100;
+                    showProximityAlert(`📶 Proximity bonus from ${device.name}!`);
+                }
+            });
+            
+            updateDeviceList();
+        }
+        
+        function simulateNetworkActivity() {
+            // Simulate WiFi/Bluetooth/RFID scanning activity
+            const activityTypes = ['wifi', 'bluetooth', 'rfid', 'qr'];
+            const randomActivity = activityTypes[Math.floor(Math.random() * activityTypes.length)];
+            
+            switch (randomActivity) {
+                case 'wifi':
+                    meshState.wifiNetworks.add('Network_' + Math.random().toString(36).substring(2, 8));
+                    break;
+                case 'bluetooth':
+                    meshState.bluetoothDevices.add('BT_' + Math.random().toString(36).substring(2, 8));
+                    break;
+                case 'rfid':
+                    meshState.rfidTags.add('RFID_' + Math.random().toString(36).substring(2, 8));
+                    break;
+                case 'qr':
+                    meshState.nearbyQRCodes.add('QR_' + Math.random().toString(36).substring(2, 8));
+                    break;
+            }
+            
+            // Update network status
+            const totalConnections = meshState.wifiNetworks.size + 
+                                   meshState.bluetoothDevices.size + 
+                                   meshState.rfidTags.size + 
+                                   meshState.nearbyQRCodes.size;
+            
+            if (totalConnections > 20) {
+                document.getElementById('networkStatus').textContent = 'Mesh Dense';
+            } else if (totalConnections > 10) {
+                document.getElementById('networkStatus').textContent = 'Mesh Active';
+            } else {
+                document.getElementById('networkStatus').textContent = 'Mesh Sparse';
+            }
+        }
+        
+        // Enhanced QR Scanner for Mesh Networking
+        function scanQR() {
+            showNotification('📱 Scanning for mesh network codes...');
+            
+            // Simulate QR scan result with mesh networking focus
+            setTimeout(() => {
+                const meshCodes = [
+                    'Connected to Device Hotspot! +$5,000',
+                    'Joined Local Mesh Pool! +$3,000',
+                    'Voice Verification Match! +$7,500',
+                    'RFID Proximity Boost! +$2,000',
+                    'Same WiFi Network Bonus! +$4,000'
+                ];
+                
+                const result = meshCodes[Math.floor(Math.random() * meshCodes.length)];
+                showNotification('🎉 ' + result);
+                
+                // Add bonus value
+                const bonus = parseInt(result.match(/\$([0-9,]+)/)[1].replace(',', ''));
+                meshState.empireValue += bonus;
+                updateHUD();
+                
+                // Simulate adding a new device to ecosystem
+                if (result.includes('Device Hotspot') || result.includes('Mesh Pool')) {
+                    addRandomDevice();
+                }
+            }, 2000);
+        }
+        
+        function addRandomDevice() {
+            const deviceTypes = [
+                { name: 'Smart Speaker', icon: '🔊', trustLevel: 2 },
+                { name: 'Gaming Console', icon: '🎮', trustLevel: 3 },
+                { name: 'Smart TV', icon: '📺', trustLevel: 1 },
+                { name: 'Router', icon: '📡', trustLevel: 4 }
+            ];
+            
+            const randomType = deviceTypes[Math.floor(Math.random() * deviceTypes.length)];
+            const deviceId = 'device_' + Math.random().toString(36).substring(2, 10);
+            
+            const newDevice = {
+                id: deviceId,
+                name: randomType.name,
+                trustLevel: randomType.trustLevel,
+                distance: Math.floor(Math.random() * 200) + 20,
+                proximity: Math.random() < 0.5 ? 'wifi' : 'bluetooth',
+                status: 'Recognized • Scanned',
+                icon: randomType.icon,
+                pool: 'Network Pool'
+            };
+            
+            meshState.connectedDevices.set(deviceId, newDevice);
+            updateDeviceList();
+        }
+        
+        // Utility Functions
+        function updateHUD() {
+            document.getElementById('empireValue').textContent = '$' + meshState.empireValue.toLocaleString();
+            document.getElementById('shipCount').textContent = meshState.ships;
+            document.getElementById('onlineCount').textContent = meshState.onlinePlayers;
+        }
+        
+        function showNotification(message) {
+            const notification = document.createElement('div');
+            notification.className = 'notification';
+            notification.textContent = message;
+            document.body.appendChild(notification);
+            
+            setTimeout(() => {
+                notification.remove();
+            }, 3000);
+        }
+        
+        // Ship Interactions
+        document.querySelectorAll('.ship[data-type]').forEach(ship => {
+            ship.addEventListener('click', function() {
+                const type = this.dataset.type;
+                const bonuses = {
+                    agent: '+$2,000 (Agent System)',
+                    crypto: '+$5,000 (Crypto Node)', 
+                    gaming: '+$3,000 (Gaming Platform)',
+                    economy: '+$1,500 (Economy Hub)'
+                };
+                
+                showNotification('🚢 Captured: ' + bonuses[type]);
+                
+                // Add to empire value
+                const bonus = parseInt(bonuses[type].match(/\$([0-9,]+)/)[1].replace(',', ''));
+                gameState.empireValue += bonus;
+                updateHUD();
+                
+                // Remove captured ship
+                this.style.opacity = '0.3';
+                setTimeout(() => {
+                    this.style.opacity = '1';
+                    // Respawn in new location
+                    this.style.left = Math.random() * 80 + 10 + '%';
+                    this.style.top = Math.random() * 60 + 20 + '%';
+                }, 3000);
+            });
+        });
+        
+        // Auto-update empire value and mesh networking
+        setInterval(() => {
+            meshState.empireValue += Math.floor(Math.random() * 100) + 50;
+            updateHUD();
+        }, 5000);
+        
+        // Resource pool health monitoring
+        setInterval(() => {
+            simulatePoolDecay();
+        }, 30000); // Every 30 seconds
+        
+        // Generate initial hotspot code
+        generateHotspotCode();
+        
+        // Initialize spatial positioning
+        if (navigator.geolocation) {
+            navigator.geolocation.getCurrentPosition(
+                position => {
+                    meshState.spatialPosition = {
+                        x: Math.floor(position.coords.latitude * 1000),
+                        y: Math.floor(position.coords.longitude * 1000),
+                        z: 0
+                    };
+                    console.log('📍 Spatial position initialized:', meshState.spatialPosition);
+                },
+                error => {
+                    // Use random position if geolocation fails
+                    meshState.spatialPosition = {
+                        x: Math.floor(Math.random() * 10000) - 5000,
+                        y: Math.floor(Math.random() * 10000) - 5000,
+                        z: 0
+                    };
+                }
+            );
+        }
+        
+        // Start device ecosystem monitoring
+        setInterval(() => {
+            simulateNetworkActivity();
+        }, 10000); // Every 10 seconds
+        
+        // Screen orientation handling
+        window.addEventListener('orientationchange', () => {
+            setTimeout(() => {
+                // Adjust layout for landscape/portrait
+                const isLandscape = window.orientation === 90 || window.orientation === -90;
+                document.body.classList.toggle('landscape', isLandscape);
+            }, 100);
+        });
+        
+        // Prevent zoom on double tap
+        let lastTouchEnd = 0;
+        document.addEventListener('touchend', function (event) {
+            const now = (new Date()).getTime();
+            if (now - lastTouchEnd <= 300) {
+                event.preventDefault();
+            }
+            lastTouchEnd = now;
+        }, false);
+        
+        console.log('🚢 ShipRekt Empire - Personal Mesh Hotspot Ready!');
+        console.log('🌐 Features: Device Ecosystem • Resource Pooling • Voice Trust • Proximity Benefits');
+        console.log('📶 Share your hotspot code for instant mesh connections!');
+        console.log('💎 Empire grows stronger with nearby devices on same WiFi/Bluetooth/RFID!');
+    </script>
+</body>
+</html>

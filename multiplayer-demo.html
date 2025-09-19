@@ -1,0 +1,558 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>🏝️ Multiplayer Theme Island Ecosystem</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: #fff;
+            min-height: 100vh;
+            display: flex;
+            flex-direction: column;
+        }
+        
+        header {
+            background: rgba(0, 0, 0, 0.3);
+            padding: 1rem 2rem;
+            backdrop-filter: blur(10px);
+        }
+        
+        .container {
+            max-width: 1400px;
+            margin: 0 auto;
+            padding: 2rem;
+            flex: 1;
+        }
+        
+        .grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+            gap: 2rem;
+            margin-top: 2rem;
+        }
+        
+        .card {
+            background: rgba(255, 255, 255, 0.1);
+            backdrop-filter: blur(10px);
+            border-radius: 20px;
+            padding: 2rem;
+            border: 1px solid rgba(255, 255, 255, 0.2);
+            transition: transform 0.3s ease, box-shadow 0.3s ease;
+        }
+        
+        .card:hover {
+            transform: translateY(-5px);
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.3);
+        }
+        
+        .card h3 {
+            font-size: 1.5rem;
+            margin-bottom: 1rem;
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+        }
+        
+        .status {
+            padding: 0.25rem 0.75rem;
+            border-radius: 20px;
+            font-size: 0.875rem;
+            display: inline-block;
+            margin-top: 1rem;
+        }
+        
+        .status.online {
+            background: #10b981;
+            color: white;
+        }
+        
+        .status.offline {
+            background: #ef4444;
+            color: white;
+        }
+        
+        .economy-display {
+            display: flex;
+            gap: 1rem;
+            flex-wrap: wrap;
+            margin-top: 1rem;
+        }
+        
+        .token {
+            background: rgba(255, 255, 255, 0.2);
+            padding: 0.5rem 1rem;
+            border-radius: 10px;
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+        }
+        
+        .presence-list {
+            list-style: none;
+            margin-top: 1rem;
+        }
+        
+        .presence-list li {
+            padding: 0.5rem;
+            margin: 0.25rem 0;
+            background: rgba(255, 255, 255, 0.1);
+            border-radius: 10px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+        
+        .island-preview {
+            width: 100%;
+            height: 200px;
+            background: linear-gradient(135deg, #3498db, #2ecc71);
+            border-radius: 10px;
+            margin-top: 1rem;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 3rem;
+            position: relative;
+            overflow: hidden;
+        }
+        
+        .island-elements {
+            position: absolute;
+            width: 100%;
+            height: 100%;
+            display: flex;
+            flex-wrap: wrap;
+            align-content: center;
+            justify-content: center;
+            gap: 1rem;
+        }
+        
+        .element {
+            width: 40px;
+            height: 40px;
+            background: rgba(255, 255, 255, 0.3);
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+        
+        button {
+            background: rgba(255, 255, 255, 0.2);
+            border: 1px solid rgba(255, 255, 255, 0.3);
+            color: white;
+            padding: 0.75rem 1.5rem;
+            border-radius: 10px;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            margin-top: 1rem;
+        }
+        
+        button:hover {
+            background: rgba(255, 255, 255, 0.3);
+            transform: translateY(-2px);
+        }
+        
+        .console {
+            background: rgba(0, 0, 0, 0.5);
+            border-radius: 10px;
+            padding: 1rem;
+            margin-top: 1rem;
+            font-family: monospace;
+            font-size: 0.875rem;
+            max-height: 200px;
+            overflow-y: auto;
+        }
+        
+        .chat-input {
+            display: flex;
+            gap: 0.5rem;
+            margin-top: 1rem;
+        }
+        
+        .chat-input input {
+            flex: 1;
+            background: rgba(255, 255, 255, 0.1);
+            border: 1px solid rgba(255, 255, 255, 0.3);
+            color: white;
+            padding: 0.75rem;
+            border-radius: 10px;
+        }
+        
+        .chat-input input::placeholder {
+            color: rgba(255, 255, 255, 0.5);
+        }
+        
+        #connectionStatus {
+            position: fixed;
+            top: 1rem;
+            right: 1rem;
+            z-index: 1000;
+        }
+    </style>
+</head>
+<body>
+    <header>
+        <h1>🏝️ Multiplayer Theme Island Ecosystem</h1>
+        <p>Real-time collaboration, economy, and customization</p>
+    </header>
+    
+    <div id="connectionStatus" class="status offline">Disconnected</div>
+    
+    <div class="container">
+        <div class="grid">
+            <!-- Multiplayer Hub Card -->
+            <div class="card">
+                <h3>🌐 Collaboration Hub</h3>
+                <p>Connect with other users in real-time</p>
+                <div class="presence-list" id="presenceList">
+                    <p style="opacity: 0.7;">No users online</p>
+                </div>
+                <div class="chat-input">
+                    <input type="text" id="chatInput" placeholder="Send a message..." disabled>
+                    <button onclick="sendMessage()" id="sendBtn" disabled>Send</button>
+                </div>
+                <div class="console" id="chatConsole"></div>
+            </div>
+            
+            <!-- Economy System Card -->
+            <div class="card">
+                <h3>💰 Economy Dashboard</h3>
+                <p>Your wallet and trading</p>
+                <div class="economy-display" id="walletDisplay">
+                    <div class="token">💨 FART: 0</div>
+                    <div class="token">🗄️ DBT: 0</div>
+                    <div class="token">🤖 AGT: 0</div>
+                    <div class="token">✨ VIB: 0</div>
+                </div>
+                <button onclick="requestTokens()">Get Starter Tokens</button>
+                <div class="console" id="economyConsole"></div>
+            </div>
+            
+            <!-- Theme Island Card -->
+            <div class="card">
+                <h3>🏝️ Your Island</h3>
+                <p>Build and customize your space</p>
+                <div class="island-preview" id="islandPreview">
+                    <div class="island-elements">
+                        <div class="element">🏠</div>
+                        <div class="element">🌴</div>
+                        <div class="element">🏖️</div>
+                    </div>
+                </div>
+                <button onclick="createIsland()">Create New Island</button>
+                <button onclick="editIsland()">Customize Theme</button>
+            </div>
+            
+            <!-- Database Status Card -->
+            <div class="card">
+                <h3>🗄️ Database System</h3>
+                <p>Unix-based custom storage</p>
+                <div class="console" id="dbConsole">
+                    <p>Socket: /tmp/unix-db-socket</p>
+                    <p>Status: <span id="dbStatus">Checking...</span></p>
+                    <p>Queries: <span id="queryCount">0</span></p>
+                    <p>Cache Hits: <span id="cacheHits">0</span></p>
+                </div>
+                <button onclick="testDatabase()">Test Query</button>
+            </div>
+            
+            <!-- Team Collaboration Card -->
+            <div class="card">
+                <h3>👥 Team Islands</h3>
+                <p>Collaborate on shared projects</p>
+                <div id="teamList">
+                    <p style="opacity: 0.7;">No teams yet</p>
+                </div>
+                <button onclick="createTeam()">Create Team</button>
+                <button onclick="joinTeam()">Join Team</button>
+            </div>
+            
+            <!-- Theme Marketplace Card -->
+            <div class="card">
+                <h3>🎨 Theme Marketplace</h3>
+                <p>Buy and sell custom themes</p>
+                <div id="themeList">
+                    <p style="opacity: 0.7;">Loading themes...</p>
+                </div>
+                <button onclick="browseThemes()">Browse Themes</button>
+                <button onclick="createTheme()">Create Theme</button>
+            </div>
+        </div>
+    </div>
+    
+    <script>
+        let ws = null;
+        let userId = 'user-' + Math.random().toString(36).substr(2, 9);
+        let connected = false;
+        
+        function connect() {
+            ws = new WebSocket('ws://localhost:8888');
+            
+            ws.onopen = () => {
+                console.log('Connected to multiplayer hub');
+                connected = true;
+                updateConnectionStatus(true);
+                
+                // Authenticate
+                ws.send(JSON.stringify({
+                    type: 'authenticate',
+                    userId: userId
+                }));
+                
+                // Enable chat
+                document.getElementById('chatInput').disabled = false;
+                document.getElementById('sendBtn').disabled = false;
+            };
+            
+            ws.onmessage = (event) => {
+                const message = JSON.parse(event.data);
+                handleMessage(message);
+            };
+            
+            ws.onerror = (error) => {
+                console.error('WebSocket error:', error);
+                addToConsole('chatConsole', '❌ Connection error');
+            };
+            
+            ws.onclose = () => {
+                connected = false;
+                updateConnectionStatus(false);
+                document.getElementById('chatInput').disabled = true;
+                document.getElementById('sendBtn').disabled = true;
+                
+                // Reconnect after 5 seconds
+                setTimeout(connect, 5000);
+            };
+        }
+        
+        function handleMessage(message) {
+            console.log('Received:', message);
+            
+            switch (message.type) {
+                case 'welcome':
+                    addToConsole('chatConsole', '👋 Welcome to the multiplayer hub!');
+                    break;
+                    
+                case 'authenticated':
+                    addToConsole('chatConsole', '✅ Authenticated as ' + userId);
+                    updatePresence(message.presence);
+                    break;
+                    
+                case 'user-joined':
+                    addToConsole('chatConsole', '👤 User joined: ' + message.userId);
+                    break;
+                    
+                case 'room-message':
+                case 'direct-message':
+                    addToConsole('chatConsole', `💬 ${message.userId}: ${message.message}`);
+                    break;
+                    
+                case 'presence-update':
+                    updatePresence(message.presence);
+                    break;
+                    
+                case 'wallet-created':
+                    updateWallet(message.balances);
+                    break;
+                    
+                case 'service-broadcast':
+                    handleServiceBroadcast(message.data);
+                    break;
+            }
+        }
+        
+        function handleServiceBroadcast(data) {
+            switch (data.type) {
+                case 'wallet-created':
+                case 'transfer-completed':
+                    if (data.balances && data.balances[userId]) {
+                        updateWallet(data.balances[userId]);
+                    }
+                    break;
+                    
+                case 'island-created':
+                    addToConsole('chatConsole', '🏝️ New island created: ' + data.island.name);
+                    break;
+                    
+                case 'theme-listed':
+                    addToConsole('chatConsole', '🎨 New theme available: ' + data.theme.name);
+                    break;
+            }
+        }
+        
+        function updateConnectionStatus(online) {
+            const status = document.getElementById('connectionStatus');
+            status.textContent = online ? 'Connected' : 'Disconnected';
+            status.className = 'status ' + (online ? 'online' : 'offline');
+        }
+        
+        function updatePresence(presence) {
+            const list = document.getElementById('presenceList');
+            if (!presence || Object.keys(presence).length === 0) {
+                list.innerHTML = '<p style="opacity: 0.7;">No users online</p>';
+                return;
+            }
+            
+            list.innerHTML = '';
+            Object.entries(presence).forEach(([id, user]) => {
+                const li = document.createElement('li');
+                li.innerHTML = `
+                    <span>${id === userId ? '👤 You' : '👥 ' + id}</span>
+                    <span class="status ${user.status}">${user.status}</span>
+                `;
+                list.appendChild(li);
+            });
+        }
+        
+        function updateWallet(balances) {
+            const display = document.getElementById('walletDisplay');
+            display.innerHTML = `
+                <div class="token">💨 FART: ${balances.FART || 0}</div>
+                <div class="token">🗄️ DBT: ${balances.database_token || 0}</div>
+                <div class="token">🤖 AGT: ${balances.agent_coin || 0}</div>
+                <div class="token">✨ VIB: ${balances.vibes_coin || 0}</div>
+                <div class="token">⚡ NRG: ${balances.energy || 0}</div>
+            `;
+            addToConsole('economyConsole', '💰 Wallet updated');
+        }
+        
+        function sendMessage() {
+            const input = document.getElementById('chatInput');
+            const message = input.value.trim();
+            
+            if (!message || !connected) return;
+            
+            ws.send(JSON.stringify({
+                type: 'send-message',
+                roomId: 'general',
+                message: message
+            }));
+            
+            input.value = '';
+        }
+        
+        function requestTokens() {
+            if (!connected) {
+                alert('Not connected to server');
+                return;
+            }
+            
+            // Request starter tokens through cross-service request
+            ws.send(JSON.stringify({
+                type: 'cross-service-request',
+                targetService: 'unified-economy',
+                request: {
+                    action: 'get-balance',
+                    userId: userId
+                },
+                requestId: 'req-' + Date.now()
+            }));
+            
+            addToConsole('economyConsole', '📡 Requesting tokens...');
+        }
+        
+        function createIsland() {
+            if (!connected) {
+                alert('Not connected to server');
+                return;
+            }
+            
+            ws.send(JSON.stringify({
+                type: 'cross-service-request',
+                targetService: 'theme-island',
+                request: {
+                    action: 'create-island',
+                    userId: userId,
+                    options: {
+                        name: userId + "'s Island",
+                        template: 'starter'
+                    }
+                },
+                requestId: 'island-' + Date.now()
+            }));
+            
+            addToConsole('chatConsole', '🏝️ Creating your island...');
+        }
+        
+        function editIsland() {
+            alert('Island editor would open here - connect to theme-island service for full functionality');
+        }
+        
+        function createTeam() {
+            const teamName = prompt('Enter team name:');
+            if (!teamName) return;
+            
+            ws.send(JSON.stringify({
+                type: 'create-team',
+                name: teamName
+            }));
+        }
+        
+        function joinTeam() {
+            const teamId = prompt('Enter team ID to join:');
+            if (!teamId) return;
+            
+            ws.send(JSON.stringify({
+                type: 'join-team',
+                teamId: teamId
+            }));
+        }
+        
+        function testDatabase() {
+            addToConsole('dbConsole', '🔍 Testing database query...');
+            // Database test would connect through Unix socket
+            addToConsole('dbConsole', '✅ Query executed (simulated)');
+            
+            const queryCount = document.getElementById('queryCount');
+            queryCount.textContent = parseInt(queryCount.textContent) + 1;
+        }
+        
+        function browseThemes() {
+            addToConsole('chatConsole', '🎨 Opening theme marketplace...');
+        }
+        
+        function createTheme() {
+            addToConsole('chatConsole', '🎨 Opening theme editor...');
+        }
+        
+        function addToConsole(consoleId, text) {
+            const console = document.getElementById(consoleId);
+            const line = document.createElement('div');
+            line.textContent = `[${new Date().toLocaleTimeString()}] ${text}`;
+            console.appendChild(line);
+            console.scrollTop = console.scrollHeight;
+        }
+        
+        // Handle enter key in chat
+        document.getElementById('chatInput').addEventListener('keypress', (e) => {
+            if (e.key === 'Enter') {
+                sendMessage();
+            }
+        });
+        
+        // Connect on load
+        connect();
+        
+        // Update database status
+        setInterval(() => {
+            if (connected) {
+                document.getElementById('dbStatus').textContent = 'Connected';
+                document.getElementById('dbStatus').style.color = '#10b981';
+            } else {
+                document.getElementById('dbStatus').textContent = 'Disconnected';
+                document.getElementById('dbStatus').style.color = '#ef4444';
+            }
+        }, 1000);
+    </script>
+</body>
+</html>

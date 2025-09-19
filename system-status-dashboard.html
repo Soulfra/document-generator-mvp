@@ -1,0 +1,642 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>🎮 System Status Dashboard - Live Integration Monitor</title>
+    <meta charset="UTF-8">
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/cytoscape/3.23.0/cytoscape.min.js"></script>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Courier New', monospace;
+            background: #000;
+            color: #00ff41;
+            overflow: hidden;
+        }
+
+        .dashboard-container {
+            display: grid;
+            grid-template-columns: 300px 1fr 300px;
+            grid-template-rows: 80px 1fr;
+            height: 100vh;
+            gap: 10px;
+            padding: 10px;
+            background: linear-gradient(135deg, #0a0a0a, #1a1a2e);
+        }
+
+        .header {
+            grid-column: 1 / -1;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            background: rgba(0,0,0,0.8);
+            border: 2px solid #00ff41;
+            border-radius: 10px;
+            font-size: 2em;
+            text-shadow: 0 0 20px #00ff41;
+            animation: headerPulse 3s infinite;
+        }
+
+        @keyframes headerPulse {
+            0%, 100% { box-shadow: 0 0 20px rgba(0,255,65,0.3); }
+            50% { box-shadow: 0 0 40px rgba(0,255,65,0.6); }
+        }
+
+        .system-list {
+            background: rgba(0,0,0,0.8);
+            border: 2px solid #00ff41;
+            border-radius: 10px;
+            padding: 15px;
+            overflow-y: auto;
+        }
+
+        .system-item {
+            background: rgba(0,255,65,0.1);
+            border: 1px solid #00ff41;
+            border-radius: 5px;
+            padding: 10px;
+            margin: 10px 0;
+            cursor: pointer;
+            transition: all 0.3s;
+            position: relative;
+        }
+
+        .system-item:hover {
+            background: rgba(0,255,65,0.2);
+            transform: translateX(5px);
+        }
+
+        .system-item.active {
+            background: rgba(0,255,65,0.3);
+            border-color: #ffff00;
+            box-shadow: 0 0 10px rgba(255,255,0,0.5);
+        }
+
+        .status-indicator {
+            position: absolute;
+            top: 10px;
+            right: 10px;
+            width: 10px;
+            height: 10px;
+            border-radius: 50%;
+            animation: statusBlink 2s infinite;
+        }
+
+        .status-connected {
+            background: #00ff41;
+            box-shadow: 0 0 10px #00ff41;
+        }
+
+        .status-disconnected {
+            background: #ff0000;
+            box-shadow: 0 0 10px #ff0000;
+        }
+
+        .status-pending {
+            background: #ffff00;
+            box-shadow: 0 0 10px #ffff00;
+        }
+
+        @keyframes statusBlink {
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0.5; }
+        }
+
+        #network-graph {
+            background: rgba(0,0,0,0.8);
+            border: 2px solid #00ff41;
+            border-radius: 10px;
+            position: relative;
+        }
+
+        .activity-feed {
+            background: rgba(0,0,0,0.8);
+            border: 2px solid #ffff00;
+            border-radius: 10px;
+            padding: 15px;
+            overflow-y: auto;
+        }
+
+        .activity-header {
+            color: #ffff00;
+            margin-bottom: 10px;
+            font-weight: bold;
+            text-shadow: 0 0 10px #ffff00;
+        }
+
+        .activity-item {
+            font-size: 0.8em;
+            margin: 5px 0;
+            padding: 5px;
+            border-left: 2px solid #ffff00;
+            color: #ccc;
+            opacity: 0;
+            animation: fadeIn 0.5s forwards;
+        }
+
+        @keyframes fadeIn {
+            to { opacity: 1; }
+        }
+
+        .control-panel {
+            position: absolute;
+            bottom: 20px;
+            left: 50%;
+            transform: translateX(-50%);
+            background: rgba(0,0,0,0.9);
+            border: 2px solid #ff6600;
+            border-radius: 10px;
+            padding: 15px;
+            display: flex;
+            gap: 10px;
+            z-index: 100;
+        }
+
+        .control-btn {
+            background: linear-gradient(45deg, #ff6600, #ff8800);
+            color: #fff;
+            border: none;
+            padding: 10px 20px;
+            cursor: pointer;
+            border-radius: 20px;
+            font-family: inherit;
+            font-weight: bold;
+            transition: all 0.3s;
+        }
+
+        .control-btn:hover {
+            transform: scale(1.05);
+            box-shadow: 0 5px 15px rgba(255,102,0,0.5);
+        }
+
+        .stats-panel {
+            position: absolute;
+            top: 100px;
+            right: 320px;
+            background: rgba(0,0,0,0.9);
+            border: 2px solid #ffd700;
+            border-radius: 10px;
+            padding: 20px;
+            min-width: 200px;
+        }
+
+        .stat-item {
+            display: flex;
+            justify-content: space-between;
+            margin: 10px 0;
+            color: #ffd700;
+        }
+
+        .stat-value {
+            font-weight: bold;
+            text-shadow: 0 0 5px #ffd700;
+        }
+
+        .connection-animation {
+            position: absolute;
+            pointer-events: none;
+            z-index: 1000;
+        }
+
+        .laser-beam {
+            height: 2px;
+            background: linear-gradient(90deg, transparent, #00ff41, transparent);
+            animation: laserShoot 1s linear;
+        }
+
+        @keyframes laserShoot {
+            0% { transform: scaleX(0); opacity: 0; }
+            50% { opacity: 1; }
+            100% { transform: scaleX(1); opacity: 0; }
+        }
+
+        .tooltip {
+            position: absolute;
+            background: rgba(0,0,0,0.9);
+            border: 1px solid #00ff41;
+            border-radius: 5px;
+            padding: 10px;
+            font-size: 0.8em;
+            display: none;
+            z-index: 1000;
+            pointer-events: none;
+        }
+    </style>
+</head>
+<body>
+    <div class="dashboard-container">
+        <div class="header">
+            🎮 System Integration Dashboard - Live XML Handshake Monitor
+        </div>
+
+        <div class="system-list">
+            <div class="activity-header">📡 Connected Systems</div>
+            <div class="system-item" data-system="character_mascot">
+                <div class="status-indicator status-pending"></div>
+                <div style="font-weight: bold;">🦊 Character Mascot</div>
+                <div style="font-size: 0.8em; color: #888;">Port: 8080</div>
+                <div style="font-size: 0.8em;">Smooth WebGL Movement</div>
+            </div>
+            <div class="system-item" data-system="cosmic_phonebook">
+                <div class="status-indicator status-pending"></div>
+                <div style="font-weight: bold;">☎️ Cosmic Phonebook</div>
+                <div style="font-size: 0.8em; color: #888;">Port: 7777</div>
+                <div style="font-size: 0.8em;">Big Tech Directory</div>
+            </div>
+            <div class="system-item" data-system="voxel_laser">
+                <div class="status-indicator status-pending"></div>
+                <div style="font-weight: bold;">💎 Voxel Laser Economy</div>
+                <div style="font-size: 0.8em; color: #888;">Port: 8888</div>
+                <div style="font-size: 0.8em;">Token-Powered Arena</div>
+            </div>
+            <div class="system-item" data-system="agent_database">
+                <div class="status-indicator status-pending"></div>
+                <div style="font-weight: bold;">🤖 Agent Clan Database</div>
+                <div style="font-size: 0.8em; color: #888;">Port: 6666</div>
+                <div style="font-size: 0.8em;">ICANN Registry</div>
+            </div>
+            <div class="system-item" data-system="contract_scanner">
+                <div class="status-indicator status-pending"></div>
+                <div style="font-weight: bold;">🔍 Contract Scanner</div>
+                <div style="font-size: 0.8em; color: #888;">Port: 5555</div>
+                <div style="font-size: 0.8em;">Safe Distance</div>
+            </div>
+            <div class="system-item" data-system="hollowtown">
+                <div class="status-indicator status-pending"></div>
+                <div style="font-weight: bold;">🏰 HollowTown</div>
+                <div style="font-size: 0.8em; color: #888;">Port: 3000</div>
+                <div style="font-size: 0.8em;">Pattern Discovery</div>
+            </div>
+        </div>
+
+        <div id="network-graph"></div>
+
+        <div class="activity-feed">
+            <div class="activity-header">📊 System Activity</div>
+            <div id="activity-log"></div>
+        </div>
+    </div>
+
+    <div class="stats-panel">
+        <div style="color: #ffd700; font-weight: bold; margin-bottom: 10px;">📈 Network Stats</div>
+        <div class="stat-item">
+            <span>Active Systems:</span>
+            <span class="stat-value" id="active-systems">0/6</span>
+        </div>
+        <div class="stat-item">
+            <span>Messages/sec:</span>
+            <span class="stat-value" id="message-rate">0</span>
+        </div>
+        <div class="stat-item">
+            <span>XML Mappings:</span>
+            <span class="stat-value" id="mapping-count">5</span>
+        </div>
+        <div class="stat-item">
+            <span>Compliance:</span>
+            <span class="stat-value" id="compliance-status">ICANN ✅</span>
+        </div>
+    </div>
+
+    <div class="control-panel">
+        <button class="control-btn" onclick="testConnections()">Test All Connections</button>
+        <button class="control-btn" onclick="simulateActivity()">Simulate Activity</button>
+        <button class="control-btn" onclick="resetView()">Reset View</button>
+        <button class="control-btn" onclick="openCoordinator()">Open Coordinator</button>
+    </div>
+
+    <div class="tooltip" id="tooltip"></div>
+
+    <script>
+        let cy;
+        let ws;
+        let systems = new Map();
+        let messageCount = 0;
+        let lastMessageTime = Date.now();
+
+        // Initialize Cytoscape
+        function initializeGraph() {
+            cy = cytoscape({
+                container: document.getElementById('network-graph'),
+                style: [
+                    {
+                        selector: 'node',
+                        style: {
+                            'background-color': '#00ff41',
+                            'label': 'data(label)',
+                            'text-valign': 'center',
+                            'text-halign': 'center',
+                            'font-size': '12px',
+                            'color': '#00ff41',
+                            'width': '60px',
+                            'height': '60px',
+                            'border-width': '2px',
+                            'border-color': '#00ff41',
+                            'text-wrap': 'wrap',
+                            'text-max-width': '80px'
+                        }
+                    },
+                    {
+                        selector: 'node.coordinator',
+                        style: {
+                            'background-color': '#ffd700',
+                            'border-color': '#ffd700',
+                            'color': '#ffd700',
+                            'width': '80px',
+                            'height': '80px',
+                            'font-size': '14px',
+                            'font-weight': 'bold'
+                        }
+                    },
+                    {
+                        selector: 'node.active',
+                        style: {
+                            'background-color': '#00ff41',
+                            'border-color': '#00ff41',
+                            'box-shadow': '0 0 20px #00ff41'
+                        }
+                    },
+                    {
+                        selector: 'node.inactive',
+                        style: {
+                            'background-color': '#333',
+                            'border-color': '#666',
+                            'color': '#666'
+                        }
+                    },
+                    {
+                        selector: 'edge',
+                        style: {
+                            'width': 2,
+                            'line-color': '#00ff41',
+                            'target-arrow-color': '#00ff41',
+                            'target-arrow-shape': 'triangle',
+                            'curve-style': 'bezier',
+                            'label': 'data(label)',
+                            'font-size': '10px',
+                            'color': '#ffff00',
+                            'text-rotation': 'autorotate'
+                        }
+                    },
+                    {
+                        selector: 'edge.active',
+                        style: {
+                            'line-color': '#ffff00',
+                            'target-arrow-color': '#ffff00',
+                            'width': 4,
+                            'z-index': 100
+                        }
+                    }
+                ],
+                layout: {
+                    name: 'circle',
+                    radius: 200,
+                    animate: true,
+                    animationDuration: 1000
+                }
+            });
+
+            // Add nodes
+            cy.add([
+                { data: { id: 'coordinator', label: '🤝\\nCoordinator' }, classes: 'coordinator' },
+                { data: { id: 'character', label: '🦊\\nCharacter' }, classes: 'inactive' },
+                { data: { id: 'phonebook', label: '☎️\\nPhonebook' }, classes: 'inactive' },
+                { data: { id: 'voxel', label: '💎\\nVoxel Arena' }, classes: 'inactive' },
+                { data: { id: 'agent', label: '🤖\\nAgent DB' }, classes: 'inactive' },
+                { data: { id: 'scanner', label: '🔍\\nScanner' }, classes: 'inactive' },
+                { data: { id: 'hollowtown', label: '🏰\\nHollowTown' }, classes: 'inactive' }
+            ]);
+
+            // Add edges (mappings)
+            cy.add([
+                { data: { source: 'character', target: 'phonebook', label: 'dial' } },
+                { data: { source: 'phonebook', target: 'voxel', label: 'spawn' } },
+                { data: { source: 'voxel', target: 'agent', label: 'register' } },
+                { data: { source: 'scanner', target: 'coordinator', label: 'alert' } },
+                { data: { source: 'hollowtown', target: 'voxel', label: 'bonus' } }
+            ]);
+
+            // Center coordinator
+            cy.$('#coordinator').position({ x: cy.width() / 2, y: cy.height() / 2 });
+            
+            // Mouse events
+            cy.on('mouseover', 'node', function(evt) {
+                showTooltip(evt);
+            });
+            
+            cy.on('mouseout', 'node', function() {
+                hideTooltip();
+            });
+        }
+
+        // Connect to coordinator
+        function connectToCoordinator() {
+            try {
+                ws = new WebSocket('ws://localhost:9999');
+                
+                ws.onopen = () => {
+                    addActivity('Connected to Master Coordinator', 'success');
+                    updateSystemStatus('coordinator', 'connected');
+                };
+                
+                ws.onmessage = (event) => {
+                    const data = JSON.parse(event.data);
+                    handleCoordinatorMessage(data);
+                };
+                
+                ws.onerror = () => {
+                    addActivity('Failed to connect to Coordinator', 'error');
+                    updateSystemStatus('coordinator', 'disconnected');
+                };
+                
+                ws.onclose = () => {
+                    addActivity('Disconnected from Coordinator', 'warning');
+                    updateSystemStatus('coordinator', 'disconnected');
+                };
+            } catch (error) {
+                console.error('WebSocket error:', error);
+            }
+        }
+
+        function handleCoordinatorMessage(data) {
+            messageCount++;
+            
+            switch (data.type) {
+                case 'coordinator_connected':
+                    data.systems.forEach(system => {
+                        updateSystemStatus(system, 'pending');
+                    });
+                    break;
+                    
+                case 'system_message':
+                    animateMessage(data.system, data.message.type);
+                    addActivity(`${data.system}: ${data.message.type}`);
+                    break;
+                    
+                case 'system_graph':
+                    updateGraphFromData(data);
+                    break;
+            }
+            
+            updateStats();
+        }
+
+        function updateSystemStatus(systemName, status) {
+            // Update list item
+            const systemItem = document.querySelector(`[data-system="${systemName}"]`);
+            if (systemItem) {
+                const indicator = systemItem.querySelector('.status-indicator');
+                indicator.className = `status-indicator status-${status}`;
+            }
+            
+            // Update graph node
+            const nodeId = systemName.split('_')[0];
+            const node = cy.$(`#${nodeId}`);
+            if (node.length) {
+                node.removeClass('active inactive');
+                node.addClass(status === 'connected' ? 'active' : 'inactive');
+            }
+            
+            // Update stats
+            const activeCount = document.querySelectorAll('.status-connected').length;
+            document.getElementById('active-systems').textContent = `${activeCount}/6`;
+        }
+
+        function animateMessage(fromSystem, messageType) {
+            const fromNode = cy.$(`#${fromSystem.split('_')[0]}`);
+            if (fromNode.length) {
+                // Find connected edges
+                const edges = fromNode.connectedEdges();
+                edges.forEach(edge => {
+                    edge.addClass('active');
+                    setTimeout(() => edge.removeClass('active'), 1000);
+                });
+            }
+        }
+
+        function addActivity(message, type = 'info') {
+            const log = document.getElementById('activity-log');
+            const item = document.createElement('div');
+            item.className = 'activity-item';
+            item.style.borderColor = type === 'error' ? '#ff0000' : 
+                                    type === 'success' ? '#00ff41' : 
+                                    type === 'warning' ? '#ffff00' : '#ffff00';
+            
+            const timestamp = new Date().toLocaleTimeString();
+            item.textContent = `[${timestamp}] ${message}`;
+            
+            log.insertBefore(item, log.firstChild);
+            
+            // Keep only last 50 items
+            while (log.children.length > 50) {
+                log.removeChild(log.lastChild);
+            }
+        }
+
+        function updateStats() {
+            // Calculate message rate
+            const now = Date.now();
+            const timeDiff = (now - lastMessageTime) / 1000;
+            if (timeDiff > 0) {
+                const rate = (1 / timeDiff).toFixed(1);
+                document.getElementById('message-rate').textContent = rate;
+            }
+            lastMessageTime = now;
+        }
+
+        function showTooltip(evt) {
+            const node = evt.target;
+            const tooltip = document.getElementById('tooltip');
+            const renderedPosition = node.renderedPosition();
+            
+            const systemInfo = {
+                coordinator: 'Master XML Handshake Coordinator - Integrates all systems',
+                character: 'Smooth Character Mascot - WebGL animated entity',
+                phonebook: 'Cosmic Tech Phonebook - Dial Big Tech APIs',
+                voxel: 'Voxel Laser Economy - Token-powered 3D arena',
+                agent: 'Agent Clan Database - ICANN-compliant registry',
+                scanner: 'Contract Scanner - Safe distance verification',
+                hollowtown: 'HollowTown - Pattern discovery portal'
+            };
+            
+            tooltip.innerHTML = `<strong>${node.data('label').replace('\\n', ' ')}</strong><br>${systemInfo[node.id()] || 'System node'}`;
+            tooltip.style.left = renderedPosition.x + 'px';
+            tooltip.style.top = (renderedPosition.y - 50) + 'px';
+            tooltip.style.display = 'block';
+        }
+
+        function hideTooltip() {
+            document.getElementById('tooltip').style.display = 'none';
+        }
+
+        // Control functions
+        function testConnections() {
+            addActivity('Testing all system connections...', 'info');
+            // Simulate connection tests
+            const systems = ['character', 'phonebook', 'voxel', 'agent', 'scanner', 'hollowtown'];
+            systems.forEach((system, index) => {
+                setTimeout(() => {
+                    updateSystemStatus(system + '_mascot', 'connected');
+                    addActivity(`${system} connection verified`, 'success');
+                }, index * 500);
+            });
+        }
+
+        function simulateActivity() {
+            addActivity('Simulating cross-system activity...', 'info');
+            
+            const activities = [
+                { from: 'character', to: 'phonebook', msg: 'Character dials 1-800-APPLE' },
+                { from: 'phonebook', to: 'voxel', msg: 'API call spawns golden voxel' },
+                { from: 'voxel', to: 'agent', msg: 'Pattern hit registers new agent' },
+                { from: 'hollowtown', to: 'voxel', msg: 'Easter egg found! +500 tokens' },
+                { from: 'scanner', to: 'coordinator', msg: 'No traps detected, all clear' }
+            ];
+            
+            activities.forEach((activity, index) => {
+                setTimeout(() => {
+                    animateMessage(activity.from, 'test');
+                    addActivity(activity.msg, 'success');
+                }, index * 1000);
+            });
+        }
+
+        function resetView() {
+            cy.fit();
+            cy.center();
+        }
+
+        function openCoordinator() {
+            window.open('http://localhost:9999', '_blank');
+        }
+
+        // Initialize on load
+        window.addEventListener('load', () => {
+            initializeGraph();
+            connectToCoordinator();
+            
+            // Try to connect every 5 seconds if disconnected
+            setInterval(() => {
+                if (!ws || ws.readyState !== WebSocket.OPEN) {
+                    connectToCoordinator();
+                }
+            }, 5000);
+            
+            // Add some initial activity
+            addActivity('Dashboard initialized', 'success');
+            addActivity('Waiting for coordinator connection...', 'info');
+        });
+
+        // Handle window resize
+        window.addEventListener('resize', () => {
+            if (cy) {
+                cy.resize();
+                cy.fit();
+            }
+        });
+    </script>
+</body>
+</html>

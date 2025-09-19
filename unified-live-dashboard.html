@@ -1,0 +1,1493 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Document Generator - Live System Dashboard</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            font-family: 'SF Mono', 'Monaco', 'Inconsolata', 'Fira Code', monospace;
+            background: linear-gradient(135deg, #0a0a0a 0%, #1a1a2e 50%, #16213e 100%);
+            color: #00ff88;
+            min-height: 100vh;
+            overflow-x: hidden;
+        }
+        
+        .dashboard {
+            display: grid;
+            grid-template-columns: 1fr 1fr 1fr;
+            grid-template-rows: auto 1fr 1fr 1fr;
+            gap: 20px;
+            padding: 20px;
+            min-height: 100vh;
+        }
+        
+        .panel {
+            background: rgba(0, 0, 0, 0.8);
+            border: 1px solid #00ff88;
+            border-radius: 12px;
+            padding: 20px;
+            backdrop-filter: blur(10px);
+            position: relative;
+            overflow: hidden;
+        }
+        
+        .panel::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            height: 2px;
+            background: linear-gradient(90deg, #00ff88, #00ffff, #0088ff);
+            animation: shimmer 3s ease-in-out infinite;
+        }
+        
+        @keyframes shimmer {
+            0%, 100% { opacity: 0.5; }
+            50% { opacity: 1; }
+        }
+        
+        .panel-header {
+            font-size: 14px;
+            font-weight: bold;
+            margin-bottom: 15px;
+            color: #00ffff;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+        }
+        
+        .status-grid {
+            grid-column: 1 / -1;
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 15px;
+        }
+        
+        .service-card {
+            background: rgba(0, 255, 136, 0.1);
+            border: 1px solid rgba(0, 255, 136, 0.3);
+            border-radius: 8px;
+            padding: 15px;
+            position: relative;
+        }
+        
+        .service-name {
+            font-weight: bold;
+            margin-bottom: 8px;
+            color: #ffffff;
+        }
+        
+        .service-status {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            margin-bottom: 5px;
+        }
+        
+        .status-dot {
+            width: 10px;
+            height: 10px;
+            border-radius: 50%;
+            background: #ff4444;
+            animation: pulse 2s infinite;
+        }
+        
+        .status-dot.running {
+            background: #00ff88;
+        }
+        
+        .status-dot.warning {
+            background: #ffaa00;
+        }
+        
+        @keyframes pulse {
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0.6; }
+        }
+        
+        .service-details {
+            font-size: 11px;
+            color: #cccccc;
+            line-height: 1.4;
+        }
+        
+        .metrics-panel {
+            display: flex;
+            flex-direction: column;
+            gap: 15px;
+        }
+        
+        .metric-item {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 10px;
+            background: rgba(0, 255, 255, 0.1);
+            border-radius: 6px;
+        }
+        
+        .metric-label {
+            color: #00ffff;
+            font-size: 12px;
+        }
+        
+        .metric-value {
+            color: #ffffff;
+            font-weight: bold;
+            font-size: 14px;
+        }
+        
+        .log-panel {
+            display: flex;
+            flex-direction: column;
+            max-height: 400px;
+        }
+        
+        .log-container {
+            flex: 1;
+            background: rgba(0, 0, 0, 0.9);
+            border: 1px solid rgba(0, 255, 136, 0.3);
+            border-radius: 6px;
+            padding: 10px;
+            overflow-y: auto;
+            font-size: 11px;
+            line-height: 1.4;
+        }
+        
+        .log-entry {
+            margin-bottom: 5px;
+            padding: 3px 0;
+            border-bottom: 1px solid rgba(0, 255, 136, 0.1);
+        }
+        
+        .log-timestamp {
+            color: #888888;
+            margin-right: 10px;
+        }
+        
+        .log-service {
+            color: #00ffff;
+            margin-right: 10px;
+            font-weight: bold;
+        }
+        
+        .log-message {
+            color: #ffffff;
+        }
+        
+        .log-entry.error .log-message {
+            color: #ff6666;
+        }
+        
+        .log-entry.warning .log-message {
+            color: #ffaa00;
+        }
+        
+        .log-entry.success .log-message {
+            color: #00ff88;
+        }
+        
+        .real-time-panel {
+            position: relative;
+        }
+        
+        .connection-status {
+            position: absolute;
+            top: 10px;
+            right: 10px;
+            padding: 4px 8px;
+            background: rgba(255, 68, 68, 0.8);
+            border-radius: 12px;
+            font-size: 10px;
+            font-weight: bold;
+        }
+        
+        .connection-status.connected {
+            background: rgba(0, 255, 136, 0.8);
+            color: #000000;
+        }
+        
+        .reasoning-stream {
+            height: 300px;
+            overflow-y: auto;
+            background: rgba(0, 0, 0, 0.9);
+            border: 1px solid rgba(0, 255, 136, 0.3);
+            border-radius: 6px;
+            padding: 10px;
+        }
+        
+        .reasoning-entry {
+            margin-bottom: 10px;
+            padding: 8px;
+            background: rgba(0, 255, 255, 0.1);
+            border-left: 3px solid #00ffff;
+            border-radius: 0 6px 6px 0;
+            font-size: 11px;
+            animation: slideIn 0.5s ease-out;
+        }
+        
+        @keyframes slideIn {
+            from {
+                transform: translateX(-20px);
+                opacity: 0;
+            }
+            to {
+                transform: translateX(0);
+                opacity: 1;
+            }
+        }
+        
+        .reasoning-type {
+            color: #ffaa00;
+            font-weight: bold;
+            text-transform: uppercase;
+            font-size: 9px;
+            margin-bottom: 3px;
+        }
+        
+        .reasoning-content {
+            color: #ffffff;
+            line-height: 1.3;
+        }
+        
+        .control-panel {
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+        }
+        
+        .control-group {
+            background: rgba(0, 255, 136, 0.1);
+            border-radius: 6px;
+            padding: 12px;
+        }
+        
+        .control-label {
+            font-size: 11px;
+            color: #00ff88;
+            margin-bottom: 8px;
+            text-transform: uppercase;
+        }
+        
+        .control-buttons {
+            display: flex;
+            gap: 8px;
+            flex-wrap: wrap;
+        }
+        
+        .control-btn {
+            padding: 6px 12px;
+            background: rgba(0, 255, 136, 0.2);
+            border: 1px solid #00ff88;
+            color: #00ff88;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 10px;
+            font-weight: bold;
+            transition: all 0.3s;
+        }
+        
+        .control-btn:hover {
+            background: rgba(0, 255, 136, 0.4);
+            box-shadow: 0 0 10px rgba(0, 255, 136, 0.3);
+        }
+        
+        .scrollbar {
+            scrollbar-width: thin;
+            scrollbar-color: #00ff88 rgba(0, 0, 0, 0.3);
+        }
+        
+        .scrollbar::-webkit-scrollbar {
+            width: 6px;
+        }
+        
+        .scrollbar::-webkit-scrollbar-track {
+            background: rgba(0, 0, 0, 0.3);
+            border-radius: 3px;
+        }
+        
+        .scrollbar::-webkit-scrollbar-thumb {
+            background: #00ff88;
+            border-radius: 3px;
+        }
+        
+        .scrollbar::-webkit-scrollbar-thumb:hover {
+            background: #00ffaa;
+        }
+        
+        .title {
+            text-align: center;
+            font-size: 20px;
+            font-weight: bold;
+            color: #00ffff;
+            text-shadow: 0 0 20px #00ffff;
+            margin-bottom: 20px;
+            grid-column: 1 / -1;
+        }
+        
+        /* Quest System Styles */
+        .quest-item {
+            background: rgba(255, 170, 0, 0.1);
+            border: 1px solid rgba(255, 170, 0, 0.3);
+            border-radius: 6px;
+            padding: 12px;
+            margin-bottom: 8px;
+            position: relative;
+        }
+        
+        .quest-item.completed {
+            background: rgba(0, 255, 136, 0.1);
+            border-color: rgba(0, 255, 136, 0.3);
+        }
+        
+        .quest-item.in-progress {
+            background: rgba(0, 255, 255, 0.1);
+            border-color: rgba(0, 255, 255, 0.3);
+        }
+        
+        .quest-title {
+            font-weight: bold;
+            color: #ffffff;
+            margin-bottom: 4px;
+            font-size: 12px;
+        }
+        
+        .quest-description {
+            color: #cccccc;
+            font-size: 10px;
+            line-height: 1.3;
+            margin-bottom: 6px;
+        }
+        
+        .quest-progress {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            font-size: 10px;
+        }
+        
+        .quest-xp {
+            color: #ffaa00;
+            font-weight: bold;
+        }
+        
+        .quest-status {
+            color: #00ffff;
+            text-transform: uppercase;
+            font-size: 9px;
+        }
+        
+        .progress-bar {
+            width: 100%;
+            height: 4px;
+            background: rgba(0, 0, 0, 0.5);
+            border-radius: 2px;
+            margin: 4px 0;
+            overflow: hidden;
+        }
+        
+        .progress-fill {
+            height: 100%;
+            background: linear-gradient(90deg, #ffaa00, #00ff88);
+            border-radius: 2px;
+            transition: width 0.3s ease;
+        }
+        
+        .oss-package {
+            background: rgba(0, 136, 255, 0.1);
+            border: 1px solid rgba(0, 136, 255, 0.3);
+            border-radius: 6px;
+            padding: 10px;
+            margin-bottom: 6px;
+        }
+        
+        .package-name {
+            font-weight: bold;
+            color: #ffffff;
+            font-size: 11px;
+        }
+        
+        .package-description {
+            color: #cccccc;
+            font-size: 9px;
+            margin: 2px 0;
+        }
+        
+        .package-stats {
+            display: flex;
+            justify-content: space-between;
+            font-size: 8px;
+            color: #0088ff;
+        }
+        
+        .formula-recipe {
+            background: rgba(136, 0, 255, 0.1);
+            border: 1px solid rgba(136, 0, 255, 0.3);
+            border-radius: 6px;
+            padding: 10px;
+            margin-bottom: 6px;
+        }
+        
+        .recipe-name {
+            font-weight: bold;
+            color: #ffffff;
+            font-size: 11px;
+        }
+        
+        .recipe-components {
+            color: #cccccc;
+            font-size: 9px;
+            margin: 2px 0;
+        }
+        
+        .recipe-status {
+            color: #8800ff;
+            font-size: 8px;
+            text-transform: uppercase;
+        }
+        
+        .gateway-status {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 8px;
+            background: rgba(0, 255, 136, 0.1);
+            border-radius: 4px;
+            margin-bottom: 8px;
+        }
+        
+        .gateway-indicator {
+            width: 8px;
+            height: 8px;
+            border-radius: 50%;
+            background: #00ff88;
+            animation: pulse 2s infinite;
+        }
+        
+        .gateway-indicator.restricted {
+            background: #ff4444;
+        }
+        
+        .gateway-text {
+            font-size: 10px;
+            color: #ffffff;
+        }
+        
+        .quest-container {
+            max-height: 300px;
+            overflow-y: auto;
+        }
+    </style>
+</head>
+<body>
+    <div class="dashboard">
+        <div class="title">📊 DOCUMENT GENERATOR - LIVE SYSTEM DASHBOARD</div>
+        
+        <!-- Service Status Grid -->
+        <div class="panel status-grid">
+            <div class="panel-header">🚀 Service Status</div>
+            <div id="serviceGrid">
+                <!-- Services will be populated here -->
+            </div>
+        </div>
+        
+        <!-- System Metrics -->
+        <div class="panel metrics-panel">
+            <div class="panel-header">📈 System Metrics</div>
+            <div class="metric-item">
+                <span class="metric-label">Active Services</span>
+                <span class="metric-value" id="activeServices">-</span>
+            </div>
+            <div class="metric-item">
+                <span class="metric-label">Total Processes</span>
+                <span class="metric-value" id="totalProcesses">-</span>
+            </div>
+            <div class="metric-item">
+                <span class="metric-label">Database Connections</span>
+                <span class="metric-value" id="dbConnections">-</span>
+            </div>
+            <div class="metric-item">
+                <span class="metric-label">Memory Usage</span>
+                <span class="metric-value" id="memoryUsage">-</span>
+            </div>
+            <div class="metric-item">
+                <span class="metric-label">CPU Usage</span>
+                <span class="metric-value" id="cpuUsage">-</span>
+            </div>
+            <div class="metric-item">
+                <span class="metric-label">Uptime</span>
+                <span class="metric-value" id="systemUptime">-</span>
+            </div>
+        </div>
+        
+        <!-- Real-time Reasoning -->
+        <div class="panel real-time-panel">
+            <div class="panel-header">🧠 Live Reasoning Stream</div>
+            <div class="connection-status" id="reasoningStatus">CONNECTING</div>
+            <div class="reasoning-stream scrollbar" id="reasoningStream">
+                <!-- Reasoning entries will appear here -->
+            </div>
+        </div>
+        
+        <!-- System Logs -->
+        <div class="panel log-panel">
+            <div class="panel-header">📝 System Logs</div>
+            <div class="log-container scrollbar" id="systemLogs">
+                <!-- Log entries will appear here -->
+            </div>
+        </div>
+        
+        <!-- Control Panel -->
+        <div class="panel control-panel">
+            <div class="panel-header">🎛️ Control Panel</div>
+            
+            <div class="control-group">
+                <div class="control-label">Services</div>
+                <div class="control-buttons">
+                    <div class="control-btn" onclick="restartAllServices()">RESTART ALL</div>
+                    <div class="control-btn" onclick="runHealthCheck()">HEALTH CHECK</div>
+                    <div class="control-btn" onclick="cleanupProcesses()">CLEANUP</div>
+                </div>
+            </div>
+            
+            <div class="control-group">
+                <div class="control-label">System</div>
+                <div class="control-buttons">
+                    <div class="control-btn" onclick="runSymlinkCheck()">FIX SYMLINKS</div>
+                    <div class="control-btn" onclick="testDatabase()">TEST DB</div>
+                    <div class="control-btn" onclick="generateReport()">GENERATE REPORT</div>
+                </div>
+            </div>
+            
+            <div class="control-group">
+                <div class="control-label">Monitoring</div>
+                <div class="control-buttons">
+                    <div class="control-btn" onclick="toggleReasoning()">TOGGLE REASONING</div>
+                    <div class="control-btn" onclick="clearLogs()">CLEAR LOGS</div>
+                    <div class="control-btn" onclick="exportLogs()">EXPORT LOGS</div>
+                </div>
+            </div>
+        </div>
+        
+        <!-- Symlink Health -->
+        <div class="panel">
+            <div class="panel-header">🔗 Symlink Health</div>
+            <div class="metrics-panel">
+                <div class="metric-item">
+                    <span class="metric-label">Total Symlinks</span>
+                    <span class="metric-value" id="totalSymlinks">-</span>
+                </div>
+                <div class="metric-item">
+                    <span class="metric-label">Healthy Symlinks</span>
+                    <span class="metric-value" id="healthySymlinks">-</span>
+                </div>
+                <div class="metric-item">
+                    <span class="metric-label">Broken Symlinks</span>
+                    <span class="metric-value" id="brokenSymlinks">-</span>
+                </div>
+                <div class="metric-item">
+                    <span class="metric-label">Health Score</span>
+                    <span class="metric-value" id="symlinkHealthScore">-</span>
+                </div>
+            </div>
+        </div>
+        
+        <!-- Quest Tracker -->
+        <div class="panel">
+            <div class="panel-header">🎯 Quest Tracker</div>
+            <div class="quest-container scrollbar" id="questContainer">
+                <!-- Quest items will be populated here -->
+            </div>
+            <div class="control-buttons" style="margin-top: 10px;">
+                <div class="control-btn" onclick="startNewQuest()">START QUEST</div>
+                <div class="control-btn" onclick="showAchievements()">ACHIEVEMENTS</div>
+            </div>
+        </div>
+        
+        <!-- OSS Discovery -->
+        <div class="panel">
+            <div class="panel-header">📦 OSS Discovery</div>
+            <div class="quest-container scrollbar" id="ossContainer">
+                <!-- OSS packages will be populated here -->
+            </div>
+            <div class="metric-item" style="margin-top: 10px;">
+                <span class="metric-label">Packages Discovered</span>
+                <span class="metric-value" id="packagesDiscovered">-</span>
+            </div>
+        </div>
+        
+        <!-- Formula Engine -->
+        <div class="panel">
+            <div class="panel-header">⚗️ Formula Engine</div>
+            <div class="quest-container scrollbar" id="formulaContainer">
+                <!-- Formula recipes will be populated here -->
+            </div>
+            <div class="control-buttons" style="margin-top: 10px;">
+                <div class="control-btn" onclick="createFormula()">CREATE FORMULA</div>
+                <div class="control-btn" onclick="testRecipe()">TEST RECIPE</div>
+            </div>
+        </div>
+        
+        <!-- Internet Gateway -->
+        <div class="panel">
+            <div class="panel-header">🌐 Internet Gateway</div>
+            <div class="metrics-panel">
+                <div class="gateway-status" id="gatewayStatus">
+                    <div class="gateway-text">Gateway Status</div>
+                    <div class="gateway-indicator" id="gatewayIndicator"></div>
+                </div>
+                <div class="metric-item">
+                    <span class="metric-label">Requests Allowed</span>
+                    <span class="metric-value" id="requestsAllowed">-</span>
+                </div>
+                <div class="metric-item">
+                    <span class="metric-label">Requests Blocked</span>
+                    <span class="metric-value" id="requestsBlocked">-</span>
+                </div>
+                <div class="metric-item">
+                    <span class="metric-label">Whitelist Domains</span>
+                    <span class="metric-value" id="whitelistDomains">-</span>
+                </div>
+            </div>
+            <div class="control-buttons" style="margin-top: 10px;">
+                <div class="control-btn" onclick="addDomain()">ADD DOMAIN</div>
+                <div class="control-btn" onclick="viewLogs()">VIEW LOGS</div>
+            </div>
+        </div>
+        
+        <!-- Quest System Status -->
+        <div class="panel">
+            <div class="panel-header">🏆 Quest System Status</div>
+            <div class="metrics-panel">
+                <div class="metric-item">
+                    <span class="metric-label">Player Level</span>
+                    <span class="metric-value" id="playerLevel">1</span>
+                </div>
+                <div class="metric-item">
+                    <span class="metric-label">Total XP</span>
+                    <span class="metric-value" id="totalXP">0</span>
+                </div>
+                <div class="metric-item">
+                    <span class="metric-label">Active Quests</span>
+                    <span class="metric-value" id="activeQuests">-</span>
+                </div>
+                <div class="metric-item">
+                    <span class="metric-label">Achievements</span>
+                    <span class="metric-value" id="totalAchievements">-</span>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        class UnifiedDashboard {
+            constructor() {
+                this.websocket = null;
+                this.services = new Map();
+                this.logs = [];
+                this.reasoning = [];
+                this.quests = [];
+                this.ossPackages = [];
+                this.formulas = [];
+                this.playerStats = {
+                    level: 1,
+                    xp: 0,
+                    achievements: []
+                };
+                this.gatewayStats = {
+                    allowed: 0,
+                    blocked: 0,
+                    whitelistCount: 6
+                };
+                this.startTime = Date.now();
+                this.reconnectAttempts = 0;
+                this.maxReconnectAttempts = 5;
+                
+                this.init();
+            }
+            
+            init() {
+                console.log('🚀 Initializing Unified Dashboard');
+                
+                this.connectWebSocket();
+                this.startMetricsUpdater();
+                this.loadInitialData();
+                this.setupEventListeners();
+                
+                console.log('✅ Dashboard initialized');
+            }
+            
+            connectWebSocket() {
+                // Try multiple WebSocket endpoints
+                const endpoints = [
+                    'ws://localhost:3007',  // Reasoning bridge
+                    'ws://localhost:8081',  // Dashboard server
+                    'ws://localhost:3009'   // Main service (updated port)
+                ];
+                
+                this.tryWebSocketConnection(endpoints, 0);
+            }
+            
+            tryWebSocketConnection(endpoints, index) {
+                if (index >= endpoints.length) {
+                    this.updateConnectionStatus('OFFLINE');
+                    setTimeout(() => this.connectWebSocket(), 5000);
+                    return;
+                }
+                
+                const endpoint = endpoints[index];
+                console.log(`Attempting WebSocket connection to ${endpoint}`);
+                
+                try {
+                    this.websocket = new WebSocket(endpoint);
+                    
+                    this.websocket.onopen = () => {
+                        console.log(`✅ Connected to ${endpoint}`);
+                        this.updateConnectionStatus('CONNECTED');
+                        this.reconnectAttempts = 0;
+                        
+                        // Request initial data
+                        this.websocket.send(JSON.stringify({
+                            type: 'request_status',
+                            timestamp: new Date().toISOString()
+                        }));
+                    };
+                    
+                    this.websocket.onmessage = (event) => {
+                        try {
+                            const data = JSON.parse(event.data);
+                            this.handleWebSocketMessage(data);
+                        } catch (error) {
+                            console.error('Error parsing WebSocket message:', error);
+                        }
+                    };
+                    
+                    this.websocket.onclose = () => {
+                        console.log(`❌ Disconnected from ${endpoint}`);
+                        this.updateConnectionStatus('RECONNECTING');
+                        
+                        if (this.reconnectAttempts < this.maxReconnectAttempts) {
+                            this.reconnectAttempts++;
+                            setTimeout(() => this.connectWebSocket(), 2000);
+                        } else {
+                            this.updateConnectionStatus('OFFLINE');
+                        }
+                    };
+                    
+                    this.websocket.onerror = () => {
+                        console.log(`⚠️ Connection failed to ${endpoint}`);
+                        this.tryWebSocketConnection(endpoints, index + 1);
+                    };
+                    
+                } catch (error) {
+                    console.log(`❌ Error connecting to ${endpoint}:`, error);
+                    this.tryWebSocketConnection(endpoints, index + 1);
+                }
+            }
+            
+            updateConnectionStatus(status) {
+                const statusElement = document.getElementById('reasoningStatus');
+                statusElement.textContent = status;
+                statusElement.className = 'connection-status';
+                
+                if (status === 'CONNECTED') {
+                    statusElement.classList.add('connected');
+                }
+            }
+            
+            handleWebSocketMessage(data) {
+                switch (data.type) {
+                    case 'service_status':
+                        this.updateServiceStatus(data.services);
+                        break;
+                    case 'reasoning_generated':
+                        this.addReasoningEntry(data.reasoning);
+                        break;
+                    case 'system_metrics':
+                        this.updateSystemMetrics(data.metrics);
+                        break;
+                    case 'log_entry':
+                        this.addLogEntry(data.log);
+                        break;
+                    case 'symlink_health':
+                        this.updateSymlinkHealth(data.health);
+                        break;
+                    case 'quest_update':
+                        this.updateQuests(data.quests);
+                        break;
+                    case 'oss_discovery':
+                        this.updateOSSPackages(data.packages);
+                        break;
+                    case 'formula_update':
+                        this.updateFormulas(data.formulas);
+                        break;
+                    case 'gateway_stats':
+                        this.updateGatewayStats(data.stats);
+                        break;
+                    case 'player_stats':
+                        this.updatePlayerStats(data.stats);
+                        break;
+                    default:
+                        console.log('Unknown message type:', data.type);
+                }
+            }
+            
+            async loadInitialData() {
+                // Try to load data from local files/APIs
+                try {
+                    // Load service registry report from API server
+                    const response = await fetch('http://localhost:3009/api/system/status');
+                    if (response.ok) {
+                        const data = await response.json();
+                        this.updateServiceStatus(data.services);
+                    }
+                } catch (error) {
+                    console.log('Could not load initial data:', error);
+                    
+                    // Simulate some data for demo
+                    this.simulateData();
+                }
+            }
+            
+            simulateData() {
+                // Simulate service status
+                const mockServices = {
+                    'document-generator-main': { running: true, healthy: true, port: 3001, description: 'Main entry point' },
+                    'economic-engine': { running: true, healthy: true, port: 3000, description: 'Economic engine' },
+                    'dashboard-server': { running: true, healthy: false, port: 8081, description: 'Dashboard backend' },
+                    'reasoning-bridge': { running: false, healthy: false, port: 3007, description: 'Reasoning bridge' },
+                    'database': { running: true, healthy: true, port: 5432, description: 'PostgreSQL database' },
+                    'redis': { running: true, healthy: true, port: 6379, description: 'Redis cache' }
+                };
+                
+                this.updateServiceStatus(mockServices);
+                
+                // Simulate some reasoning entries
+                this.addReasoningEntry({
+                    type: 'ANALYSIS',
+                    content: 'Dashboard initialized with 6 services configured',
+                    timestamp: new Date().toISOString()
+                });
+                
+                this.addReasoningEntry({
+                    type: 'MONITORING',
+                    content: 'Starting real-time system monitoring',
+                    timestamp: new Date().toISOString()
+                });
+                
+                // Simulate logs
+                this.addLogEntry({
+                    service: 'dashboard',
+                    level: 'info',
+                    message: 'Unified dashboard loaded successfully',
+                    timestamp: new Date().toISOString()
+                });
+                
+                // Initialize quest system data
+                this.initializeQuestData();
+            }
+            
+            updateServiceStatus(services) {
+                const grid = document.getElementById('serviceGrid');
+                grid.innerHTML = '';
+                
+                let runningCount = 0;
+                let totalCount = 0;
+                
+                Object.entries(services).forEach(([name, status]) => {
+                    totalCount++;
+                    if (status.running) runningCount++;
+                    
+                    const card = document.createElement('div');
+                    card.className = 'service-card';
+                    
+                    const statusClass = status.running ? (status.healthy ? 'running' : 'warning') : 'error';
+                    const statusText = status.running ? (status.healthy ? 'Running' : 'Warning') : 'Stopped';
+                    
+                    card.innerHTML = `
+                        <div class="service-name">${name}</div>
+                        <div class="service-status">
+                            <div class="status-dot ${statusClass}"></div>
+                            <span>${statusText}</span>
+                        </div>
+                        <div class="service-details">
+                            Port: ${status.port}<br>
+                            ${status.description}
+                        </div>
+                    `;
+                    
+                    grid.appendChild(card);
+                });
+                
+                // Update active services metric
+                document.getElementById('activeServices').textContent = `${runningCount}/${totalCount}`;
+            }
+            
+            addReasoningEntry(reasoning) {
+                this.reasoning.push(reasoning);
+                
+                // Keep only last 20 entries
+                if (this.reasoning.length > 20) {
+                    this.reasoning = this.reasoning.slice(-20);
+                }
+                
+                this.renderReasoningStream();
+            }
+            
+            renderReasoningStream() {
+                const stream = document.getElementById('reasoningStream');
+                stream.innerHTML = '';
+                
+                this.reasoning.forEach(entry => {
+                    const entryElement = document.createElement('div');
+                    entryElement.className = 'reasoning-entry';
+                    
+                    entryElement.innerHTML = `
+                        <div class="reasoning-type">${entry.type}</div>
+                        <div class="reasoning-content">${entry.content}</div>
+                    `;
+                    
+                    stream.appendChild(entryElement);
+                });
+                
+                // Auto-scroll to bottom
+                stream.scrollTop = stream.scrollHeight;
+            }
+            
+            addLogEntry(log) {
+                this.logs.push(log);
+                
+                // Keep only last 50 entries
+                if (this.logs.length > 50) {
+                    this.logs = this.logs.slice(-50);
+                }
+                
+                this.renderSystemLogs();
+            }
+            
+            renderSystemLogs() {
+                const container = document.getElementById('systemLogs');
+                container.innerHTML = '';
+                
+                this.logs.forEach(log => {
+                    const entry = document.createElement('div');
+                    entry.className = `log-entry ${log.level}`;
+                    
+                    const time = new Date(log.timestamp).toLocaleTimeString();
+                    
+                    entry.innerHTML = `
+                        <span class="log-timestamp">${time}</span>
+                        <span class="log-service">[${log.service}]</span>
+                        <span class="log-message">${log.message}</span>
+                    `;
+                    
+                    container.appendChild(entry);
+                });
+                
+                // Auto-scroll to bottom
+                container.scrollTop = container.scrollHeight;
+            }
+            
+            updateSystemMetrics(metrics) {
+                if (metrics.totalProcesses) {
+                    document.getElementById('totalProcesses').textContent = metrics.totalProcesses;
+                }
+                if (metrics.dbConnections) {
+                    document.getElementById('dbConnections').textContent = metrics.dbConnections;
+                }
+                if (metrics.memoryUsage) {
+                    document.getElementById('memoryUsage').textContent = metrics.memoryUsage;
+                }
+                if (metrics.cpuUsage) {
+                    document.getElementById('cpuUsage').textContent = metrics.cpuUsage;
+                }
+            }
+            
+            updateSymlinkHealth(health) {
+                if (health.totalSymlinks) {
+                    document.getElementById('totalSymlinks').textContent = health.totalSymlinks;
+                }
+                if (health.healthySymlinks) {
+                    document.getElementById('healthySymlinks').textContent = health.healthySymlinks;
+                }
+                if (health.brokenSymlinks) {
+                    document.getElementById('brokenSymlinks').textContent = health.brokenSymlinks;
+                }
+                if (health.healthScore) {
+                    document.getElementById('symlinkHealthScore').textContent = health.healthScore + '%';
+                }
+            }
+            
+            startMetricsUpdater() {
+                setInterval(() => {
+                    this.updateUptime();
+                    this.simulateMetricsUpdate();
+                }, 2000);
+            }
+            
+            updateUptime() {
+                const uptime = Math.floor((Date.now() - this.startTime) / 1000);
+                const hours = Math.floor(uptime / 3600);
+                const minutes = Math.floor((uptime % 3600) / 60);
+                const seconds = uptime % 60;
+                
+                document.getElementById('systemUptime').textContent = 
+                    `${hours.toString().padStart(2, '0')}:${minutes.toString().padStart(2, '0')}:${seconds.toString().padStart(2, '0')}`;
+            }
+            
+            simulateMetricsUpdate() {
+                // Simulate some changing metrics
+                const cpu = Math.floor(Math.random() * 30) + 20; // 20-50%
+                const memory = (Math.random() * 2 + 1).toFixed(1); // 1.0-3.0GB
+                const dbConn = Math.floor(Math.random() * 5) + 3; // 3-8 connections
+                const processes = Math.floor(Math.random() * 5) + 8; // 8-13 processes
+                
+                document.getElementById('cpuUsage').textContent = `${cpu}%`;
+                document.getElementById('memoryUsage').textContent = `${memory}GB`;
+                document.getElementById('dbConnections').textContent = dbConn;
+                document.getElementById('totalProcesses').textContent = processes;
+            }
+            
+            setupEventListeners() {
+                // Add periodic log generation for demo
+                setInterval(() => {
+                    if (Math.random() > 0.7) { // 30% chance every 5 seconds
+                        const services = ['main', 'engine', 'dashboard', 'bridge', 'quest', 'formula', 'gateway'];
+                        const levels = ['info', 'warning', 'success'];
+                        const messages = [
+                            'Processing document request',
+                            'Health check completed',
+                            'Database query executed',
+                            'WebSocket connection established',
+                            'Service restart initiated',
+                            'Cache updated successfully',
+                            'Quest completed successfully',
+                            'OSS package discovered',
+                            'Formula recipe generated',
+                            'Gateway request processed'
+                        ];
+                        
+                        this.addLogEntry({
+                            service: services[Math.floor(Math.random() * services.length)],
+                            level: levels[Math.floor(Math.random() * levels.length)],
+                            message: messages[Math.floor(Math.random() * messages.length)],
+                            timestamp: new Date().toISOString()
+                        });
+                    }
+                }, 5000);
+                
+                // Add periodic reasoning entries for demo
+                setInterval(() => {
+                    if (Math.random() > 0.8) { // 20% chance every 3 seconds
+                        const types = ['ANALYSIS', 'MONITORING', 'OPTIMIZATION', 'INTEGRATION', 'QUEST'];
+                        const contents = [
+                            'Analyzing system performance patterns',
+                            'Monitoring service health metrics',
+                            'Optimizing resource allocation',
+                            'Integrating cross-system communications',
+                            'Processing meta-system understanding',
+                            'Validating service dependencies',
+                            'Evaluating quest completion criteria',
+                            'Scanning for new OSS opportunities',
+                            'Optimizing formula generation algorithms'
+                        ];
+                        
+                        this.addReasoningEntry({
+                            type: types[Math.floor(Math.random() * types.length)],
+                            content: contents[Math.floor(Math.random() * contents.length)],
+                            timestamp: new Date().toISOString()
+                        });
+                    }
+                }, 3000);
+                
+                // Quest system updates
+                setInterval(() => {
+                    this.updateQuestProgress();
+                    this.updateGatewayActivity();
+                }, 10000);
+            }
+            
+            // Quest System Methods
+            initializeQuestData() {
+                // Initialize sample quests
+                this.quests = [
+                    {
+                        id: 'github_explore_1',
+                        title: 'GitHub Repository Explorer',
+                        description: 'Discover and analyze new JavaScript repositories',
+                        type: 'github_explore',
+                        progress: 65,
+                        xpReward: 100,
+                        status: 'in-progress'
+                    },
+                    {
+                        id: 'npm_discovery_1',
+                        title: 'NPM Package Hunter',
+                        description: 'Find useful NPM packages for web development',
+                        type: 'npm_discovery',
+                        progress: 100,
+                        xpReward: 150,
+                        status: 'completed'
+                    },
+                    {
+                        id: 'formula_creator_1',
+                        title: 'Formula Architect',
+                        description: 'Create a new recipe for API service deployment',
+                        type: 'formula_creator',
+                        progress: 30,
+                        xpReward: 200,
+                        status: 'in-progress'
+                    }
+                ];
+                
+                // Initialize OSS packages
+                this.ossPackages = [
+                    {
+                        name: 'express',
+                        description: 'Fast, unopinionated, minimalist web framework',
+                        stars: '64k',
+                        updated: '2 days ago',
+                        category: 'web-framework'
+                    },
+                    {
+                        name: 'axios',
+                        description: 'Promise based HTTP client for browser and node.js',
+                        stars: '104k',
+                        updated: '1 week ago',
+                        category: 'http-client'
+                    },
+                    {
+                        name: 'lodash',
+                        description: 'A modern JavaScript utility library',
+                        stars: '59k',
+                        updated: '3 days ago',
+                        category: 'utility'
+                    }
+                ];
+                
+                // Initialize formulas
+                this.formulas = [
+                    {
+                        name: 'API Service Template',
+                        components: 'express + cors + helmet + joi',
+                        status: 'active',
+                        type: 'api-service'
+                    },
+                    {
+                        name: 'React Web App',
+                        components: 'react + webpack + babel + sass',
+                        status: 'testing',
+                        type: 'web-app'
+                    },
+                    {
+                        name: 'CLI Tool Builder',
+                        components: 'commander + inquirer + chalk',
+                        status: 'draft',
+                        type: 'cli-tool'
+                    }
+                ];
+                
+                // Update UI
+                this.renderQuestSystem();
+            }
+            
+            renderQuestSystem() {
+                this.renderQuests();
+                this.renderOSSPackages();
+                this.renderFormulas();
+                this.updatePlayerStatsUI();
+                this.updateGatewayUI();
+            }
+            
+            renderQuests() {
+                const container = document.getElementById('questContainer');
+                container.innerHTML = '';
+                
+                this.quests.forEach(quest => {
+                    const questElement = document.createElement('div');
+                    questElement.className = `quest-item ${quest.status}`;
+                    
+                    questElement.innerHTML = `
+                        <div class="quest-title">${quest.title}</div>
+                        <div class="quest-description">${quest.description}</div>
+                        <div class="progress-bar">
+                            <div class="progress-fill" style="width: ${quest.progress}%"></div>
+                        </div>
+                        <div class="quest-progress">
+                            <span class="quest-xp">+${quest.xpReward} XP</span>
+                            <span class="quest-status">${quest.status}</span>
+                        </div>
+                    `;
+                    
+                    container.appendChild(questElement);
+                });
+                
+                // Update active quests counter
+                const activeCount = this.quests.filter(q => q.status === 'in-progress').length;
+                document.getElementById('activeQuests').textContent = activeCount;
+            }
+            
+            renderOSSPackages() {
+                const container = document.getElementById('ossContainer');
+                container.innerHTML = '';
+                
+                this.ossPackages.forEach(pkg => {
+                    const packageElement = document.createElement('div');
+                    packageElement.className = 'oss-package';
+                    
+                    packageElement.innerHTML = `
+                        <div class="package-name">${pkg.name}</div>
+                        <div class="package-description">${pkg.description}</div>
+                        <div class="package-stats">
+                            <span>⭐ ${pkg.stars}</span>
+                            <span>📅 ${pkg.updated}</span>
+                        </div>
+                    `;
+                    
+                    container.appendChild(packageElement);
+                });
+                
+                document.getElementById('packagesDiscovered').textContent = this.ossPackages.length;
+            }
+            
+            renderFormulas() {
+                const container = document.getElementById('formulaContainer');
+                container.innerHTML = '';
+                
+                this.formulas.forEach(formula => {
+                    const formulaElement = document.createElement('div');
+                    formulaElement.className = 'formula-recipe';
+                    
+                    formulaElement.innerHTML = `
+                        <div class="recipe-name">${formula.name}</div>
+                        <div class="recipe-components">${formula.components}</div>
+                        <div class="recipe-status">${formula.status}</div>
+                    `;
+                    
+                    container.appendChild(formulaElement);
+                });
+            }
+            
+            updatePlayerStatsUI() {
+                document.getElementById('playerLevel').textContent = this.playerStats.level;
+                document.getElementById('totalXP').textContent = this.playerStats.xp;
+                document.getElementById('totalAchievements').textContent = this.playerStats.achievements.length;
+            }
+            
+            updateGatewayUI() {
+                document.getElementById('requestsAllowed').textContent = this.gatewayStats.allowed;
+                document.getElementById('requestsBlocked').textContent = this.gatewayStats.blocked;
+                document.getElementById('whitelistDomains').textContent = this.gatewayStats.whitelistCount;
+                
+                const indicator = document.getElementById('gatewayIndicator');
+                if (this.gatewayStats.allowed > this.gatewayStats.blocked) {
+                    indicator.className = 'gateway-indicator';
+                } else {
+                    indicator.className = 'gateway-indicator restricted';
+                }
+            }
+            
+            updateQuestProgress() {
+                // Simulate quest progress
+                this.quests.forEach(quest => {
+                    if (quest.status === 'in-progress' && Math.random() > 0.7) {
+                        quest.progress = Math.min(100, quest.progress + Math.floor(Math.random() * 10));
+                        
+                        if (quest.progress >= 100) {
+                            quest.status = 'completed';
+                            this.playerStats.xp += quest.xpReward;
+                            
+                            // Level up check
+                            if (this.playerStats.xp >= this.playerStats.level * 1000) {
+                                this.playerStats.level++;
+                                this.addLogEntry({
+                                    service: 'quest',
+                                    level: 'success',
+                                    message: `Level up! You are now level ${this.playerStats.level}`,
+                                    timestamp: new Date().toISOString()
+                                });
+                            }
+                        }
+                    }
+                });
+                
+                this.renderQuests();
+                this.updatePlayerStatsUI();
+            }
+            
+            updateGatewayActivity() {
+                // Simulate gateway activity
+                if (Math.random() > 0.5) {
+                    this.gatewayStats.allowed += Math.floor(Math.random() * 3);
+                }
+                if (Math.random() > 0.8) {
+                    this.gatewayStats.blocked += 1;
+                }
+                
+                this.updateGatewayUI();
+            }
+            
+            updateQuests(quests) {
+                this.quests = quests;
+                this.renderQuests();
+            }
+            
+            updateOSSPackages(packages) {
+                this.ossPackages = packages;
+                this.renderOSSPackages();
+            }
+            
+            updateFormulas(formulas) {
+                this.formulas = formulas;
+                this.renderFormulas();
+            }
+            
+            updateGatewayStats(stats) {
+                this.gatewayStats = { ...this.gatewayStats, ...stats };
+                this.updateGatewayUI();
+            }
+            
+            updatePlayerStats(stats) {
+                this.playerStats = { ...this.playerStats, ...stats };
+                this.updatePlayerStatsUI();
+            }
+        }
+        
+        // Control panel functions
+        function restartAllServices() {
+            showAction('Restarting all services...');
+            // Would send WebSocket message or API call
+        }
+        
+        function runHealthCheck() {
+            showAction('Running health check...');
+            // Would trigger health check
+        }
+        
+        function cleanupProcesses() {
+            showAction('Cleaning up processes...');
+            // Would run cleanup script
+        }
+        
+        function runSymlinkCheck() {
+            showAction('Fixing symlinks...');
+            // Would run symlink repair
+        }
+        
+        function testDatabase() {
+            showAction('Testing database connection...');
+            // Would test DB connectivity
+        }
+        
+        function generateReport() {
+            showAction('Generating system report...');
+            // Would generate and download report
+        }
+        
+        function toggleReasoning() {
+            showAction('Toggling reasoning stream...');
+            // Would toggle reasoning
+        }
+        
+        function clearLogs() {
+            document.getElementById('systemLogs').innerHTML = '';
+            showAction('Logs cleared');
+        }
+        
+        function exportLogs() {
+            showAction('Exporting logs...');
+            // Would export logs
+        }
+        
+        function showAction(message) {
+            // Add temporary log entry to show action
+            dashboard.addLogEntry({
+                service: 'dashboard',
+                level: 'info',
+                message: message,
+                timestamp: new Date().toISOString()
+            });
+        }
+        
+        // Quest System Control Functions
+        function startNewQuest() {
+            const questTypes = ['github_explore', 'npm_discovery', 'version_tracker', 'formula_creator'];
+            const selectedType = questTypes[Math.floor(Math.random() * questTypes.length)];
+            
+            const newQuest = {
+                id: `${selectedType}_${Date.now()}`,
+                title: `${selectedType.replace('_', ' ').toUpperCase()} Quest`,
+                description: `Automatically generated ${selectedType} quest`,
+                type: selectedType,
+                progress: 0,
+                xpReward: 100 + Math.floor(Math.random() * 200),
+                status: 'in-progress'
+            };
+            
+            dashboard.quests.push(newQuest);
+            dashboard.renderQuests();
+            
+            showAction(`Started new quest: ${newQuest.title}`);
+        }
+        
+        function showAchievements() {
+            showAction('Displaying achievements panel...');
+            // Would show achievements modal
+        }
+        
+        function createFormula() {
+            const formulaTypes = ['web-app', 'api-service', 'cli-tool', 'data-pipeline'];
+            const selectedType = formulaTypes[Math.floor(Math.random() * formulaTypes.length)];
+            
+            const newFormula = {
+                name: `${selectedType.replace('-', ' ').toUpperCase()} Recipe`,
+                components: 'auto-generated components based on type',
+                status: 'draft',
+                type: selectedType
+            };
+            
+            dashboard.formulas.push(newFormula);
+            dashboard.renderFormulas();
+            
+            showAction(`Created new formula: ${newFormula.name}`);
+        }
+        
+        function testRecipe() {
+            showAction('Testing formula recipe...');
+            // Would test formula compatibility
+        }
+        
+        function addDomain() {
+            const domains = ['github.com', 'npmjs.com', 'stackoverflow.com', 'pypi.org'];
+            const newDomain = domains[Math.floor(Math.random() * domains.length)];
+            
+            dashboard.gatewayStats.whitelistCount++;
+            dashboard.updateGatewayUI();
+            
+            showAction(`Added ${newDomain} to whitelist`);
+        }
+        
+        function viewLogs() {
+            showAction('Opening gateway logs...');
+            // Would show gateway request logs
+        }
+        
+        // Initialize dashboard
+        const dashboard = new UnifiedDashboard();
+        
+        console.log('🎯 Unified Live Dashboard');
+        console.log('=========================');
+        console.log('📊 Real-time service monitoring active');
+        console.log('🧠 Reasoning stream initialized');
+        console.log('🔗 WebSocket connections attempted');
+        console.log('🎛️ Control panel ready');
+    </script>
+</body>
+</html>

@@ -1,0 +1,1176 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Voxel Combat World - Document Monster Arena</title>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Orbitron:wght@400;700;900&display=swap');
+        
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            background: linear-gradient(135deg, #000000, #1a0a1a, #0a1a0a);
+            color: #FFD700;
+            font-family: 'Orbitron', monospace;
+            overflow: hidden;
+            cursor: crosshair;
+        }
+
+        /* Combat HUD */
+        .combat-hud {
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            z-index: 1000;
+            background: linear-gradient(to bottom, rgba(0, 0, 0, 0.9), transparent);
+            padding: 20px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .hud-section {
+            background: rgba(26, 26, 26, 0.8);
+            border: 2px solid #FFD700;
+            border-radius: 10px;
+            padding: 15px;
+            backdrop-filter: blur(5px);
+        }
+
+        .agent-status {
+            display: flex;
+            gap: 20px;
+            align-items: center;
+        }
+
+        .agent-card {
+            background: linear-gradient(135deg, rgba(42, 42, 42, 0.9), rgba(26, 26, 26, 0.9));
+            border: 2px solid var(--agent-color, #FFD700);
+            border-radius: 8px;
+            padding: 10px;
+            min-width: 120px;
+            text-align: center;
+        }
+
+        .agent-name {
+            font-weight: bold;
+            font-size: 0.9rem;
+            margin-bottom: 5px;
+        }
+
+        .agent-health {
+            background: rgba(0, 0, 0, 0.5);
+            border-radius: 5px;
+            height: 8px;
+            overflow: hidden;
+            margin-bottom: 5px;
+        }
+
+        .health-bar {
+            height: 100%;
+            background: linear-gradient(90deg, #00FF00, #FFFF00, #FF0000);
+            transition: width 0.3s;
+        }
+
+        .agent-lineage {
+            font-size: 0.7rem;
+            opacity: 0.8;
+        }
+
+        .combat-stats {
+            text-align: center;
+        }
+
+        .stat-value {
+            font-size: 1.5rem;
+            font-weight: bold;
+            margin-bottom: 5px;
+        }
+
+        .stat-label {
+            font-size: 0.8rem;
+            opacity: 0.8;
+        }
+
+        .laser-controls {
+            display: flex;
+            gap: 10px;
+            align-items: center;
+        }
+
+        .laser-btn {
+            background: linear-gradient(45deg, #FF4444, #FF6666);
+            border: 2px solid #FF4444;
+            border-radius: 8px;
+            color: white;
+            padding: 8px 15px;
+            font-family: 'Orbitron', monospace;
+            font-size: 0.9rem;
+            cursor: pointer;
+            transition: all 0.3s;
+        }
+
+        .laser-btn:hover {
+            background: linear-gradient(45deg, #FF6666, #FF8888);
+            transform: scale(1.05);
+        }
+
+        .laser-btn.active {
+            background: linear-gradient(45deg, #00FF88, #44FFAA);
+            border-color: #00FF88;
+            box-shadow: 0 0 20px rgba(0, 255, 136, 0.5);
+        }
+
+        /* 3D World Container */
+        .world-container {
+            position: relative;
+            width: 100vw;
+            height: 100vh;
+            perspective: 1000px;
+            overflow: hidden;
+        }
+
+        .voxel-world {
+            position: absolute;
+            width: 100%;
+            height: 100%;
+            transform-style: preserve-3d;
+            transform: rotateX(20deg) rotateY(0deg);
+            transition: transform 0.1s;
+        }
+
+        .voxel {
+            position: absolute;
+            width: 20px;
+            height: 20px;
+            border: 1px solid rgba(255, 255, 255, 0.2);
+            transform-style: preserve-3d;
+        }
+
+        .voxel.monster {
+            background: var(--monster-color, #FF4444);
+            box-shadow: 0 0 10px var(--monster-color, #FF4444);
+            animation: monsterPulse 2s ease-in-out infinite alternate;
+        }
+
+        @keyframes monsterPulse {
+            0% { box-shadow: 0 0 10px var(--monster-color); }
+            100% { box-shadow: 0 0 30px var(--monster-color), 0 0 50px var(--monster-color); }
+        }
+
+        .voxel.agent {
+            background: var(--agent-color, #00FFFF);
+            box-shadow: 0 0 15px var(--agent-color, #00FFFF);
+            animation: agentGlow 1.5s ease-in-out infinite alternate;
+        }
+
+        @keyframes agentGlow {
+            0% { box-shadow: 0 0 15px var(--agent-color); }
+            100% { box-shadow: 0 0 25px var(--agent-color), 0 0 40px var(--agent-color); }
+        }
+
+        .voxel.terrain {
+            background: #2a2a2a;
+            border-color: #FFD700;
+        }
+
+        .voxel.explosion {
+            background: #FFFF00;
+            animation: explosion 0.5s ease-out forwards;
+        }
+
+        @keyframes explosion {
+            0% { 
+                transform: scale(1);
+                background: #FFFF00;
+                box-shadow: 0 0 10px #FFFF00;
+            }
+            50% {
+                transform: scale(3);
+                background: #FF4444;
+                box-shadow: 0 0 50px #FF4444;
+            }
+            100% {
+                transform: scale(0);
+                background: transparent;
+                box-shadow: none;
+            }
+        }
+
+        /* Laser Effects */
+        .laser-beam {
+            position: absolute;
+            height: 3px;
+            background: linear-gradient(90deg, transparent, var(--laser-color, #FF0000), transparent);
+            box-shadow: 0 0 10px var(--laser-color, #FF0000);
+            transform-origin: left center;
+            animation: laserFire 0.3s ease-out;
+            z-index: 500;
+        }
+
+        @keyframes laserFire {
+            0% { width: 0; opacity: 1; }
+            100% { width: var(--laser-length, 200px); opacity: 0; }
+        }
+
+        /* Particle Effects */
+        .particle {
+            position: absolute;
+            width: 4px;
+            height: 4px;
+            border-radius: 50%;
+            pointer-events: none;
+            z-index: 400;
+        }
+
+        .particle.damage {
+            background: #FF4444;
+            animation: damageParticle 1s ease-out forwards;
+        }
+
+        @keyframes damageParticle {
+            0% { transform: scale(1) translateY(0); opacity: 1; }
+            100% { transform: scale(0.5) translateY(-50px); opacity: 0; }
+        }
+
+        .particle.healing {
+            background: #00FF88;
+            animation: healingParticle 1.5s ease-out forwards;
+        }
+
+        @keyframes healingParticle {
+            0% { transform: scale(1) translateY(0); opacity: 1; }
+            100% { transform: scale(0.8) translateY(-30px); opacity: 0; }
+        }
+
+        /* Combat Log */
+        .combat-log {
+            position: fixed;
+            bottom: 20px;
+            right: 20px;
+            width: 350px;
+            max-height: 200px;
+            background: rgba(0, 0, 0, 0.8);
+            border: 2px solid #FFD700;
+            border-radius: 10px;
+            padding: 15px;
+            overflow-y: auto;
+            font-size: 0.8rem;
+            z-index: 1000;
+        }
+
+        .log-entry {
+            margin-bottom: 5px;
+            padding: 3px 0;
+            border-bottom: 1px solid rgba(255, 215, 0, 0.2);
+        }
+
+        .log-entry.damage {
+            color: #FF4444;
+        }
+
+        .log-entry.heal {
+            color: #00FF88;
+        }
+
+        .log-entry.spawn {
+            color: #FFFF00;
+        }
+
+        .log-entry.death {
+            color: #FF6600;
+        }
+
+        /* Minimap */
+        .minimap {
+            position: fixed;
+            top: 120px;
+            right: 20px;
+            width: 200px;
+            height: 200px;
+            background: rgba(0, 0, 0, 0.8);
+            border: 2px solid #FFD700;
+            border-radius: 10px;
+            padding: 10px;
+            z-index: 1000;
+        }
+
+        .minimap-canvas {
+            width: 100%;
+            height: 100%;
+            background: #1a1a1a;
+            border-radius: 5px;
+        }
+
+        /* World Controls */
+        .world-controls {
+            position: fixed;
+            bottom: 20px;
+            left: 20px;
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+            z-index: 1000;
+        }
+
+        .control-btn {
+            background: rgba(138, 43, 226, 0.8);
+            border: 2px solid #8A2BE2;
+            border-radius: 8px;
+            color: white;
+            padding: 10px 15px;
+            font-family: 'Orbitron', monospace;
+            cursor: pointer;
+            transition: all 0.3s;
+        }
+
+        .control-btn:hover {
+            background: #8A2BE2;
+            transform: translateY(-2px);
+            box-shadow: 0 0 15px rgba(138, 43, 226, 0.6);
+        }
+
+        /* Crosshair */
+        .crosshair {
+            position: fixed;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            width: 30px;
+            height: 30px;
+            pointer-events: none;
+            z-index: 999;
+        }
+
+        .crosshair::before,
+        .crosshair::after {
+            content: '';
+            position: absolute;
+            background: #FFD700;
+            box-shadow: 0 0 5px #FFD700;
+        }
+
+        .crosshair::before {
+            top: 50%;
+            left: 0;
+            right: 0;
+            height: 2px;
+            transform: translateY(-50%);
+        }
+
+        .crosshair::after {
+            left: 50%;
+            top: 0;
+            bottom: 0;
+            width: 2px;
+            transform: translateX(-50%);
+        }
+
+        /* Responsive Design */
+        @media (max-width: 768px) {
+            .combat-hud {
+                padding: 10px;
+                flex-direction: column;
+                gap: 10px;
+            }
+            
+            .agent-status {
+                flex-wrap: wrap;
+            }
+            
+            .combat-log {
+                width: 90%;
+                right: 5%;
+            }
+            
+            .minimap {
+                width: 150px;
+                height: 150px;
+            }
+        }
+    </style>
+</head>
+<body>
+    <!-- Combat HUD -->
+    <div class="combat-hud">
+        <div class="hud-section agent-status" id="agentStatus">
+            <!-- Agent cards will be populated by JavaScript -->
+        </div>
+        
+        <div class="hud-section combat-stats">
+            <div class="stat-value" id="monstersAlive">0</div>
+            <div class="stat-label">Monsters</div>
+        </div>
+        
+        <div class="hud-section combat-stats">
+            <div class="stat-value" id="totalKills">0</div>
+            <div class="stat-label">Kills</div>
+        </div>
+        
+        <div class="hud-section laser-controls">
+            <button class="laser-btn" id="redLaser" onclick="voxelCombat.setLaserType('red')">🔴 Red</button>
+            <button class="laser-btn" id="blueLaser" onclick="voxelCombat.setLaserType('blue')">🔵 Blue</button>
+            <button class="laser-btn" id="greenLaser" onclick="voxelCombat.setLaserType('green')">🟢 Green</button>
+            <button class="laser-btn active" id="autoLaser" onclick="voxelCombat.setLaserType('auto')">⚡ Auto</button>
+        </div>
+    </div>
+
+    <!-- Crosshair -->
+    <div class="crosshair"></div>
+
+    <!-- 3D Voxel World -->
+    <div class="world-container" id="worldContainer">
+        <div class="voxel-world" id="voxelWorld">
+            <!-- Voxels will be generated by JavaScript -->
+        </div>
+    </div>
+
+    <!-- Minimap -->
+    <div class="minimap">
+        <canvas class="minimap-canvas" id="minimapCanvas" width="180" height="180"></canvas>
+    </div>
+
+    <!-- Combat Log -->
+    <div class="combat-log" id="combatLog">
+        <div class="log-entry spawn">🎯 Voxel Combat World initialized</div>
+        <div class="log-entry">🤖 Reasoning agents ready for battle</div>
+        <div class="log-entry">👾 Document monsters awaiting spawn</div>
+    </div>
+
+    <!-- World Controls -->
+    <div class="world-controls">
+        <button class="control-btn" onclick="voxelCombat.spawnRandomMonster()">👾 Spawn Monster</button>
+        <button class="control-btn" onclick="voxelCombat.toggleCameraMode()">📹 Camera</button>
+        <button class="control-btn" onclick="voxelCombat.clearWorld()">🧹 Clear World</button>
+        <button class="control-btn" onclick="voxelCombat.pauseCombat()">⏸️ Pause</button>
+    </div>
+
+    <script>
+        class VoxelCombatWorld {
+            constructor() {
+                this.world = {
+                    width: 100,
+                    height: 50,
+                    depth: 100
+                };
+                
+                this.camera = {
+                    x: 0,
+                    y: 0,
+                    z: 0,
+                    rotationX: 20,
+                    rotationY: 0,
+                    mode: 'free' // free, follow, overhead
+                };
+                
+                this.reasoningAgents = new Map();
+                this.monsters = new Map();
+                this.voxels = new Map();
+                this.projectiles = new Map();
+                this.particles = [];
+                
+                this.combatStats = {
+                    totalKills: 0,
+                    monstersAlive: 0,
+                    damageDealt: 0,
+                    experience: 0
+                };
+                
+                this.laserType = 'auto';
+                this.isPaused = false;
+                this.lastUpdate = Date.now();
+                
+                this.init();
+            }
+            
+            init() {
+                this.setupEventListeners();
+                this.createTerrain();
+                this.spawnReasoningAgents();
+                this.startGameLoop();
+                
+                console.log('🎯 Voxel Combat World initialized');
+            }
+            
+            setupEventListeners() {
+                // Mouse controls for camera
+                let isDragging = false;
+                let lastMouseX = 0;
+                let lastMouseY = 0;
+                
+                document.addEventListener('mousedown', (e) => {
+                    isDragging = true;
+                    lastMouseX = e.clientX;
+                    lastMouseY = e.clientY;
+                });
+                
+                document.addEventListener('mousemove', (e) => {
+                    if (!isDragging) return;
+                    
+                    const deltaX = e.clientX - lastMouseX;
+                    const deltaY = e.clientY - lastMouseY;
+                    
+                    this.camera.rotationY += deltaX * 0.5;
+                    this.camera.rotationX += deltaY * 0.5;
+                    
+                    // Clamp camera rotation
+                    this.camera.rotationX = Math.max(-80, Math.min(80, this.camera.rotationX));
+                    
+                    this.updateCameraTransform();
+                    
+                    lastMouseX = e.clientX;
+                    lastMouseY = e.clientY;
+                });
+                
+                document.addEventListener('mouseup', () => {
+                    isDragging = false;
+                });
+                
+                // Click to shoot lasers
+                document.addEventListener('click', (e) => {
+                    if (e.target.tagName !== 'BUTTON') {
+                        this.fireLaser(e.clientX, e.clientY);
+                    }
+                });
+                
+                // Keyboard controls
+                document.addEventListener('keydown', (e) => {
+                    switch(e.code) {
+                        case 'Space':
+                            e.preventDefault();
+                            this.pauseCombat();
+                            break;
+                        case 'KeyR':
+                            this.spawnRandomMonster();
+                            break;
+                        case 'KeyC':
+                            this.toggleCameraMode();
+                            break;
+                        case 'Digit1':
+                            this.setLaserType('red');
+                            break;
+                        case 'Digit2':
+                            this.setLaserType('blue');
+                            break;
+                        case 'Digit3':
+                            this.setLaserType('green');
+                            break;
+                        case 'Digit4':
+                            this.setLaserType('auto');
+                            break;
+                    }
+                });
+            }
+            
+            createTerrain() {
+                const voxelWorld = document.getElementById('voxelWorld');
+                
+                // Create ground plane
+                for (let x = 0; x < this.world.width; x += 10) {
+                    for (let z = 0; z < this.world.depth; z += 10) {
+                        if (Math.random() < 0.3) { // Sparse terrain
+                            this.createVoxel(x, 0, z, 'terrain');
+                        }
+                    }
+                }
+                
+                console.log('🌍 Terrain generated');
+            }
+            
+            spawnReasoningAgents() {
+                const lineages = ['warrior', 'scholar', 'rogue', 'mage'];
+                const colors = {
+                    warrior: '#FF4444',
+                    scholar: '#4444FF', 
+                    rogue: '#44FF44',
+                    mage: '#FF44FF'
+                };
+                
+                lineages.forEach((lineage, index) => {
+                    const agent = {
+                        id: `agent_${lineage}`,
+                        name: `${lineage.charAt(0).toUpperCase() + lineage.slice(1)} Agent`,
+                        lineage: lineage,
+                        position: {
+                            x: 20 + (index * 15),
+                            y: 5,
+                            z: 20 + (index * 10)
+                        },
+                        health: 100,
+                        maxHealth: 100,
+                        target: null,
+                        lastAction: Date.now(),
+                        experience: 0,
+                        color: colors[lineage]
+                    };
+                    
+                    this.reasoningAgents.set(agent.id, agent);
+                    this.createVoxel(agent.position.x, agent.position.y, agent.position.z, 'agent', agent);
+                });
+                
+                this.updateAgentStatus();
+                console.log('🤖 Reasoning agents spawned');
+            }
+            
+            createVoxel(x, y, z, type, entity = null) {
+                const voxel = document.createElement('div');
+                voxel.className = `voxel ${type}`;
+                
+                // Position calculation for 3D effect
+                const translateX = x * 20;
+                const translateY = y * 20;
+                const translateZ = z * 20;
+                
+                voxel.style.transform = `translate3d(${translateX}px, ${-translateY}px, ${translateZ}px)`;
+                
+                if (entity) {
+                    voxel.style.setProperty('--agent-color', entity.color);
+                    voxel.style.setProperty('--monster-color', entity.color);
+                    voxel.dataset.entityId = entity.id;
+                }
+                
+                document.getElementById('voxelWorld').appendChild(voxel);
+                
+                const voxelData = {
+                    element: voxel,
+                    x, y, z,
+                    type,
+                    entity
+                };
+                
+                this.voxels.set(`${x},${y},${z}`, voxelData);
+                return voxelData;
+            }
+            
+            spawnRandomMonster() {
+                const documentTypes = ['legal', 'technical', 'business', 'academic'];
+                const monsterTypes = {
+                    legal: { name: 'Contract Golem', color: '#FF4444', threat: 'high' },
+                    technical: { name: 'API Sentinel', color: '#00FFFF', threat: 'medium' },
+                    business: { name: 'Revenue Dragon', color: '#FFD700', threat: 'high' },
+                    academic: { name: 'Research Titan', color: '#8A2BE2', threat: 'medium' }
+                };
+                
+                const type = documentTypes[Math.floor(Math.random() * documentTypes.length)];
+                const template = monsterTypes[type];
+                
+                const monster = {
+                    id: `monster_${Date.now()}`,
+                    name: template.name,
+                    type: type,
+                    position: {
+                        x: Math.floor(Math.random() * 80) + 10,
+                        y: Math.floor(Math.random() * 10) + 5,
+                        z: Math.floor(Math.random() * 80) + 10
+                    },
+                    health: 50 + Math.floor(Math.random() * 100),
+                    maxHealth: 50 + Math.floor(Math.random() * 100),
+                    target: null,
+                    lastAction: Date.now(),
+                    color: template.color,
+                    threat: template.threat,
+                    aggressiveness: Math.random(),
+                    size: Math.floor(Math.random() * 3) + 1
+                };
+                
+                monster.maxHealth = monster.health;
+                
+                this.monsters.set(monster.id, monster);
+                this.createVoxel(monster.position.x, monster.position.y, monster.position.z, 'monster', monster);
+                
+                this.combatStats.monstersAlive++;
+                this.updateCombatStats();
+                
+                this.logCombat(`👾 ${monster.name} spawned!`, 'spawn');
+                
+                console.log(`👾 Spawned monster: ${monster.name}`);
+            }
+            
+            fireLaser(screenX, screenY) {
+                // Calculate 3D position from screen coordinates
+                const target = this.screenToWorld(screenX, screenY);
+                
+                if (!target) return;
+                
+                // Find closest agent to fire from
+                const firingAgent = this.findClosestAgent(target);
+                
+                if (!firingAgent) return;
+                
+                const laserColor = this.getLaserColor();
+                
+                // Create laser beam visual
+                this.createLaserBeam(firingAgent.position, target, laserColor);
+                
+                // Check for hits
+                this.checkLaserHits(firingAgent.position, target, laserColor);
+                
+                console.log(`🔫 Laser fired from ${firingAgent.name}`);
+            }
+            
+            screenToWorld(screenX, screenY) {
+                // Simplified screen to world conversion
+                // In a real implementation, this would use proper 3D projection
+                const rect = document.getElementById('worldContainer').getBoundingClientRect();
+                const normalizedX = (screenX - rect.left) / rect.width;
+                const normalizedY = (screenY - rect.top) / rect.height;
+                
+                return {
+                    x: Math.floor(normalizedX * this.world.width),
+                    y: Math.floor((1 - normalizedY) * this.world.height),
+                    z: Math.floor(normalizedY * this.world.depth)
+                };
+            }
+            
+            findClosestAgent(target) {
+                let closest = null;
+                let minDistance = Infinity;
+                
+                for (const agent of this.reasoningAgents.values()) {
+                    const distance = this.getDistance(agent.position, target);
+                    if (distance < minDistance) {
+                        minDistance = distance;
+                        closest = agent;
+                    }
+                }
+                
+                return closest;
+            }
+            
+            getDistance(pos1, pos2) {
+                const dx = pos1.x - pos2.x;
+                const dy = pos1.y - pos2.y;
+                const dz = pos1.z - pos2.z;
+                return Math.sqrt(dx * dx + dy * dy + dz * dz);
+            }
+            
+            createLaserBeam(start, end, color) {
+                const beam = document.createElement('div');
+                beam.className = 'laser-beam';
+                beam.style.setProperty('--laser-color', color);
+                
+                // Calculate laser length and rotation
+                const distance = this.getDistance(start, end);
+                const angle = Math.atan2(end.y - start.y, end.x - start.x) * 180 / Math.PI;
+                
+                beam.style.setProperty('--laser-length', distance * 20 + 'px');
+                beam.style.left = (start.x * 20) + 'px';
+                beam.style.top = (start.y * 20) + 'px';
+                beam.style.transform = `rotateZ(${angle}deg)`;
+                
+                document.getElementById('voxelWorld').appendChild(beam);
+                
+                // Remove laser after animation
+                setTimeout(() => {
+                    beam.remove();
+                }, 300);
+            }
+            
+            checkLaserHits(start, end, color) {
+                const damage = this.calculateLaserDamage(color);
+                
+                // Check for monster hits in laser path
+                for (const monster of this.monsters.values()) {
+                    if (this.isInLaserPath(start, end, monster.position)) {
+                        this.damageMonster(monster, damage);
+                        this.createParticleEffect(monster.position, 'damage');
+                        break; // Laser stops at first hit
+                    }
+                }
+            }
+            
+            isInLaserPath(start, end, point, tolerance = 5) {
+                // Simplified line-point distance check
+                const distance = this.pointToLineDistance(start, end, point);
+                return distance <= tolerance;
+            }
+            
+            pointToLineDistance(start, end, point) {
+                const A = point.x - start.x;
+                const B = point.y - start.y;
+                const C = end.x - start.x;
+                const D = end.y - start.y;
+                
+                const dot = A * C + B * D;
+                const lenSq = C * C + D * D;
+                
+                if (lenSq === 0) return Math.sqrt(A * A + B * B);
+                
+                const param = dot / lenSq;
+                
+                let xx, yy;
+                
+                if (param < 0) {
+                    xx = start.x;
+                    yy = start.y;
+                } else if (param > 1) {
+                    xx = end.x;
+                    yy = end.y;
+                } else {
+                    xx = start.x + param * C;
+                    yy = start.y + param * D;
+                }
+                
+                const dx = point.x - xx;
+                const dy = point.y - yy;
+                
+                return Math.sqrt(dx * dx + dy * dy);
+            }
+            
+            calculateLaserDamage(color) {
+                const baseDamage = 20;
+                const colorMultipliers = {
+                    '#FF0000': 1.2, // Red - high damage
+                    '#0000FF': 1.0, // Blue - standard damage
+                    '#00FF00': 0.8, // Green - healing/lower damage
+                    'auto': 1.1    // Auto - balanced
+                };
+                
+                return Math.floor(baseDamage * (colorMultipliers[color] || 1.0));
+            }
+            
+            damageMonster(monster, damage) {
+                monster.health -= damage;
+                
+                this.logCombat(`💥 ${monster.name} takes ${damage} damage`, 'damage');
+                
+                if (monster.health <= 0) {
+                    this.killMonster(monster);
+                }
+            }
+            
+            killMonster(monster) {
+                // Remove voxel
+                const voxelKey = `${monster.position.x},${monster.position.y},${monster.position.z}`;
+                const voxel = this.voxels.get(voxelKey);
+                if (voxel) {
+                    voxel.element.remove();
+                    this.voxels.delete(voxelKey);
+                }
+                
+                // Create explosion effect
+                this.createExplosion(monster.position);
+                
+                // Update stats
+                this.monsters.delete(monster.id);
+                this.combatStats.totalKills++;
+                this.combatStats.monstersAlive--;
+                this.combatStats.experience += 50;
+                
+                this.updateCombatStats();
+                this.logCombat(`💀 ${monster.name} defeated!`, 'death');
+                
+                console.log(`💀 Monster killed: ${monster.name}`);
+            }
+            
+            createExplosion(position) {
+                // Create multiple explosion voxels
+                for (let i = 0; i < 8; i++) {
+                    const explosionPos = {
+                        x: position.x + (Math.random() - 0.5) * 4,
+                        y: position.y + (Math.random() - 0.5) * 4,
+                        z: position.z + (Math.random() - 0.5) * 4
+                    };
+                    
+                    const explosion = this.createVoxel(explosionPos.x, explosionPos.y, explosionPos.z, 'explosion');
+                    
+                    // Remove explosion voxel after animation
+                    setTimeout(() => {
+                        explosion.element.remove();
+                        this.voxels.delete(`${explosionPos.x},${explosionPos.y},${explosionPos.z}`);
+                    }, 500);
+                }
+            }
+            
+            createParticleEffect(position, type) {
+                const particle = document.createElement('div');
+                particle.className = `particle ${type}`;
+                
+                particle.style.left = (position.x * 20) + 'px';
+                particle.style.top = (position.y * 20) + 'px';
+                
+                document.getElementById('voxelWorld').appendChild(particle);
+                
+                setTimeout(() => {
+                    particle.remove();
+                }, 1000);
+            }
+            
+            updateAgentStatus() {
+                const agentStatus = document.getElementById('agentStatus');
+                agentStatus.innerHTML = '';
+                
+                for (const agent of this.reasoningAgents.values()) {
+                    const agentCard = document.createElement('div');
+                    agentCard.className = 'agent-card';
+                    agentCard.style.setProperty('--agent-color', agent.color);
+                    
+                    const healthPercent = (agent.health / agent.maxHealth) * 100;
+                    
+                    agentCard.innerHTML = `
+                        <div class="agent-name">${agent.name}</div>
+                        <div class="agent-health">
+                            <div class="health-bar" style="width: ${healthPercent}%"></div>
+                        </div>
+                        <div class="agent-lineage">${agent.lineage}</div>
+                    `;
+                    
+                    agentStatus.appendChild(agentCard);
+                }
+            }
+            
+            updateCombatStats() {
+                document.getElementById('monstersAlive').textContent = this.combatStats.monstersAlive;
+                document.getElementById('totalKills').textContent = this.combatStats.totalKills;
+            }
+            
+            logCombat(message, type = '') {
+                const log = document.getElementById('combatLog');
+                const entry = document.createElement('div');
+                entry.className = `log-entry ${type}`;
+                entry.textContent = message;
+                
+                log.appendChild(entry);
+                log.scrollTop = log.scrollHeight;
+                
+                // Keep only last 20 entries
+                while (log.children.length > 20) {
+                    log.removeChild(log.firstChild);
+                }
+            }
+            
+            setLaserType(type) {
+                this.laserType = type;
+                
+                // Update button states
+                document.querySelectorAll('.laser-btn').forEach(btn => btn.classList.remove('active'));
+                document.getElementById(type + 'Laser').classList.add('active');
+                
+                console.log(`🔫 Laser type set to: ${type}`);
+            }
+            
+            getLaserColor() {
+                const colors = {
+                    red: '#FF0000',
+                    blue: '#0000FF',
+                    green: '#00FF00',
+                    auto: '#FFFF00'
+                };
+                
+                return colors[this.laserType] || colors.auto;
+            }
+            
+            toggleCameraMode() {
+                const modes = ['free', 'follow', 'overhead'];
+                const currentIndex = modes.indexOf(this.camera.mode);
+                this.camera.mode = modes[(currentIndex + 1) % modes.length];
+                
+                console.log(`📹 Camera mode: ${this.camera.mode}`);
+            }
+            
+            updateCameraTransform() {
+                const voxelWorld = document.getElementById('voxelWorld');
+                voxelWorld.style.transform = `rotateX(${this.camera.rotationX}deg) rotateY(${this.camera.rotationY}deg)`;
+            }
+            
+            clearWorld() {
+                // Clear all monsters
+                for (const monsterId of this.monsters.keys()) {
+                    const monster = this.monsters.get(monsterId);
+                    this.killMonster(monster);
+                }
+                
+                this.logCombat('🧹 World cleared', 'spawn');
+                console.log('🧹 World cleared');
+            }
+            
+            pauseCombat() {
+                this.isPaused = !this.isPaused;
+                const btn = document.querySelector('.control-btn:last-child');
+                btn.textContent = this.isPaused ? '▶️ Resume' : '⏸️ Pause';
+                
+                this.logCombat(this.isPaused ? '⏸️ Combat paused' : '▶️ Combat resumed', 'spawn');
+            }
+            
+            startGameLoop() {
+                const gameLoop = () => {
+                    if (!this.isPaused) {
+                        const now = Date.now();
+                        const deltaTime = now - this.lastUpdate;
+                        this.updateGame(deltaTime);
+                        this.lastUpdate = now;
+                    }
+                    
+                    requestAnimationFrame(gameLoop);
+                };
+                
+                gameLoop();
+            }
+            
+            updateGame(deltaTime) {
+                // Update monster AI
+                this.updateMonsters(deltaTime);
+                
+                // Update agent AI
+                this.updateAgents(deltaTime);
+                
+                // Update minimap
+                this.updateMinimap();
+            }
+            
+            updateMonsters(deltaTime) {
+                for (const monster of this.monsters.values()) {
+                    // Simple AI: move towards nearest agent
+                    const nearestAgent = this.findNearestAgentToMonster(monster);
+                    
+                    if (nearestAgent) {
+                        const distance = this.getDistance(monster.position, nearestAgent.position);
+                        
+                        if (distance > 5) {
+                            // Move towards agent
+                            this.moveMonsterTowards(monster, nearestAgent.position, deltaTime);
+                        } else {
+                            // Attack agent
+                            this.monsterAttack(monster, nearestAgent);
+                        }
+                    }
+                }
+            }
+            
+            findNearestAgentToMonster(monster) {
+                let nearest = null;
+                let minDistance = Infinity;
+                
+                for (const agent of this.reasoningAgents.values()) {
+                    const distance = this.getDistance(monster.position, agent.position);
+                    if (distance < minDistance) {
+                        minDistance = distance;
+                        nearest = agent;
+                    }
+                }
+                
+                return nearest;
+            }
+            
+            moveMonsterTowards(monster, target, deltaTime) {
+                const speed = 10; // units per second
+                const distance = speed * (deltaTime / 1000);
+                
+                const dx = target.x - monster.position.x;
+                const dy = target.y - monster.position.y;
+                const dz = target.z - monster.position.z;
+                
+                const totalDistance = Math.sqrt(dx * dx + dy * dy + dz * dz);
+                
+                if (totalDistance > 0) {
+                    const normalizedDx = dx / totalDistance;
+                    const normalizedDy = dy / totalDistance;
+                    const normalizedDz = dz / totalDistance;
+                    
+                    // Update position
+                    const oldKey = `${monster.position.x},${monster.position.y},${monster.position.z}`;
+                    
+                    monster.position.x += normalizedDx * distance;
+                    monster.position.y += normalizedDy * distance;
+                    monster.position.z += normalizedDz * distance;
+                    
+                    // Update voxel position
+                    const voxel = this.voxels.get(oldKey);
+                    if (voxel) {
+                        this.voxels.delete(oldKey);
+                        
+                        const newKey = `${Math.floor(monster.position.x)},${Math.floor(monster.position.y)},${Math.floor(monster.position.z)}`;
+                        voxel.x = Math.floor(monster.position.x);
+                        voxel.y = Math.floor(monster.position.y);
+                        voxel.z = Math.floor(monster.position.z);
+                        
+                        const translateX = voxel.x * 20;
+                        const translateY = voxel.y * 20;
+                        const translateZ = voxel.z * 20;
+                        
+                        voxel.element.style.transform = `translate3d(${translateX}px, ${-translateY}px, ${translateZ}px)`;
+                        
+                        this.voxels.set(newKey, voxel);
+                    }
+                }
+            }
+            
+            monsterAttack(monster, agent) {
+                const timeSinceLastAction = Date.now() - monster.lastAction;
+                
+                if (timeSinceLastAction > 2000) { // Attack every 2 seconds
+                    const damage = 10 + Math.floor(Math.random() * 15);
+                    agent.health -= damage;
+                    
+                    if (agent.health < 0) agent.health = 0;
+                    
+                    this.createParticleEffect(agent.position, 'damage');
+                    this.logCombat(`⚔️ ${monster.name} attacks ${agent.name} for ${damage} damage!`, 'damage');
+                    
+                    monster.lastAction = Date.now();
+                    
+                    this.updateAgentStatus();
+                }
+            }
+            
+            updateAgents(deltaTime) {
+                // Simple agent AI - they will be controlled by reasoning agents externally
+                for (const agent of this.reasoningAgents.values()) {
+                    // Auto-heal slowly
+                    if (agent.health < agent.maxHealth) {
+                        agent.health += 0.5;
+                        if (agent.health > agent.maxHealth) agent.health = agent.maxHealth;
+                    }
+                }
+            }
+            
+            updateMinimap() {
+                const canvas = document.getElementById('minimapCanvas');
+                const ctx = canvas.getContext('2d');
+                
+                // Clear minimap
+                ctx.fillStyle = '#1a1a1a';
+                ctx.fillRect(0, 0, canvas.width, canvas.height);
+                
+                // Draw agents
+                for (const agent of this.reasoningAgents.values()) {
+                    const x = (agent.position.x / this.world.width) * canvas.width;
+                    const y = (agent.position.z / this.world.depth) * canvas.height;
+                    
+                    ctx.fillStyle = agent.color;
+                    ctx.beginPath();
+                    ctx.arc(x, y, 3, 0, Math.PI * 2);
+                    ctx.fill();
+                }
+                
+                // Draw monsters
+                for (const monster of this.monsters.values()) {
+                    const x = (monster.position.x / this.world.width) * canvas.width;
+                    const y = (monster.position.z / this.world.depth) * canvas.height;
+                    
+                    ctx.fillStyle = monster.color;
+                    ctx.beginPath();
+                    ctx.arc(x, y, 2, 0, Math.PI * 2);
+                    ctx.fill();
+                }
+            }
+        }
+        
+        // Initialize the combat world
+        let voxelCombat;
+        
+        window.addEventListener('load', () => {
+            voxelCombat = new VoxelCombatWorld();
+        });
+        
+        console.log('🎯 Voxel Combat World ready!');
+        console.log('👾 Click to fire lasers, spawn monsters, and battle!');
+    </script>
+</body>
+</html>

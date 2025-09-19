@@ -1,0 +1,290 @@
+{
+  "version": "1.0.0",
+  "name": "SoulFRA Personal OS",
+  "description": "Unified authentication and document management system",
+  
+  "services": {
+    "auth": {
+      "daemon": {
+        "port": 8463,
+        "host": "localhost",
+        "secure": true,
+        "keychain": true
+      },
+      "providers": {
+        "github": {
+          "enabled": true,
+          "scopes": ["user:email", "repo", "read:org"],
+          "priority": 1
+        },
+        "google": {
+          "enabled": true,
+          "scopes": ["profile", "email"],
+          "priority": 2
+        },
+        "microsoft": {
+          "enabled": true,
+          "scopes": ["User.Read", "offline_access"],
+          "priority": 3
+        },
+        "discord": {
+          "enabled": true,
+          "scopes": ["identify", "email"],
+          "priority": 4
+        },
+        "stripe": {
+          "enabled": true,
+          "scopes": ["read_write"],
+          "priority": 5
+        },
+        "metamask": {
+          "enabled": true,
+          "web3": true,
+          "priority": 6
+        },
+        "anonymous": {
+          "enabled": true,
+          "priority": 99
+        }
+      }
+    },
+    
+    "documents": {
+      "crawler": {
+        "enabled": true,
+        "roots": [
+          "/Users/matthewmauer/Desktop/Document-Generator"
+        ],
+        "patterns": {
+          "include": ["**/*.md", "**/*.js", "**/*.json", "**/*.html"],
+          "exclude": ["**/node_modules/**", "**/dist/**", "**/.git/**"]
+        },
+        "indexPath": "./services/crawling/document-index.json"
+      },
+      "analysis": {
+        "enabled": true,
+        "engine": "link-analysis-engine",
+        "insights": true
+      }
+    },
+    
+    "vault": {
+      "enabled": true,
+      "encryption": "AES-256-GCM",
+      "keyPath": "./.vault/keys/master_key.enc",
+      "storage": {
+        "local": "./.vault/storage",
+        "cloud": null
+      }
+    },
+    
+    "reasoning": {
+      "enabled": true,
+      "engines": {
+        "differential": {
+          "path": "./reasoning-differential-engine.js",
+          "xpSystem": "runescape"
+        },
+        "verification": {
+          "path": "./packages/@utp/verification-audit/index.js",
+          "layers": 5
+        }
+      }
+    },
+    
+    "interfaces": {
+      "web": {
+        "enabled": true,
+        "port": 8080,
+        "pages": {
+          "login": "/soulfra-unified-login.html",
+          "control": "/soulfra-control-center.html",
+          "dashboard": "/dashboard.html"
+        }
+      },
+      "terminal": {
+        "enabled": true,
+        "tui": "./soulfra-auth-tui.js",
+        "cli": "./soulfra-auth.js"
+      },
+      "voice": {
+        "enabled": true,
+        "wakePhrase": ["soulfra", "soul fra", "hey soulfra"],
+        "engine": "web-speech-api",
+        "biometric": true
+      }
+    }
+  },
+  
+  "onboarding": {
+    "enabled": true,
+    "flow": "./soulfra-onboarding-flow.js",
+    "questions": {
+      "total": 253,
+      "required": 10,
+      "categories": [
+        "identity",
+        "preferences",
+        "experience",
+        "goals",
+        "personality",
+        "workflow",
+        "security"
+      ]
+    },
+    "profile": {
+      "path": "$HOME/.soulfra/profile",
+      "format": "json",
+      "backup": true
+    }
+  },
+  
+  "startup": {
+    "script": "./soulfra-os-startup.sh",
+    "phases": [
+      {
+        "name": "system-check",
+        "required": ["node", "git", "jq"],
+        "optional": ["docker"]
+      },
+      {
+        "name": "profile-check",
+        "createIfMissing": true,
+        "interactive": true
+      },
+      {
+        "name": "auth-init",
+        "daemon": true,
+        "autoLogin": false
+      },
+      {
+        "name": "document-init",
+        "index": true,
+        "encrypt": true
+      },
+      {
+        "name": "service-init",
+        "docker": "auto",
+        "fallback": "local"
+      },
+      {
+        "name": "interface-launch",
+        "default": "web",
+        "auto": true
+      }
+    ]
+  },
+  
+  "integration": {
+    "billingTiers": {
+      "free": {
+        "maxRaidsPerDay": 10,
+        "maxBPM": 100,
+        "agents": ["anonymous"],
+        "features": ["basic"]
+      },
+      "community": {
+        "maxRaidsPerDay": 50,
+        "maxBPM": 140,
+        "agents": ["anonymous", "explorer"],
+        "features": ["basic", "discord"]
+      },
+      "developer": {
+        "maxRaidsPerDay": 200,
+        "maxBPM": 160,
+        "agents": ["anonymous", "explorer", "predictor"],
+        "features": ["basic", "discord", "github", "api"]
+      },
+      "premium": {
+        "maxRaidsPerDay": "unlimited",
+        "maxBPM": 180,
+        "agents": "all",
+        "features": "all"
+      },
+      "crypto": {
+        "maxRaidsPerDay": 500,
+        "maxBPM": 200,
+        "agents": "all",
+        "features": ["all", "defi", "web3"]
+      },
+      "enterprise": {
+        "maxRaidsPerDay": "unlimited",
+        "maxBPM": 200,
+        "agents": "unlimited",
+        "features": "custom"
+      }
+    },
+    
+    "agentTypes": {
+      "explorer": {
+        "name": "Search Explorer Agent",
+        "provider": "soulfra-github",
+        "tier": "developer",
+        "permissions": ["search", "explore", "analyze"],
+        "commissionRate": 0.02
+      },
+      "trader": {
+        "name": "Data Trading Agent",
+        "provider": "soulfra-stripe",
+        "tier": "premium",
+        "permissions": ["search", "trade", "exchange"],
+        "commissionRate": 0.05
+      },
+      "predictor": {
+        "name": "Pattern Prediction Agent",
+        "provider": "soulfra-metamask",
+        "tier": "crypto",
+        "permissions": ["search", "predict", "analyze"],
+        "commissionRate": 0.03
+      },
+      "anonymous": {
+        "name": "Anonymous Crawler",
+        "provider": "soulfra-anonymous",
+        "tier": "free",
+        "permissions": ["search"],
+        "commissionRate": 0.01
+      }
+    }
+  },
+  
+  "paths": {
+    "home": "$HOME/.soulfra",
+    "config": "$HOME/.soulfra/config",
+    "profile": "$HOME/.soulfra/profile",
+    "logs": "$HOME/.soulfra/logs",
+    "vault": "$HOME/.soulfra/vault",
+    "cache": "$HOME/.soulfra/cache"
+  },
+  
+  "logging": {
+    "level": "info",
+    "file": true,
+    "console": true,
+    "maxFiles": 10,
+    "maxSize": "10m"
+  },
+  
+  "security": {
+    "encryption": {
+      "algorithm": "aes-256-gcm",
+      "keyDerivation": "pbkdf2",
+      "iterations": 100000
+    },
+    "session": {
+      "timeout": 3600000,
+      "refresh": true,
+      "secure": true
+    },
+    "cors": {
+      "enabled": true,
+      "origins": ["http://localhost:*", "soulfra://*"]
+    }
+  },
+  
+  "development": {
+    "debug": false,
+    "mockAuth": false,
+    "skipOnboarding": false,
+    "verboseLogging": false
+  }
+}

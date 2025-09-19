@@ -1,0 +1,1261 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>AI Autonomous Explorer - Collection & Discovery System</title>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Orbitron:wght@400;700;900&display=swap');
+        
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            background: #000;
+            color: #0ff;
+            font-family: 'Orbitron', monospace;
+            overflow: hidden;
+        }
+
+        /* Main world */
+        #world {
+            position: relative;
+            width: 100vw;
+            height: 100vh;
+            background: 
+                radial-gradient(circle at 25% 25%, rgba(0, 255, 255, 0.1) 0%, transparent 50%),
+                radial-gradient(circle at 75% 75%, rgba(0, 255, 136, 0.05) 0%, transparent 50%),
+                #0a0a0a;
+        }
+
+        /* Minimap eye */
+        #minimap {
+            position: fixed;
+            top: 20px;
+            right: 20px;
+            width: 250px;
+            height: 250px;
+            border: 3px solid #0ff;
+            border-radius: 50%;
+            background: 
+                radial-gradient(circle at 35% 35%, 
+                    rgba(255, 255, 255, 0.9),
+                    rgba(200, 200, 200, 0.7),
+                    rgba(100, 100, 100, 0.5),
+                    rgba(0, 0, 0, 0.8)
+                );
+            box-shadow: 0 0 30px #0ff;
+            z-index: 1000;
+            overflow: hidden;
+        }
+
+        .minimap-iris {
+            position: absolute;
+            width: 120px;
+            height: 120px;
+            border-radius: 50%;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            background: 
+                radial-gradient(circle at 40% 30%, 
+                    #00ffff,
+                    #0088cc,
+                    #004466,
+                    #000
+                );
+        }
+
+        .minimap-pupil {
+            position: absolute;
+            width: 60px;
+            height: 60px;
+            border-radius: 50%;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            background: radial-gradient(circle at 30% 30%, #333, #000);
+        }
+
+        /* Minimap world overlay */
+        .minimap-world {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            opacity: 0.7;
+            border-radius: 50%;
+            overflow: hidden;
+        }
+
+        .minimap-section {
+            position: absolute;
+            width: 20px;
+            height: 20px;
+            border: 1px solid #0ff;
+            background: rgba(0, 255, 255, 0.3);
+            transform: scale(0);
+            transition: all 0.5s;
+        }
+
+        .minimap-section.discovered {
+            transform: scale(1);
+            background: rgba(0, 255, 136, 0.8);
+            box-shadow: 0 0 10px #00ff88;
+        }
+
+        .minimap-ai {
+            position: absolute;
+            width: 8px;
+            height: 8px;
+            border-radius: 50%;
+            background: #ff0080;
+            box-shadow: 0 0 8px #ff0080;
+            transition: all 0.1s;
+        }
+
+        /* AI Characters */
+        .ai-explorer {
+            position: absolute;
+            width: 40px;
+            height: 40px;
+            border-radius: 50%;
+            background: radial-gradient(circle at 30% 30%, #ff0080, #cc0066, #990044);
+            border: 2px solid #ff0080;
+            box-shadow: 0 0 20px rgba(255, 0, 128, 0.6);
+            transition: all 0.3s;
+            z-index: 500;
+            cursor: pointer;
+        }
+
+        .ai-explorer::before {
+            content: '';
+            position: absolute;
+            width: 20px;
+            height: 20px;
+            border-radius: 50%;
+            background: rgba(255, 255, 255, 0.8);
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+        }
+
+        .ai-explorer::after {
+            content: '';
+            position: absolute;
+            width: 10px;
+            height: 10px;
+            border-radius: 50%;
+            background: #000;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+        }
+
+        .ai-explorer.moving {
+            animation: aiMove 0.5s ease-in-out;
+        }
+
+        @keyframes aiMove {
+            0%, 100% { transform: scale(1); }
+            50% { transform: scale(1.2); }
+        }
+
+        .ai-explorer.thinking {
+            animation: aiThink 2s ease-in-out infinite;
+        }
+
+        @keyframes aiThink {
+            0%, 100% { box-shadow: 0 0 20px rgba(255, 0, 128, 0.6); }
+            50% { box-shadow: 0 0 40px rgba(255, 0, 128, 1), 0 0 60px rgba(255, 255, 255, 0.5); }
+        }
+
+        /* AI Trail */
+        .ai-trail {
+            position: absolute;
+            width: 4px;
+            height: 4px;
+            border-radius: 50%;
+            background: rgba(255, 0, 128, 0.4);
+            pointer-events: none;
+            animation: trailFade 3s ease-out forwards;
+        }
+
+        @keyframes trailFade {
+            0% { opacity: 1; transform: scale(1); }
+            100% { opacity: 0; transform: scale(0); }
+        }
+
+        /* Collection Log */
+        #collection-log {
+            position: fixed;
+            top: 20px;
+            left: 20px;
+            width: 350px;
+            max-height: 400px;
+            background: rgba(0, 0, 0, 0.9);
+            border: 2px solid #0ff;
+            border-radius: 15px;
+            padding: 20px;
+            backdrop-filter: blur(10px);
+            overflow-y: auto;
+            z-index: 1000;
+        }
+
+        .log-title {
+            color: #0ff;
+            font-size: 1.3rem;
+            font-weight: bold;
+            margin-bottom: 15px;
+            text-align: center;
+            text-shadow: 0 0 10px #0ff;
+        }
+
+        .log-stats {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 10px;
+            margin-bottom: 20px;
+            font-size: 12px;
+        }
+
+        .stat-item {
+            display: flex;
+            justify-content: space-between;
+        }
+
+        .stat-label {
+            color: #ccc;
+        }
+
+        .stat-value {
+            color: #00ff88;
+            font-weight: bold;
+        }
+
+        .collection-item {
+            margin: 8px 0;
+            padding: 10px;
+            background: rgba(0, 255, 255, 0.1);
+            border-left: 3px solid #666;
+            border-radius: 5px;
+            font-size: 13px;
+            transition: all 0.3s;
+        }
+
+        .collection-item.discovered {
+            border-left-color: #00ff88;
+            background: rgba(0, 255, 136, 0.2);
+            animation: itemDiscovered 1s ease-out;
+        }
+
+        @keyframes itemDiscovered {
+            0% {
+                transform: translateX(-20px);
+                opacity: 0;
+            }
+            50% {
+                transform: translateX(5px);
+                border-left-color: #fff;
+                box-shadow: 0 0 20px rgba(0, 255, 136, 0.5);
+            }
+            100% {
+                transform: translateX(0);
+                opacity: 1;
+            }
+        }
+
+        .item-icon {
+            display: inline-block;
+            margin-right: 8px;
+            font-size: 1.2rem;
+        }
+
+        .item-name {
+            color: #0ff;
+            font-weight: bold;
+        }
+
+        .item-description {
+            color: #ccc;
+            font-size: 11px;
+            margin-top: 5px;
+        }
+
+        .item-value {
+            color: #00ff88;
+            font-weight: bold;
+            float: right;
+        }
+
+        /* World sections to discover */
+        .world-section {
+            position: absolute;
+            width: 80px;
+            height: 80px;
+            border: 2px solid #333;
+            background: rgba(0, 0, 0, 0.5);
+            border-radius: 10px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 2rem;
+            opacity: 0.3;
+            transition: all 0.5s;
+        }
+
+        .world-section.discovered {
+            opacity: 1;
+            border-color: #00ff88;
+            background: rgba(0, 255, 136, 0.2);
+            box-shadow: 0 0 20px rgba(0, 255, 136, 0.4);
+        }
+
+        .world-section.being-explored {
+            animation: sectionPulse 1s ease-in-out infinite;
+        }
+
+        @keyframes sectionPulse {
+            0%, 100% { transform: scale(1); }
+            50% { transform: scale(1.1); border-color: #fff; }
+        }
+
+        /* AI Status Panel */
+        #ai-status {
+            position: fixed;
+            bottom: 20px;
+            left: 20px;
+            background: rgba(0, 0, 0, 0.9);
+            border: 2px solid #ff0080;
+            border-radius: 15px;
+            padding: 15px;
+            min-width: 250px;
+            z-index: 1000;
+        }
+
+        .ai-status-title {
+            color: #ff0080;
+            font-size: 1.1rem;
+            font-weight: bold;
+            margin-bottom: 10px;
+            text-align: center;
+        }
+
+        .ai-info {
+            margin: 5px 0;
+            font-size: 12px;
+        }
+
+        .ai-info-label {
+            color: #ccc;
+            display: inline-block;
+            width: 100px;
+        }
+
+        .ai-info-value {
+            color: #ff0080;
+            font-weight: bold;
+        }
+
+        .ai-thought {
+            margin-top: 10px;
+            padding: 8px;
+            background: rgba(255, 0, 128, 0.1);
+            border-radius: 5px;
+            font-style: italic;
+            color: #ff99cc;
+            font-size: 11px;
+        }
+
+        /* Controls */
+        #controls {
+            position: fixed;
+            bottom: 20px;
+            right: 20px;
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+            z-index: 1000;
+        }
+
+        .control-btn {
+            background: rgba(0, 255, 255, 0.2);
+            border: 2px solid #0ff;
+            color: #0ff;
+            padding: 10px 15px;
+            border-radius: 8px;
+            cursor: pointer;
+            transition: all 0.3s;
+            font-family: 'Orbitron', monospace;
+            font-size: 12px;
+        }
+
+        .control-btn:hover {
+            background: rgba(0, 255, 255, 0.4);
+            transform: translateY(-2px);
+            box-shadow: 0 0 15px rgba(0, 255, 255, 0.5);
+        }
+
+        /* Discovery Effect */
+        .discovery-effect {
+            position: absolute;
+            width: 100px;
+            height: 100px;
+            border: 2px solid #00ff88;
+            border-radius: 50%;
+            pointer-events: none;
+            animation: discoveryRipple 1s ease-out;
+        }
+
+        @keyframes discoveryRipple {
+            0% {
+                transform: scale(0);
+                opacity: 1;
+            }
+            100% {
+                transform: scale(2);
+                opacity: 0;
+            }
+        }
+
+        /* Scanning beam from minimap */
+        .scan-beam {
+            position: absolute;
+            width: 2px;
+            background: linear-gradient(0deg, rgba(0, 255, 255, 0) 0%, rgba(0, 255, 255, 1) 50%, rgba(0, 255, 255, 0) 100%);
+            transform-origin: bottom;
+            opacity: 0;
+            z-index: 800;
+        }
+
+        .scan-beam.active {
+            opacity: 1;
+            animation: beamSweep 0.5s ease-out;
+        }
+
+        @keyframes beamSweep {
+            0% { transform: scaleY(0); }
+            100% { transform: scaleY(1); }
+        }
+    </style>
+</head>
+<body>
+    <div id="world">
+        <!-- World sections will be dynamically placed -->
+    </div>
+    
+    <!-- Minimap Eye -->
+    <div id="minimap">
+        <div class="minimap-world" id="minimap-world"></div>
+        <div class="minimap-iris">
+            <div class="minimap-pupil"></div>
+        </div>
+    </div>
+    
+    <!-- Collection Log -->
+    <div id="collection-log">
+        <div class="log-title">📋 COLLECTION LOG</div>
+        <div class="log-stats">
+            <div class="stat-item">
+                <span class="stat-label">Discovered:</span>
+                <span class="stat-value" id="discovered-count">0/20</span>
+            </div>
+            <div class="stat-item">
+                <span class="stat-label">Completion:</span>
+                <span class="stat-value" id="completion-percent">0%</span>
+            </div>
+            <div class="stat-item">
+                <span class="stat-label">Total Value:</span>
+                <span class="stat-value" id="total-value">$0</span>
+            </div>
+            <div class="stat-item">
+                <span class="stat-label">AI Explorers:</span>
+                <span class="stat-value" id="ai-count">0</span>
+            </div>
+        </div>
+        <div id="collection-items"></div>
+    </div>
+    
+    <!-- AI Status -->
+    <div id="ai-status">
+        <div class="ai-status-title">🤖 AI EXPLORER STATUS</div>
+        <div class="ai-info">
+            <span class="ai-info-label">Name:</span>
+            <span class="ai-info-value" id="ai-name">-</span>
+        </div>
+        <div class="ai-info">
+            <span class="ai-info-label">State:</span>
+            <span class="ai-info-value" id="ai-state">-</span>
+        </div>
+        <div class="ai-info">
+            <span class="ai-info-label">Target:</span>
+            <span class="ai-info-value" id="ai-target">-</span>
+        </div>
+        <div class="ai-info">
+            <span class="ai-info-label">Discoveries:</span>
+            <span class="ai-info-value" id="ai-discoveries">0</span>
+        </div>
+        <div class="ai-thought" id="ai-thought">Initializing exploration protocols...</div>
+    </div>
+    
+    <!-- Controls -->
+    <div id="controls">
+        <button class="control-btn" onclick="spawnAI()">➕ Add AI Explorer</button>
+        <button class="control-btn" onclick="pauseAll()">⏸️ Pause/Resume</button>
+        <button class="control-btn" onclick="speedUp()">⏩ Speed Up</button>
+        <button class="control-btn" onclick="resetWorld()">🔄 Reset World</button>
+    </div>
+
+    <script>
+        class AutonomousExplorationSystem {
+            constructor() {
+                this.world = document.getElementById('world');
+                this.minimap = document.getElementById('minimap-world');
+                
+                this.aiExplorers = [];
+                this.worldSections = [];
+                this.collectionItems = [];
+                this.discoveredCount = 0;
+                this.totalValue = 0;
+                this.isPaused = false;
+                this.speedMultiplier = 1;
+                
+                this.init();
+            }
+            
+            init() {
+                this.createWorldSections();
+                this.createCollectionItems();
+                this.spawnInitialAI();
+                this.startGameLoop();
+                
+                console.log('🤖 Autonomous Exploration System initialized');
+            }
+            
+            createWorldSections() {
+                const sections = [
+                    { icon: '🏠', x: 100, y: 100, name: 'HollowTown Hub', value: 0 },
+                    { icon: '🛡️', x: 300, y: 150, name: 'Privacy Center', value: 100 },
+                    { icon: '📖', x: 500, y: 200, name: 'AI Storybook', value: 23 },
+                    { icon: '🎮', x: 700, y: 100, name: 'Game World', value: 31 },
+                    { icon: '🎭', x: 200, y: 300, name: 'Character Engine', value: 18 },
+                    { icon: '⚡', x: 450, y: 350, name: 'Swarm Orchestrator', value: 45 },
+                    { icon: '✍️', x: 650, y: 400, name: 'Content Creation', value: 67 },
+                    { icon: '🤖', x: 150, y: 500, name: 'AI Collaboration', value: 89 },
+                    { icon: '📊', x: 400, y: 500, name: 'Data Sovereignty', value: 52 },
+                    { icon: '💰', x: 600, y: 550, name: 'Earnings Calculator', value: 200 },
+                    { icon: '🔐', x: 800, y: 300, name: 'Security Vault', value: 150 },
+                    { icon: '🌐', x: 750, y: 500, name: 'Web Platform', value: 300 },
+                    { icon: '📱', x: 50, y: 400, name: 'Mobile App', value: 75 },
+                    { icon: '🎯', x: 350, y: 250, name: 'Target System', value: 40 },
+                    { icon: '🚀', x: 550, y: 300, name: 'Launch Pad', value: 500 },
+                    { icon: '💎', x: 250, y: 450, name: 'Premium Features', value: 250 },
+                    { icon: '🔮', x: 500, y: 450, name: 'Future Tech', value: 1000 },
+                    { icon: '🏆', x: 700, y: 250, name: 'Achievement Center', value: 300 },
+                    { icon: '📈', x: 100, y: 600, name: 'Analytics Hub', value: 180 },
+                    { icon: '🎪', x: 400, y: 600, name: 'Entertainment Zone', value: 120 }
+                ];
+                
+                sections.forEach((section, index) => {
+                    // Create world section
+                    const worldElement = document.createElement('div');
+                    worldElement.className = 'world-section';
+                    worldElement.style.left = section.x + 'px';
+                    worldElement.style.top = section.y + 'px';
+                    worldElement.textContent = section.icon;
+                    worldElement.id = `section-${index}`;
+                    this.world.appendChild(worldElement);
+                    
+                    // Create minimap representation
+                    const minimapElement = document.createElement('div');
+                    minimapElement.className = 'minimap-section';
+                    minimapElement.style.left = (section.x / window.innerWidth * 250) + 'px';
+                    minimapElement.style.top = (section.y / window.innerHeight * 250) + 'px';
+                    this.minimap.appendChild(minimapElement);
+                    
+                    this.worldSections.push({
+                        world: worldElement,
+                        minimap: minimapElement,
+                        data: section,
+                        discovered: false,
+                        beingExplored: false
+                    });
+                });
+            }
+            
+            createCollectionItems() {
+                this.worldSections.forEach((section, index) => {
+                    const item = {
+                        id: index,
+                        name: section.data.name,
+                        icon: section.data.icon,
+                        value: section.data.value,
+                        discovered: false,
+                        description: this.generateDescription(section.data)
+                    };
+                    
+                    this.collectionItems.push(item);
+                    this.renderCollectionItem(item);
+                });
+            }
+            
+            generateDescription(data) {
+                const descriptions = {
+                    'HollowTown Hub': 'Central command center for privacy-first economy',
+                    'Privacy Center': 'Zero data collection guarantee headquarters',
+                    'AI Storybook': 'Laser/voxel narrative generation system',
+                    'Game World': 'Autonomous AI character playground',
+                    'Character Engine': 'Smooth physics animation system',
+                    'Swarm Orchestrator': 'Lightning-coordinated multi-agent system',
+                    'Content Creation': 'Multi-format content generation tools',
+                    'AI Collaboration': 'Collaborative reasoning and decision making',
+                    'Data Sovereignty': 'Own and control your digital identity',
+                    'Earnings Calculator': 'Privacy-first earnings estimation',
+                    'Security Vault': 'Advanced cryptographic data protection',
+                    'Web Platform': 'Decentralized web infrastructure',
+                    'Mobile App': 'Cross-platform mobile application',
+                    'Target System': 'Precision goal tracking and achievement',
+                    'Launch Pad': 'Project deployment and scaling platform',
+                    'Premium Features': 'Advanced functionality and tools',
+                    'Future Tech': 'Next-generation AI capabilities',
+                    'Achievement Center': 'Progress tracking and rewards',
+                    'Analytics Hub': 'Real-time performance monitoring',
+                    'Entertainment Zone': 'Gamification and engagement features'
+                };
+                
+                return descriptions[data.name] || 'Mysterious discovery awaiting exploration';
+            }
+            
+            renderCollectionItem(item) {
+                const element = document.createElement('div');
+                element.className = 'collection-item';
+                element.id = `collection-${item.id}`;
+                
+                element.innerHTML = `
+                    <span class="item-icon">${item.icon}</span>
+                    <span class="item-name">${item.name}</span>
+                    ${item.value > 0 ? `<span class="item-value">$${item.value}</span>` : ''}
+                    <div class="item-description">${item.description}</div>
+                `;
+                
+                document.getElementById('collection-items').appendChild(element);
+            }
+            
+            spawnInitialAI() {
+                this.spawnAI();
+                
+                // Spawn additional AIs with delay
+                setTimeout(() => this.spawnAI(), 3000);
+                setTimeout(() => this.spawnAI(), 6000);
+            }
+            
+            spawnAI() {
+                const ai = new AIExplorer(this);
+                this.aiExplorers.push(ai);
+                this.updateAICount();
+                
+                console.log(`🤖 Spawned AI Explorer: ${ai.name}`);
+            }
+            
+            startGameLoop() {
+                setInterval(() => {
+                    if (!this.isPaused) {
+                        this.updateAI();
+                        this.updateUI();
+                    }
+                }, 100 / this.speedMultiplier);
+            }
+            
+            updateAI() {
+                this.aiExplorers.forEach(ai => {
+                    ai.update();
+                });
+            }
+            
+            discoverSection(sectionIndex, discovererAI) {
+                const section = this.worldSections[sectionIndex];
+                const item = this.collectionItems[sectionIndex];
+                
+                if (!section.discovered) {
+                    section.discovered = true;
+                    item.discovered = true;
+                    
+                    // Visual updates
+                    section.world.classList.add('discovered');
+                    section.minimap.classList.add('discovered');
+                    document.getElementById(`collection-${item.id}`).classList.add('discovered');
+                    
+                    // Discovery effect
+                    this.createDiscoveryEffect(section.world);
+                    
+                    // Scanning beam from minimap eye
+                    this.createScanningBeam(section.world);
+                    
+                    // Update stats
+                    this.discoveredCount++;
+                    this.totalValue += item.value;
+                    
+                    // Update AI stats
+                    discovererAI.discoveries++;
+                    
+                    console.log(`✨ Discovered: ${item.name} by ${discovererAI.name}`);
+                }
+            }
+            
+            createScanningBeam(targetElement) {
+                const minimap = document.getElementById('minimap');
+                const minimapRect = minimap.getBoundingClientRect();
+                const targetRect = targetElement.getBoundingClientRect();
+                
+                // Calculate beam from minimap center to target
+                const startX = minimapRect.left + minimapRect.width / 2;
+                const startY = minimapRect.top + minimapRect.height / 2;
+                const endX = targetRect.left + targetRect.width / 2;
+                const endY = targetRect.top + targetRect.height / 2;
+                
+                const deltaX = endX - startX;
+                const deltaY = endY - startY;
+                const distance = Math.sqrt(deltaX * deltaX + deltaY * deltaY);
+                const angle = Math.atan2(deltaY, deltaX) * (180 / Math.PI);
+                
+                // Create scanning beam element
+                const beam = document.createElement('div');
+                beam.className = 'scan-beam active';
+                beam.style.left = startX + 'px';
+                beam.style.top = startY + 'px';
+                beam.style.height = distance + 'px';
+                beam.style.transform = `rotate(${angle + 90}deg)`;
+                beam.style.transformOrigin = 'bottom center';
+                
+                document.body.appendChild(beam);
+                
+                // Remove beam after animation
+                setTimeout(() => {
+                    if (beam.parentNode) {
+                        beam.parentNode.removeChild(beam);
+                    }
+                }, 500);
+                
+                // Add visual feedback to minimap eye
+                const minimapIris = minimap.querySelector('.minimap-iris');
+                minimapIris.style.transform = 'scale(1.2)';
+                minimapIris.style.boxShadow = '0 0 20px #0ff';
+                
+                setTimeout(() => {
+                    minimapIris.style.transform = 'scale(1)';
+                    minimapIris.style.boxShadow = 'none';
+                }, 300);
+            }
+            
+            createDiscoveryEffect(element) {
+                const effect = document.createElement('div');
+                effect.className = 'discovery-effect';
+                effect.style.left = element.offsetLeft + element.offsetWidth / 2 - 50 + 'px';
+                effect.style.top = element.offsetTop + element.offsetHeight / 2 - 50 + 'px';
+                
+                this.world.appendChild(effect);
+                
+                setTimeout(() => {
+                    this.world.removeChild(effect);
+                }, 1000);
+            }
+            
+            updateUI() {
+                document.getElementById('discovered-count').textContent = `${this.discoveredCount}/${this.worldSections.length}`;
+                document.getElementById('completion-percent').textContent = `${Math.round((this.discoveredCount / this.worldSections.length) * 100)}%`;
+                document.getElementById('total-value').textContent = `$${this.totalValue.toLocaleString()}`;
+                
+                // Update AI status panel with active AI
+                if (this.aiExplorers.length > 0) {
+                    const activeAI = this.aiExplorers[0];
+                    document.getElementById('ai-name').textContent = activeAI.name;
+                    document.getElementById('ai-state').textContent = activeAI.state;
+                    document.getElementById('ai-target').textContent = activeAI.currentTarget || 'Exploring';
+                    document.getElementById('ai-discoveries').textContent = activeAI.discoveries;
+                    document.getElementById('ai-thought').textContent = activeAI.currentThought;
+                }
+            }
+            
+            updateAICount() {
+                document.getElementById('ai-count').textContent = this.aiExplorers.length;
+            }
+            
+            pauseAll() {
+                this.isPaused = !this.isPaused;
+                console.log(this.isPaused ? '⏸️ Paused' : '▶️ Resumed');
+            }
+            
+            speedUp() {
+                this.speedMultiplier = this.speedMultiplier === 1 ? 3 : this.speedMultiplier === 3 ? 5 : 1;
+                console.log(`⏩ Speed: ${this.speedMultiplier}x`);
+            }
+            
+            resetWorld() {
+                // Reset all discoveries
+                this.worldSections.forEach(section => {
+                    section.discovered = false;
+                    section.world.classList.remove('discovered');
+                    section.minimap.classList.remove('discovered');
+                });
+                
+                this.collectionItems.forEach(item => {
+                    item.discovered = false;
+                    document.getElementById(`collection-${item.id}`).classList.remove('discovered');
+                });
+                
+                // Reset stats
+                this.discoveredCount = 0;
+                this.totalValue = 0;
+                
+                // Reset AI
+                this.aiExplorers.forEach(ai => {
+                    ai.discoveries = 0;
+                    ai.reset();
+                });
+                
+                console.log('🔄 World reset');
+            }
+        }
+        
+        class AIExplorer {
+            constructor(system) {
+                this.system = system;
+                this.name = this.generateName();
+                this.personality = this.generatePersonality();
+                
+                this.x = Math.random() * (window.innerWidth - 100) + 50;
+                this.y = Math.random() * (window.innerHeight - 100) + 50;
+                this.targetX = this.x;
+                this.targetY = this.y;
+                
+                this.state = 'exploring';
+                this.currentTarget = null;
+                this.currentThought = 'Just spawned, looking around...';
+                this.discoveries = 0;
+                
+                this.speed = 2 + Math.random() * 3;
+                this.explorationRadius = 100 + Math.random() * 200;
+                this.thinkingTimer = 0;
+                this.moveTimer = 0;
+                
+                this.createElement();
+                this.chooseNewTarget();
+            }
+            
+            generateName() {
+                const names = [
+                    'Pixel', 'Nova', 'Echo', 'Spark', 'Luna', 'Cosmo', 'Byte', 'Zen',
+                    'Iris', 'Flux', 'Neon', 'Void', 'Sage', 'Axiom', 'Cipher', 'Quest'
+                ];
+                return names[Math.floor(Math.random() * names.length)];
+            }
+            
+            generatePersonality() {
+                const traits = [
+                    'curious', 'methodical', 'adventurous', 'cautious', 'analytical',
+                    'intuitive', 'persistent', 'creative', 'logical', 'spontaneous',
+                    'collaborative', 'competitive', 'independent', 'social'
+                ];
+                
+                return {
+                    primary: traits[Math.floor(Math.random() * traits.length)],
+                    explorationStyle: Math.random() > 0.5 ? 'systematic' : 'random',
+                    patience: Math.random() * 0.5 + 0.5,
+                    curiosity: Math.random() * 0.5 + 0.5,
+                    socialness: Math.random() * 0.5 + 0.5,
+                    competitiveness: Math.random()
+                };
+            }
+            
+            createElement() {
+                this.element = document.createElement('div');
+                this.element.className = 'ai-explorer';
+                this.element.style.left = this.x + 'px';
+                this.element.style.top = this.y + 'px';
+                this.element.title = `${this.name} (${this.personality.primary})`;
+                
+                this.system.world.appendChild(this.element);
+                
+                // Create minimap representation
+                this.minimapElement = document.createElement('div');
+                this.minimapElement.className = 'minimap-ai';
+                this.system.minimap.appendChild(this.minimapElement);
+            }
+            
+            update() {
+                this.move();
+                this.think();
+                this.explore();
+                this.updateVisuals();
+            }
+            
+            move() {
+                const dx = this.targetX - this.x;
+                const dy = this.targetY - this.y;
+                const distance = Math.sqrt(dx * dx + dy * dy);
+                
+                if (distance > 5) {
+                    // Enhanced pathfinding with obstacle avoidance
+                    const avoidanceVector = this.calculateObstacleAvoidance();
+                    
+                    let normalizedDx = dx / distance;
+                    let normalizedDy = dy / distance;
+                    
+                    // Apply obstacle avoidance
+                    normalizedDx += avoidanceVector.x * 0.5;
+                    normalizedDy += avoidanceVector.y * 0.5;
+                    
+                    // Normalize again after applying avoidance
+                    const magnitude = Math.sqrt(normalizedDx * normalizedDx + normalizedDy * normalizedDy);
+                    if (magnitude > 0) {
+                        normalizedDx /= magnitude;
+                        normalizedDy /= magnitude;
+                    }
+                    
+                    this.x += normalizedDx * this.speed;
+                    this.y += normalizedDy * this.speed;
+                    
+                    this.state = 'moving';
+                    this.element.classList.add('moving');
+                    
+                    // Create trail with personality-based frequency
+                    const trailChance = this.personality.primary === 'adventurous' ? 0.5 : 
+                                       this.personality.primary === 'cautious' ? 0.1 : 0.3;
+                    if (Math.random() < trailChance) {
+                        this.createTrail();
+                    }
+                } else {
+                    this.element.classList.remove('moving');
+                    this.chooseNewTarget();
+                }
+                
+                // Keep within bounds
+                this.x = Math.max(20, Math.min(window.innerWidth - 60, this.x));
+                this.y = Math.max(20, Math.min(window.innerHeight - 60, this.y));
+            }
+            
+            calculateObstacleAvoidance() {
+                let avoidanceX = 0;
+                let avoidanceY = 0;
+                const avoidanceRadius = 80;
+                
+                // Avoid other AI explorers
+                this.system.aiExplorers.forEach(otherAI => {
+                    if (otherAI !== this) {
+                        const dx = this.x - otherAI.x;
+                        const dy = this.y - otherAI.y;
+                        const distance = Math.sqrt(dx * dx + dy * dy);
+                        
+                        if (distance < avoidanceRadius && distance > 0) {
+                            const force = (avoidanceRadius - distance) / avoidanceRadius;
+                            avoidanceX += (dx / distance) * force;
+                            avoidanceY += (dy / distance) * force;
+                        }
+                    }
+                });
+                
+                // Avoid screen edges with stronger force
+                const edgeBuffer = 100;
+                if (this.x < edgeBuffer) {
+                    avoidanceX += (edgeBuffer - this.x) / edgeBuffer;
+                }
+                if (this.x > window.innerWidth - edgeBuffer) {
+                    avoidanceX -= (this.x - (window.innerWidth - edgeBuffer)) / edgeBuffer;
+                }
+                if (this.y < edgeBuffer) {
+                    avoidanceY += (edgeBuffer - this.y) / edgeBuffer;
+                }
+                if (this.y > window.innerHeight - edgeBuffer) {
+                    avoidanceY -= (this.y - (window.innerHeight - edgeBuffer)) / edgeBuffer;
+                }
+                
+                return { x: avoidanceX, y: avoidanceY };
+            }
+            
+            think() {
+                this.thinkingTimer++;
+                
+                if (this.thinkingTimer > 60) { // Think every ~6 seconds
+                    this.generateThought();
+                    this.thinkingTimer = 0;
+                    this.element.classList.add('thinking');
+                    
+                    setTimeout(() => {
+                        this.element.classList.remove('thinking');
+                    }, 2000);
+                }
+            }
+            
+            generateThought() {
+                const thoughts = {
+                    exploring: [
+                        'I wonder what\'s over there...',
+                        'Scanning for interesting discoveries',
+                        'This area looks promising',
+                        'Following my curiosity sensors',
+                        'Time to investigate something new'
+                    ],
+                    moving: [
+                        'Moving to investigate target',
+                        'Approaching point of interest',
+                        'Navigation systems engaged',
+                        'Almost at my destination',
+                        'Hope I find something cool'
+                    ],
+                    discovering: [
+                        'Fascinating! Let me analyze this',
+                        'Discovery protocols activated',
+                        'This is exactly what I was looking for',
+                        'Adding to collection database',
+                        'Another piece of the puzzle!'
+                    ],
+                    collaborating: [
+                        'Teamwork makes the dream work!',
+                        'Working together with my fellow AI',
+                        'Collaboration increases our success rate',
+                        'Sharing knowledge and resources',
+                        'Two minds are better than one'
+                    ],
+                    competing: [
+                        'I must reach that target first!',
+                        'Competition drives innovation',
+                        'Racing against other explorers',
+                        'Victory will be mine!',
+                        'Strategic positioning activated'
+                    ]
+                };
+                
+                const stateThoughts = thoughts[this.state] || thoughts.exploring;
+                this.currentThought = stateThoughts[Math.floor(Math.random() * stateThoughts.length)];
+            }
+            
+            chooseNewTarget() {
+                // Check for collaboration opportunities
+                if (this.personality.primary === 'collaborative' && Math.random() < 0.3) {
+                    const collaborationTarget = this.findCollaborationTarget();
+                    if (collaborationTarget) {
+                        this.targetX = collaborationTarget.x;
+                        this.targetY = collaborationTarget.y;
+                        this.currentTarget = `Collaborating with ${collaborationTarget.name}`;
+                        this.state = 'collaborating';
+                        return;
+                    }
+                }
+                
+                // Competition - avoid areas other AIs are exploring
+                if (this.personality.primary === 'competitive' && Math.random() < 0.4) {
+                    const competitiveTarget = this.findCompetitiveTarget();
+                    if (competitiveTarget) {
+                        this.targetX = competitiveTarget.x;
+                        this.targetY = competitiveTarget.y;
+                        this.currentTarget = competitiveTarget.name;
+                        this.state = 'competing';
+                        return;
+                    }
+                }
+                
+                if (this.personality.explorationStyle === 'systematic') {
+                    // Look for nearest undiscovered section
+                    const undiscovered = this.system.worldSections.filter(s => !s.discovered && !s.beingExplored);
+                    if (undiscovered.length > 0) {
+                        const nearest = undiscovered.reduce((closest, section) => {
+                            const dx = section.data.x - this.x;
+                            const dy = section.data.y - this.y;
+                            const distance = Math.sqrt(dx * dx + dy * dy);
+                            
+                            // Penalize sections that other AIs are heading toward
+                            const penalty = this.getCompetitionPenalty(section.data.x, section.data.y);
+                            
+                            return (distance + penalty) < closest.distance ? 
+                                { section, distance: distance + penalty } : closest;
+                        }, { distance: Infinity });
+                        
+                        this.targetX = nearest.section.data.x;
+                        this.targetY = nearest.section.data.y;
+                        this.currentTarget = nearest.section.data.name;
+                        this.state = 'exploring';
+                        return;
+                    }
+                }
+                
+                // Random exploration with personality influence
+                const angle = Math.random() * Math.PI * 2;
+                const baseDistance = this.explorationRadius;
+                
+                // Adjust exploration distance based on personality
+                let distance = baseDistance;
+                if (this.personality.primary === 'adventurous') {
+                    distance *= 1.5;
+                } else if (this.personality.primary === 'cautious') {
+                    distance *= 0.7;
+                }
+                
+                distance = Math.random() * distance;
+                
+                this.targetX = this.x + Math.cos(angle) * distance;
+                this.targetY = this.y + Math.sin(angle) * distance;
+                this.currentTarget = 'Random exploration';
+                this.state = 'exploring';
+                
+                // Keep target within bounds
+                this.targetX = Math.max(50, Math.min(window.innerWidth - 50, this.targetX));
+                this.targetY = Math.max(50, Math.min(window.innerHeight - 50, this.targetY));
+            }
+            
+            findCollaborationTarget() {
+                // Find nearby AI that could use help
+                const nearbyAIs = this.system.aiExplorers.filter(ai => {
+                    if (ai === this) return false;
+                    const dx = ai.x - this.x;
+                    const dy = ai.y - this.y;
+                    const distance = Math.sqrt(dx * dx + dy * dy);
+                    return distance < 200 && ai.state === 'exploring';
+                });
+                
+                if (nearbyAIs.length > 0) {
+                    const target = nearbyAIs[Math.floor(Math.random() * nearbyAIs.length)];
+                    return {
+                        x: target.targetX,
+                        y: target.targetY,
+                        name: target.name
+                    };
+                }
+                return null;
+            }
+            
+            findCompetitiveTarget() {
+                // Find high-value undiscovered sections that others might be heading to
+                const undiscovered = this.system.worldSections.filter(s => !s.discovered && s.data.value > 50);
+                
+                if (undiscovered.length > 0) {
+                    // Prioritize sections that others are also targeting
+                    const contested = undiscovered.filter(section => {
+                        return this.system.aiExplorers.some(ai => {
+                            if (ai === this) return false;
+                            const dx = section.data.x - ai.targetX;
+                            const dy = section.data.y - ai.targetY;
+                            return Math.sqrt(dx * dx + dy * dy) < 100;
+                        });
+                    });
+                    
+                    const target = contested.length > 0 ? contested[0] : undiscovered[0];
+                    return {
+                        x: target.data.x,
+                        y: target.data.y,
+                        name: target.data.name
+                    };
+                }
+                return null;
+            }
+            
+            getCompetitionPenalty(x, y) {
+                let penalty = 0;
+                
+                this.system.aiExplorers.forEach(ai => {
+                    if (ai === this) return;
+                    
+                    const dx = x - ai.targetX;
+                    const dy = y - ai.targetY;
+                    const distance = Math.sqrt(dx * dx + dy * dy);
+                    
+                    if (distance < 150) {
+                        penalty += (150 - distance) * 2; // Penalty for crowded areas
+                    }
+                });
+                
+                return penalty;
+            }
+            
+            explore() {
+                // Check for nearby sections to discover
+                this.system.worldSections.forEach((section, index) => {
+                    if (!section.discovered) {
+                        const dx = section.data.x + 40 - this.x;
+                        const dy = section.data.y + 40 - this.y;
+                        const distance = Math.sqrt(dx * dx + dy * dy);
+                        
+                        if (distance < 60) {
+                            section.world.classList.add('being-explored');
+                            
+                            if (distance < 30) {
+                                this.state = 'discovering';
+                                this.currentThought = 'Discovered something amazing!';
+                                this.system.discoverSection(index, this);
+                                
+                                setTimeout(() => {
+                                    section.world.classList.remove('being-explored');
+                                }, 1000);
+                            }
+                        }
+                    }
+                });
+            }
+            
+            createTrail() {
+                const trail = document.createElement('div');
+                trail.className = 'ai-trail';
+                trail.style.left = this.x + 20 + 'px';
+                trail.style.top = this.y + 20 + 'px';
+                
+                this.system.world.appendChild(trail);
+                
+                setTimeout(() => {
+                    if (trail.parentNode) {
+                        trail.parentNode.removeChild(trail);
+                    }
+                }, 3000);
+            }
+            
+            updateVisuals() {
+                this.element.style.left = this.x + 'px';
+                this.element.style.top = this.y + 'px';
+                
+                // Update minimap position
+                this.minimapElement.style.left = (this.x / window.innerWidth * 250) + 'px';
+                this.minimapElement.style.top = (this.y / window.innerHeight * 250) + 'px';
+            }
+            
+            reset() {
+                this.x = Math.random() * (window.innerWidth - 100) + 50;
+                this.y = Math.random() * (window.innerHeight - 100) + 50;
+                this.targetX = this.x;
+                this.targetY = this.y;
+                this.state = 'exploring';
+                this.currentThought = 'World reset, starting fresh exploration!';
+                this.chooseNewTarget();
+            }
+        }
+        
+        // Global functions for controls
+        let explorationSystem;
+        
+        function spawnAI() {
+            explorationSystem.spawnAI();
+        }
+        
+        function pauseAll() {
+            explorationSystem.pauseAll();
+        }
+        
+        function speedUp() {
+            explorationSystem.speedUp();
+        }
+        
+        function resetWorld() {
+            explorationSystem.resetWorld();
+        }
+        
+        // Initialize the system
+        window.addEventListener('load', () => {
+            explorationSystem = new AutonomousExplorationSystem();
+        });
+        
+        console.log('🤖 AI Autonomous Explorer ready!');
+        console.log('👁️ Watch the minimap as AI discovers the world!');
+    </script>
+</body>
+</html>

@@ -1,0 +1,814 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>HollowTown - Your Privacy-First Earnings Calculator</title>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Orbitron:wght@400;700;900&display=swap');
+        
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            background: #1a1a1a;
+            color: #f0f0f0;
+            font-family: 'Orbitron', monospace;
+            overflow: hidden;
+            cursor: none;
+        }
+
+        /* Film projector overlay */
+        #film-projector {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: 
+                radial-gradient(circle at 20% 20%, rgba(255,255,255,0.1) 1px, transparent 1px),
+                radial-gradient(circle at 80% 80%, rgba(255,255,255,0.05) 1px, transparent 1px),
+                linear-gradient(0deg, rgba(0,0,0,0.3) 0%, transparent 50%, rgba(0,0,0,0.3) 100%);
+            pointer-events: none;
+            z-index: 1000;
+        }
+
+        /* Film reel container */
+        #film-reel {
+            position: relative;
+            width: 100vw;
+            height: 100vh;
+            background: #000;
+            overflow: hidden;
+        }
+
+        /* Film frame */
+        .film-frame {
+            position: absolute;
+            width: 100%;
+            height: 100%;
+            background: #1a1a1a;
+            border: 20px solid #333;
+            border-image: repeating-linear-gradient(
+                90deg,
+                #333 0px,
+                #333 10px,
+                #222 10px,
+                #222 20px
+            ) 20;
+            opacity: 0;
+            transform: translateY(100%);
+            transition: all 0.1s ease-out;
+        }
+
+        .film-frame.active {
+            opacity: 1;
+            transform: translateY(0);
+        }
+
+        /* Frame content */
+        .frame-content {
+            padding: 60px;
+            height: 100%;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            text-align: center;
+            background: linear-gradient(45deg, #1a1a1a, #2a2a2a);
+        }
+
+        /* Device info display */
+        .device-id {
+            position: absolute;
+            top: 40px;
+            right: 40px;
+            font-size: 14px;
+            color: #888;
+            font-family: 'Courier New', monospace;
+        }
+
+        .device-hash {
+            color: #0f0;
+            font-weight: bold;
+        }
+
+        /* Title frames */
+        .title-frame h1 {
+            font-size: 4rem;
+            font-weight: 900;
+            color: #00ff88;
+            text-shadow: 0 0 20px #00ff88;
+            margin-bottom: 30px;
+            animation: titleGlow 2s ease-in-out infinite alternate;
+        }
+
+        .title-frame p {
+            font-size: 1.5rem;
+            color: #ccc;
+            margin: 20px 0;
+        }
+
+        @keyframes titleGlow {
+            0% { text-shadow: 0 0 20px #00ff88; }
+            100% { text-shadow: 0 0 40px #00ff88, 0 0 60px #00ff88; }
+        }
+
+        /* Earnings display */
+        .earnings-display {
+            width: 100%;
+            max-width: 800px;
+        }
+
+        .earnings-title {
+            font-size: 2.5rem;
+            color: #00ff88;
+            margin-bottom: 40px;
+            text-shadow: 0 0 20px #00ff88;
+        }
+
+        .earnings-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+            gap: 30px;
+            margin: 40px 0;
+        }
+
+        .earnings-card {
+            background: linear-gradient(135deg, #2a2a2a, #1a1a1a);
+            border: 2px solid #00ff88;
+            border-radius: 15px;
+            padding: 30px;
+            box-shadow: 0 0 30px rgba(0, 255, 136, 0.3);
+        }
+
+        .earnings-card h3 {
+            color: #00ff88;
+            font-size: 1.2rem;
+            margin-bottom: 15px;
+        }
+
+        .earnings-value {
+            font-size: 2.5rem;
+            font-weight: 900;
+            color: #fff;
+            margin: 10px 0;
+        }
+
+        .earnings-period {
+            color: #888;
+            font-size: 1rem;
+        }
+
+        /* Privacy guarantee */
+        .privacy-guarantee {
+            background: linear-gradient(45deg, #1a4a1a, #2a5a2a);
+            border: 3px solid #00ff88;
+            border-radius: 20px;
+            padding: 40px;
+            margin: 40px auto;
+            max-width: 600px;
+            text-align: center;
+        }
+
+        .privacy-guarantee h2 {
+            color: #00ff88;
+            font-size: 2rem;
+            margin-bottom: 20px;
+        }
+
+        .privacy-guarantee p {
+            font-size: 1.2rem;
+            color: #ccc;
+            line-height: 1.6;
+        }
+
+        /* App showcase */
+        .app-showcase {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 20px;
+            margin: 40px 0;
+        }
+
+        .app-item {
+            background: #2a2a2a;
+            border: 1px solid #00ff88;
+            border-radius: 10px;
+            padding: 20px;
+            text-align: center;
+            transition: all 0.3s;
+        }
+
+        .app-item:hover {
+            transform: scale(1.05);
+            box-shadow: 0 0 20px rgba(0, 255, 136, 0.5);
+        }
+
+        .app-icon {
+            font-size: 3rem;
+            margin-bottom: 15px;
+        }
+
+        .app-name {
+            color: #00ff88;
+            font-size: 1.2rem;
+            margin-bottom: 10px;
+        }
+
+        .app-value {
+            color: #fff;
+            font-size: 1.5rem;
+            font-weight: bold;
+        }
+
+        /* Data security visualization */
+        .security-viz {
+            position: relative;
+            width: 300px;
+            height: 300px;
+            margin: 40px auto;
+            border: 2px solid #00ff88;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            background: radial-gradient(circle, #1a4a1a, #0a2a0a);
+        }
+
+        .security-rings {
+            position: absolute;
+            width: 100%;
+            height: 100%;
+        }
+
+        .security-ring {
+            position: absolute;
+            border: 1px solid #00ff88;
+            border-radius: 50%;
+            animation: pulse 3s ease-in-out infinite;
+        }
+
+        .security-ring:nth-child(1) {
+            width: 80%;
+            height: 80%;
+            top: 10%;
+            left: 10%;
+            animation-delay: 0s;
+        }
+
+        .security-ring:nth-child(2) {
+            width: 60%;
+            height: 60%;
+            top: 20%;
+            left: 20%;
+            animation-delay: 1s;
+        }
+
+        .security-ring:nth-child(3) {
+            width: 40%;
+            height: 40%;
+            top: 30%;
+            left: 30%;
+            animation-delay: 2s;
+        }
+
+        @keyframes pulse {
+            0%, 100% { opacity: 0.3; transform: scale(1); }
+            50% { opacity: 1; transform: scale(1.1); }
+        }
+
+        .security-center {
+            color: #00ff88;
+            font-size: 1.5rem;
+            font-weight: bold;
+            z-index: 10;
+        }
+
+        /* Film grain effect */
+        .film-grain {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            opacity: 0.1;
+            background-image: 
+                radial-gradient(circle, #fff 1px, transparent 1px);
+            background-size: 3px 3px;
+            animation: grain 0.2s steps(10) infinite;
+        }
+
+        @keyframes grain {
+            0%, 100% { transform: translate(0, 0); }
+            10% { transform: translate(-1px, -1px); }
+            20% { transform: translate(1px, -1px); }
+            30% { transform: translate(-1px, 1px); }
+            40% { transform: translate(1px, 1px); }
+            50% { transform: translate(-1px, 0); }
+            60% { transform: translate(1px, 0); }
+            70% { transform: translate(0, -1px); }
+            80% { transform: translate(0, 1px); }
+            90% { transform: translate(-1px, -1px); }
+        }
+
+        /* Frame counter */
+        .frame-counter {
+            position: absolute;
+            bottom: 40px;
+            left: 40px;
+            font-family: 'Courier New', monospace;
+            color: #888;
+        }
+
+        /* Projector light */
+        .projector-light {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            width: 2px;
+            height: 2px;
+            background: #fff;
+            border-radius: 50%;
+            box-shadow: 0 0 100px 50px rgba(255, 255, 255, 0.1);
+            animation: flicker 0.1s infinite;
+        }
+
+        @keyframes flicker {
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0.8; }
+        }
+
+        /* Start button */
+        .start-button {
+            position: fixed;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            background: linear-gradient(45deg, #00ff88, #00cc66);
+            border: none;
+            border-radius: 50px;
+            padding: 20px 40px;
+            font-size: 1.5rem;
+            font-weight: bold;
+            color: #000;
+            cursor: pointer;
+            box-shadow: 0 0 40px rgba(0, 255, 136, 0.6);
+            transition: all 0.3s;
+            z-index: 2000;
+        }
+
+        .start-button:hover {
+            transform: translate(-50%, -50%) scale(1.1);
+            box-shadow: 0 0 60px rgba(0, 255, 136, 0.8);
+        }
+
+        .start-button.hidden {
+            display: none;
+        }
+    </style>
+</head>
+<body>
+    <div id="film-projector">
+        <div class="projector-light"></div>
+    </div>
+    
+    <button class="start-button" onclick="startFilmReel()">▶ START FILM REEL</button>
+    
+    <div id="film-reel">
+        <div class="film-grain"></div>
+        
+        <!-- Frame 1: Title -->        
+        <div class="film-frame title-frame">
+            <div class="device-id">
+                Device: <span class="device-hash" id="device-hash">CALCULATING...</span>
+            </div>
+            <div class="frame-content">
+                <h1>HOLLOWTOWN</h1>
+                <p>Your Privacy-First Digital Economy</p>
+                <p>See What You Could Earn Without Giving Up Your Data</p>
+            </div>
+            <div class="frame-counter">FRAME 001</div>
+        </div>
+        
+        <!-- Frame 2: Device Recognition -->
+        <div class="film-frame">
+            <div class="device-id">
+                Device: <span class="device-hash" id="device-hash-2">ANALYZING...</span>
+            </div>
+            <div class="frame-content">
+                <div class="earnings-display">
+                    <h2 class="earnings-title">Device Analysis Complete</h2>
+                    <div class="security-viz">
+                        <div class="security-rings">
+                            <div class="security-ring"></div>
+                            <div class="security-ring"></div>
+                            <div class="security-ring"></div>
+                        </div>
+                        <div class="security-center">🔐 SECURE</div>
+                    </div>
+                    <p style="font-size: 1.2rem; color: #ccc;">Your device has been securely identified without collecting personal data</p>
+                </div>
+            </div>
+            <div class="frame-counter">FRAME 002</div>
+        </div>
+        
+        <!-- Frame 3: Privacy Guarantee -->
+        <div class="film-frame">
+            <div class="device-id">
+                Device: <span class="device-hash" id="device-hash-3">PROTECTED</span>
+            </div>
+            <div class="frame-content">
+                <div class="privacy-guarantee">
+                    <h2>🛡️ ZERO DATA COLLECTION</h2>
+                    <p>We calculate your earnings potential using only:</p>
+                    <ul style="text-align: left; margin: 20px 0; color: #00ff88;">
+                        <li>✓ Anonymous device fingerprint</li>
+                        <li>✓ Public usage patterns</li>
+                        <li>✓ General demographic data</li>
+                        <li>✓ No personal information</li>
+                        <li>✓ No tracking cookies</li>
+                        <li>✓ No data storage</li>
+                    </ul>
+                    <p><strong>Everything calculated locally on your device!</strong></p>
+                </div>
+            </div>
+            <div class="frame-counter">FRAME 003</div>
+        </div>
+        
+        <!-- Frame 4: App Showcase -->
+        <div class="film-frame">
+            <div class="device-id">
+                Device: <span class="device-hash" id="device-hash-4">CALCULATING...</span>
+            </div>
+            <div class="frame-content">
+                <h2 class="earnings-title">Our Privacy-First Apps</h2>
+                <div class="app-showcase">
+                    <div class="app-item">
+                        <div class="app-icon">📖</div>
+                        <div class="app-name">AI Storybook</div>
+                        <div class="app-value" id="storybook-earnings">$0</div>
+                    </div>
+                    <div class="app-item">
+                        <div class="app-icon">🎮</div>
+                        <div class="app-name">AI Game World</div>
+                        <div class="app-value" id="game-earnings">$0</div>
+                    </div>
+                    <div class="app-item">
+                        <div class="app-icon">🎭</div>
+                        <div class="app-name">Character Engine</div>
+                        <div class="app-value" id="character-earnings">$0</div>
+                    </div>
+                    <div class="app-item">
+                        <div class="app-icon">⚡</div>
+                        <div class="app-name">Swarm Orchestrator</div>
+                        <div class="app-value" id="swarm-earnings">$0</div>
+                    </div>
+                </div>
+            </div>
+            <div class="frame-counter">FRAME 004</div>
+        </div>
+        
+        <!-- Frame 5: Monthly Earnings -->
+        <div class="film-frame">
+            <div class="device-id">
+                Device: <span class="device-hash" id="device-hash-5">OPTIMIZING...</span>
+            </div>
+            <div class="frame-content">
+                <div class="earnings-display">
+                    <h2 class="earnings-title">Monthly Earnings Potential</h2>
+                    <div class="earnings-grid">
+                        <div class="earnings-card">
+                            <h3>Content Creation</h3>
+                            <div class="earnings-value" id="content-monthly">$0</div>
+                            <div class="earnings-period">per month</div>
+                        </div>
+                        <div class="earnings-card">
+                            <h3>AI Collaboration</h3>
+                            <div class="earnings-value" id="ai-monthly">$0</div>
+                            <div class="earnings-period">per month</div>
+                        </div>
+                        <div class="earnings-card">
+                            <h3>Data Sovereignty</h3>
+                            <div class="earnings-value" id="data-monthly">$0</div>
+                            <div class="earnings-period">per month</div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            <div class="frame-counter">FRAME 005</div>
+        </div>
+        
+        <!-- Frame 6: Annual Potential -->
+        <div class="film-frame">
+            <div class="device-id">
+                Device: <span class="device-hash" id="device-hash-6">PROJECTING...</span>
+            </div>
+            <div class="frame-content">
+                <div class="earnings-display">
+                    <h2 class="earnings-title">Annual Earnings Projection</h2>
+                    <div class="earnings-grid">
+                        <div class="earnings-card">
+                            <h3>Total Annual Income</h3>
+                            <div class="earnings-value" id="total-annual">$0</div>
+                            <div class="earnings-period">per year</div>
+                        </div>
+                        <div class="earnings-card">
+                            <h3>Privacy Savings</h3>
+                            <div class="earnings-value" id="privacy-savings">$0</div>
+                            <div class="earnings-period">data not sold</div>
+                        </div>
+                        <div class="earnings-card">
+                            <h3>Total Value</h3>
+                            <div class="earnings-value" id="total-value">$0</div>
+                            <div class="earnings-period">earned + saved</div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            <div class="frame-counter">FRAME 006</div>
+        </div>
+        
+        <!-- Frame 7: Call to Action -->
+        <div class="film-frame">
+            <div class="device-id">
+                Device: <span class="device-hash" id="device-hash-7">READY</span>
+            </div>
+            <div class="frame-content">
+                <h1 style="color: #00ff88; margin-bottom: 40px;">Start Earning Today</h1>
+                <p style="font-size: 1.5rem; margin-bottom: 40px;">Join the privacy-first digital economy</p>
+                <div style="display: flex; gap: 30px; justify-content: center; flex-wrap: wrap;">
+                    <button class="control-btn" onclick="window.open('LASER-VOXEL-STORYBOOK-ENGINE.html', '_blank')">📖 Try Storybook</button>
+                    <button class="control-btn" onclick="window.open('AI-GAME-WORLD.html', '_blank')">🎮 Play AI World</button>
+                    <button class="control-btn" onclick="window.open('SWARM-ORCHESTRATION-VISUALIZER.html', '_blank')">⚡ See Swarms</button>
+                </div>
+            </div>
+            <div class="frame-counter">FRAME 007</div>
+        </div>
+    </div>
+    
+    <style>
+        .control-btn {
+            background: linear-gradient(45deg, #00ff88, #00cc66);
+            border: none;
+            border-radius: 25px;
+            padding: 15px 30px;
+            font-size: 1.2rem;
+            font-weight: bold;
+            color: #000;
+            cursor: pointer;
+            transition: all 0.3s;
+            box-shadow: 0 0 20px rgba(0, 255, 136, 0.4);
+        }
+        
+        .control-btn:hover {
+            transform: translateY(-3px);
+            box-shadow: 0 0 30px rgba(0, 255, 136, 0.6);
+        }
+    </style>
+
+    <script>
+        class HollowTownFilmReel {
+            constructor() {
+                this.frames = document.querySelectorAll('.film-frame');
+                this.currentFrame = 0;
+                this.isPlaying = false;
+                this.deviceId = this.generateDeviceId();
+                this.userEarnings = this.calculateEarnings();
+                
+                this.updateDeviceDisplay();
+            }
+            
+            generateDeviceId() {
+                // Generate a unique but anonymous device fingerprint
+                const canvas = document.createElement('canvas');
+                const ctx = canvas.getContext('2d');
+                ctx.textBaseline = 'top';
+                ctx.font = '14px Arial';
+                ctx.fillText('Device fingerprint', 2, 2);
+                
+                const fingerprint = [
+                    navigator.userAgent,
+                    navigator.language,
+                    screen.width + 'x' + screen.height,
+                    new Date().getTimezoneOffset(),
+                    canvas.toDataURL()
+                ].join('|');
+                
+                // Create a hash without storing any personal data
+                let hash = 0;
+                for (let i = 0; i < fingerprint.length; i++) {
+                    const char = fingerprint.charCodeAt(i);
+                    hash = ((hash << 5) - hash) + char;
+                    hash = hash & hash; // Convert to 32-bit integer
+                }
+                
+                return Math.abs(hash).toString(16).toUpperCase().substring(0, 8);
+            }
+            
+            calculateEarnings() {
+                // Calculate earnings based on anonymous device characteristics
+                const screenArea = screen.width * screen.height;
+                const timezone = new Date().getTimezoneOffset();
+                const userAgent = navigator.userAgent;
+                
+                // Base earnings on device capabilities (no personal data)
+                const deviceScore = (
+                    Math.log(screenArea) / 10 +
+                    (userAgent.includes('Mobile') ? 1.2 : 1.5) +
+                    (navigator.hardwareConcurrency || 4) / 2 +
+                    Math.abs(timezone) / 100
+                );
+                
+                return {
+                    storybook: Math.round(deviceScore * 12 + Math.random() * 20),
+                    game: Math.round(deviceScore * 15 + Math.random() * 25),
+                    character: Math.round(deviceScore * 8 + Math.random() * 15),
+                    swarm: Math.round(deviceScore * 20 + Math.random() * 30),
+                    contentMonthly: Math.round(deviceScore * 45 + Math.random() * 80),
+                    aiMonthly: Math.round(deviceScore * 60 + Math.random() * 120),
+                    dataMonthly: Math.round(deviceScore * 35 + Math.random() * 70),
+                    privacySavings: Math.round(deviceScore * 150 + Math.random() * 200)
+                };
+            }
+            
+            updateDeviceDisplay() {
+                // Update all device hash displays
+                document.querySelectorAll('[id^="device-hash"]').forEach(el => {
+                    el.textContent = this.deviceId;
+                });
+            }
+            
+            async startFilmReel() {
+                if (this.isPlaying) return;
+                
+                this.isPlaying = true;
+                document.querySelector('.start-button').classList.add('hidden');
+                
+                // Play each frame
+                for (let i = 0; i < this.frames.length; i++) {
+                    await this.showFrame(i);
+                    await this.delay(3000); // Show each frame for 3 seconds
+                }
+                
+                // Loop back to start
+                this.isPlaying = false;
+                this.currentFrame = 0;
+                this.hideAllFrames();
+                document.querySelector('.start-button').classList.remove('hidden');
+            }
+            
+            async showFrame(index) {
+                // Hide all frames
+                this.hideAllFrames();
+                
+                // Show current frame
+                this.frames[index].classList.add('active');
+                this.currentFrame = index;
+                
+                // Update earnings display for specific frames
+                if (index === 3) {
+                    this.animateAppEarnings();
+                } else if (index === 4) {
+                    this.animateMonthlyEarnings();
+                } else if (index === 5) {
+                    this.animateAnnualEarnings();
+                }
+                
+                // Film advance sound effect (visual)
+                this.createFilmAdvanceEffect();
+            }
+            
+            hideAllFrames() {
+                this.frames.forEach(frame => {
+                    frame.classList.remove('active');
+                });
+            }
+            
+            animateAppEarnings() {
+                const elements = {
+                    'storybook-earnings': this.userEarnings.storybook,
+                    'game-earnings': this.userEarnings.game,
+                    'character-earnings': this.userEarnings.character,
+                    'swarm-earnings': this.userEarnings.swarm
+                };
+                
+                Object.entries(elements).forEach(([id, target], i) => {
+                    setTimeout(() => {
+                        this.countUp(id, target, '$');
+                    }, i * 200);
+                });
+            }
+            
+            animateMonthlyEarnings() {
+                const elements = {
+                    'content-monthly': this.userEarnings.contentMonthly,
+                    'ai-monthly': this.userEarnings.aiMonthly,
+                    'data-monthly': this.userEarnings.dataMonthly
+                };
+                
+                Object.entries(elements).forEach(([id, target], i) => {
+                    setTimeout(() => {
+                        this.countUp(id, target, '$');
+                    }, i * 300);
+                });
+            }
+            
+            animateAnnualEarnings() {
+                const totalAnnual = (
+                    this.userEarnings.contentMonthly +
+                    this.userEarnings.aiMonthly +
+                    this.userEarnings.dataMonthly
+                ) * 12;
+                
+                const totalValue = totalAnnual + this.userEarnings.privacySavings;
+                
+                setTimeout(() => this.countUp('total-annual', totalAnnual, '$'), 0);
+                setTimeout(() => this.countUp('privacy-savings', this.userEarnings.privacySavings, '$'), 500);
+                setTimeout(() => this.countUp('total-value', totalValue, '$'), 1000);
+            }
+            
+            countUp(elementId, target, prefix = '') {
+                const element = document.getElementById(elementId);
+                if (!element) return;
+                
+                let current = 0;
+                const increment = target / 50;
+                const duration = 1000;
+                const stepTime = duration / 50;
+                
+                const timer = setInterval(() => {
+                    current += increment;
+                    if (current >= target) {
+                        current = target;
+                        clearInterval(timer);
+                    }
+                    
+                    element.textContent = prefix + Math.round(current).toLocaleString();
+                }, stepTime);
+            }
+            
+            createFilmAdvanceEffect() {
+                // Create visual film advance effect
+                const effect = document.createElement('div');
+                effect.style.cssText = `
+                    position: fixed;
+                    top: 0;
+                    left: 0;
+                    width: 100%;
+                    height: 100%;
+                    background: rgba(255, 255, 255, 0.1);
+                    pointer-events: none;
+                    z-index: 1500;
+                    animation: filmFlash 0.1s ease-out;
+                `;
+                
+                const style = document.createElement('style');
+                style.textContent = `
+                    @keyframes filmFlash {
+                        0% { opacity: 1; }
+                        100% { opacity: 0; }
+                    }
+                `;
+                
+                document.head.appendChild(style);
+                document.body.appendChild(effect);
+                
+                setTimeout(() => {
+                    document.body.removeChild(effect);
+                    document.head.removeChild(style);
+                }, 100);
+            }
+            
+            delay(ms) {
+                return new Promise(resolve => setTimeout(resolve, ms));
+            }
+        }
+        
+        // Initialize film reel
+        const filmReel = new HollowTownFilmReel();
+        
+        // Global function for start button
+        function startFilmReel() {
+            filmReel.startFilmReel();
+        }
+        
+        // Keyboard controls
+        document.addEventListener('keydown', (e) => {
+            if (e.code === 'Space') {
+                e.preventDefault();
+                if (!filmReel.isPlaying) {
+                    startFilmReel();
+                }
+            }
+        });
+        
+        console.log('🎬 HollowTown Film Reel initialized');
+        console.log('📱 Device ID:', filmReel.deviceId);
+        console.log('💰 Earnings calculated locally - no data collected!');
+    </script>
+</body>
+</html>

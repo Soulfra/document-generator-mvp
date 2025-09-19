@@ -1,0 +1,459 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>System Map - 1,156 Files Visualized</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body { 
+            font-family: monospace;
+            background: #000;
+            color: #0f0;
+            overflow: hidden;
+        }
+        
+        #canvas {
+            position: absolute;
+            top: 0;
+            left: 0;
+            background: radial-gradient(circle at center, #0a0a0a 0%, #000 100%);
+        }
+        
+        .info-panel {
+            position: fixed;
+            top: 20px;
+            left: 20px;
+            background: rgba(0,0,0,0.9);
+            border: 2px solid #0f0;
+            padding: 20px;
+            border-radius: 10px;
+            max-width: 300px;
+            z-index: 100;
+        }
+        
+        .controls {
+            position: fixed;
+            bottom: 20px;
+            left: 50%;
+            transform: translateX(-50%);
+            background: rgba(0,0,0,0.9);
+            border: 2px solid #0f0;
+            padding: 10px 20px;
+            border-radius: 20px;
+            z-index: 100;
+        }
+        
+        button {
+            background: #0f0;
+            color: #000;
+            border: none;
+            padding: 5px 15px;
+            margin: 0 5px;
+            cursor: pointer;
+            font-weight: bold;
+            border-radius: 5px;
+        }
+        
+        .legend {
+            position: fixed;
+            top: 20px;
+            right: 20px;
+            background: rgba(0,0,0,0.9);
+            border: 2px solid #0f0;
+            padding: 15px;
+            border-radius: 10px;
+            z-index: 100;
+        }
+        
+        .legend-item {
+            display: flex;
+            align-items: center;
+            margin: 5px 0;
+        }
+        
+        .legend-color {
+            width: 20px;
+            height: 20px;
+            margin-right: 10px;
+            border-radius: 50%;
+        }
+        
+        #tooltip {
+            position: absolute;
+            background: rgba(0,255,0,0.1);
+            border: 1px solid #0f0;
+            padding: 10px;
+            border-radius: 5px;
+            display: none;
+            z-index: 200;
+            pointer-events: none;
+        }
+    </style>
+</head>
+<body>
+    <canvas id="canvas"></canvas>
+    
+    <div class="info-panel">
+        <h2>🗺️ SYSTEM MAP</h2>
+        <p style="margin: 10px 0;">Visualizing 1,156 JavaScript Files</p>
+        <div id="stats">
+            <div>Total Nodes: <span id="nodeCount">0</span></div>
+            <div>Active Connections: <span id="connectionCount">0</span></div>
+            <div>Clusters: <span id="clusterCount">0</span></div>
+        </div>
+    </div>
+    
+    <div class="legend">
+        <h3>Categories</h3>
+        <div class="legend-item">
+            <div class="legend-color" style="background: #ff0000;"></div>
+            <span>Story/Document</span>
+        </div>
+        <div class="legend-item">
+            <div class="legend-color" style="background: #00ff00;"></div>
+            <span>AI Processing</span>
+        </div>
+        <div class="legend-item">
+            <div class="legend-color" style="background: #0080ff;"></div>
+            <span>MVP Generation</span>
+        </div>
+        <div class="legend-item">
+            <div class="legend-color" style="background: #ff00ff;"></div>
+            <span>Agent Systems</span>
+        </div>
+        <div class="legend-item">
+            <div class="legend-color" style="background: #ffff00;"></div>
+            <span>Platform/Auth</span>
+        </div>
+        <div class="legend-item">
+            <div class="legend-color" style="background: #00ffff;"></div>
+            <span>Gaming/3D</span>
+        </div>
+        <div class="legend-item">
+            <div class="legend-color" style="background: #ff8000;"></div>
+            <span>Blockchain</span>
+        </div>
+    </div>
+    
+    <div class="controls">
+        <button onclick="toggleAnimation()">Pause/Play</button>
+        <button onclick="showPipeline()">Show Pipeline</button>
+        <button onclick="showAll()">Show All</button>
+        <button onclick="zoomIn()">Zoom In</button>
+        <button onclick="zoomOut()">Zoom Out</button>
+    </div>
+    
+    <div id="tooltip"></div>
+    
+    <script>
+        const canvas = document.getElementById('canvas');
+        const ctx = canvas.getContext('2d');
+        const tooltip = document.getElementById('tooltip');
+        
+        canvas.width = window.innerWidth;
+        canvas.height = window.innerHeight;
+        
+        // System categories with real file counts
+        const categories = {
+            story: { color: '#ff0000', files: 156, core: ['simple-test.js', 'story-test.js', 'live-demo.js'] },
+            ai: { color: '#00ff00', files: 234, core: ['platform-os.js', 'ai-economy-runtime.js', 'MCP-BRAIN-REASONING-ENGINE.js'] },
+            mvp: { color: '#0080ff', files: 189, core: ['DOCUMENT-MONSTER-GENERATOR.js', 'app-in-app.js'] },
+            agents: { color: '#ff00ff', files: 178, core: ['AGENT-SWARM-ACCOUNTS-SYSTEM.js', 'agent-clan-system.js'] },
+            platform: { color: '#ffff00', files: 167, core: ['auth-backend.js', 'stripe-live-dashboard.html'] },
+            gaming: { color: '#00ffff', files: 145, core: ['3d-game-server.js', 'AI-GAME-WORLD.html'] },
+            blockchain: { color: '#ff8000', files: 87, core: ['AGENT-BLOCKCHAIN.js', 'bitcoin-blamechain-analyzer.js'] }
+        };
+        
+        // Node class
+        class Node {
+            constructor(x, y, category, name, isCore = false) {
+                this.x = x;
+                this.y = y;
+                this.vx = (Math.random() - 0.5) * 0.5;
+                this.vy = (Math.random() - 0.5) * 0.5;
+                this.category = category;
+                this.name = name;
+                this.isCore = isCore;
+                this.radius = isCore ? 8 : 3;
+                this.connections = [];
+                this.pulsePhase = Math.random() * Math.PI * 2;
+            }
+            
+            update() {
+                // Gravitate towards category center
+                const centerX = canvas.width / 2 + this.categoryOffset.x;
+                const centerY = canvas.height / 2 + this.categoryOffset.y;
+                
+                const dx = centerX - this.x;
+                const dy = centerY - this.y;
+                const dist = Math.sqrt(dx * dx + dy * dy);
+                
+                if (dist > 100) {
+                    this.vx += dx * 0.0001;
+                    this.vy += dy * 0.0001;
+                }
+                
+                // Update position
+                this.x += this.vx;
+                this.y += this.vy;
+                
+                // Damping
+                this.vx *= 0.98;
+                this.vy *= 0.98;
+                
+                // Bounds
+                if (this.x < 0 || this.x > canvas.width) this.vx *= -1;
+                if (this.y < 0 || this.y > canvas.height) this.vy *= -1;
+                
+                this.pulsePhase += 0.02;
+            }
+            
+            draw() {
+                const pulse = this.isCore ? Math.sin(this.pulsePhase) * 2 : 0;
+                
+                ctx.beginPath();
+                ctx.arc(this.x, this.y, this.radius + pulse, 0, Math.PI * 2);
+                ctx.fillStyle = categories[this.category].color;
+                ctx.fill();
+                
+                if (this.isCore) {
+                    ctx.strokeStyle = categories[this.category].color;
+                    ctx.lineWidth = 2;
+                    ctx.stroke();
+                }
+            }
+        }
+        
+        // Create nodes
+        const nodes = [];
+        let animating = true;
+        
+        // Category offsets for clustering
+        const angleStep = (Math.PI * 2) / Object.keys(categories).length;
+        let angle = 0;
+        
+        Object.entries(categories).forEach(([catName, catData], index) => {
+            const offsetX = Math.cos(angle) * 300;
+            const offsetY = Math.sin(angle) * 300;
+            
+            // Create core nodes
+            catData.core.forEach((fileName, i) => {
+                const node = new Node(
+                    canvas.width / 2 + offsetX + (Math.random() - 0.5) * 100,
+                    canvas.height / 2 + offsetY + (Math.random() - 0.5) * 100,
+                    catName,
+                    fileName,
+                    true
+                );
+                node.categoryOffset = { x: offsetX, y: offsetY };
+                nodes.push(node);
+            });
+            
+            // Create regular nodes
+            const regularCount = catData.files - catData.core.length;
+            for (let i = 0; i < regularCount; i++) {
+                const node = new Node(
+                    canvas.width / 2 + offsetX + (Math.random() - 0.5) * 200,
+                    canvas.height / 2 + offsetY + (Math.random() - 0.5) * 200,
+                    catName,
+                    `${catName}-file-${i}.js`,
+                    false
+                );
+                node.categoryOffset = { x: offsetX, y: offsetY };
+                nodes.push(node);
+            }
+            
+            angle += angleStep;
+        });
+        
+        // Create connections
+        const connections = [];
+        
+        // Pipeline connections
+        const storyNodes = nodes.filter(n => n.category === 'story' && n.isCore);
+        const aiNodes = nodes.filter(n => n.category === 'ai' && n.isCore);
+        const mvpNodes = nodes.filter(n => n.category === 'mvp' && n.isCore);
+        
+        storyNodes.forEach(sNode => {
+            aiNodes.forEach(aNode => {
+                connections.push({ from: sNode, to: aNode, type: 'pipeline' });
+            });
+        });
+        
+        aiNodes.forEach(aNode => {
+            mvpNodes.forEach(mNode => {
+                connections.push({ from: aNode, to: mNode, type: 'pipeline' });
+            });
+        });
+        
+        // Random inter-category connections
+        for (let i = 0; i < 500; i++) {
+            const node1 = nodes[Math.floor(Math.random() * nodes.length)];
+            const node2 = nodes[Math.floor(Math.random() * nodes.length)];
+            
+            if (node1 !== node2 && node1.category !== node2.category) {
+                connections.push({ from: node1, to: node2, type: 'data' });
+            }
+        }
+        
+        // Animation loop
+        function animate() {
+            ctx.fillStyle = 'rgba(0, 0, 0, 0.05)';
+            ctx.fillRect(0, 0, canvas.width, canvas.height);
+            
+            // Draw connections
+            connections.forEach(conn => {
+                ctx.beginPath();
+                ctx.moveTo(conn.from.x, conn.from.y);
+                ctx.lineTo(conn.to.x, conn.to.y);
+                
+                if (conn.type === 'pipeline') {
+                    ctx.strokeStyle = 'rgba(0, 255, 0, 0.8)';
+                    ctx.lineWidth = 2;
+                } else {
+                    ctx.strokeStyle = 'rgba(0, 255, 0, 0.1)';
+                    ctx.lineWidth = 0.5;
+                }
+                
+                ctx.stroke();
+            });
+            
+            // Update and draw nodes
+            if (animating) {
+                nodes.forEach(node => node.update());
+            }
+            
+            nodes.forEach(node => node.draw());
+            
+            // Update stats
+            document.getElementById('nodeCount').textContent = nodes.length;
+            document.getElementById('connectionCount').textContent = connections.length;
+            document.getElementById('clusterCount').textContent = Object.keys(categories).length;
+            
+            requestAnimationFrame(animate);
+        }
+        
+        // Mouse interaction
+        canvas.addEventListener('mousemove', (e) => {
+            const rect = canvas.getBoundingClientRect();
+            const x = e.clientX - rect.left;
+            const y = e.clientY - rect.top;
+            
+            let hoveredNode = null;
+            
+            for (const node of nodes) {
+                const dx = x - node.x;
+                const dy = y - node.y;
+                const dist = Math.sqrt(dx * dx + dy * dy);
+                
+                if (dist < node.radius + 5) {
+                    hoveredNode = node;
+                    break;
+                }
+            }
+            
+            if (hoveredNode) {
+                tooltip.style.display = 'block';
+                tooltip.style.left = e.clientX + 10 + 'px';
+                tooltip.style.top = e.clientY + 10 + 'px';
+                tooltip.innerHTML = `
+                    <strong>${hoveredNode.name}</strong><br>
+                    Category: ${hoveredNode.category}<br>
+                    Type: ${hoveredNode.isCore ? 'Core Service' : 'Supporting File'}
+                `;
+            } else {
+                tooltip.style.display = 'none';
+            }
+        });
+        
+        // Controls
+        function toggleAnimation() {
+            animating = !animating;
+        }
+        
+        function showPipeline() {
+            // Highlight only pipeline connections
+            connections.forEach(conn => {
+                conn.highlighted = conn.type === 'pipeline';
+            });
+        }
+        
+        function showAll() {
+            connections.forEach(conn => {
+                conn.highlighted = false;
+            });
+        }
+        
+        let zoom = 1;
+        function zoomIn() {
+            zoom *= 1.2;
+            ctx.scale(1.2, 1.2);
+        }
+        
+        function zoomOut() {
+            zoom /= 1.2;
+            ctx.scale(0.8, 0.8);
+        }
+        
+        // Window resize
+        window.addEventListener('resize', () => {
+            canvas.width = window.innerWidth;
+            canvas.height = window.innerHeight;
+        });
+        
+        // Start animation
+        animate();
+        
+        // Create data flow particles
+        class Particle {
+            constructor(connection) {
+                this.connection = connection;
+                this.progress = 0;
+                this.speed = 0.005 + Math.random() * 0.01;
+            }
+            
+            update() {
+                this.progress += this.speed;
+                if (this.progress > 1) {
+                    this.progress = 0;
+                }
+            }
+            
+            draw() {
+                const x = this.connection.from.x + (this.connection.to.x - this.connection.from.x) * this.progress;
+                const y = this.connection.from.y + (this.connection.to.y - this.connection.from.y) * this.progress;
+                
+                ctx.beginPath();
+                ctx.arc(x, y, 2, 0, Math.PI * 2);
+                ctx.fillStyle = '#fff';
+                ctx.fill();
+            }
+        }
+        
+        // Add particles to pipeline connections
+        const particles = [];
+        connections.filter(c => c.type === 'pipeline').forEach(conn => {
+            for (let i = 0; i < 3; i++) {
+                const particle = new Particle(conn);
+                particle.progress = i * 0.33;
+                particles.push(particle);
+            }
+        });
+        
+        // Update animation loop to include particles
+        const originalAnimate = animate;
+        function animateWithParticles() {
+            originalAnimate();
+            
+            particles.forEach(p => {
+                p.update();
+                p.draw();
+            });
+            
+            requestAnimationFrame(animateWithParticles);
+        }
+        
+        // Replace animation
+        animate = animateWithParticles;
+    </script>
+</body>
+</html>

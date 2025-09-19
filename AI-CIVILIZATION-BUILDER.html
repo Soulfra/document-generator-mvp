@@ -1,0 +1,1074 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>AI Civilization Builder - Block by Block Construction</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Courier New', monospace;
+            background: linear-gradient(135deg, #1a472a 0%, #2d5016 50%, #0f2917 100%);
+            overflow: hidden;
+            cursor: url('data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNkYPhfDwAChwGA60e6kgAAAABJRU5ErkJggg=='), auto;
+        }
+
+        #civilizationWorld {
+            width: 100vw;
+            height: 100vh;
+            position: relative;
+            background: 
+                radial-gradient(circle at 25% 25%, rgba(34, 139, 34, 0.3) 0%, transparent 50%),
+                radial-gradient(circle at 75% 75%, rgba(139, 69, 19, 0.3) 0%, transparent 50%),
+                linear-gradient(45deg, #2F4F4F 0%, #556B2F 50%, #8FBC8F 100%);
+            overflow: hidden;
+        }
+
+        /* Construction Grid */
+        .construction-grid {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background-image: 
+                linear-gradient(rgba(255,255,255,0.1) 1px, transparent 1px),
+                linear-gradient(90deg, rgba(255,255,255,0.1) 1px, transparent 1px);
+            background-size: 20px 20px;
+            z-index: 1;
+            opacity: 0.3;
+        }
+
+        /* AI Civilization Builders */
+        .ai-builder {
+            position: absolute;
+            width: 48px;
+            height: 48px;
+            border-radius: 50%;
+            border: 3px solid #FFD700;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 24px;
+            cursor: pointer;
+            z-index: 20;
+            transition: all 0.3s ease;
+            box-shadow: 0 0 15px rgba(255, 215, 0, 0.5);
+            animation: pulse 2s infinite;
+        }
+
+        @keyframes pulse {
+            0%, 100% { transform: scale(1); box-shadow: 0 0 15px rgba(255, 215, 0, 0.5); }
+            50% { transform: scale(1.1); box-shadow: 0 0 25px rgba(255, 215, 0, 0.8); }
+        }
+
+        .ai-builder:hover {
+            transform: scale(1.2);
+            box-shadow: 0 0 30px rgba(255, 215, 0, 1);
+        }
+
+        .ai-builder.merchant { 
+            background: radial-gradient(circle, #FFD700, #DAA520);
+            left: 150px; 
+            top: 200px; 
+        }
+        
+        .ai-builder.architect { 
+            background: radial-gradient(circle, #4682B4, #2F4F4F);
+            left: 300px; 
+            top: 150px; 
+        }
+        
+        .ai-builder.engineer { 
+            background: radial-gradient(circle, #32CD32, #228B22);
+            left: 450px; 
+            top: 250px; 
+        }
+        
+        .ai-builder.strategist { 
+            background: radial-gradient(circle, #FF6347, #CD5C5C);
+            left: 600px; 
+            top: 180px; 
+        }
+
+        /* Construction Blocks */
+        .construction-block {
+            position: absolute;
+            width: 20px;
+            height: 20px;
+            z-index: 10;
+            transition: all 0.5s cubic-bezier(0.68, -0.55, 0.265, 1.55);
+            animation: blockPlace 0.8s ease-out;
+        }
+
+        @keyframes blockPlace {
+            0% {
+                transform: translateY(-50px) scale(0);
+                opacity: 0;
+            }
+            50% {
+                transform: translateY(-10px) scale(1.2);
+                opacity: 0.7;
+            }
+            100% {
+                transform: translateY(0) scale(1);
+                opacity: 1;
+            }
+        }
+
+        /* Block Types */
+        .block-foundation { 
+            background: linear-gradient(45deg, #8B4513, #A0522D);
+            border: 1px solid #654321;
+        }
+        
+        .block-stone { 
+            background: linear-gradient(45deg, #708090, #2F4F4F);
+            border: 1px solid #191970;
+        }
+        
+        .block-wood { 
+            background: linear-gradient(45deg, #DEB887, #D2691E);
+            border: 1px solid #8B4513;
+        }
+        
+        .block-metal { 
+            background: linear-gradient(45deg, #C0C0C0, #A9A9A9);
+            border: 1px solid #696969;
+        }
+        
+        .block-crystal { 
+            background: linear-gradient(45deg, #E6E6FA, #9370DB);
+            border: 1px solid #4B0082;
+            box-shadow: 0 0 10px rgba(147, 112, 219, 0.5);
+        }
+        
+        .block-gold { 
+            background: linear-gradient(45deg, #FFD700, #FFA500);
+            border: 1px solid #DAA520;
+            box-shadow: 0 0 8px rgba(255, 215, 0, 0.4);
+        }
+
+        /* AI Thought Bubbles */
+        .thought-bubble {
+            position: absolute;
+            background: rgba(255, 255, 255, 0.95);
+            border: 2px solid #4682B4;
+            border-radius: 20px;
+            padding: 10px 15px;
+            max-width: 250px;
+            font-size: 11px;
+            color: #2F4F4F;
+            z-index: 25;
+            animation: thoughtAppear 0.5s ease;
+            box-shadow: 0 5px 15px rgba(0,0,0,0.3);
+        }
+
+        .thought-bubble:after {
+            content: '';
+            position: absolute;
+            bottom: -12px;
+            left: 30px;
+            width: 0;
+            height: 0;
+            border-left: 12px solid transparent;
+            border-right: 12px solid transparent;
+            border-top: 12px solid #4682B4;
+        }
+
+        @keyframes thoughtAppear {
+            from {
+                opacity: 0;
+                transform: translateY(20px) scale(0.8);
+            }
+            to {
+                opacity: 1;
+                transform: translateY(0) scale(1);
+            }
+        }
+
+        /* Construction Lines */
+        .construction-line {
+            position: absolute;
+            height: 2px;
+            background: linear-gradient(90deg, 
+                transparent 0%, 
+                #FFD700 20%, 
+                #FFA500 50%, 
+                #FFD700 80%, 
+                transparent 100%);
+            z-index: 15;
+            animation: constructionFlow 3s linear infinite;
+            opacity: 0.8;
+        }
+
+        @keyframes constructionFlow {
+            0% { 
+                box-shadow: 0 0 5px rgba(255, 215, 0, 0.3);
+                transform: scaleX(0);
+            }
+            50% { 
+                box-shadow: 0 0 15px rgba(255, 215, 0, 0.8);
+                transform: scaleX(1);
+            }
+            100% { 
+                box-shadow: 0 0 5px rgba(255, 215, 0, 0.3);
+                transform: scaleX(0);
+            }
+        }
+
+        /* Building Structures */
+        .structure {
+            position: absolute;
+            z-index: 12;
+            opacity: 0;
+            animation: structureGrow 2s ease-in-out forwards;
+        }
+
+        @keyframes structureGrow {
+            0% {
+                opacity: 0;
+                transform: scale(0) rotate(180deg);
+            }
+            50% {
+                opacity: 0.7;
+                transform: scale(1.2) rotate(90deg);
+            }
+            100% {
+                opacity: 1;
+                transform: scale(1) rotate(0deg);
+            }
+        }
+
+        /* Control Panel */
+        .control-panel {
+            position: fixed;
+            right: 20px;
+            top: 20px;
+            background: rgba(47, 79, 79, 0.9);
+            border: 2px solid #FFD700;
+            border-radius: 15px;
+            padding: 20px;
+            z-index: 30;
+            min-width: 280px;
+            color: white;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.5);
+        }
+
+        .control-panel h3 {
+            color: #FFD700;
+            text-align: center;
+            margin-bottom: 15px;
+            text-shadow: 0 0 10px rgba(255, 215, 0, 0.5);
+        }
+
+        .ai-status {
+            margin: 10px 0;
+            padding: 8px;
+            background: rgba(255,255,255,0.1);
+            border-radius: 8px;
+            border-left: 4px solid;
+        }
+
+        .ai-status.merchant { border-left-color: #FFD700; }
+        .ai-status.architect { border-left-color: #4682B4; }
+        .ai-status.engineer { border-left-color: #32CD32; }
+        .ai-status.strategist { border-left-color: #FF6347; }
+
+        .construction-stats {
+            margin-top: 15px;
+            padding-top: 15px;
+            border-top: 1px solid #FFD700;
+        }
+
+        .stat-item {
+            display: flex;
+            justify-content: space-between;
+            margin: 5px 0;
+            font-size: 12px;
+        }
+
+        /* Speed Controls */
+        .speed-controls {
+            position: fixed;
+            bottom: 20px;
+            left: 50%;
+            transform: translateX(-50%);
+            background: rgba(47, 79, 79, 0.9);
+            border: 2px solid #FFD700;
+            border-radius: 25px;
+            padding: 10px 20px;
+            z-index: 30;
+            display: flex;
+            gap: 10px;
+            align-items: center;
+        }
+
+        .speed-btn {
+            padding: 8px 15px;
+            background: rgba(255,255,255,0.1);
+            border: 1px solid #FFD700;
+            border-radius: 15px;
+            color: white;
+            cursor: pointer;
+            transition: all 0.3s;
+            font-size: 12px;
+        }
+
+        .speed-btn:hover, .speed-btn.active {
+            background: #FFD700;
+            color: #2F4F4F;
+            box-shadow: 0 0 15px rgba(255, 215, 0, 0.5);
+        }
+
+        /* Construction Progress */
+        .progress-indicator {
+            position: absolute;
+            width: 60px;
+            height: 4px;
+            background: rgba(0,0,0,0.3);
+            border-radius: 2px;
+            z-index: 22;
+            overflow: hidden;
+        }
+
+        .progress-bar {
+            height: 100%;
+            background: linear-gradient(90deg, #32CD32, #FFD700);
+            border-radius: 2px;
+            animation: progressFlow 2s ease-in-out;
+        }
+
+        @keyframes progressFlow {
+            0% { width: 0%; }
+            100% { width: 100%; }
+        }
+
+        /* Resource Flows */
+        .resource-particle {
+            position: absolute;
+            width: 6px;
+            height: 6px;
+            border-radius: 50%;
+            z-index: 18;
+            pointer-events: none;
+        }
+
+        .resource-wood { background: #DEB887; }
+        .resource-stone { background: #708090; }
+        .resource-metal { background: #C0C0C0; }
+        .resource-crystal { background: #9370DB; }
+
+        /* Mini-map */
+        .minimap {
+            position: fixed;
+            bottom: 20px;
+            right: 20px;
+            width: 200px;
+            height: 150px;
+            background: rgba(0,0,0,0.7);
+            border: 2px solid #FFD700;
+            border-radius: 10px;
+            z-index: 30;
+            overflow: hidden;
+        }
+
+        .minimap-content {
+            position: relative;
+            width: 100%;
+            height: 100%;
+            transform: scale(0.1);
+            transform-origin: top left;
+        }
+
+        /* Construction Sound Waves */
+        .sound-wave {
+            position: absolute;
+            border: 2px solid rgba(255, 215, 0, 0.3);
+            border-radius: 50%;
+            z-index: 8;
+            animation: soundRipple 2s ease-out forwards;
+        }
+
+        @keyframes soundRipple {
+            0% {
+                width: 0;
+                height: 0;
+                opacity: 1;
+            }
+            100% {
+                width: 100px;
+                height: 100px;
+                opacity: 0;
+            }
+        }
+
+        /* Weather Effects */
+        .weather-particle {
+            position: absolute;
+            z-index: 5;
+            pointer-events: none;
+        }
+
+        .rain {
+            width: 2px;
+            height: 10px;
+            background: linear-gradient(to bottom, transparent, rgba(173, 216, 230, 0.6));
+            animation: rainfall 1s linear infinite;
+        }
+
+        @keyframes rainfall {
+            0% { transform: translateY(-100vh); }
+            100% { transform: translateY(100vh); }
+        }
+
+        /* Day/Night Cycle */
+        .day-night-overlay {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            z-index: 3;
+            background: radial-gradient(circle at 80% 20%, 
+                rgba(255, 255, 0, 0) 0%,
+                rgba(25, 25, 112, 0.3) 100%);
+            transition: all 10s ease;
+        }
+
+        .day-night-overlay.night {
+            background: radial-gradient(circle at 20% 20%, 
+                rgba(255, 255, 255, 0.1) 0%,
+                rgba(25, 25, 112, 0.7) 100%);
+        }
+    </style>
+</head>
+<body>
+    <div id="civilizationWorld">
+        <!-- Construction Grid -->
+        <div class="construction-grid"></div>
+        
+        <!-- Day/Night Overlay -->
+        <div class="day-night-overlay" id="dayNightOverlay"></div>
+        
+        <!-- AI Civilization Builders -->
+        <div class="ai-builder merchant" id="merchantBuilder" data-ai="merchant">💰</div>
+        <div class="ai-builder architect" id="architectBuilder" data-ai="architect">🏗️</div>
+        <div class="ai-builder engineer" id="engineerBuilder" data-ai="engineer">⚙️</div>
+        <div class="ai-builder strategist" id="strategistBuilder" data-ai="strategist">🎯</div>
+    </div>
+
+    <!-- Control Panel -->
+    <div class="control-panel">
+        <h3>🏛️ Civilization Status</h3>
+        <div id="aiStatusContainer"></div>
+        
+        <div class="construction-stats">
+            <div class="stat-item">
+                <span>Blocks Placed:</span>
+                <span id="blocksPlaced">0</span>
+            </div>
+            <div class="stat-item">
+                <span>Structures Built:</span>
+                <span id="structuresBuilt">0</span>
+            </div>
+            <div class="stat-item">
+                <span>Resources Gathered:</span>
+                <span id="resourcesGathered">0</span>
+            </div>
+            <div class="stat-item">
+                <span>Population:</span>
+                <span id="population">4</span>
+            </div>
+        </div>
+    </div>
+
+    <!-- Speed Controls -->
+    <div class="speed-controls">
+        <span style="color: #FFD700;">Construction Speed:</span>
+        <div class="speed-btn active" data-speed="1">1x</div>
+        <div class="speed-btn" data-speed="2">2x</div>
+        <div class="speed-btn" data-speed="4">4x</div>
+        <div class="speed-btn" data-speed="8">8x</div>
+        <div class="speed-btn" data-speed="0">Pause</div>
+    </div>
+
+    <!-- Mini-map -->
+    <div class="minimap">
+        <div class="minimap-content" id="minimapContent"></div>
+    </div>
+
+    <script>
+        class CivilizationBuilder {
+            constructor() {
+                this.aiBuilders = {
+                    merchant: {
+                        name: 'Trade Master',
+                        specialty: 'Commercial Districts',
+                        currentProject: 'Planning marketplace...',
+                        x: 150, y: 200,
+                        color: '#FFD700',
+                        blockTypes: ['block-gold', 'block-wood'],
+                        projects: ['marketplace', 'trading_post', 'warehouse', 'bank']
+                    },
+                    architect: {
+                        name: 'Master Builder',
+                        specialty: 'Infrastructure',
+                        currentProject: 'Designing city center...',
+                        x: 300, y: 150,
+                        color: '#4682B4',
+                        blockTypes: ['block-stone', 'block-crystal'],
+                        projects: ['city_hall', 'roads', 'bridges', 'monuments']
+                    },
+                    engineer: {
+                        name: 'Tech Innovator',
+                        specialty: 'Industrial Systems',
+                        currentProject: 'Building power grid...',
+                        x: 450, y: 250,
+                        color: '#32CD32',
+                        blockTypes: ['block-metal', 'block-crystal'],
+                        projects: ['factory', 'power_plant', 'research_lab', 'transport']
+                    },
+                    strategist: {
+                        name: 'Defense Planner',
+                        specialty: 'Military & Defense',
+                        currentProject: 'Fortifying borders...',
+                        x: 600, y: 180,
+                        color: '#FF6347',
+                        blockTypes: ['block-stone', 'block-metal'],
+                        projects: ['fortress', 'walls', 'towers', 'barracks']
+                    }
+                };
+                
+                this.constructionSpeed = 1;
+                this.isRunning = true;
+                this.stats = {
+                    blocksPlaced: 0,
+                    structuresBuilt: 0,
+                    resourcesGathered: 0,
+                    population: 4
+                };
+                
+                this.worldGrid = new Map(); // Track built blocks
+                this.activeConstructions = new Set();
+                this.timeOfDay = 'day';
+                
+                this.initializeSystem();
+            }
+            
+            initializeSystem() {
+                this.setupAIInteractions();
+                this.setupSpeedControls();
+                this.startConstructionLoop();
+                this.startAIReasoningLoop();
+                this.updateStatusDisplay();
+                this.startDayNightCycle();
+                this.startWeatherSystem();
+            }
+            
+            setupAIInteractions() {
+                document.querySelectorAll('.ai-builder').forEach(builder => {
+                    builder.addEventListener('click', (e) => {
+                        const aiType = e.target.dataset.ai;
+                        this.showAIReasoning(aiType, e.target);
+                    });
+                    
+                    // Add random movement
+                    setInterval(() => {
+                        this.moveAIBuilder(builder);
+                    }, 8000 + Math.random() * 7000);
+                });
+            }
+            
+            showAIReasoning(aiType, element) {
+                const ai = this.aiBuilders[aiType];
+                const thoughts = this.generateAIThoughts(aiType);
+                
+                const thought = thoughts[Math.floor(Math.random() * thoughts.length)];
+                this.showThoughtBubble(element, thought);
+                
+                // Trigger immediate construction action
+                setTimeout(() => {
+                    this.executeAIConstruction(aiType);
+                }, 1000);
+            }
+            
+            generateAIThoughts(aiType) {
+                const thoughtDatabase = {
+                    merchant: [
+                        "The marketplace needs better positioning for trade routes...",
+                        "Gold deposits here would support a banking district...",
+                        "Commercial traffic flows suggest expanding eastward...",
+                        "Resource pricing indicates demand for luxury goods quarter...",
+                        "Trade winds favor a port district in this location...",
+                        "Economic modeling shows optimal shop placement here...",
+                        "Supply chain efficiency requires warehouse clustering..."
+                    ],
+                    architect: [
+                        "Foundation stability analysis complete - building here...",
+                        "Structural integrity calculations favor stone construction...",
+                        "Urban planning principles suggest central plaza placement...",
+                        "Traffic flow optimization requires road expansion...",
+                        "Aesthetic harmony demands symmetrical building placement...",
+                        "Load-bearing analysis indicates crystal reinforcement needed...",
+                        "City grid optimization requires infrastructure realignment..."
+                    ],
+                    engineer: [
+                        "Power grid efficiency maximized with central distribution...",
+                        "Industrial output calculations favor factory cluster here...",
+                        "Resource throughput analysis suggests pipeline placement...",
+                        "Technological advancement unlocks crystal energy systems...",
+                        "Production optimization requires automated transport...",
+                        "System integration demands centralized control hub...",
+                        "Innovation metrics indicate research facility expansion..."
+                    ],
+                    strategist: [
+                        "Defensive positioning analysis complete - fortifying here...",
+                        "Tactical advantage assessment favors elevated positions...",
+                        "Border security requires watchtower placement...",
+                        "Strategic resource control demands outpost expansion...",
+                        "Military logistics optimization needs supply depot...",
+                        "Threat assessment indicates reinforcement priority...",
+                        "Garrison deployment models suggest barracks location..."
+                    ]
+                };
+                
+                return thoughtDatabase[aiType] || ["Planning next construction phase..."];
+            }
+            
+            showThoughtBubble(element, message) {
+                const bubble = document.createElement('div');
+                bubble.className = 'thought-bubble';
+                bubble.textContent = message;
+                bubble.style.left = (element.offsetLeft + 60) + 'px';
+                bubble.style.top = (element.offsetTop - 60) + 'px';
+                
+                document.getElementById('civilizationWorld').appendChild(bubble);
+                
+                // Remove after 4 seconds
+                setTimeout(() => {
+                    if (bubble.parentElement) bubble.remove();
+                }, 4000);
+            }
+            
+            moveAIBuilder(builderElement) {
+                const currentLeft = parseInt(builderElement.style.left) || builderElement.offsetLeft;
+                const currentTop = parseInt(builderElement.style.top) || builderElement.offsetTop;
+                
+                // Move towards areas they want to build
+                const aiType = builderElement.dataset.ai;
+                const targetX = 100 + Math.random() * (window.innerWidth - 300);
+                const targetY = 100 + Math.random() * (window.innerHeight - 300);
+                
+                // Smooth movement
+                const deltaX = (targetX - currentLeft) * 0.3;
+                const deltaY = (targetY - currentTop) * 0.3;
+                
+                const newLeft = Math.max(50, Math.min(window.innerWidth - 100, currentLeft + deltaX));
+                const newTop = Math.max(50, Math.min(window.innerHeight - 100, currentTop + deltaY));
+                
+                builderElement.style.left = newLeft + 'px';
+                builderElement.style.top = newTop + 'px';
+                
+                // Update AI position
+                this.aiBuilders[aiType].x = newLeft;
+                this.aiBuilders[aiType].y = newTop;
+                
+                // Show movement reasoning
+                this.showThoughtBubble(builderElement, `Moving to optimal construction site...`);
+            }
+            
+            startConstructionLoop() {
+                const constructionInterval = () => {
+                    if (this.isRunning) {
+                        this.executeRandomConstruction();
+                    }
+                    
+                    // Variable timing based on speed
+                    const baseDelay = 2000;
+                    const delay = this.constructionSpeed === 0 ? baseDelay : baseDelay / this.constructionSpeed;
+                    setTimeout(constructionInterval, delay + Math.random() * 1000);
+                };
+                
+                constructionInterval();
+            }
+            
+            executeRandomConstruction() {
+                const aiTypes = Object.keys(this.aiBuilders);
+                const randomAI = aiTypes[Math.floor(Math.random() * aiTypes.length)];
+                this.executeAIConstruction(randomAI);
+            }
+            
+            executeAIConstruction(aiType) {
+                const ai = this.aiBuilders[aiType];
+                const builderElement = document.getElementById(`${aiType}Builder`);
+                
+                // Determine construction type
+                const constructionTypes = ['single_block', 'structure', 'resource_flow'];
+                const constructionType = constructionTypes[Math.floor(Math.random() * constructionTypes.length)];
+                
+                switch (constructionType) {
+                    case 'single_block':
+                        this.placeSingleBlock(ai, builderElement);
+                        break;
+                    case 'structure':
+                        this.buildStructure(ai, builderElement);
+                        break;
+                    case 'resource_flow':
+                        this.createResourceFlow(ai, builderElement);
+                        break;
+                }
+                
+                this.updateCurrentProject(aiType);
+            }
+            
+            placeSingleBlock(ai, builderElement) {
+                // Find suitable location near the AI
+                const blockX = ai.x + (Math.random() * 200 - 100);
+                const blockY = ai.y + (Math.random() * 200 - 100);
+                
+                // Snap to grid
+                const gridX = Math.floor(blockX / 20) * 20;
+                const gridY = Math.floor(blockY / 20) * 20;
+                
+                // Check if location is free
+                const gridKey = `${gridX},${gridY}`;
+                if (this.worldGrid.has(gridKey)) return;
+                
+                // Create construction line from AI to target
+                this.createConstructionLine(ai.x + 24, ai.y + 24, gridX + 10, gridY + 10);
+                
+                // Create progress indicator
+                const progressIndicator = this.createProgressIndicator(gridX, gridY - 10);
+                
+                // Place block after delay
+                setTimeout(() => {
+                    this.placeBlock(gridX, gridY, ai.blockTypes[Math.floor(Math.random() * ai.blockTypes.length)]);
+                    this.worldGrid.set(gridKey, true);
+                    this.stats.blocksPlaced++;
+                    
+                    // Create sound wave effect
+                    this.createSoundWave(gridX + 10, gridY + 10);
+                    
+                    // Remove progress indicator
+                    if (progressIndicator.parentElement) progressIndicator.remove();
+                    
+                    this.updateStatusDisplay();
+                }, 2000 / this.constructionSpeed);
+                
+                // Update AI project
+                ai.currentProject = `Placing ${ai.blockTypes[0]} block...`;
+            }
+            
+            buildStructure(ai, builderElement) {
+                const structureSize = 3 + Math.floor(Math.random() * 4); // 3x3 to 6x6
+                const startX = Math.floor((ai.x + Math.random() * 100) / 20) * 20;
+                const startY = Math.floor((ai.y + Math.random() * 100) / 20) * 20;
+                
+                // Build structure block by block
+                let blockCount = 0;
+                const totalBlocks = structureSize * structureSize;
+                
+                for (let x = 0; x < structureSize; x++) {
+                    for (let y = 0; y < structureSize; y++) {
+                        const blockX = startX + (x * 20);
+                        const blockY = startY + (y * 20);
+                        const gridKey = `${blockX},${blockY}`;
+                        
+                        if (!this.worldGrid.has(gridKey)) {
+                            setTimeout(() => {
+                                // Create construction line
+                                this.createConstructionLine(ai.x + 24, ai.y + 24, blockX + 10, blockY + 10);
+                                
+                                // Place block with delay
+                                setTimeout(() => {
+                                    const blockType = ai.blockTypes[Math.floor(Math.random() * ai.blockTypes.length)];
+                                    this.placeBlock(blockX, blockY, blockType);
+                                    this.worldGrid.set(gridKey, true);
+                                    this.stats.blocksPlaced++;
+                                    
+                                    this.createSoundWave(blockX + 10, blockY + 10);
+                                }, 500 / this.constructionSpeed);
+                                
+                            }, (blockCount * 200) / this.constructionSpeed);
+                            
+                            blockCount++;
+                        }
+                    }
+                }
+                
+                // Mark structure as complete
+                setTimeout(() => {
+                    this.createStructureMarker(startX, startY, structureSize, ai.projects[Math.floor(Math.random() * ai.projects.length)]);
+                    this.stats.structuresBuilt++;
+                    this.updateStatusDisplay();
+                }, (totalBlocks * 200) / this.constructionSpeed);
+                
+                ai.currentProject = `Building ${structureSize}x${structureSize} structure...`;
+            }
+            
+            createResourceFlow(ai, builderElement) {
+                const resourceTypes = ['wood', 'stone', 'metal', 'crystal'];
+                const resourceType = resourceTypes[Math.floor(Math.random() * resourceTypes.length)];
+                
+                // Create multiple resource particles flowing to AI
+                for (let i = 0; i < 5; i++) {
+                    setTimeout(() => {
+                        this.createResourceParticle(resourceType, ai);
+                    }, i * 200 / this.constructionSpeed);
+                }
+                
+                this.stats.resourcesGathered += 5;
+                ai.currentProject = `Gathering ${resourceType} resources...`;
+            }
+            
+            placeBlock(x, y, blockType) {
+                const block = document.createElement('div');
+                block.className = `construction-block ${blockType}`;
+                block.style.left = x + 'px';
+                block.style.top = y + 'px';
+                
+                document.getElementById('civilizationWorld').appendChild(block);
+                
+                // Add to minimap
+                this.updateMinimap();
+            }
+            
+            createConstructionLine(x1, y1, x2, y2) {
+                const line = document.createElement('div');
+                line.className = 'construction-line';
+                
+                const length = Math.sqrt(Math.pow(x2 - x1, 2) + Math.pow(y2 - y1, 2));
+                const angle = Math.atan2(y2 - y1, x2 - x1) * 180 / Math.PI;
+                
+                line.style.width = length + 'px';
+                line.style.left = x1 + 'px';
+                line.style.top = y1 + 'px';
+                line.style.transform = `rotate(${angle}deg)`;
+                line.style.transformOrigin = '0 50%';
+                
+                document.getElementById('civilizationWorld').appendChild(line);
+                
+                // Remove after animation
+                setTimeout(() => {
+                    if (line.parentElement) line.remove();
+                }, 3000);
+            }
+            
+            createProgressIndicator(x, y) {
+                const indicator = document.createElement('div');
+                indicator.className = 'progress-indicator';
+                indicator.style.left = x + 'px';
+                indicator.style.top = y + 'px';
+                
+                const bar = document.createElement('div');
+                bar.className = 'progress-bar';
+                indicator.appendChild(bar);
+                
+                document.getElementById('civilizationWorld').appendChild(indicator);
+                return indicator;
+            }
+            
+            createSoundWave(x, y) {
+                const wave = document.createElement('div');
+                wave.className = 'sound-wave';
+                wave.style.left = (x - 50) + 'px';
+                wave.style.top = (y - 50) + 'px';
+                
+                document.getElementById('civilizationWorld').appendChild(wave);
+                
+                setTimeout(() => {
+                    if (wave.parentElement) wave.remove();
+                }, 2000);
+            }
+            
+            createStructureMarker(x, y, size, structureType) {
+                const marker = document.createElement('div');
+                marker.className = 'structure';
+                marker.style.left = (x + (size * 10)) + 'px';
+                marker.style.top = (y - 30) + 'px';
+                marker.style.fontSize = '24px';
+                marker.textContent = this.getStructureEmoji(structureType);
+                
+                document.getElementById('civilizationWorld').appendChild(marker);
+            }
+            
+            getStructureEmoji(structureType) {
+                const emojis = {
+                    marketplace: '🏪', trading_post: '🏬', warehouse: '🏭', bank: '🏦',
+                    city_hall: '🏛️', roads: '🛣️', bridges: '🌉', monuments: '🗿',
+                    factory: '🏭', power_plant: '⚡', research_lab: '🔬', transport: '🚇',
+                    fortress: '🏰', walls: '🧱', towers: '🗼', barracks: '⚔️'
+                };
+                return emojis[structureType] || '🏗️';
+            }
+            
+            createResourceParticle(resourceType, targetAI) {
+                const particle = document.createElement('div');
+                particle.className = `resource-particle resource-${resourceType}`;
+                
+                // Start from random edge
+                const startX = Math.random() * window.innerWidth;
+                const startY = Math.random() * window.innerHeight;
+                
+                particle.style.left = startX + 'px';
+                particle.style.top = startY + 'px';
+                
+                document.getElementById('civilizationWorld').appendChild(particle);
+                
+                // Animate to AI
+                const deltaX = targetAI.x - startX;
+                const deltaY = targetAI.y - startY;
+                
+                particle.style.transition = `all ${3000 / this.constructionSpeed}ms linear`;
+                particle.style.transform = `translate(${deltaX}px, ${deltaY}px)`;
+                
+                setTimeout(() => {
+                    if (particle.parentElement) particle.remove();
+                }, 3000 / this.constructionSpeed);
+            }
+            
+            setupSpeedControls() {
+                document.querySelectorAll('.speed-btn').forEach(btn => {
+                    btn.addEventListener('click', (e) => {
+                        const speed = parseFloat(e.target.dataset.speed);
+                        this.constructionSpeed = speed;
+                        this.isRunning = speed > 0;
+                        
+                        // Update active button
+                        document.querySelectorAll('.speed-btn').forEach(b => b.classList.remove('active'));
+                        e.target.classList.add('active');
+                    });
+                });
+            }
+            
+            startAIReasoningLoop() {
+                setInterval(() => {
+                    if (this.isRunning) {
+                        this.performAIReasoning();
+                    }
+                }, 5000 / (this.constructionSpeed || 1));
+            }
+            
+            performAIReasoning() {
+                const aiTypes = Object.keys(this.aiBuilders);
+                const randomAI = aiTypes[Math.floor(Math.random() * aiTypes.length)];
+                const ai = this.aiBuilders[randomAI];
+                const element = document.getElementById(`${randomAI}Builder`);
+                
+                const thoughts = this.generateAIThoughts(randomAI);
+                const thought = thoughts[Math.floor(Math.random() * thoughts.length)];
+                
+                this.showThoughtBubble(element, thought);
+            }
+            
+            updateCurrentProject(aiType) {
+                const ai = this.aiBuilders[aiType];
+                const projectUpdates = [
+                    "Analyzing construction site...",
+                    "Calculating resource requirements...",
+                    "Optimizing build sequence...",
+                    "Coordinating with other builders...",
+                    "Planning next phase...",
+                    "Inspecting completed work...",
+                    "Researching new techniques..."
+                ];
+                
+                setTimeout(() => {
+                    ai.currentProject = projectUpdates[Math.floor(Math.random() * projectUpdates.length)];
+                    this.updateStatusDisplay();
+                }, 3000 / this.constructionSpeed);
+            }
+            
+            updateStatusDisplay() {
+                const container = document.getElementById('aiStatusContainer');
+                container.innerHTML = Object.entries(this.aiBuilders).map(([key, ai]) => `
+                    <div class="ai-status ${key}">
+                        <strong>${ai.name}</strong><br>
+                        <small>Specialty: ${ai.specialty}</small><br>
+                        <small>Current: ${ai.currentProject}</small>
+                    </div>
+                `).join('');
+                
+                // Update stats
+                document.getElementById('blocksPlaced').textContent = this.stats.blocksPlaced;
+                document.getElementById('structuresBuilt').textContent = this.stats.structuresBuilt;
+                document.getElementById('resourcesGathered').textContent = this.stats.resourcesGathered;
+                document.getElementById('population').textContent = this.stats.population;
+            }
+            
+            startDayNightCycle() {
+                setInterval(() => {
+                    const overlay = document.getElementById('dayNightOverlay');
+                    this.timeOfDay = this.timeOfDay === 'day' ? 'night' : 'day';
+                    overlay.classList.toggle('night', this.timeOfDay === 'night');
+                }, 30000); // 30 second cycle
+            }
+            
+            startWeatherSystem() {
+                setInterval(() => {
+                    if (Math.random() < 0.3) { // 30% chance
+                        this.createWeatherEffect();
+                    }
+                }, 20000);
+            }
+            
+            createWeatherEffect() {
+                // Create rain particles
+                for (let i = 0; i < 20; i++) {
+                    const particle = document.createElement('div');
+                    particle.className = 'weather-particle rain';
+                    particle.style.left = Math.random() * window.innerWidth + 'px';
+                    particle.style.top = '-10px';
+                    particle.style.animationDelay = Math.random() * 1000 + 'ms';
+                    
+                    document.getElementById('civilizationWorld').appendChild(particle);
+                    
+                    setTimeout(() => {
+                        if (particle.parentElement) particle.remove();
+                    }, 1000);
+                }
+            }
+            
+            updateMinimap() {
+                // Update minimap with current construction
+                const minimapContent = document.getElementById('minimapContent');
+                // This would show a scaled version of the world
+                // Implementation details omitted for brevity
+            }
+        }
+        
+        // Initialize the Civilization Builder
+        const civilizationBuilder = new CivilizationBuilder();
+        
+        // Handle window resize
+        window.addEventListener('resize', () => {
+            // Adjust elements if needed
+        });
+        
+        // Keyboard controls
+        document.addEventListener('keydown', (e) => {
+            switch(e.key) {
+                case ' ':
+                    e.preventDefault();
+                    civilizationBuilder.isRunning = !civilizationBuilder.isRunning;
+                    break;
+                case '1':
+                    civilizationBuilder.constructionSpeed = 1;
+                    break;
+                case '2':
+                    civilizationBuilder.constructionSpeed = 2;
+                    break;
+                case '4':
+                    civilizationBuilder.constructionSpeed = 4;
+                    break;
+            }
+        });
+    </script>
+</body>
+</html>

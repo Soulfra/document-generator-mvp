@@ -1,0 +1,265 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>🧪 Test Streaming Integration</title>
+    <style>
+        body {
+            font-family: 'Courier New', monospace;
+            background: #000;
+            color: #00ff88;
+            padding: 20px;
+            line-height: 1.6;
+        }
+        .test-section {
+            margin: 20px 0;
+            padding: 15px;
+            border: 1px solid #00ff88;
+            border-radius: 8px;
+        }
+        .test-result {
+            margin: 10px 0;
+            padding: 8px;
+            border-radius: 4px;
+        }
+        .pass { background: rgba(0, 255, 0, 0.1); }
+        .fail { background: rgba(255, 0, 0, 0.1); }
+        .warning { background: rgba(255, 255, 0, 0.1); }
+        button {
+            background: #8B00FF;
+            color: white;
+            border: none;
+            padding: 10px 15px;
+            border-radius: 5px;
+            cursor: pointer;
+            margin: 5px;
+        }
+        button:hover {
+            background: #B84FFF;
+        }
+        #results {
+            white-space: pre-wrap;
+            font-size: 12px;
+        }
+    </style>
+</head>
+<body>
+    <h1>🧪 SoulFRA Streaming Integration Test</h1>
+    <p>Testing the integration between demo manifest, stream manager, and zoom modal.</p>
+
+    <div class="test-section">
+        <h2>📋 File Availability Tests</h2>
+        <div id="fileTests"></div>
+    </div>
+
+    <div class="test-section">
+        <h2>🔧 Integration Tests</h2>
+        <button onclick="runIntegrationTests()">Run Integration Tests</button>
+        <div id="integrationResults"></div>
+    </div>
+
+    <div class="test-section">
+        <h2>🎮 Demo Loading Tests</h2>
+        <button onclick="testDemoLoading()">Test Demo Loading</button>
+        <div id="demoResults"></div>
+    </div>
+
+    <div class="test-section">
+        <h2>📊 System Status</h2>
+        <button onclick="getSystemStatus()">Get System Status</button>
+        <div id="statusResults"></div>
+    </div>
+
+    <div class="test-section">
+        <h2>🚀 Launch Streaming Dashboard</h2>
+        <button onclick="window.open('SOULFRA-STREAMING-DASHBOARD.html', '_blank')">Launch Dashboard</button>
+    </div>
+
+    <script>
+        async function testFileAvailability() {
+            const files = [
+                'demo-manifest.json',
+                'demo-stream-manager.js',
+                'stream-zoom-modal.js',
+                'soulfra-streaming.css',
+                'SOULFRA-STREAMING-DASHBOARD.html'
+            ];
+
+            const results = [];
+            const container = document.getElementById('fileTests');
+
+            for (const file of files) {
+                try {
+                    const response = await fetch(file);
+                    const status = response.ok ? 'pass' : 'fail';
+                    const message = response.ok ? '✅ Available' : '❌ Not found';
+                    results.push({ file, status, message });
+                } catch (error) {
+                    results.push({ file, status: 'fail', message: '❌ Error: ' + error.message });
+                }
+            }
+
+            container.innerHTML = results.map(r => 
+                `<div class="test-result ${r.status}">
+                    <strong>${r.file}</strong>: ${r.message}
+                </div>`
+            ).join('');
+
+            return results;
+        }
+
+        async function runIntegrationTests() {
+            const container = document.getElementById('integrationResults');
+            const results = [];
+
+            // Test 1: Demo manifest loading
+            try {
+                const manifestResponse = await fetch('demo-manifest.json');
+                if (manifestResponse.ok) {
+                    const manifest = await manifestResponse.json();
+                    const domainCount = Object.keys(manifest.streamingDomains).length;
+                    results.push({
+                        test: 'Demo Manifest',
+                        status: domainCount === 9 ? 'pass' : 'warning',
+                        message: domainCount === 9 ? 
+                            `✅ All 9 domains configured` : 
+                            `⚠️ Found ${domainCount} domains (expected 9)`
+                    });
+
+                    // Count total demos
+                    const totalDemos = Object.values(manifest.streamingDomains)
+                        .reduce((count, domain) => count + domain.demos.length, 0);
+                    results.push({
+                        test: 'Demo Count',
+                        status: totalDemos > 0 ? 'pass' : 'fail',
+                        message: `📦 ${totalDemos} demos configured`
+                    });
+                } else {
+                    results.push({
+                        test: 'Demo Manifest',
+                        status: 'fail',
+                        message: '❌ Failed to load manifest'
+                    });
+                }
+            } catch (error) {
+                results.push({
+                    test: 'Demo Manifest',
+                    status: 'fail',
+                    message: '❌ Error: ' + error.message
+                });
+            }
+
+            // Test 2: Check demo file availability
+            try {
+                const manifestResponse = await fetch('demo-manifest.json');
+                const manifest = await manifestResponse.json();
+                let availableCount = 0;
+                let totalCount = 0;
+
+                for (const [domain, data] of Object.entries(manifest.streamingDomains)) {
+                    for (const demo of data.demos) {
+                        totalCount++;
+                        try {
+                            const demoResponse = await fetch(demo.path, { method: 'HEAD' });
+                            if (demoResponse.ok) availableCount++;
+                        } catch (e) {
+                            // File not available
+                        }
+                    }
+                }
+
+                const percentage = Math.round((availableCount / totalCount) * 100);
+                results.push({
+                    test: 'Demo Availability',
+                    status: percentage > 80 ? 'pass' : percentage > 50 ? 'warning' : 'fail',
+                    message: `📂 ${availableCount}/${totalCount} demos available (${percentage}%)`
+                });
+            } catch (error) {
+                results.push({
+                    test: 'Demo Availability',
+                    status: 'fail',
+                    message: '❌ Error checking demos: ' + error.message
+                });
+            }
+
+            container.innerHTML = results.map(r => 
+                `<div class="test-result ${r.status}">
+                    <strong>${r.test}</strong>: ${r.message}
+                </div>`
+            ).join('');
+        }
+
+        async function testDemoLoading() {
+            const container = document.getElementById('demoResults');
+            container.innerHTML = '<div>🔄 Testing demo loading...</div>';
+
+            try {
+                const manifestResponse = await fetch('demo-manifest.json');
+                const manifest = await manifestResponse.json();
+                
+                // Test loading the first demo from each domain
+                const loadTests = [];
+                
+                for (const [domain, data] of Object.entries(manifest.streamingDomains)) {
+                    const featuredDemo = data.demos.find(d => d.featured) || data.demos[0];
+                    if (featuredDemo) {
+                        try {
+                            const demoResponse = await fetch(featuredDemo.path);
+                            loadTests.push({
+                                domain,
+                                demo: featuredDemo.name,
+                                status: demoResponse.ok ? 'pass' : 'fail',
+                                message: demoResponse.ok ? '✅ Loads' : '❌ Failed'
+                            });
+                        } catch (error) {
+                            loadTests.push({
+                                domain,
+                                demo: featuredDemo.name,
+                                status: 'fail',
+                                message: '❌ Error'
+                            });
+                        }
+                    }
+                }
+
+                container.innerHTML = loadTests.map(t => 
+                    `<div class="test-result ${t.status}">
+                        <strong>${t.domain}</strong> (${t.demo}): ${t.message}
+                    </div>`
+                ).join('');
+
+            } catch (error) {
+                container.innerHTML = `<div class="test-result fail">❌ Error: ${error.message}</div>`;
+            }
+        }
+
+        function getSystemStatus() {
+            const container = document.getElementById('statusResults');
+            
+            const status = {
+                timestamp: new Date().toISOString(),
+                userAgent: navigator.userAgent,
+                viewport: `${window.innerWidth}x${window.innerHeight}`,
+                protocol: window.location.protocol,
+                host: window.location.host,
+                features: {
+                    webgl: !!window.WebGLRenderingContext,
+                    webgl2: !!window.WebGL2RenderingContext,
+                    webworkers: !!window.Worker,
+                    indexeddb: !!window.indexedDB,
+                    localstorage: !!window.localStorage,
+                    fullscreen: !!(document.fullscreenEnabled || document.webkitFullscreenEnabled || document.msFullscreenEnabled)
+                }
+            };
+
+            container.innerHTML = `<pre id="results">${JSON.stringify(status, null, 2)}</pre>`;
+        }
+
+        // Run file availability tests on page load
+        document.addEventListener('DOMContentLoaded', () => {
+            testFileAvailability();
+        });
+    </script>
+</body>
+</html>

@@ -1,0 +1,318 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>🧠 AI Behavior Test - No More Spinning!</title>
+    <style>
+        body {
+            margin: 0;
+            font-family: Arial, sans-serif;
+            background: #111;
+            color: #0f0;
+        }
+        
+        #canvas {
+            border: 1px solid #0f0;
+        }
+        
+        .info {
+            position: fixed;
+            top: 10px;
+            right: 10px;
+            background: rgba(0,0,0,0.8);
+            padding: 15px;
+            border: 1px solid #0f0;
+            font-family: monospace;
+            font-size: 12px;
+        }
+        
+        .chat {
+            position: fixed;
+            bottom: 10px;
+            left: 10px;
+            width: 400px;
+            height: 200px;
+            background: rgba(0,0,0,0.8);
+            border: 1px solid #0f0;
+            padding: 10px;
+            overflow-y: auto;
+            font-family: monospace;
+            font-size: 12px;
+        }
+        
+        .chat-message {
+            margin-bottom: 5px;
+        }
+        
+        .npc-chat { color: #0ff; }
+        .system { color: #ff0; }
+    </style>
+</head>
+<body>
+    <canvas id="canvas" width="800" height="600"></canvas>
+    
+    <div class="info">
+        <h3>🧠 AI Behavior Test</h3>
+        <div id="stats"></div>
+    </div>
+    
+    <div class="chat" id="chat">
+        <div class="system">AI Behavior System Test Started...</div>
+    </div>
+    
+    <script type="module">
+        // Simple 2D visualization of AI behavior
+        const canvas = document.getElementById('canvas');
+        const ctx = canvas.getContext('2d');
+        const chat = document.getElementById('chat');
+        const stats = document.getElementById('stats');
+        
+        // Mock world for testing
+        const world = {
+            width: 800,
+            height: 600,
+            obstacles: [],
+            resources: [],
+            agents: []
+        };
+        
+        // Add some obstacles
+        for (let i = 0; i < 10; i++) {
+            world.obstacles.push({
+                x: Math.random() * world.width,
+                y: Math.random() * world.height,
+                width: 40,
+                height: 40
+            });
+        }
+        
+        // Add some resources
+        const resourceTypes = ['tree', 'ore', 'crystal'];
+        for (let i = 0; i < 15; i++) {
+            world.resources.push({
+                type: resourceTypes[Math.floor(Math.random() * resourceTypes.length)],
+                position: {
+                    x: Math.random() * world.width,
+                    y: Math.random() * world.height,
+                    z: 0
+                },
+                amount: 10
+            });
+        }
+        
+        // Import AI system
+        const script = document.createElement('script');
+        script.src = '/enhanced-ai-behavior-system.js';
+        document.head.appendChild(script);
+        
+        script.onload = () => {
+            // Create AI system
+            const aiSystem = new window.EnhancedAIBehaviorSystem();
+            
+            // Override some methods for 2D visualization
+            aiSystem.findNearestResource = function(agent) {
+                let nearest = null;
+                let nearestDist = Infinity;
+                
+                world.resources.forEach(resource => {
+                    const dist = this.distanceTo(agent, resource);
+                    if (dist < nearestDist && resource.amount > 0) {
+                        nearest = resource;
+                        nearestDist = dist;
+                    }
+                });
+                
+                return nearest;
+            };
+            
+            aiSystem.gatherResource = function(agent, resource) {
+                if (resource.amount > 0) {
+                    resource.amount--;
+                    if (!agent.inventory) agent.inventory = [];
+                    agent.inventory.push({ type: resource.type });
+                    
+                    addChatMessage(`${agent.name} gathered ${resource.type}!`, 'system');
+                    
+                    if (resource.amount === 0) {
+                        const index = world.resources.indexOf(resource);
+                        if (index > -1) world.resources.splice(index, 1);
+                    }
+                }
+            };
+            
+            // Initialize with our world
+            aiSystem.init({
+                width: world.width,
+                height: world.height,
+                obstacles: world.obstacles
+            });
+            
+            // Create test agents
+            const testAgents = [
+                { name: 'Explorer Bob', personality: 'friendly', color: '#00ff00' },
+                { name: 'Miner Alice', personality: 'cautious', color: '#ffff00' },
+                { name: 'Trader Tom', personality: 'merchant', color: '#00ffff' },
+                { name: 'Scholar Sarah', personality: 'scholar', color: '#ff00ff' },
+                { name: 'Guard Gary', personality: 'aggressive', color: '#ff0000' }
+            ];
+            
+            testAgents.forEach((data, i) => {
+                const agent = aiSystem.createAgent({
+                    name: data.name,
+                    personality: { type: data.personality },
+                    position: {
+                        x: 100 + i * 120,
+                        y: 300,
+                        z: 0
+                    },
+                    speed: 50 + Math.random() * 50
+                });
+                
+                agent.color = data.color;
+                world.agents.push(agent);
+            });
+            
+            // Listen for conversations
+            aiSystem.on('conversation', (data) => {
+                addChatMessage(`${data.agent1.name}: ${data.dialogue.message}`, 'npc-chat');
+            });
+            
+            // Animation loop
+            let lastTime = 0;
+            function animate(currentTime) {
+                requestAnimationFrame(animate);
+                
+                const deltaTime = currentTime - lastTime;
+                lastTime = currentTime;
+                
+                // Clear canvas
+                ctx.fillStyle = '#111';
+                ctx.fillRect(0, 0, canvas.width, canvas.height);
+                
+                // Draw grid
+                ctx.strokeStyle = '#222';
+                ctx.lineWidth = 1;
+                for (let x = 0; x < canvas.width; x += 40) {
+                    ctx.beginPath();
+                    ctx.moveTo(x, 0);
+                    ctx.lineTo(x, canvas.height);
+                    ctx.stroke();
+                }
+                for (let y = 0; y < canvas.height; y += 40) {
+                    ctx.beginPath();
+                    ctx.moveTo(0, y);
+                    ctx.lineTo(canvas.width, y);
+                    ctx.stroke();
+                }
+                
+                // Draw obstacles
+                ctx.fillStyle = '#444';
+                world.obstacles.forEach(obstacle => {
+                    ctx.fillRect(obstacle.x, obstacle.y, obstacle.width, obstacle.height);
+                });
+                
+                // Draw resources
+                world.resources.forEach(resource => {
+                    ctx.fillStyle = {
+                        tree: '#228b22',
+                        ore: '#808080',
+                        crystal: '#8a2be2'
+                    }[resource.type] || '#fff';
+                    
+                    ctx.beginPath();
+                    ctx.arc(resource.position.x, resource.position.y, 10, 0, Math.PI * 2);
+                    ctx.fill();
+                    
+                    ctx.fillStyle = '#fff';
+                    ctx.font = '10px Arial';
+                    ctx.fillText(resource.amount, resource.position.x - 5, resource.position.y + 3);
+                });
+                
+                // Draw agents
+                world.agents.forEach(agent => {
+                    const a = aiSystem.agents.get(agent.id);
+                    if (!a) return;
+                    
+                    // Draw agent
+                    ctx.fillStyle = agent.color;
+                    ctx.save();
+                    ctx.translate(a.position.x, a.position.y);
+                    ctx.rotate(a.rotation.y);
+                    
+                    // Body
+                    ctx.beginPath();
+                    ctx.arc(0, 0, 12, 0, Math.PI * 2);
+                    ctx.fill();
+                    
+                    // Direction indicator
+                    ctx.strokeStyle = agent.color;
+                    ctx.lineWidth = 3;
+                    ctx.beginPath();
+                    ctx.moveTo(0, 0);
+                    ctx.lineTo(15, 0);
+                    ctx.stroke();
+                    
+                    ctx.restore();
+                    
+                    // Draw path if moving
+                    if (a.currentPath && a.currentPath.length > 0) {
+                        ctx.strokeStyle = agent.color + '66';
+                        ctx.lineWidth = 2;
+                        ctx.beginPath();
+                        ctx.moveTo(a.position.x, a.position.y);
+                        
+                        for (let i = a.pathIndex; i < a.currentPath.length; i++) {
+                            const point = a.currentPath[i];
+                            ctx.lineTo(point.x, point.y);
+                        }
+                        ctx.stroke();
+                    }
+                    
+                    // Draw name
+                    ctx.fillStyle = '#fff';
+                    ctx.font = '12px Arial';
+                    ctx.fillText(a.name, a.position.x - 30, a.position.y - 20);
+                    
+                    // Draw behavior
+                    ctx.fillStyle = '#aaa';
+                    ctx.font = '10px Arial';
+                    ctx.fillText(a.currentBehavior, a.position.x - 20, a.position.y + 25);
+                });
+                
+                // Update stats
+                let statsHtml = '<strong>Agent Status:</strong><br>';
+                world.agents.forEach(agent => {
+                    const a = aiSystem.agents.get(agent.id);
+                    if (a) {
+                        statsHtml += `${a.name}: ${a.currentBehavior}`;
+                        if (a.inventory && a.inventory.length > 0) {
+                            statsHtml += ` (inv: ${a.inventory.length})`;
+                        }
+                        statsHtml += '<br>';
+                    }
+                });
+                stats.innerHTML = statsHtml;
+            }
+            
+            animate(0);
+            
+            addChatMessage('✅ AI Behavior System initialized!', 'system');
+            addChatMessage('Watch as agents explore, gather resources, and talk to each other', 'system');
+            addChatMessage('No more spinning in circles! 🎉', 'system');
+        };
+        
+        function addChatMessage(message, className) {
+            const div = document.createElement('div');
+            div.className = `chat-message ${className}`;
+            div.textContent = message;
+            chat.appendChild(div);
+            chat.scrollTop = chat.scrollHeight;
+            
+            // Limit messages
+            while (chat.children.length > 20) {
+                chat.removeChild(chat.firstChild);
+            }
+        }
+    </script>
+</body>
+</html>

@@ -1,0 +1,405 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>🎮 Hardware-Accelerated Rendering Engine Demo</title>
+    <style>
+        body {
+            margin: 0;
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            background: #000;
+            color: #fff;
+            overflow: hidden;
+        }
+        
+        #container {
+            width: 100vw;
+            height: 100vh;
+            position: relative;
+        }
+        
+        #info {
+            position: absolute;
+            top: 10px;
+            left: 10px;
+            background: rgba(0, 0, 0, 0.8);
+            padding: 20px;
+            border-radius: 10px;
+            border: 1px solid #00ff00;
+            max-width: 400px;
+            backdrop-filter: blur(10px);
+        }
+        
+        #info h1 {
+            margin: 0 0 10px 0;
+            font-size: 24px;
+            color: #00ff00;
+            text-shadow: 0 0 10px #00ff00;
+        }
+        
+        #info h2 {
+            margin: 15px 0 5px 0;
+            font-size: 16px;
+            color: #00ffff;
+        }
+        
+        .controls {
+            margin: 10px 0;
+            padding: 10px;
+            background: rgba(0, 255, 0, 0.1);
+            border-radius: 5px;
+            border: 1px solid rgba(0, 255, 0, 0.3);
+        }
+        
+        .control-item {
+            margin: 5px 0;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+        
+        .key {
+            display: inline-block;
+            padding: 3px 8px;
+            background: rgba(255, 255, 255, 0.2);
+            border-radius: 3px;
+            font-family: monospace;
+            font-size: 14px;
+            min-width: 20px;
+            text-align: center;
+        }
+        
+        .mode-buttons {
+            display: flex;
+            gap: 10px;
+            margin: 15px 0;
+        }
+        
+        .mode-button {
+            flex: 1;
+            padding: 10px;
+            background: rgba(0, 100, 200, 0.3);
+            border: 1px solid #0066cc;
+            border-radius: 5px;
+            color: #fff;
+            cursor: pointer;
+            transition: all 0.3s;
+            text-align: center;
+            font-size: 14px;
+        }
+        
+        .mode-button:hover {
+            background: rgba(0, 100, 200, 0.5);
+            box-shadow: 0 0 10px #0066cc;
+        }
+        
+        .mode-button.active {
+            background: rgba(0, 100, 200, 0.7);
+            border-color: #00ff00;
+            box-shadow: 0 0 15px #00ff00;
+        }
+        
+        .slider-control {
+            margin: 10px 0;
+        }
+        
+        .slider-control label {
+            display: block;
+            margin-bottom: 5px;
+            font-size: 14px;
+        }
+        
+        .slider {
+            width: 100%;
+            height: 5px;
+            background: rgba(255, 255, 255, 0.2);
+            outline: none;
+            opacity: 0.7;
+            transition: opacity 0.2s;
+            cursor: pointer;
+        }
+        
+        .slider:hover {
+            opacity: 1;
+        }
+        
+        .slider::-webkit-slider-thumb {
+            -webkit-appearance: none;
+            appearance: none;
+            width: 15px;
+            height: 15px;
+            background: #00ff00;
+            cursor: pointer;
+            border-radius: 50%;
+            box-shadow: 0 0 10px #00ff00;
+        }
+        
+        .slider::-moz-range-thumb {
+            width: 15px;
+            height: 15px;
+            background: #00ff00;
+            cursor: pointer;
+            border-radius: 50%;
+            box-shadow: 0 0 10px #00ff00;
+        }
+        
+        #stats {
+            position: absolute;
+            bottom: 10px;
+            right: 10px;
+            background: rgba(0, 0, 0, 0.8);
+            padding: 10px;
+            border-radius: 5px;
+            border: 1px solid #00ff00;
+            font-family: monospace;
+            font-size: 12px;
+        }
+        
+        .stat-item {
+            margin: 3px 0;
+        }
+        
+        .loading {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            font-size: 24px;
+            color: #00ff00;
+            text-align: center;
+        }
+        
+        .loading::after {
+            content: '...';
+            animation: dots 1.5s infinite;
+        }
+        
+        @keyframes dots {
+            0%, 20% { content: '.'; }
+            40% { content: '..'; }
+            60%, 100% { content: '...'; }
+        }
+        
+        #visualization-mode {
+            position: absolute;
+            top: 10px;
+            right: 10px;
+            padding: 10px 20px;
+            background: rgba(0, 255, 0, 0.2);
+            border: 1px solid #00ff00;
+            border-radius: 5px;
+            font-size: 18px;
+            text-transform: uppercase;
+            letter-spacing: 2px;
+            text-shadow: 0 0 10px currentColor;
+        }
+    </style>
+</head>
+<body>
+    <div id="container">
+        <div id="loading" class="loading">Initializing Hardware Renderer</div>
+    </div>
+    
+    <div id="info" style="display: none;">
+        <h1>🎮 Hardware Rendering Engine</h1>
+        <p>Visualizing network topologies and PCB layouts as interactive game components</p>
+        
+        <div class="mode-buttons">
+            <button class="mode-button active" data-mode="network">🌐 Network</button>
+            <button class="mode-button" data-mode="pcb">🔌 PCB</button>
+            <button class="mode-button" data-mode="fpga">🔲 FPGA</button>
+            <button class="mode-button" data-mode="game">🎮 Game</button>
+        </div>
+        
+        <h2>🎹 Controls</h2>
+        <div class="controls">
+            <div class="control-item">
+                <span>Switch Modes:</span>
+                <span><span class="key">1</span> <span class="key">2</span> <span class="key">3</span> <span class="key">4</span></span>
+            </div>
+            <div class="control-item">
+                <span>Rotate View:</span>
+                <span>Mouse Drag</span>
+            </div>
+            <div class="control-item">
+                <span>Zoom:</span>
+                <span>Mouse Wheel</span>
+            </div>
+            <div class="control-item">
+                <span>Select Component:</span>
+                <span>Click</span>
+            </div>
+        </div>
+        
+        <h2>🎮 Game Controls</h2>
+        <div class="controls">
+            <div class="control-item">
+                <span>Move:</span>
+                <span><span class="key">W</span> <span class="key">A</span> <span class="key">S</span> <span class="key">D</span></span>
+            </div>
+            <div class="control-item">
+                <span>Jump:</span>
+                <span><span class="key">Space</span></span>
+            </div>
+        </div>
+        
+        <h2>⚡ Signal Control</h2>
+        <div class="slider-control">
+            <label for="power">Power Level: <span id="power-value">100%</span></label>
+            <input type="range" id="power" class="slider" min="10" max="200" value="100">
+        </div>
+        
+        <div class="slider-control">
+            <label for="signal">Signal Strength: <span id="signal-value">100%</span></label>
+            <input type="range" id="signal" class="slider" min="10" max="200" value="100">
+        </div>
+    </div>
+    
+    <div id="visualization-mode" style="display: none;">Network Topology</div>
+    
+    <div id="stats" style="display: none;">
+        <div class="stat-item">FPS: <span id="fps">0</span></div>
+        <div class="stat-item">Particles: <span id="particles">0</span></div>
+        <div class="stat-item">Components: <span id="components">0</span></div>
+        <div class="stat-item">Mode: <span id="current-mode">Network</span></div>
+    </div>
+    
+    <script type="module">
+        // Import Three.js from CDN
+        import * as THREE from 'https://cdn.jsdelivr.net/npm/three@0.150.0/build/three.module.js';
+        import { OrbitControls } from 'https://cdn.jsdelivr.net/npm/three@0.150.0/examples/jsm/controls/OrbitControls.js';
+        import { EffectComposer } from 'https://cdn.jsdelivr.net/npm/three@0.150.0/examples/jsm/postprocessing/EffectComposer.js';
+        import { RenderPass } from 'https://cdn.jsdelivr.net/npm/three@0.150.0/examples/jsm/postprocessing/RenderPass.js';
+        import { UnrealBloomPass } from 'https://cdn.jsdelivr.net/npm/three@0.150.0/examples/jsm/postprocessing/UnrealBloomPass.js';
+        
+        // Make Three.js available globally for our modules
+        window.THREE = THREE;
+        window.OrbitControls = OrbitControls;
+        window.EffectComposer = EffectComposer;
+        window.RenderPass = RenderPass;
+        window.UnrealBloomPass = UnrealBloomPass;
+        
+        // Load our modules
+        async function loadModules() {
+            try {
+                const [
+                    { default: HardwareRenderer },
+                    { NetworkTopologyVisualizer },
+                    { PCBLayoutRenderer },
+                    { FPGALogicSimulator },
+                    { SignalFlowEngine }
+                ] = await Promise.all([
+                    import('./hardware-renderer.js'),
+                    import('./network-topology-visualizer.js'),
+                    import('./pcb-layout-renderer.js'),
+                    import('./fpga-logic-simulator.js'),
+                    import('./signal-flow-engine.js')
+                ]);
+                
+                // Make classes available globally
+                window.HardwareRenderer = HardwareRenderer;
+                window.NetworkTopologyVisualizer = NetworkTopologyVisualizer;
+                window.PCBLayoutRenderer = PCBLayoutRenderer;
+                window.FPGALogicSimulator = FPGALogicSimulator;
+                window.SignalFlowEngine = SignalFlowEngine;
+                
+                // Initialize the demo
+                initializeDemo();
+            } catch (error) {
+                console.error('Error loading modules:', error);
+                document.getElementById('loading').innerHTML = 'Error loading modules. Please check console.';
+            }
+        }
+        
+        function initializeDemo() {
+            // Hide loading
+            document.getElementById('loading').style.display = 'none';
+            
+            // Show UI
+            document.getElementById('info').style.display = 'block';
+            document.getElementById('visualization-mode').style.display = 'block';
+            document.getElementById('stats').style.display = 'block';
+            
+            // Initialize renderer
+            const container = document.getElementById('container');
+            const renderer = new HardwareRenderer(container);
+            
+            // Mode buttons
+            const modeButtons = document.querySelectorAll('.mode-button');
+            modeButtons.forEach(button => {
+                button.addEventListener('click', () => {
+                    // Update active state
+                    modeButtons.forEach(b => b.classList.remove('active'));
+                    button.classList.add('active');
+                    
+                    // Switch mode
+                    const mode = button.dataset.mode;
+                    renderer.setMode(mode);
+                    
+                    // Update mode display
+                    const modeNames = {
+                        'network': 'Network Topology',
+                        'pcb': 'PCB Layout',
+                        'fpga': 'FPGA Logic',
+                        'game': 'Game World'
+                    };
+                    document.getElementById('visualization-mode').textContent = modeNames[mode];
+                    document.getElementById('current-mode').textContent = mode.charAt(0).toUpperCase() + mode.slice(1);
+                });
+            });
+            
+            // Sliders
+            const powerSlider = document.getElementById('power');
+            const signalSlider = document.getElementById('signal');
+            
+            powerSlider.addEventListener('input', (e) => {
+                const value = e.target.value;
+                document.getElementById('power-value').textContent = value + '%';
+                renderer.setPowerLevel(value / 100);
+            });
+            
+            signalSlider.addEventListener('input', (e) => {
+                const value = e.target.value;
+                document.getElementById('signal-value').textContent = value + '%';
+                renderer.setSignalStrength(value / 100);
+            });
+            
+            // Stats update
+            let lastTime = performance.now();
+            let frames = 0;
+            
+            function updateStats() {
+                frames++;
+                const currentTime = performance.now();
+                
+                if (currentTime >= lastTime + 1000) {
+                    document.getElementById('fps').textContent = frames;
+                    frames = 0;
+                    lastTime = currentTime;
+                    
+                    // Update other stats
+                    // These would come from the renderer in a real implementation
+                    document.getElementById('particles').textContent = Math.floor(Math.random() * 500 + 100);
+                    document.getElementById('components').textContent = Math.floor(Math.random() * 20 + 10);
+                }
+                
+                requestAnimationFrame(updateStats);
+            }
+            
+            updateStats();
+            
+            // Handle window resize
+            window.addEventListener('resize', () => {
+                renderer.camera.aspect = window.innerWidth / window.innerHeight;
+                renderer.camera.updateProjectionMatrix();
+                renderer.renderer.setSize(window.innerWidth, window.innerHeight);
+                renderer.composer.setSize(window.innerWidth, window.innerHeight);
+            });
+        }
+        
+        // Start loading modules
+        loadModules();
+    </script>
+</body>
+</html>

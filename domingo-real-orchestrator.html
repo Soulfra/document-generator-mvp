@@ -1,0 +1,1575 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>🎭 Domingo Real Orchestrator - Backend Management Hub</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        
+        body {
+            background: #0a0a0a;
+            color: #00ff00;
+            font-family: 'Courier New', monospace;
+            overflow: hidden;
+            height: 100vh;
+        }
+        
+        .orchestrator-layout {
+            display: grid;
+            grid-template-columns: 300px 1fr 350px;
+            grid-template-rows: 60px 1fr;
+            height: 100vh;
+        }
+        
+        /* Header */
+        .orchestrator-header {
+            grid-column: 1 / -1;
+            background: #111;
+            border-bottom: 2px solid #00ff00;
+            padding: 15px 20px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+        
+        .header-title {
+            color: #00ff00;
+            font-weight: bold;
+            font-size: 18px;
+        }
+        
+        .system-status {
+            display: flex;
+            gap: 20px;
+            font-size: 12px;
+        }
+        
+        .status-item {
+            display: flex;
+            align-items: center;
+            gap: 5px;
+        }
+        
+        .status-dot {
+            width: 8px;
+            height: 8px;
+            border-radius: 50%;
+            background: #ff0000;
+        }
+        
+        .status-dot.online { background: #00ff00; animation: pulse 2s infinite; }
+        .status-dot.warning { background: #ffaa00; }
+        
+        @keyframes pulse {
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0.6; }
+        }
+        
+        /* Character Panel */
+        .character-panel {
+            background: #111;
+            border-right: 2px solid #333;
+            display: flex;
+            flex-direction: column;
+        }
+        
+        .panel-header {
+            background: #1a1a1a;
+            padding: 15px;
+            border-bottom: 1px solid #333;
+            text-align: center;
+            color: #ff6600;
+            font-weight: bold;
+        }
+        
+        .character-list {
+            flex: 1;
+            overflow-y: auto;
+            padding: 10px;
+        }
+        
+        .character-card {
+            background: rgba(255, 255, 255, 0.05);
+            border: 1px solid #333;
+            border-radius: 8px;
+            padding: 12px;
+            margin-bottom: 10px;
+            cursor: pointer;
+            transition: all 0.3s;
+            position: relative;
+        }
+        
+        .character-card:hover {
+            border-color: #00ff00;
+            box-shadow: 0 0 10px rgba(0, 255, 0, 0.3);
+        }
+        
+        .character-card.available {
+            border-left: 3px solid #00ff00;
+        }
+        
+        .character-card.busy {
+            border-left: 3px solid #ffaa00;
+        }
+        
+        .character-card.offline {
+            border-left: 3px solid #ff0000;
+            opacity: 0.6;
+        }
+        
+        .character-name {
+            font-weight: bold;
+            color: #00ff00;
+            margin-bottom: 3px;
+        }
+        
+        .character-role {
+            font-size: 10px;
+            color: #888;
+            margin-bottom: 5px;
+        }
+        
+        .character-status {
+            font-size: 10px;
+            color: #666;
+        }
+        
+        .character-tags {
+            margin-top: 5px;
+            display: flex;
+            flex-wrap: wrap;
+            gap: 3px;
+        }
+        
+        .character-tag {
+            background: #333;
+            color: #ccc;
+            padding: 2px 6px;
+            border-radius: 10px;
+            font-size: 8px;
+        }
+        
+        /* Main Work Area */
+        .main-workspace {
+            background: #0a0a0a;
+            display: flex;
+            flex-direction: column;
+            overflow: hidden;
+        }
+        
+        /* Task Board */
+        .task-board {
+            flex: 1;
+            display: grid;
+            grid-template-columns: repeat(4, 1fr);
+            gap: 10px;
+            padding: 20px;
+            overflow: auto;
+        }
+        
+        .task-column {
+            background: #111;
+            border: 1px solid #333;
+            border-radius: 8px;
+            display: flex;
+            flex-direction: column;
+            min-height: 400px;
+        }
+        
+        .column-header {
+            background: #1a1a1a;
+            padding: 12px;
+            border-bottom: 1px solid #333;
+            text-align: center;
+            font-weight: bold;
+            color: #00ff00;
+        }
+        
+        .column-header.pending { color: #888; }
+        .column-header.in-progress { color: #ffaa00; }
+        .column-header.review { color: #0066ff; }
+        .column-header.complete { color: #00ff00; }
+        
+        .task-list {
+            flex: 1;
+            padding: 10px;
+            min-height: 50px;
+        }
+        
+        .task-card {
+            background: rgba(255, 255, 255, 0.03);
+            border: 1px solid #444;
+            border-radius: 6px;
+            padding: 12px;
+            margin-bottom: 8px;
+            cursor: move;
+            transition: all 0.3s;
+            user-select: none;
+        }
+        
+        .task-card:hover {
+            border-color: #00ff00;
+            transform: translateY(-2px);
+        }
+        
+        .task-card.dragging {
+            opacity: 0.5;
+            transform: rotate(5deg);
+        }
+        
+        .task-title {
+            color: #ccc;
+            font-weight: bold;
+            margin-bottom: 5px;
+            font-size: 12px;
+        }
+        
+        .task-description {
+            color: #888;
+            font-size: 10px;
+            margin-bottom: 8px;
+            line-height: 1.3;
+        }
+        
+        .task-footer {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            font-size: 9px;
+        }
+        
+        .task-priority {
+            padding: 2px 6px;
+            border-radius: 10px;
+            font-weight: bold;
+        }
+        
+        .priority-high { background: #ff0000; color: white; }
+        .priority-medium { background: #ffaa00; color: black; }
+        .priority-low { background: #666; color: white; }
+        
+        .task-assigned {
+            color: #00ff00;
+        }
+        
+        .drop-zone {
+            border: 2px dashed #444;
+            border-radius: 6px;
+            padding: 20px;
+            text-align: center;
+            color: #666;
+            font-size: 11px;
+            margin: 10px;
+            min-height: 60px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+        
+        .drop-zone.drag-over {
+            border-color: #00ff00;
+            background: rgba(0, 255, 0, 0.1);
+            color: #00ff00;
+        }
+        
+        /* Chat Interface */
+        .chat-interface {
+            background: #111;
+            border-left: 2px solid #333;
+            display: flex;
+            flex-direction: column;
+        }
+        
+        .chat-header {
+            background: #1a1a1a;
+            padding: 15px;
+            border-bottom: 1px solid #333;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+        
+        .domingo-avatar {
+            width: 30px;
+            height: 30px;
+            background: #333;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            position: relative;
+        }
+        
+        .domingo-avatar::before {
+            content: '👁️';
+            font-size: 16px;
+        }
+        
+        .domingo-avatar.active::after {
+            content: '';
+            position: absolute;
+            width: 100%;
+            height: 100%;
+            border-radius: 50%;
+            box-shadow: 0 0 20px #8a2be2;
+            animation: glow-pulse 2s ease-in-out infinite;
+        }
+        
+        @keyframes glow-pulse {
+            0%, 100% { box-shadow: 0 0 20px #8a2be2; }
+            50% { box-shadow: 0 0 40px #8a2be2, 0 0 60px #8a2be2; }
+        }
+        
+        .chat-status {
+            color: #8a2be2;
+            font-weight: bold;
+        }
+        
+        .chat-messages {
+            flex: 1;
+            overflow-y: auto;
+            padding: 15px;
+        }
+        
+        .message {
+            margin-bottom: 15px;
+            padding: 10px;
+            border-radius: 8px;
+            word-wrap: break-word;
+        }
+        
+        .message.user {
+            background: rgba(0, 255, 0, 0.1);
+            border-left: 3px solid #00ff00;
+        }
+        
+        .message.domingo {
+            background: rgba(138, 43, 226, 0.1);
+            border-left: 3px solid #8a2be2;
+        }
+        
+        .message.system {
+            background: rgba(255, 170, 0, 0.1);
+            border-left: 3px solid #ffaa00;
+        }
+        
+        .message-sender {
+            font-weight: bold;
+            margin-bottom: 5px;
+            font-size: 11px;
+        }
+        
+        .message-content {
+            font-size: 12px;
+            line-height: 1.4;
+        }
+        
+        .message-time {
+            font-size: 9px;
+            color: #666;
+            margin-top: 5px;
+        }
+        
+        .message-actions {
+            margin-top: 8px;
+            display: flex;
+            gap: 8px;
+        }
+        
+        .action-btn {
+            background: #333;
+            border: 1px solid #555;
+            color: #888;
+            padding: 4px 8px;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 9px;
+            transition: all 0.2s;
+        }
+        
+        .action-btn:hover {
+            border-color: #00ff00;
+            color: #00ff00;
+        }
+        
+        .chat-input-area {
+            padding: 15px;
+            border-top: 1px solid #333;
+            background: #1a1a1a;
+        }
+        
+        .chat-input {
+            width: 100%;
+            background: #222;
+            border: 1px solid #444;
+            color: #ccc;
+            padding: 12px;
+            border-radius: 6px;
+            font-family: inherit;
+            font-size: 12px;
+            resize: none;
+            min-height: 80px;
+        }
+        
+        .chat-input:focus {
+            outline: none;
+            border-color: #8a2be2;
+            box-shadow: 0 0 10px rgba(138, 43, 226, 0.3);
+        }
+        
+        .input-controls {
+            margin-top: 8px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+        
+        .send-btn {
+            background: #8a2be2;
+            border: none;
+            color: white;
+            padding: 8px 16px;
+            border-radius: 4px;
+            cursor: pointer;
+            font-weight: bold;
+            transition: all 0.2s;
+        }
+        
+        .send-btn:hover {
+            background: #9a4bf2;
+        }
+        
+        .quick-actions {
+            display: flex;
+            gap: 5px;
+        }
+        
+        .quick-action {
+            background: #333;
+            border: 1px solid #555;
+            color: #888;
+            padding: 4px 8px;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 10px;
+        }
+        
+        .quick-action:hover {
+            border-color: #ffaa00;
+            color: #ffaa00;
+        }
+        
+        /* Forum Integration Panel */
+        .forum-integration {
+            position: absolute;
+            bottom: 20px;
+            right: 20px;
+            background: rgba(0, 0, 0, 0.9);
+            border: 1px solid #333;
+            border-radius: 8px;
+            padding: 15px;
+            min-width: 200px;
+            display: none;
+        }
+        
+        .forum-integration.active {
+            display: block;
+            animation: slideUp 0.3s ease-out;
+        }
+        
+        @keyframes slideUp {
+            from { transform: translateY(20px); opacity: 0; }
+            to { transform: translateY(0); opacity: 1; }
+        }
+        
+        .forum-header {
+            color: #ff6600;
+            font-weight: bold;
+            margin-bottom: 10px;
+        }
+        
+        .forum-boards {
+            display: flex;
+            flex-direction: column;
+            gap: 5px;
+        }
+        
+        .forum-board {
+            background: #222;
+            border: 1px solid #444;
+            padding: 8px;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 11px;
+            transition: all 0.2s;
+        }
+        
+        .forum-board:hover {
+            border-color: #ff6600;
+            color: #ff6600;
+        }
+        
+        /* Notification System */
+        .notification {
+            position: fixed;
+            top: 20px;
+            right: 20px;
+            background: rgba(0, 0, 0, 0.9);
+            border: 1px solid #00ff00;
+            border-radius: 6px;
+            padding: 15px;
+            max-width: 300px;
+            z-index: 1000;
+            animation: notificationSlide 0.3s ease-out;
+        }
+        
+        @keyframes notificationSlide {
+            from { transform: translateX(100%); }
+            to { transform: translateX(0); }
+        }
+        
+        .notification.success { border-color: #00ff00; }
+        .notification.warning { border-color: #ffaa00; }
+        .notification.error { border-color: #ff0000; }
+        
+        /* Loading States */
+        .loading {
+            position: relative;
+        }
+        
+        .loading::after {
+            content: '';
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            width: 20px;
+            height: 20px;
+            margin: -10px;
+            border: 2px solid #333;
+            border-top: 2px solid #00ff00;
+            border-radius: 50%;
+            animation: spin 1s linear infinite;
+        }
+        
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+    </style>
+</head>
+<body>
+    <div class="orchestrator-layout">
+        <!-- Header -->
+        <div class="orchestrator-header">
+            <div class="header-title">🎭 DOMINGO ORCHESTRATOR - Backend Management Hub</div>
+            <div class="system-status">
+                <div class="status-item">
+                    <span class="status-dot online" id="orchestrator-status"></span>
+                    <span>Orchestrator</span>
+                </div>
+                <div class="status-item">
+                    <span class="status-dot online" id="forum-status"></span>
+                    <span>Forums</span>
+                </div>
+                <div class="status-item">
+                    <span class="status-dot online" id="characters-status"></span>
+                    <span>Characters</span>
+                </div>
+                <div class="status-item">
+                    <span class="status-dot online" id="websocket-status"></span>
+                    <span>WebSocket</span>
+                </div>
+            </div>
+        </div>
+        
+        <!-- Character Panel -->
+        <div class="character-panel">
+            <div class="panel-header">🎭 CHARACTER ROSTER</div>
+            <div class="character-list" id="characterList">
+                <!-- Characters populated dynamically -->
+            </div>
+        </div>
+        
+        <!-- Main Workspace -->
+        <div class="main-workspace">
+            <div class="task-board">
+                <!-- Pending Tasks -->
+                <div class="task-column">
+                    <div class="column-header pending">📋 PENDING</div>
+                    <div class="task-list" id="pendingTasks" ondrop="dropTask(event)" ondragover="allowDrop(event)">
+                        <div class="drop-zone">Drop tasks here or create new ones</div>
+                    </div>
+                </div>
+                
+                <!-- In Progress -->
+                <div class="task-column">
+                    <div class="column-header in-progress">⚡ IN PROGRESS</div>
+                    <div class="task-list" id="progressTasks" ondrop="dropTask(event)" ondragover="allowDrop(event)">
+                        <div class="drop-zone">Active tasks being worked on</div>
+                    </div>
+                </div>
+                
+                <!-- Review -->
+                <div class="task-column">
+                    <div class="column-header review">👁️ REVIEW</div>
+                    <div class="task-list" id="reviewTasks" ondrop="dropTask(event)" ondragover="allowDrop(event)">
+                        <div class="drop-zone">Tasks ready for review</div>
+                    </div>
+                </div>
+                
+                <!-- Complete -->
+                <div class="task-column">
+                    <div class="column-header complete">✅ COMPLETE</div>
+                    <div class="task-list" id="completeTasks" ondrop="dropTask(event)" ondragover="allowDrop(event)">
+                        <div class="drop-zone">Finished tasks</div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        
+        <!-- Chat Interface -->
+        <div class="chat-interface">
+            <div class="chat-header">
+                <div class="domingo-avatar active" id="domingoAvatar"></div>
+                <div>
+                    <div class="chat-status" id="domingoStatus">Domingo Online - Ready to orchestrate</div>
+                    <div style="font-size: 10px; color: #666;">Backend management & task coordination</div>
+                </div>
+            </div>
+            
+            <div class="chat-messages" id="chatMessages">
+                <!-- Messages populated dynamically -->
+            </div>
+            
+            <div class="chat-input-area">
+                <textarea class="chat-input" id="chatInput" 
+                          placeholder="Ask Domingo to manage systems, create tasks, assign characters, or coordinate backend operations..."></textarea>
+                <div class="input-controls">
+                    <div class="quick-actions">
+                        <button class="quick-action" onclick="quickAction('status')">System Status</button>
+                        <button class="quick-action" onclick="quickAction('create-task')">New Task</button>
+                        <button class="quick-action" onclick="quickAction('forum')">Forum</button>
+                    </div>
+                    <button class="send-btn" onclick="sendMessage()">Send</button>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <!-- Forum Integration Panel -->
+    <div class="forum-integration" id="forumPanel">
+        <div class="forum-header">📋 PHPBB INTEGRATION</div>
+        <div class="forum-boards">
+            <div class="forum-board" onclick="openForumBoard('tasks')">📋 Task Assignments</div>
+            <div class="forum-board" onclick="openForumBoard('characters')">🎭 Character Discussions</div>
+            <div class="forum-board" onclick="openForumBoard('system')">⚙️ System Updates</div>
+            <div class="forum-board" onclick="openForumBoard('community')">👥 Community Tasks</div>
+        </div>
+    </div>
+    
+    <script>
+        // Global state management
+        let orchestratorState = {
+            connected: false,
+            characters: new Map(),
+            tasks: new Map(),
+            webSocket: null,
+            domingoActive: true
+        };
+        
+        // Character definitions with specializations
+        const characterRoster = [
+            {
+                id: 'alice',
+                name: 'Alice',
+                role: 'Technical Lead',
+                specializations: ['backend', 'databases', 'architecture'],
+                status: 'available',
+                currentTask: null,
+                avatar: '👩‍💻'
+            },
+            {
+                id: 'bob',
+                name: 'Bob',
+                role: 'Frontend Specialist',
+                specializations: ['ui', 'react', 'design'],
+                status: 'busy',
+                currentTask: 'UI Refactor',
+                avatar: '👨‍🎨'
+            },
+            {
+                id: 'charlie',
+                name: 'Charlie',
+                role: 'DevOps Engineer',
+                specializations: ['deployment', 'docker', 'monitoring'],
+                status: 'available',
+                currentTask: null,
+                avatar: '⚙️'
+            },
+            {
+                id: 'diana',
+                name: 'Diana',
+                role: 'AI/ML Specialist',
+                specializations: ['llm', 'ai', 'machine-learning'],
+                status: 'available',
+                currentTask: null,
+                avatar: '🤖'
+            },
+            {
+                id: 'eve',
+                name: 'Eve',
+                role: 'Security Expert',
+                specializations: ['security', 'authentication', 'encryption'],
+                status: 'offline',
+                currentTask: null,
+                avatar: '🔒'
+            },
+            {
+                id: 'frank',
+                name: 'Frank',
+                role: 'Data Engineer',
+                specializations: ['data', 'analytics', 'pipelines'],
+                status: 'busy',
+                currentTask: 'Data Migration',
+                avatar: '📊'
+            }
+        ];
+        
+        // Sample tasks for demonstration
+        const sampleTasks = [
+            {
+                id: 'task-001',
+                title: 'Implement WebSocket Chat System',
+                description: 'Create real-time chat interface for orchestrator communication',
+                priority: 'high',
+                status: 'pending',
+                assignedTo: null,
+                tags: ['backend', 'websocket', 'chat']
+            },
+            {
+                id: 'task-002',
+                title: 'Setup phpBB Forum Integration',
+                description: 'Connect task system with phpBB forums for discussion threads',
+                priority: 'medium',
+                status: 'in-progress',
+                assignedTo: 'alice',
+                tags: ['integration', 'forum', 'phpbb']
+            },
+            {
+                id: 'task-003',
+                title: 'Character AI Response System',
+                description: 'Implement AI-powered responses for character interactions',
+                priority: 'high',
+                status: 'review',
+                assignedTo: 'diana',
+                tags: ['ai', 'characters', 'responses']
+            },
+            {
+                id: 'task-004',
+                title: 'Deploy Production Environment',
+                description: 'Setup Docker containers and deployment pipeline',
+                priority: 'medium',
+                status: 'complete',
+                assignedTo: 'charlie',
+                tags: ['devops', 'deployment', 'docker']
+            }
+        ];
+        
+        // Initialize orchestrator
+        function initOrchestrator() {
+            console.log('🎭 Initializing Domingo Real Orchestrator...');
+            
+            loadCharacters();
+            loadTasks();
+            initWebSocket();
+            setupDragAndDrop();
+            
+            // Initial system status
+            addMessage('domingo', 'Backend orchestrator online. Ready to manage systems and coordinate tasks.', [
+                { label: 'View System Health', action: () => showSystemHealth() },
+                { label: 'Create New Task', action: () => createTaskDialog() },
+                { label: 'Character Status', action: () => showCharacterStatus() }
+            ]);
+            
+            console.log('🔴 Domingo Orchestrator is LIVE and managing backend!');
+        }
+        
+        function loadCharacters() {
+            const characterList = document.getElementById('characterList');
+            characterList.innerHTML = '';
+            
+            characterRoster.forEach(character => {
+                const card = document.createElement('div');
+                card.className = `character-card ${character.status}`;
+                card.draggable = false; // Characters aren't draggable, but can receive tasks
+                card.onclick = () => selectCharacter(character.id);
+                
+                const tags = character.specializations.map(spec => 
+                    `<span class="character-tag">${spec}</span>`
+                ).join('');
+                
+                card.innerHTML = `
+                    <div class="character-name">${character.avatar} ${character.name}</div>
+                    <div class="character-role">${character.role}</div>
+                    <div class="character-status">
+                        Status: ${character.status}
+                        ${character.currentTask ? `<br>Working on: ${character.currentTask}` : ''}
+                    </div>
+                    <div class="character-tags">${tags}</div>
+                `;
+                
+                characterList.appendChild(card);
+                orchestratorState.characters.set(character.id, character);
+            });
+        }
+        
+        function loadTasks() {
+            // Clear all task columns
+            ['pendingTasks', 'progressTasks', 'reviewTasks', 'completeTasks'].forEach(columnId => {
+                const column = document.getElementById(columnId);
+                column.innerHTML = '<div class="drop-zone">Drop tasks here</div>';
+            });
+            
+            // Load tasks from server if connected, otherwise use sample data
+            if (orchestratorState.connected) {
+                loadTasksFromServer();
+            } else {
+                sampleTasks.forEach(task => {
+                    createTaskCard(task);
+                    orchestratorState.tasks.set(task.id, task);
+                });
+            }
+        }
+        
+        async function loadTasksFromServer() {
+            try {
+                const response = await fetch('/api/tasks');
+                const data = await response.json();
+                
+                if (data.success) {
+                    data.tasks.forEach(serverTask => {
+                        const task = {
+                            id: serverTask.task_id,
+                            title: serverTask.title,
+                            description: serverTask.description,
+                            priority: serverTask.priority,
+                            status: serverTask.column_status,
+                            assignedTo: serverTask.assigned_character,
+                            tags: serverTask.tags || []
+                        };
+                        createTaskCard(task);
+                        orchestratorState.tasks.set(task.id, task);
+                    });
+                }
+            } catch (error) {
+                console.error('Failed to load tasks from server:', error);
+                // Fall back to sample tasks
+                sampleTasks.forEach(task => {
+                    createTaskCard(task);
+                    orchestratorState.tasks.set(task.id, task);
+                });
+            }
+        }
+        
+        function refreshTaskDisplay() {
+            // Clear all columns
+            ['pendingTasks', 'progressTasks', 'reviewTasks', 'completeTasks'].forEach(columnId => {
+                const column = document.getElementById(columnId);
+                column.innerHTML = '<div class="drop-zone">Drop tasks here</div>';
+            });
+            
+            // Recreate task cards from current state
+            orchestratorState.tasks.forEach(task => {
+                createTaskCard(task);
+            });
+        }
+        
+        function addServerTask(taskData) {
+            const task = {
+                id: taskData.task_id,
+                title: taskData.title,
+                description: taskData.description,
+                priority: taskData.priority,
+                status: taskData.column_status,
+                assignedTo: taskData.assigned_character,
+                tags: taskData.tags || []
+            };
+            
+            orchestratorState.tasks.set(task.id, task);
+            createTaskCard(task);
+            showNotification(`New task created: ${task.title}`, 'success');
+        }
+        
+        function updateServerTask(taskData) {
+            const task = {
+                id: taskData.task_id,
+                title: taskData.title,
+                description: taskData.description,
+                priority: taskData.priority,
+                status: taskData.column_status,
+                assignedTo: taskData.assigned_character,
+                tags: taskData.tags || []
+            };
+            
+            orchestratorState.tasks.set(task.id, task);
+            updateTaskCard(task);
+        }
+        
+        function handleTaskAssignment(data) {
+            const { task, character } = data;
+            showNotification(`Task "${task.title}" assigned to ${character.name}`, 'success');
+            updateServerTask(task);
+            
+            // Update character in local state
+            const localChar = orchestratorState.characters.get(character.id);
+            if (localChar) {
+                localChar.status = character.status;
+                localChar.activeTask = character.activeTask;
+                loadCharacters(); // Refresh character display
+            }
+        }
+        
+        function createTaskCard(task) {
+            const card = document.createElement('div');
+            card.className = 'task-card';
+            card.draggable = true;
+            card.dataset.taskId = task.id;
+            
+            card.ondragstart = (e) => {
+                e.dataTransfer.setData('text/plain', task.id);
+                card.classList.add('dragging');
+            };
+            
+            card.ondragend = () => {
+                card.classList.remove('dragging');
+            };
+            
+            const assignedText = task.assignedTo ? 
+                `👤 ${orchestratorState.characters.get(task.assignedTo)?.name || task.assignedTo}` : 
+                'Unassigned';
+            
+            card.innerHTML = `
+                <div class="task-title">${task.title}</div>
+                <div class="task-description">${task.description}</div>
+                <div class="task-footer">
+                    <span class="task-priority priority-${task.priority}">${task.priority}</span>
+                    <span class="task-assigned">${assignedText}</span>
+                </div>
+            `;
+            
+            // Add to appropriate column
+            const columnMap = {
+                'pending': 'pendingTasks',
+                'in-progress': 'progressTasks', 
+                'review': 'reviewTasks',
+                'complete': 'completeTasks'
+            };
+            
+            const column = document.getElementById(columnMap[task.status]);
+            column.appendChild(card);
+        }
+        
+        function setupDragAndDrop() {
+            // Setup drop zones
+            document.querySelectorAll('.task-list').forEach(taskList => {
+                taskList.ondragover = allowDrop;
+                taskList.ondrop = dropTask;
+            });
+            
+            // Setup character drop zones
+            document.querySelectorAll('.character-card').forEach(card => {
+                card.ondragover = allowDrop;
+                card.ondrop = dropTaskOnCharacter;
+            });
+        }
+        
+        function allowDrop(e) {
+            e.preventDefault();
+            e.currentTarget.classList.add('drag-over');
+        }
+        
+        function dropTask(e) {
+            e.preventDefault();
+            e.currentTarget.classList.remove('drag-over');
+            
+            const taskId = e.dataTransfer.getData('text/plain');
+            const task = orchestratorState.tasks.get(taskId);
+            const taskCard = document.querySelector(`[data-task-id="${taskId}"]`);
+            
+            if (!task || !taskCard) return;
+            
+            // Determine new status based on drop zone
+            const columnId = e.currentTarget.id;
+            const statusMap = {
+                'pendingTasks': 'pending',
+                'progressTasks': 'in-progress',
+                'reviewTasks': 'review',
+                'completeTasks': 'complete'
+            };
+            
+            const newStatus = statusMap[columnId];
+            if (newStatus && newStatus !== task.status) {
+                const oldStatus = task.status;
+                task.status = newStatus;
+                
+                // Move card to new column
+                e.currentTarget.appendChild(taskCard);
+                
+                // Send update to server
+                if (orchestratorState.connected) {
+                    sendToServer({
+                        type: 'task_drag',
+                        taskId: task.id,
+                        fromColumn: oldStatus,
+                        toColumn: newStatus
+                    });
+                }
+                
+                // Notify about status change
+                showNotification(`Task "${task.title}" moved to ${newStatus}`, 'success');
+                
+                // Add system message
+                addMessage('system', `Task status updated: "${task.title}" → ${newStatus}`);
+                
+                // If moved to in-progress, suggest character assignment
+                if (newStatus === 'in-progress' && !task.assignedTo) {
+                    suggestCharacterForTask(task);
+                }
+            }
+        }
+        
+        function dropTaskOnCharacter(e) {
+            e.preventDefault();
+            e.currentTarget.classList.remove('drag-over');
+            
+            const taskId = e.dataTransfer.getData('text/plain');
+            const characterCard = e.currentTarget;
+            
+            // Find character ID from the card
+            const characterName = characterCard.querySelector('.character-name').textContent.split(' ').slice(1).join(' ');
+            const character = Array.from(orchestratorState.characters.values()).find(c => c.name === characterName);
+            
+            if (character && character.status === 'available') {
+                assignTaskToCharacter(taskId, character.id);
+            } else {
+                showNotification(`${character.name} is not available for assignment`, 'warning');
+            }
+        }
+        
+        function assignTaskToCharacter(taskId, characterId) {
+            const task = orchestratorState.tasks.get(taskId);
+            const character = orchestratorState.characters.get(characterId);
+            
+            if (!task || !character) return;
+            
+            // Send assignment to server
+            if (orchestratorState.connected) {
+                sendToServer({
+                    type: 'character_assign',
+                    taskId: taskId,
+                    characterId: characterId
+                });
+            } else {
+                // Local update if server not available
+                task.assignedTo = characterId;
+                task.status = 'in-progress';
+                character.status = 'busy';
+                character.currentTask = task.title;
+                
+                // Refresh displays
+                loadCharacters();
+                updateTaskCard(task);
+                
+                // Notify
+                showNotification(`Task "${task.title}" assigned to ${character.name}`, 'success');
+                addMessage('domingo', `I've assigned "${task.title}" to ${character.name}. They're now working on it!`);
+                
+                // Create forum post for task discussion
+                createForumPost(task, character);
+            }
+        }
+        
+        function updateTaskCard(task) {
+            const card = document.querySelector(`[data-task-id="${task.id}"]`);
+            if (card) {
+                const assignedText = task.assignedTo ? 
+                    `👤 ${orchestratorState.characters.get(task.assignedTo)?.name || task.assignedTo}` : 
+                    'Unassigned';
+                
+                card.querySelector('.task-assigned').textContent = assignedText;
+                
+                // Move to appropriate column if status changed
+                const columnMap = {
+                    'pending': 'pendingTasks',
+                    'in-progress': 'progressTasks',
+                    'review': 'reviewTasks', 
+                    'complete': 'completeTasks'
+                };
+                
+                const targetColumn = document.getElementById(columnMap[task.status]);
+                targetColumn.appendChild(card);
+            }
+        }
+        
+        function suggestCharacterForTask(task) {
+            // Find best character match based on specializations
+            const matches = Array.from(orchestratorState.characters.values())
+                .filter(c => c.status === 'available')
+                .map(c => ({
+                    character: c,
+                    score: c.specializations.filter(spec => 
+                        task.tags.includes(spec) || task.description.toLowerCase().includes(spec)
+                    ).length
+                }))
+                .sort((a, b) => b.score - a.score);
+            
+            if (matches.length > 0 && matches[0].score > 0) {
+                const bestMatch = matches[0].character;
+                addMessage('domingo', `I recommend assigning "${task.title}" to ${bestMatch.name} (${bestMatch.role}). They specialize in: ${bestMatch.specializations.join(', ')}`, [
+                    { label: `Assign to ${bestMatch.name}`, action: () => assignTaskToCharacter(task.id, bestMatch.id) },
+                    { label: 'Choose Different Character', action: () => showCharacterSelection(task) }
+                ]);
+            }
+        }
+        
+        function createForumPost(task, character) {
+            // Simulate phpBB forum integration
+            const forumPost = {
+                board: 'task-assignments',
+                title: `[TASK] ${task.title}`,
+                content: `
+Task: ${task.title}
+Assigned to: ${character.name} (${character.role})
+Priority: ${task.priority}
+Description: ${task.description}
+
+Discussion thread for task coordination and updates.
+                `.trim(),
+                tags: task.tags,
+                timestamp: new Date().toISOString()
+            };
+            
+            // In a real implementation, this would make API calls to phpBB
+            console.log('📋 Forum post created:', forumPost);
+            
+            addMessage('system', `Forum discussion thread created for task: "${task.title}"`);
+        }
+        
+        // Chat system functions
+        function sendMessage() {
+            const input = document.getElementById('chatInput');
+            const message = input.value.trim();
+            
+            if (!message) return;
+            
+            addMessage('user', message);
+            input.value = '';
+            
+            // Process command with Domingo
+            processUserMessage(message);
+        }
+        
+        function processUserMessage(message) {
+            // Send message to real server
+            if (orchestratorState.connected) {
+                sendToServer({
+                    type: 'chat_message',
+                    message: message
+                });
+            } else {
+                // Fallback to local processing if server not available
+                setTimeout(() => {
+                    const response = generateDomingoResponse(message);
+                    addMessage('domingo', response.message, response.actions);
+                }, 1000 + Math.random() * 2000);
+            }
+        }
+        
+        function generateDomingoResponse(message) {
+            const msg = message.toLowerCase();
+            
+            // System status requests
+            if (msg.includes('status') || msg.includes('health')) {
+                return {
+                    message: 'All backend systems are operational. Database connections stable, WebSocket active, all characters responsive.',
+                    actions: [
+                        { label: 'Detailed Health Report', action: () => showSystemHealth() },
+                        { label: 'Character Status', action: () => showCharacterStatus() }
+                    ]
+                };
+            }
+            
+            // Task management
+            if (msg.includes('task') || msg.includes('create') || msg.includes('new')) {
+                return {
+                    message: 'I can help you create and manage tasks. What type of task would you like to create?',
+                    actions: [
+                        { label: 'Create Backend Task', action: () => createTaskDialog('backend') },
+                        { label: 'Create Frontend Task', action: () => createTaskDialog('frontend') },
+                        { label: 'Create DevOps Task', action: () => createTaskDialog('devops') }
+                    ]
+                };
+            }
+            
+            // Character assignment
+            if (msg.includes('assign') || msg.includes('character')) {
+                const availableChars = Array.from(orchestratorState.characters.values())
+                    .filter(c => c.status === 'available');
+                
+                return {
+                    message: `I have ${availableChars.length} characters available for assignment: ${availableChars.map(c => c.name).join(', ')}`,
+                    actions: [
+                        { label: 'Show All Characters', action: () => showCharacterStatus() },
+                        { label: 'Auto-Assign Tasks', action: () => autoAssignTasks() }
+                    ]
+                };
+            }
+            
+            // Forum integration
+            if (msg.includes('forum') || msg.includes('phpbb') || msg.includes('board')) {
+                return {
+                    message: 'Forum integration is active. I can create discussion threads for tasks and coordinate team communications.',
+                    actions: [
+                        { label: 'Open Forum Panel', action: () => toggleForumPanel() },
+                        { label: 'Create Discussion Thread', action: () => createForumThread() }
+                    ]
+                };
+            }
+            
+            // Default responses
+            const responses = [
+                'I\'m orchestrating your backend systems. How can I help coordinate tasks or manage characters?',
+                'Backend operations running smoothly. Need help with task assignment or system coordination?',
+                'All systems operational. What would you like me to orchestrate today?',
+                'Ready to manage your infrastructure. Task creation, character assignment, or system monitoring?'
+            ];
+            
+            return {
+                message: responses[Math.floor(Math.random() * responses.length)],
+                actions: [
+                    { label: 'System Overview', action: () => showSystemHealth() },
+                    { label: 'Create Task', action: () => createTaskDialog() }
+                ]
+            };
+        }
+        
+        function addMessage(sender, content, actions = []) {
+            const chatMessages = document.getElementById('chatMessages');
+            const messageEl = document.createElement('div');
+            messageEl.className = `message ${sender}`;
+            
+            const senderNames = {
+                user: 'You',
+                domingo: '🎭 Domingo',
+                system: '⚙️ System'
+            };
+            
+            const actionsHtml = actions.length > 0 ? 
+                `<div class="message-actions">
+                    ${actions.map(action => 
+                        `<button class="action-btn" onclick="(${action.action.toString()})()">${action.label}</button>`
+                    ).join('')}
+                </div>` : '';
+            
+            messageEl.innerHTML = `
+                <div class="message-sender">${senderNames[sender]}</div>
+                <div class="message-content">${content}</div>
+                <div class="message-time">${new Date().toLocaleTimeString()}</div>
+                ${actionsHtml}
+            `;
+            
+            chatMessages.appendChild(messageEl);
+            chatMessages.scrollTop = chatMessages.scrollHeight;
+        }
+        
+        // Quick actions
+        function quickAction(action) {
+            switch(action) {
+                case 'status':
+                    processUserMessage('show system status');
+                    break;
+                case 'create-task':
+                    createTaskDialog();
+                    break;
+                case 'forum':
+                    toggleForumPanel();
+                    break;
+            }
+        }
+        
+        function showSystemHealth() {
+            const health = {
+                orchestrator: 'online',
+                database: 'connected',
+                websocket: 'active',
+                forum: 'integrated',
+                characters: orchestratorState.characters.size + ' loaded'
+            };
+            
+            const healthReport = Object.entries(health)
+                .map(([system, status]) => `${system}: ${status}`)
+                .join('\\n');
+            
+            addMessage('system', `System Health Report:\\n${healthReport}`);
+        }
+        
+        function showCharacterStatus() {
+            const statusReport = Array.from(orchestratorState.characters.values())
+                .map(c => `${c.avatar} ${c.name}: ${c.status}${c.currentTask ? ` (${c.currentTask})` : ''}`)
+                .join('\\n');
+            
+            addMessage('domingo', `Character Status Report:\\n${statusReport}`);
+        }
+        
+        async function createTaskDialog(type = null) {
+            const title = prompt('Task Title:');
+            if (!title) return;
+            
+            const description = prompt('Task Description:');
+            if (!description) return;
+            
+            const priority = prompt('Priority (high/medium/low):', 'medium');
+            const tags = prompt('Tags (comma-separated):', type || '').split(',').map(t => t.trim()).filter(t => t);
+            
+            const taskData = {
+                title,
+                description,
+                priority: priority || 'medium',
+                tags
+            };
+            
+            if (orchestratorState.connected) {
+                // Send to server
+                try {
+                    const response = await fetch('/api/tasks', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify(taskData)
+                    });
+                    
+                    const result = await response.json();
+                    
+                    if (result.success) {
+                        showNotification(`Task "${title}" created successfully`, 'success');
+                        addMessage('domingo', `Task created: "${title}". I've added it to the pending column. Would you like me to suggest a character for assignment?`);
+                    } else {
+                        showNotification(`Failed to create task: ${result.error}`, 'error');
+                    }
+                } catch (error) {
+                    console.error('Failed to create task:', error);
+                    showNotification('Failed to create task. Server may be offline.', 'error');
+                }
+            } else {
+                // Local creation as fallback
+                const newTask = {
+                    id: 'task-' + Date.now(),
+                    title,
+                    description,
+                    priority: priority || 'medium',
+                    status: 'pending',
+                    assignedTo: null,
+                    tags
+                };
+                
+                orchestratorState.tasks.set(newTask.id, newTask);
+                createTaskCard(newTask);
+                
+                addMessage('domingo', `Task created: "${title}". I've added it to the pending column. Would you like me to suggest a character for assignment?`, [
+                    { label: 'Auto-Assign Character', action: () => suggestCharacterForTask(newTask) },
+                    { label: 'Manual Assignment', action: () => showCharacterSelection(newTask) }
+                ]);
+            }
+        }
+        
+        function autoAssignTasks() {
+            const pendingTasks = Array.from(orchestratorState.tasks.values())
+                .filter(t => t.status === 'pending' && !t.assignedTo);
+            
+            let assigned = 0;
+            
+            pendingTasks.forEach(task => {
+                const availableChars = Array.from(orchestratorState.characters.values())
+                    .filter(c => c.status === 'available');
+                
+                if (availableChars.length > 0) {
+                    const bestMatch = availableChars.find(c => 
+                        c.specializations.some(spec => task.tags.includes(spec))
+                    ) || availableChars[0];
+                    
+                    assignTaskToCharacter(task.id, bestMatch.id);
+                    assigned++;
+                }
+            });
+            
+            addMessage('domingo', `Auto-assigned ${assigned} tasks to available characters.`);
+        }
+        
+        function toggleForumPanel() {
+            const panel = document.getElementById('forumPanel');
+            panel.classList.toggle('active');
+        }
+        
+        function openForumBoard(board) {
+            addMessage('system', `Opening forum board: ${board}. In a real implementation, this would navigate to the phpBB board.`);
+            toggleForumPanel();
+        }
+        
+        function showNotification(message, type = 'success') {
+            const notification = document.createElement('div');
+            notification.className = `notification ${type}`;
+            notification.textContent = message;
+            
+            document.body.appendChild(notification);
+            
+            setTimeout(() => {
+                notification.remove();
+            }, 3000);
+        }
+        
+        function initWebSocket() {
+            // Connect to real Domingo Orchestrator Server
+            try {
+                orchestratorState.webSocket = new WebSocket('ws://localhost:7777/ws');
+                
+                orchestratorState.webSocket.onopen = () => {
+                    console.log('🔌 Connected to Domingo Orchestrator Server');
+                    orchestratorState.connected = true;
+                    updateSystemStatus('websocket-status', 'online');
+                    addMessage('system', 'WebSocket connection established. Real-time updates active.');
+                };
+                
+                orchestratorState.webSocket.onmessage = (event) => {
+                    const data = JSON.parse(event.data);
+                    handleServerMessage(data);
+                };
+                
+                orchestratorState.webSocket.onclose = () => {
+                    console.log('❌ Disconnected from orchestrator server');
+                    orchestratorState.connected = false;
+                    updateSystemStatus('websocket-status', 'offline');
+                    addMessage('system', 'Connection lost. Attempting to reconnect...');
+                    
+                    // Reconnect after 3 seconds
+                    setTimeout(initWebSocket, 3000);
+                };
+                
+                orchestratorState.webSocket.onerror = (error) => {
+                    console.error('WebSocket error:', error);
+                    addMessage('system', 'Connection error. Server might be offline.');
+                };
+                
+            } catch (error) {
+                console.error('Failed to connect to orchestrator server:', error);
+                addMessage('system', 'Failed to connect to orchestrator server. Make sure it\'s running on port 7777.');
+                
+                // Retry connection
+                setTimeout(initWebSocket, 5000);
+            }
+        }
+        
+        function handleServerMessage(data) {
+            console.log('📨 Server message:', data);
+            
+            switch (data.type) {
+                case 'initial_state':
+                    loadServerState(data.data);
+                    break;
+                case 'chat_message':
+                    if (data.data.sender === 'domingo') {
+                        addMessage('domingo', data.data.message);
+                    }
+                    break;
+                case 'task_created':
+                    addServerTask(data.data);
+                    break;
+                case 'task_updated':
+                    updateServerTask(data.data);
+                    break;
+                case 'task_assigned':
+                    handleTaskAssignment(data.data);
+                    break;
+                case 'error':
+                    showNotification(data.message, 'error');
+                    break;
+            }
+        }
+        
+        function loadServerState(serverState) {
+            // Load tasks from server
+            if (serverState.tasks) {
+                serverState.tasks.forEach(task => {
+                    orchestratorState.tasks.set(task.task_id, {
+                        id: task.task_id,
+                        title: task.title,
+                        description: task.description,
+                        priority: task.priority,
+                        status: task.column_status,
+                        assignedTo: task.assigned_character,
+                        tags: task.tags || []
+                    });
+                });
+                refreshTaskDisplay();
+            }
+            
+            // Load characters from server
+            if (serverState.characters) {
+                serverState.characters.forEach(char => {
+                    orchestratorState.characters.set(char.id, char);
+                });
+                loadCharacters();
+            }
+            
+            console.log('✅ Loaded server state');
+        }
+        
+        function sendToServer(message) {
+            if (orchestratorState.webSocket && orchestratorState.webSocket.readyState === WebSocket.OPEN) {
+                orchestratorState.webSocket.send(JSON.stringify(message));
+            } else {
+                console.warn('WebSocket not connected');
+                showNotification('Connection lost. Reconnecting...', 'warning');
+            }
+        }
+        
+        function updateSystemStatus(elementId, status) {
+            const statusDot = document.getElementById(elementId);
+            if (statusDot) {
+                statusDot.className = `status-dot ${status}`;
+            }
+        }
+        
+        // Keyboard shortcuts
+        document.addEventListener('keydown', (e) => {
+            if (e.ctrlKey || e.metaKey) {
+                switch(e.key) {
+                    case 'Enter':
+                        if (document.activeElement.id === 'chatInput') {
+                            sendMessage();
+                        }
+                        break;
+                    case 'n':
+                        e.preventDefault();
+                        createTaskDialog();
+                        break;
+                    case 'f':
+                        e.preventDefault();
+                        toggleForumPanel();
+                        break;
+                }
+            }
+        });
+        
+        // Chat input handling
+        document.getElementById('chatInput').addEventListener('keydown', (e) => {
+            if (e.key === 'Enter' && !e.shiftKey) {
+                e.preventDefault();
+                sendMessage();
+            }
+        });
+        
+        // Initialize when page loads
+        window.addEventListener('load', initOrchestrator);
+    </script>
+</body>
+</html>

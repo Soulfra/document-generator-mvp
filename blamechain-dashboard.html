@@ -1,0 +1,854 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>BlameChain Dashboard - On-Chain Discovery Journey</title>
+    <style>
+        body {
+            margin: 0;
+            padding: 20px;
+            background: linear-gradient(135deg, #1a1a1a 0%, #2d1b69 50%, #0f0f0f 100%);
+            color: #e0e0e0;
+            font-family: 'Courier New', monospace;
+            min-height: 100vh;
+        }
+        
+        .header {
+            text-align: center;
+            margin-bottom: 30px;
+            position: relative;
+        }
+        
+        .header h1 {
+            margin: 0;
+            font-size: 32px;
+            background: linear-gradient(45deg, #ff6b6b, #4ecdc4, #45b7d1);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            text-shadow: 0 0 30px rgba(78, 205, 196, 0.5);
+        }
+        
+        .chain-status {
+            position: absolute;
+            top: 0;
+            right: 0;
+            padding: 10px 20px;
+            background: rgba(0, 0, 0, 0.7);
+            border: 1px solid #4ecdc4;
+            border-radius: 5px;
+            font-size: 12px;
+        }
+        
+        .status-indicator {
+            display: inline-block;
+            width: 10px;
+            height: 10px;
+            border-radius: 50%;
+            margin-right: 5px;
+            background: #ff6b6b;
+        }
+        
+        .status-indicator.connected {
+            background: #4ecdc4;
+            animation: pulse 2s infinite;
+        }
+        
+        @keyframes pulse {
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0.5; }
+        }
+        
+        .dashboard-grid {
+            display: grid;
+            grid-template-columns: 1fr 2fr 1fr;
+            gap: 20px;
+            margin-bottom: 20px;
+        }
+        
+        .panel {
+            background: rgba(0, 0, 0, 0.8);
+            border: 1px solid #4ecdc4;
+            border-radius: 10px;
+            padding: 20px;
+            box-shadow: 0 0 20px rgba(78, 205, 196, 0.3);
+        }
+        
+        .panel h3 {
+            margin-top: 0;
+            color: #4ecdc4;
+            font-size: 18px;
+            border-bottom: 1px solid #4ecdc4;
+            padding-bottom: 10px;
+        }
+        
+        /* Journey visualization */
+        .journey-timeline {
+            position: relative;
+            padding: 20px 0;
+        }
+        
+        .phase-node {
+            position: relative;
+            margin: 30px 0;
+            padding-left: 50px;
+        }
+        
+        .phase-node:before {
+            content: '';
+            position: absolute;
+            left: 20px;
+            top: 50%;
+            transform: translateY(-50%);
+            width: 20px;
+            height: 20px;
+            border-radius: 50%;
+            background: #45b7d1;
+            border: 3px solid #e0e0e0;
+        }
+        
+        .phase-node.completed:before {
+            background: #4ecdc4;
+            box-shadow: 0 0 20px #4ecdc4;
+        }
+        
+        .phase-node:after {
+            content: '';
+            position: absolute;
+            left: 29px;
+            top: 50%;
+            height: 100%;
+            width: 2px;
+            background: #45b7d1;
+        }
+        
+        .phase-node:last-child:after {
+            display: none;
+        }
+        
+        .phase-title {
+            font-weight: bold;
+            color: #4ecdc4;
+            margin-bottom: 5px;
+        }
+        
+        .phase-details {
+            font-size: 12px;
+            color: #aaa;
+        }
+        
+        /* Narrative display */
+        .narrative-entry {
+            margin: 15px 0;
+            padding: 15px;
+            background: rgba(78, 205, 196, 0.1);
+            border-left: 3px solid #4ecdc4;
+            font-style: italic;
+            position: relative;
+            opacity: 0;
+            animation: fadeIn 0.5s forwards;
+        }
+        
+        @keyframes fadeIn {
+            to { opacity: 1; }
+        }
+        
+        .narrative-time {
+            font-size: 10px;
+            color: #666;
+            position: absolute;
+            top: 5px;
+            right: 10px;
+        }
+        
+        /* Reputation cards */
+        .reputation-card {
+            background: rgba(255, 255, 255, 0.05);
+            border-radius: 8px;
+            padding: 15px;
+            margin: 10px 0;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            transition: all 0.3s;
+        }
+        
+        .reputation-card:hover {
+            background: rgba(255, 255, 255, 0.1);
+            transform: translateX(5px);
+        }
+        
+        .service-name {
+            font-weight: bold;
+            color: #4ecdc4;
+        }
+        
+        .reputation-score {
+            font-size: 24px;
+            font-weight: bold;
+        }
+        
+        .reputation-score.positive { color: #4ecdc4; }
+        .reputation-score.negative { color: #ff6b6b; }
+        .reputation-score.neutral { color: #ffa726; }
+        
+        /* Transaction list */
+        .tx-item {
+            margin: 10px 0;
+            padding: 10px;
+            background: rgba(0, 0, 0, 0.5);
+            border-radius: 5px;
+            font-size: 12px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+        
+        .tx-hash {
+            font-family: monospace;
+            color: #45b7d1;
+            cursor: pointer;
+            text-decoration: underline;
+        }
+        
+        .tx-type {
+            padding: 2px 8px;
+            border-radius: 3px;
+            font-size: 10px;
+            text-transform: uppercase;
+        }
+        
+        .tx-type.discovery { background: #4ecdc4; color: #000; }
+        .tx-type.handshake { background: #45b7d1; color: #000; }
+        .tx-type.blame { background: #ff6b6b; color: #fff; }
+        .tx-type.praise { background: #ffa726; color: #000; }
+        
+        /* Controls */
+        .controls {
+            text-align: center;
+            margin: 20px 0;
+        }
+        
+        .btn {
+            background: linear-gradient(45deg, #4ecdc4, #45b7d1);
+            border: none;
+            color: #000;
+            padding: 12px 24px;
+            margin: 5px;
+            cursor: pointer;
+            border-radius: 5px;
+            font-size: 14px;
+            font-weight: bold;
+            font-family: 'Courier New', monospace;
+            transition: all 0.3s;
+            position: relative;
+            overflow: hidden;
+        }
+        
+        .btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 5px 20px rgba(78, 205, 196, 0.5);
+        }
+        
+        .btn:active {
+            transform: translateY(0);
+        }
+        
+        .btn:before {
+            content: '';
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            width: 0;
+            height: 0;
+            background: rgba(255, 255, 255, 0.3);
+            border-radius: 50%;
+            transform: translate(-50%, -50%);
+            transition: width 0.6s, height 0.6s;
+        }
+        
+        .btn:active:before {
+            width: 300px;
+            height: 300px;
+        }
+        
+        /* Stats display */
+        .stats-grid {
+            display: grid;
+            grid-template-columns: repeat(4, 1fr);
+            gap: 15px;
+            margin: 20px 0;
+        }
+        
+        .stat-card {
+            background: rgba(0, 0, 0, 0.5);
+            padding: 15px;
+            border-radius: 8px;
+            text-align: center;
+            border: 1px solid #333;
+        }
+        
+        .stat-value {
+            font-size: 28px;
+            font-weight: bold;
+            color: #4ecdc4;
+            margin: 5px 0;
+        }
+        
+        .stat-label {
+            font-size: 12px;
+            color: #aaa;
+            text-transform: uppercase;
+        }
+        
+        /* Gas tracker */
+        .gas-estimate {
+            background: rgba(69, 183, 209, 0.1);
+            border: 1px solid #45b7d1;
+            border-radius: 5px;
+            padding: 15px;
+            margin: 20px 0;
+            font-size: 12px;
+        }
+        
+        .gas-item {
+            display: flex;
+            justify-content: space-between;
+            margin: 5px 0;
+        }
+        
+        /* Loading overlay */
+        .loading-overlay {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0, 0, 0, 0.8);
+            z-index: 1000;
+            justify-content: center;
+            align-items: center;
+        }
+        
+        .loading-spinner {
+            width: 60px;
+            height: 60px;
+            border: 3px solid rgba(78, 205, 196, 0.3);
+            border-top: 3px solid #4ecdc4;
+            border-radius: 50%;
+            animation: spin 1s linear infinite;
+        }
+        
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+    </style>
+</head>
+<body>
+    <div class="header">
+        <h1>⛓️ BLAMECHAIN DASHBOARD</h1>
+        <p>On-Chain Discovery Journey & Reputation System</p>
+        <div class="chain-status">
+            <span id="chainIndicator" class="status-indicator"></span>
+            <span id="chainStatus">Disconnected</span>
+        </div>
+    </div>
+    
+    <div class="controls">
+        <button class="btn" onclick="deployContracts()">🚀 Deploy Contracts</button>
+        <button class="btn" onclick="refreshJourney()">🔄 Refresh Journey</button>
+        <button class="btn" onclick="checkIntegrity()">🔍 Check Integrity</button>
+        <button class="btn" onclick="exportJourney()">💾 Export Journey</button>
+    </div>
+    
+    <div class="dashboard-grid">
+        <!-- Left: Discovery Journey -->
+        <div class="panel">
+            <h3>🗺️ Discovery Journey</h3>
+            <div class="journey-timeline" id="journeyTimeline">
+                <div class="phase-node completed">
+                    <div class="phase-title">Initialization</div>
+                    <div class="phase-details">System awakening...</div>
+                </div>
+            </div>
+            
+            <div class="stats-grid" style="margin-top: 20px;">
+                <div class="stat-card">
+                    <div id="discoveryCount" class="stat-value">0</div>
+                    <div class="stat-label">Discoveries</div>
+                </div>
+                <div class="stat-card">
+                    <div id="handshakeCount" class="stat-value">0</div>
+                    <div class="stat-label">Handshakes</div>
+                </div>
+            </div>
+        </div>
+        
+        <!-- Center: Narratives -->
+        <div class="panel">
+            <h3>📖 On-Chain Narratives</h3>
+            <div id="narrativeContainer">
+                <div class="narrative-entry">
+                    <div class="narrative-time">Block #0</div>
+                    "I'm awakening... Let me discover what systems exist around me."
+                </div>
+            </div>
+        </div>
+        
+        <!-- Right: Reputation System -->
+        <div class="panel">
+            <h3>⚖️ Service Reputation</h3>
+            <div id="reputationList">
+                <div class="reputation-card">
+                    <div>
+                        <div class="service-name">JSON Scout</div>
+                        <div style="font-size: 12px; color: #aaa;">
+                            <span id="jsonScoutBlames">0</span> blames | 
+                            <span id="jsonScoutPraises">0</span> praises
+                        </div>
+                    </div>
+                    <div id="jsonScoutScore" class="reputation-score neutral">0</div>
+                </div>
+                <div class="reputation-card">
+                    <div>
+                        <div class="service-name">Vault System</div>
+                        <div style="font-size: 12px; color: #aaa;">
+                            <span id="vaultBlames">0</span> blames | 
+                            <span id="vaultPraises">0</span> praises
+                        </div>
+                    </div>
+                    <div id="vaultScore" class="reputation-score neutral">0</div>
+                </div>
+            </div>
+            
+            <div style="margin-top: 20px;">
+                <button class="btn" onclick="showBlameDialog()" style="background: linear-gradient(45deg, #ff6b6b, #ff8787);">Report Issue</button>
+                <button class="btn" onclick="showPraiseDialog()" style="background: linear-gradient(45deg, #ffa726, #ffb74d);">Give Praise</button>
+            </div>
+        </div>
+    </div>
+    
+    <!-- Transaction History -->
+    <div class="panel">
+        <h3>📜 Blockchain Transactions</h3>
+        <div id="txHistory"></div>
+    </div>
+    
+    <!-- Gas Estimates -->
+    <div class="gas-estimate">
+        <h4 style="margin-top: 0;">⛽ Gas Estimates</h4>
+        <div id="gasEstimates">
+            <div class="gas-item">
+                <span>Loading gas prices...</span>
+            </div>
+        </div>
+    </div>
+    
+    <!-- Loading overlay -->
+    <div class="loading-overlay" id="loadingOverlay">
+        <div class="loading-spinner"></div>
+    </div>
+    
+    <script>
+        let contracts = {
+            handshakeRegistry: null,
+            blameChain: null
+        };
+        let ws = null;
+        
+        const apiBase = 'http://localhost:48011';
+        
+        // Initialize dashboard
+        async function init() {
+            connectWebSocket();
+            checkContractStatus();
+            setInterval(updateGasEstimates, 30000);
+        }
+        
+        // Connect to WebSocket
+        function connectWebSocket() {
+            ws = new WebSocket('ws://localhost:48012');
+            
+            ws.onopen = () => {
+                console.log('Connected to BlameChain');
+                document.getElementById('chainIndicator').classList.add('connected');
+                document.getElementById('chainStatus').textContent = 'Connected';
+                ws.send(JSON.stringify({ type: 'subscribe' }));
+            };
+            
+            ws.onmessage = (event) => {
+                const data = JSON.parse(event.data);
+                handleWSMessage(data);
+            };
+            
+            ws.onerror = (error) => {
+                console.error('WebSocket error:', error);
+                document.getElementById('chainIndicator').classList.remove('connected');
+                document.getElementById('chainStatus').textContent = 'Error';
+            };
+            
+            ws.onclose = () => {
+                document.getElementById('chainIndicator').classList.remove('connected');
+                document.getElementById('chainStatus').textContent = 'Disconnected';
+                setTimeout(connectWebSocket, 5000);
+            };
+        }
+        
+        // Handle WebSocket messages
+        function handleWSMessage(data) {
+            switch (data.type) {
+                case 'discovery_recorded':
+                    addTransaction(data.txHash, 'discovery', `Discovered ${data.service}`);
+                    refreshJourney();
+                    break;
+                    
+                case 'chain_sync':
+                    updateStats(data.state);
+                    break;
+            }
+        }
+        
+        // Check contract deployment status
+        async function checkContractStatus() {
+            try {
+                const response = await fetch(`${apiBase}/api/contracts`);
+                const data = await response.json();
+                
+                contracts = data;
+                
+                if (data.handshakeRegistry && data.blameChain) {
+                    console.log('Contracts deployed:', data);
+                    refreshJourney();
+                }
+            } catch (error) {
+                console.error('Contract check error:', error);
+            }
+        }
+        
+        // Deploy contracts
+        async function deployContracts() {
+            showLoading(true);
+            
+            try {
+                const response = await fetch(`${apiBase}/api/deploy`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' }
+                });
+                
+                const data = await response.json();
+                
+                if (data.success) {
+                    contracts = data.addresses;
+                    alert(`Contracts deployed!\n\nHandshakeRegistry: ${data.addresses.handshakeRegistry}\nBlameChain: ${data.addresses.blameChain}`);
+                    refreshJourney();
+                } else {
+                    alert('Deployment failed: ' + data.error);
+                }
+            } catch (error) {
+                alert('Error: ' + error.message);
+            } finally {
+                showLoading(false);
+            }
+        }
+        
+        // Refresh journey display
+        async function refreshJourney() {
+            if (!contracts.handshakeRegistry) return;
+            
+            try {
+                const response = await fetch(`${apiBase}/api/journey`);
+                const journey = await response.json();
+                
+                updateJourneyDisplay(journey);
+                updateStats(journey);
+                
+                // Load narratives
+                loadNarratives();
+                
+                // Update reputation
+                updateReputation();
+                
+            } catch (error) {
+                console.error('Journey refresh error:', error);
+            }
+        }
+        
+        // Update journey timeline
+        function updateJourneyDisplay(journey) {
+            const phases = [
+                'Initialization',
+                'Service Discovery',
+                'Handshake Establishment',
+                'Connection Mapping',
+                'Verification',
+                'Operational'
+            ];
+            
+            const timeline = document.getElementById('journeyTimeline');
+            timeline.innerHTML = '';
+            
+            phases.forEach((phase, index) => {
+                const node = document.createElement('div');
+                node.className = 'phase-node';
+                
+                const currentPhaseIndex = phases.indexOf(journey.currentPhase);
+                if (index <= currentPhaseIndex) {
+                    node.classList.add('completed');
+                }
+                
+                node.innerHTML = `
+                    <div class="phase-title">${phase}</div>
+                    <div class="phase-details">${getPhaseDetails(phase, journey)}</div>
+                `;
+                
+                timeline.appendChild(node);
+            });
+        }
+        
+        // Get phase details
+        function getPhaseDetails(phase, journey) {
+            switch (phase) {
+                case 'Service Discovery':
+                    return `${journey.discoveries} services found`;
+                case 'Handshake Establishment':
+                    return `${journey.handshakes} agreements made`;
+                case 'Verification':
+                    return `${journey.verifications} checks completed`;
+                case 'Operational':
+                    return 'System fully operational';
+                default:
+                    return 'In progress...';
+            }
+        }
+        
+        // Update statistics
+        function updateStats(stats) {
+            if (stats.discoveries !== undefined) {
+                document.getElementById('discoveryCount').textContent = stats.discoveries;
+            }
+            if (stats.handshakes !== undefined) {
+                document.getElementById('handshakeCount').textContent = stats.handshakes;
+            }
+        }
+        
+        // Load narratives
+        async function loadNarratives() {
+            try {
+                const response = await fetch(`${apiBase}/api/narratives/all`);
+                const data = await response.json();
+                
+                const container = document.getElementById('narrativeContainer');
+                container.innerHTML = '';
+                
+                data.narratives.forEach(narrative => {
+                    const entry = document.createElement('div');
+                    entry.className = 'narrative-entry';
+                    entry.innerHTML = `
+                        <div class="narrative-time">Block #${narrative.id}</div>
+                        "${narrative.text}"
+                    `;
+                    container.appendChild(entry);
+                });
+            } catch (error) {
+                console.error('Narrative load error:', error);
+            }
+        }
+        
+        // Update reputation scores
+        async function updateReputation() {
+            const services = ['JSON Scout', 'Vault System'];
+            
+            for (const service of services) {
+                try {
+                    const response = await fetch(`${apiBase}/api/reputation/${encodeURIComponent(service)}`);
+                    const rep = await response.json();
+                    
+                    const serviceId = service.replace(/\s/g, '');
+                    const scoreElement = document.getElementById(`${serviceId}Score`);
+                    const blamesElement = document.getElementById(`${serviceId}Blames`);
+                    const praisesElement = document.getElementById(`${serviceId}Praises`);
+                    
+                    if (scoreElement) {
+                        scoreElement.textContent = rep.score || '0';
+                        scoreElement.className = 'reputation-score ' + 
+                            (rep.score > 0 ? 'positive' : rep.score < 0 ? 'negative' : 'neutral');
+                    }
+                    if (blamesElement) blamesElement.textContent = rep.blames || '0';
+                    if (praisesElement) praisesElement.textContent = rep.praises || '0';
+                    
+                } catch (error) {
+                    console.error(`Reputation error for ${service}:`, error);
+                }
+            }
+        }
+        
+        // Check system integrity
+        async function checkIntegrity() {
+            if (!contracts.handshakeRegistry) {
+                alert('Contracts not deployed');
+                return;
+            }
+            
+            try {
+                const response = await fetch(`${apiBase}/api/integrity`);
+                const integrity = await response.json();
+                
+                alert(`System Integrity Check:\n\n` +
+                      `Services Active: ${integrity.allServicesActive ? '✅' : '❌'}\n` +
+                      `Handshakes Valid: ${integrity.allHandshakesValid ? '✅' : '❌'}\n` +
+                      `Verifications Passed: ${integrity.allVerificationsPassed ? '✅' : '❌'}\n` +
+                      `Overall Score: ${integrity.overallScore}`);
+                      
+            } catch (error) {
+                alert('Integrity check failed: ' + error.message);
+            }
+        }
+        
+        // Show blame dialog
+        function showBlameDialog() {
+            const service = prompt('Which service to blame?');
+            if (!service) return;
+            
+            const issue = prompt('What is the issue?');
+            if (!issue) return;
+            
+            const severity = prompt('Severity (1-10)?', '5');
+            
+            reportBlame(service, issue, parseInt(severity));
+        }
+        
+        // Report blame
+        async function reportBlame(service, issue, severity) {
+            try {
+                const response = await fetch(`${apiBase}/api/blame`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ service, issue, severity })
+                });
+                
+                const result = await response.json();
+                
+                if (result.success) {
+                    addTransaction(result.transactionHash, 'blame', `Blamed ${service}`);
+                    updateReputation();
+                }
+            } catch (error) {
+                alert('Blame failed: ' + error.message);
+            }
+        }
+        
+        // Show praise dialog
+        function showPraiseDialog() {
+            const service = prompt('Which service to praise?');
+            if (!service) return;
+            
+            const reason = prompt('Why praise this service?');
+            if (!reason) return;
+            
+            givePraise(service, reason);
+        }
+        
+        // Give praise
+        async function givePraise(service, reason) {
+            try {
+                const response = await fetch(`${apiBase}/api/praise`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ service, reason })
+                });
+                
+                const result = await response.json();
+                
+                if (result.success) {
+                    addTransaction(result.transactionHash, 'praise', `Praised ${service}`);
+                    updateReputation();
+                }
+            } catch (error) {
+                alert('Praise failed: ' + error.message);
+            }
+        }
+        
+        // Add transaction to history
+        function addTransaction(hash, type, description) {
+            const history = document.getElementById('txHistory');
+            
+            const item = document.createElement('div');
+            item.className = 'tx-item';
+            item.innerHTML = `
+                <div>
+                    <span class="tx-type ${type}">${type}</span>
+                    ${description}
+                </div>
+                <div class="tx-hash" onclick="window.open('https://etherscan.io/tx/${hash}', '_blank')">
+                    ${hash.substring(0, 10)}...${hash.substring(hash.length - 8)}
+                </div>
+            `;
+            
+            history.insertBefore(item, history.firstChild);
+            
+            // Keep only last 10 transactions
+            while (history.children.length > 10) {
+                history.removeChild(history.lastChild);
+            }
+        }
+        
+        // Update gas estimates
+        async function updateGasEstimates() {
+            try {
+                const response = await fetch(`${apiBase}/api/gas/estimate`);
+                const data = await response.json();
+                
+                const container = document.getElementById('gasEstimates');
+                container.innerHTML = `
+                    <div class="gas-item">
+                        <span>Current Gas Price:</span>
+                        <span>${data.gasPrice}</span>
+                    </div>
+                `;
+                
+                Object.entries(data.estimates).forEach(([op, info]) => {
+                    container.innerHTML += `
+                        <div class="gas-item">
+                            <span>${op}:</span>
+                            <span>${info.costETH.substring(0, 8)} ETH</span>
+                        </div>
+                    `;
+                });
+            } catch (error) {
+                console.error('Gas estimate error:', error);
+            }
+        }
+        
+        // Export journey
+        async function exportJourney() {
+            try {
+                const response = await fetch(`${apiBase}/api/journey`);
+                const journey = await response.json();
+                
+                const exportData = {
+                    journey,
+                    contracts,
+                    exportedAt: new Date().toISOString()
+                };
+                
+                const blob = new Blob([JSON.stringify(exportData, null, 2)], { type: 'application/json' });
+                const url = URL.createObjectURL(blob);
+                const a = document.createElement('a');
+                a.href = url;
+                a.download = `blamechain-journey-${Date.now()}.json`;
+                a.click();
+            } catch (error) {
+                alert('Export failed: ' + error.message);
+            }
+        }
+        
+        // Show/hide loading
+        function showLoading(show) {
+            document.getElementById('loadingOverlay').style.display = show ? 'flex' : 'none';
+        }
+        
+        // Initialize on load
+        window.onload = init;
+    </script>
+</body>
+</html>

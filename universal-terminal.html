@@ -1,0 +1,622 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Universal Data Terminal - Everything, Everywhere, All at Once</title>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;700&display=swap');
+        
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            background: #000;
+            color: #00ff88;
+            font-family: 'JetBrains Mono', monospace;
+            font-size: 11px;
+            overflow: hidden;
+        }
+        
+        /* Header */
+        .terminal-header {
+            background: linear-gradient(90deg, #1a1a1a, #2a2a2a);
+            padding: 8px 20px;
+            border-bottom: 2px solid #00ff88;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+        
+        .terminal-title {
+            font-size: 16px;
+            font-weight: bold;
+            color: #00ff88;
+        }
+        
+        .terminal-stats {
+            display: flex;
+            gap: 15px;
+            font-size: 10px;
+        }
+        
+        .stat-item {
+            display: flex;
+            align-items: center;
+            gap: 5px;
+        }
+        
+        .status-light {
+            width: 6px;
+            height: 6px;
+            border-radius: 50%;
+            background: #ff4444;
+            animation: pulse 2s infinite;
+        }
+        
+        .status-light.active {
+            background: #00ff88;
+        }
+        
+        @keyframes pulse {
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0.5; }
+        }
+        
+        /* Main grid */
+        .main-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr 1fr;
+            grid-template-rows: 1fr 1fr 1fr;
+            height: calc(100vh - 50px);
+            gap: 2px;
+            padding: 2px;
+        }
+        
+        /* Panel styles */
+        .data-panel {
+            background: #111;
+            border: 1px solid #333;
+            padding: 10px;
+            overflow-y: auto;
+        }
+        
+        .panel-title {
+            font-size: 12px;
+            font-weight: bold;
+            margin-bottom: 10px;
+            color: #00ff88;
+            border-bottom: 1px solid #333;
+            padding-bottom: 3px;
+        }
+        
+        /* Crypto panel */
+        .crypto-panel {
+            border-color: #f0b90b;
+        }
+        
+        .crypto-panel .panel-title {
+            color: #f0b90b;
+        }
+        
+        /* Geography panel */
+        .geo-panel {
+            border-color: #4285f4;
+        }
+        
+        .geo-panel .panel-title {
+            color: #4285f4;
+        }
+        
+        /* OSS panel */
+        .oss-panel {
+            border-color: #ff6b35;
+        }
+        
+        .oss-panel .panel-title {
+            color: #ff6b35;
+        }
+        
+        /* Forums panel */
+        .forums-panel {
+            border-color: #9b59b6;
+        }
+        
+        .forums-panel .panel-title {
+            color: #9b59b6;
+        }
+        
+        /* AI panel */
+        .ai-panel {
+            border-color: #e74c3c;
+        }
+        
+        .ai-panel .panel-title {
+            color: #e74c3c;
+        }
+        
+        /* Games panel */
+        .games-panel {
+            border-color: #2ecc71;
+        }
+        
+        .games-panel .panel-title {
+            color: #2ecc71;
+        }
+        
+        /* Weather panel */
+        .weather-panel {
+            border-color: #3498db;
+        }
+        
+        .weather-panel .panel-title {
+            color: #3498db;
+        }
+        
+        /* Blockchain panel */
+        .blockchain-panel {
+            border-color: #f39c12;
+        }
+        
+        .blockchain-panel .panel-title {
+            color: #f39c12;
+        }
+        
+        /* News panel */
+        .news-panel {
+            border-color: #e67e22;
+        }
+        
+        .news-panel .panel-title {
+            color: #e67e22;
+        }
+        
+        /* Data entries */
+        .data-entry {
+            margin: 3px 0;
+            padding: 3px 5px;
+            font-size: 10px;
+            border-left: 2px solid transparent;
+            transition: all 0.3s;
+        }
+        
+        .data-entry.success {
+            border-color: #00ff88;
+            background: rgba(0, 255, 136, 0.05);
+        }
+        
+        .data-entry.error {
+            border-color: #ff4444;
+            background: rgba(255, 68, 68, 0.05);
+            color: #ff8888;
+        }
+        
+        .data-entry.warning {
+            border-color: #ffaa00;
+            background: rgba(255, 170, 0, 0.05);
+            color: #ffcc66;
+        }
+        
+        .data-value {
+            font-weight: bold;
+            color: #ffffff;
+        }
+        
+        .data-label {
+            color: #888;
+            font-size: 9px;
+        }
+        
+        .data-source {
+            color: #666;
+            font-size: 8px;
+            float: right;
+        }
+        
+        /* Summary stats */
+        .summary-stats {
+            position: fixed;
+            bottom: 10px;
+            left: 10px;
+            right: 10px;
+            background: rgba(0, 0, 0, 0.9);
+            border: 1px solid #00ff88;
+            padding: 10px;
+            display: flex;
+            justify-content: space-around;
+            font-size: 10px;
+        }
+        
+        .summary-item {
+            text-align: center;
+        }
+        
+        .summary-value {
+            font-size: 16px;
+            font-weight: bold;
+            color: #00ff88;
+        }
+        
+        .summary-label {
+            color: #888;
+            text-transform: uppercase;
+        }
+        
+        /* Loading animation */
+        .loading {
+            display: inline-block;
+            width: 10px;
+            height: 10px;
+            border: 2px solid rgba(0, 255, 136, 0.2);
+            border-top-color: #00ff88;
+            border-radius: 50%;
+            animation: spin 1s linear infinite;
+        }
+        
+        @keyframes spin {
+            to { transform: rotate(360deg); }
+        }
+        
+        /* Update flash */
+        .flash-update {
+            animation: flash 0.5s ease-out;
+        }
+        
+        @keyframes flash {
+            from { background: rgba(0, 255, 136, 0.3); }
+            to { background: transparent; }
+        }
+    </style>
+</head>
+<body>
+    <div class="terminal-header">
+        <div class="terminal-title">🌍 UNIVERSAL DATA TERMINAL - Everything, Everywhere, All at Once</div>
+        <div class="terminal-stats">
+            <div class="stat-item">
+                <div class="status-light" id="crypto-light"></div>
+                <span>CRYPTO</span>
+            </div>
+            <div class="stat-item">
+                <div class="status-light" id="geo-light"></div>
+                <span>GEO</span>
+            </div>
+            <div class="stat-item">
+                <div class="status-light" id="oss-light"></div>
+                <span>OSS</span>
+            </div>
+            <div class="stat-item">
+                <div class="status-light" id="forums-light"></div>
+                <span>FORUMS</span>
+            </div>
+            <div class="stat-item">
+                <div class="status-light" id="ai-light"></div>
+                <span>AI</span>
+            </div>
+            <div class="stat-item">
+                <div class="status-light" id="games-light"></div>
+                <span>GAMES</span>
+            </div>
+            <div class="stat-item">
+                <div class="status-light" id="weather-light"></div>
+                <span>WEATHER</span>
+            </div>
+            <div class="stat-item">
+                <div class="status-light" id="blockchain-light"></div>
+                <span>BLOCKCHAIN</span>
+            </div>
+            <div class="stat-item">
+                <div class="status-light" id="news-light"></div>
+                <span>NEWS</span>
+            </div>
+        </div>
+    </div>
+    
+    <div class="main-grid">
+        <!-- Crypto Panel -->
+        <div class="data-panel crypto-panel">
+            <div class="panel-title">💰 CRYPTO & FINANCE</div>
+            <div id="crypto-data">
+                <div class="data-entry">
+                    <div class="loading"></div> Connecting to exchanges...
+                </div>
+            </div>
+        </div>
+        
+        <!-- Geography Panel -->
+        <div class="data-panel geo-panel">
+            <div class="panel-title">🗺️ GEOGRAPHY & EARTH</div>
+            <div id="geo-data">
+                <div class="data-entry">
+                    <div class="loading"></div> Loading topographic data...
+                </div>
+            </div>
+        </div>
+        
+        <!-- Open Source Panel -->
+        <div class="data-panel oss-panel">
+            <div class="panel-title">📦 OPEN SOURCE & LIBRARIES</div>
+            <div id="oss-data">
+                <div class="data-entry">
+                    <div class="loading"></div> Scanning repositories...
+                </div>
+            </div>
+        </div>
+        
+        <!-- Forums Panel -->
+        <div class="data-panel forums-panel">
+            <div class="panel-title">💬 FORUMS & COMMUNITIES</div>
+            <div id="forums-data">
+                <div class="data-entry">
+                    <div class="loading"></div> Monitoring discussions...
+                </div>
+            </div>
+        </div>
+        
+        <!-- AI Panel -->
+        <div class="data-panel ai-panel">
+            <div class="panel-title">🤖 AI & RESEARCH</div>
+            <div id="ai-data">
+                <div class="data-entry">
+                    <div class="loading"></div> Processing research papers...
+                </div>
+            </div>
+        </div>
+        
+        <!-- Games Panel -->
+        <div class="data-panel games-panel">
+            <div class="panel-title">🎮 GAME ECONOMIES</div>
+            <div id="games-data">
+                <div class="data-entry">
+                    <div class="loading"></div> Tracking virtual currencies...
+                </div>
+            </div>
+        </div>
+        
+        <!-- Weather Panel -->
+        <div class="data-panel weather-panel">
+            <div class="panel-title">🌤️ WEATHER & CLIMATE</div>
+            <div id="weather-data">
+                <div class="data-entry">
+                    <div class="loading"></div> Collecting meteorological data...
+                </div>
+            </div>
+        </div>
+        
+        <!-- Blockchain Panel -->
+        <div class="data-panel blockchain-panel">
+            <div class="panel-title">⛓️ BLOCKCHAIN & DEFI</div>
+            <div id="blockchain-data">
+                <div class="data-entry">
+                    <div class="loading"></div> Monitoring on-chain activity...
+                </div>
+            </div>
+        </div>
+        
+        <!-- News Panel -->
+        <div class="data-panel news-panel">
+            <div class="panel-title">📰 NEWS & SOCIAL</div>
+            <div id="news-data">
+                <div class="data-entry">
+                    <div class="loading"></div> Aggregating news feeds...
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <div class="summary-stats">
+        <div class="summary-item">
+            <div class="summary-value" id="total-sources">0</div>
+            <div class="summary-label">Sources</div>
+        </div>
+        <div class="summary-item">
+            <div class="summary-value" id="active-sources">0</div>
+            <div class="summary-label">Active</div>
+        </div>
+        <div class="summary-item">
+            <div class="summary-value" id="data-points">0</div>
+            <div class="summary-label">Data Points</div>
+        </div>
+        <div class="summary-item">
+            <div class="summary-value" id="confidence">0%</div>
+            <div class="summary-label">Confidence</div>
+        </div>
+        <div class="summary-item">
+            <div class="summary-value" id="uptime">0s</div>
+            <div class="summary-label">Uptime</div>
+        </div>
+    </div>
+    
+    <script>
+        let ws = null;
+        let dataCounters = {};
+        
+        // Connect to universal data aggregator
+        function connect() {
+            ws = new WebSocket('ws://localhost:47004');
+            
+            ws.onopen = () => {
+                console.log('Connected to Universal Data Aggregator');
+                updateStatusLight('main', true);
+            };
+            
+            ws.onmessage = (event) => {
+                const data = JSON.parse(event.data);
+                handleMessage(data);
+            };
+            
+            ws.onerror = (error) => {
+                console.error('WebSocket error:', error);
+                updateStatusLight('main', false);
+            };
+            
+            ws.onclose = () => {
+                console.log('Disconnected - reconnecting in 3s...');
+                updateStatusLight('main', false);
+                setTimeout(connect, 3000);
+            };
+        }
+        
+        function handleMessage(data) {
+            switch (data.type) {
+                case 'init':
+                    console.log('Universal aggregator initialized');
+                    console.log('Categories:', data.categories);
+                    console.log('Total sources:', data.sources);
+                    break;
+                    
+                case 'category_update':
+                    updateCategoryPanel(data.category, data.data, data.successRate);
+                    updateStatusLight(data.category, data.successRate > 0);
+                    break;
+                    
+                case 'universal_update':
+                    updateSummaryStats(data.summary);
+                    if (data.data.metadata) {
+                        updateMetadata(data.data.metadata);
+                    }
+                    break;
+            }
+        }
+        
+        function updateCategoryPanel(category, data, successRate) {
+            const panelId = category + '-data';
+            const panel = document.getElementById(panelId);
+            
+            if (!panel) return;
+            
+            // Clear old entries
+            panel.innerHTML = '';
+            
+            // Add success rate indicator
+            const successEntry = document.createElement('div');
+            successEntry.className = 'data-entry ' + (successRate > 50 ? 'success' : 'warning');
+            successEntry.innerHTML = `
+                <span class="data-label">Success Rate:</span>
+                <span class="data-value">${successRate.toFixed(1)}%</span>
+            `;
+            panel.appendChild(successEntry);
+            
+            // Add data from each source
+            Object.entries(data).forEach(([source, info]) => {
+                const entry = document.createElement('div');
+                entry.className = 'data-entry ' + info.status;
+                
+                if (info.status === 'success' && info.data) {
+                    const dataPreview = generateDataPreview(category, source, info.data);
+                    entry.innerHTML = `
+                        <span class="data-label">${source}:</span>
+                        <span class="data-value">${dataPreview}</span>
+                        <span class="data-source">${new Date(info.timestamp).toLocaleTimeString()}</span>
+                    `;
+                } else {
+                    entry.innerHTML = `
+                        <span class="data-label">${source}:</span>
+                        <span class="data-value">${info.error || 'Error'}</span>
+                        <span class="data-source">FAILED</span>
+                    `;
+                }
+                
+                panel.appendChild(entry);
+            });
+            
+            // Flash update
+            panel.classList.add('flash-update');
+            setTimeout(() => panel.classList.remove('flash-update'), 500);
+        }
+        
+        function generateDataPreview(category, source, data) {
+            switch (category) {
+                case 'crypto':
+                    if (data.BTC) return `BTC $${data.BTC.toLocaleString()}`;
+                    if (data.ETH) return `ETH $${data.ETH.toLocaleString()}`;
+                    break;
+                    
+                case 'geography':
+                    if (data.earthquakes !== undefined) return `${data.earthquakes} earthquakes`;
+                    if (data.sampleElevations) return `${data.sampleElevations.length} elevations`;
+                    break;
+                    
+                case 'opensource':
+                    if (data.trendingRepos) return `${data.trendingRepos} trending repos`;
+                    if (data.latestVersion) return `v${data.latestVersion}`;
+                    break;
+                    
+                case 'ai':
+                    if (data.recentPapers) return `${data.recentPapers} papers`;
+                    break;
+                    
+                case 'games':
+                    if (data.itemCount) return `${data.itemCount} items`;
+                    if (data.samplePrices) return `${data.samplePrices.length} prices`;
+                    break;
+                    
+                case 'news':
+                    if (data.topStoriesCount) return `${data.topStoriesCount} stories`;
+                    break;
+                    
+                default:
+                    if (data.status) return data.status;
+                    break;
+            }
+            
+            return 'Active';
+        }
+        
+        function updateStatusLight(category, active) {
+            const lightId = category + '-light';
+            const light = document.getElementById(lightId);
+            
+            if (light) {
+                light.classList.toggle('active', active);
+            }
+        }
+        
+        function updateSummaryStats(summary) {
+            if (summary.totalSources) {
+                document.getElementById('total-sources').textContent = summary.totalSources;
+            }
+            if (summary.activeSources) {
+                document.getElementById('active-sources').textContent = summary.activeSources;
+            }
+            if (summary.dataPoints) {
+                document.getElementById('data-points').textContent = summary.dataPoints.toLocaleString();
+            }
+            if (summary.confidence) {
+                document.getElementById('confidence').textContent = summary.confidence.toFixed(1) + '%';
+            }
+        }
+        
+        function updateMetadata(metadata) {
+            if (metadata.uptime) {
+                const uptimeMinutes = Math.floor(metadata.uptime / 60);
+                const uptimeSeconds = Math.floor(metadata.uptime % 60);
+                document.getElementById('uptime').textContent = `${uptimeMinutes}m ${uptimeSeconds}s`;
+            }
+        }
+        
+        // Connect on load
+        connect();
+        
+        // Update uptime every second
+        setInterval(() => {
+            const current = document.getElementById('uptime').textContent;
+            if (current && current !== '0s') {
+                const parts = current.split(/[ms]/);
+                const minutes = parseInt(parts[0]) || 0;
+                const seconds = parseInt(parts[1]) || 0;
+                
+                let newSeconds = seconds + 1;
+                let newMinutes = minutes;
+                
+                if (newSeconds >= 60) {
+                    newSeconds = 0;
+                    newMinutes++;
+                }
+                
+                document.getElementById('uptime').textContent = `${newMinutes}m ${newSeconds}s`;
+            }
+        }, 1000);
+    </script>
+</body>
+</html>

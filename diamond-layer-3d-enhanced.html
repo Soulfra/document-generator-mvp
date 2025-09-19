@@ -1,0 +1,742 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>💎 Diamond Layer 3D Enhanced - Proper Shadows & Connections</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/controls/OrbitControls.js"></script>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        
+        body {
+            font-family: -apple-system, system-ui, sans-serif;
+            background: #000;
+            color: #fff;
+            overflow: hidden;
+        }
+        
+        #canvas-container {
+            width: 100vw;
+            height: 100vh;
+            position: relative;
+        }
+        
+        /* HUD Overlay */
+        .hud-overlay {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            pointer-events: none;
+            z-index: 100;
+        }
+        
+        /* System Status */
+        .system-status {
+            position: absolute;
+            top: 20px;
+            right: 20px;
+            background: rgba(0, 0, 0, 0.9);
+            padding: 15px;
+            border-radius: 10px;
+            border: 1px solid #00ff88;
+            min-width: 200px;
+            pointer-events: auto;
+        }
+        
+        .status-title {
+            color: #00ff88;
+            font-weight: bold;
+            margin-bottom: 10px;
+            text-align: center;
+        }
+        
+        .status-item {
+            display: flex;
+            justify-content: space-between;
+            margin-bottom: 5px;
+            font-size: 12px;
+        }
+        
+        .status-value {
+            color: #00ff88;
+            font-weight: bold;
+        }
+        
+        /* Broadcast Indicator */
+        .broadcast-indicator {
+            position: absolute;
+            top: 20px;
+            left: 20px;
+            background: rgba(255, 68, 68, 0.9);
+            padding: 10px 15px;
+            border-radius: 20px;
+            font-size: 12px;
+            font-weight: bold;
+            animation: pulse 2s infinite;
+            pointer-events: auto;
+        }
+        
+        @keyframes pulse {
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0.7; }
+        }
+        
+        /* Camera Controls Info */
+        .controls-info {
+            position: absolute;
+            bottom: 20px;
+            left: 20px;
+            background: rgba(0, 0, 0, 0.8);
+            padding: 15px;
+            border-radius: 10px;
+            border: 1px solid #444;
+            font-size: 12px;
+            pointer-events: auto;
+        }
+        
+        .controls-title {
+            color: #00ff88;
+            font-weight: bold;
+            margin-bottom: 5px;
+        }
+        
+        .control-item {
+            color: #aaa;
+            margin: 3px 0;
+        }
+        
+        /* Diamond Info Tooltip */
+        .diamond-tooltip {
+            position: absolute;
+            background: rgba(0, 0, 0, 0.95);
+            border: 2px solid #00ff88;
+            border-radius: 10px;
+            padding: 15px;
+            display: none;
+            pointer-events: none;
+            max-width: 250px;
+        }
+        
+        .tooltip-title {
+            color: #00ff88;
+            font-weight: bold;
+            margin-bottom: 5px;
+        }
+        
+        .tooltip-content {
+            font-size: 12px;
+            color: #fff;
+        }
+        
+        /* Loading Screen */
+        #loading-screen {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: #000;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            z-index: 1000;
+        }
+        
+        .loading-content {
+            text-align: center;
+        }
+        
+        .loading-diamond {
+            font-size: 72px;
+            animation: spin 2s linear infinite;
+        }
+        
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+        
+        .loading-text {
+            margin-top: 20px;
+            color: #00ff88;
+            font-size: 18px;
+        }
+    </style>
+</head>
+<body>
+    <div id="loading-screen">
+        <div class="loading-content">
+            <div class="loading-diamond">💎</div>
+            <div class="loading-text">Initializing 3D Diamond Layer...</div>
+        </div>
+    </div>
+    
+    <div id="canvas-container"></div>
+    
+    <div class="hud-overlay">
+        <!-- System Status -->
+        <div class="system-status">
+            <div class="status-title">💎 3D System Status</div>
+            <div class="status-item">
+                <span>Active Diamonds:</span>
+                <span class="status-value" id="activeDiamonds">0</span>
+            </div>
+            <div class="status-item">
+                <span>Connections:</span>
+                <span class="status-value" id="connections">0</span>
+            </div>
+            <div class="status-item">
+                <span>Shadow Quality:</span>
+                <span class="status-value">High</span>
+            </div>
+            <div class="status-item">
+                <span>FPS:</span>
+                <span class="status-value" id="fps">60</span>
+            </div>
+            <div class="status-item">
+                <span>Layer Depth:</span>
+                <span class="status-value" id="layerDepth">4</span>
+            </div>
+        </div>
+        
+        <!-- Broadcasting Indicator -->
+        <div class="broadcast-indicator">
+            🔴 LIVE: 3D Diamond Broadcasting
+        </div>
+        
+        <!-- Camera Controls -->
+        <div class="controls-info">
+            <div class="controls-title">🎮 Camera Controls</div>
+            <div class="control-item">Left Click + Drag: Rotate</div>
+            <div class="control-item">Right Click + Drag: Pan</div>
+            <div class="control-item">Scroll: Zoom</div>
+            <div class="control-item">Click Diamond: View Details</div>
+        </div>
+        
+        <!-- Diamond Tooltip -->
+        <div class="diamond-tooltip" id="tooltip">
+            <div class="tooltip-title" id="tooltipTitle">Diamond</div>
+            <div class="tooltip-content" id="tooltipContent">Details...</div>
+        </div>
+    </div>
+    
+    <script>
+        // Three.js Scene Setup
+        let scene, camera, renderer, controls;
+        let diamondMeshes = [];
+        let connections = [];
+        let raycaster, mouse;
+        let hoveredDiamond = null;
+        let clock = new THREE.Clock();
+        
+        // Diamond System Data
+        const diamondSystems = [
+            // Layer 1 (Front)
+            { id: 'working-system', name: 'Working System', icon: '🔧', status: 100, layer: 0, row: 0, col: 0 },
+            { id: 'pirate-game', name: 'Pirate Game', icon: '🏴‍☠️', status: 95, layer: 0, row: 0, col: 1 },
+            { id: 'qr-hunt', name: 'QR Hunt', icon: '📱', status: 90, layer: 0, row: 0, col: 2 },
+            { id: 'deep-architecture', name: 'Deep Engine', icon: '🧠', status: 85, layer: 0, row: 0, col: 3 },
+            
+            // Layer 2
+            { id: 'voxel-system', name: 'Voxel Engine', icon: '🎨', status: 80, layer: 1, row: 1, col: 0 },
+            { id: 'payment-system', name: 'Payment Hub', icon: '💳', status: 75, layer: 1, row: 1, col: 1 },
+            { id: 'hex-grid', name: 'Hex Grid', icon: '⬡', status: 85, layer: 1, row: 1, col: 2 },
+            { id: 'dashboard', name: 'Dashboard', icon: '📊', status: 70, layer: 1, row: 1, col: 3 },
+            
+            // Layer 3
+            { id: 'broadcast-system', name: 'Broadcast', icon: '📡', status: 60, layer: 2, row: 2, col: 0 },
+            { id: 'log-aggregator', name: 'Log Orchestra', icon: '🎵', status: 75, layer: 2, row: 2, col: 1 },
+            { id: 'shiprekt', name: 'ShipRekt', icon: '🚢', status: 30, layer: 2, row: 2, col: 2 },
+            { id: 'bash-vcs', name: 'Bash VCs', icon: '💻', status: 25, layer: 2, row: 2, col: 3 },
+            
+            // Layer 4 (Back)
+            { id: 'llm-router', name: 'LLM Router', icon: '🤖', status: 65, layer: 3, row: 3, col: 0 },
+            { id: 'unified-world', name: 'Unified World', icon: '🌍', status: 50, layer: 3, row: 3, col: 1 },
+            { id: 'nft-system', name: 'NFT Engine', icon: '🖼️', status: 40, layer: 3, row: 3, col: 2 },
+            { id: 'breakthrough', name: 'BREAKTHROUGH', icon: '💎', status: 100, layer: 3, row: 3, col: 3 }
+        ];
+        
+        // Connection map (which diamonds connect to which)
+        const connectionMap = [
+            ['working-system', 'pirate-game'],
+            ['pirate-game', 'qr-hunt'],
+            ['qr-hunt', 'deep-architecture'],
+            ['deep-architecture', 'voxel-system'],
+            ['voxel-system', 'payment-system'],
+            ['payment-system', 'hex-grid'],
+            ['hex-grid', 'dashboard'],
+            ['dashboard', 'broadcast-system'],
+            ['broadcast-system', 'log-aggregator'],
+            ['log-aggregator', 'shiprekt'],
+            ['shiprekt', 'bash-vcs'],
+            ['bash-vcs', 'llm-router'],
+            ['llm-router', 'unified-world'],
+            ['unified-world', 'nft-system'],
+            ['nft-system', 'breakthrough'],
+            ['breakthrough', 'working-system'], // Loop back
+            // Cross connections
+            ['working-system', 'voxel-system'],
+            ['deep-architecture', 'dashboard'],
+            ['log-aggregator', 'llm-router'],
+            ['payment-system', 'breakthrough']
+        ];
+        
+        function init() {
+            // Scene setup
+            scene = new THREE.Scene();
+            scene.background = new THREE.Color(0x000000);
+            scene.fog = new THREE.Fog(0x000000, 10, 100);
+            
+            // Camera setup
+            camera = new THREE.PerspectiveCamera(
+                75,
+                window.innerWidth / window.innerHeight,
+                0.1,
+                1000
+            );
+            camera.position.set(0, 15, 30);
+            camera.lookAt(0, 0, 0);
+            
+            // Renderer setup with shadows
+            renderer = new THREE.WebGLRenderer({ antialias: true });
+            renderer.setSize(window.innerWidth, window.innerHeight);
+            renderer.shadowMap.enabled = true;
+            renderer.shadowMap.type = THREE.PCFSoftShadowMap; // Soft shadows
+            renderer.outputEncoding = THREE.sRGBEncoding;
+            renderer.toneMapping = THREE.ACESFilmicToneMapping;
+            renderer.toneMappingExposure = 1.0;
+            document.getElementById('canvas-container').appendChild(renderer.domElement);
+            
+            // Controls
+            controls = new THREE.OrbitControls(camera, renderer.domElement);
+            controls.enableDamping = true;
+            controls.dampingFactor = 0.05;
+            controls.minDistance = 10;
+            controls.maxDistance = 100;
+            controls.maxPolarAngle = Math.PI / 2 + 0.5;
+            
+            // Lighting setup
+            setupLighting();
+            
+            // Create diamond grid
+            createDiamondGrid();
+            
+            // Create connections
+            createConnections();
+            
+            // Raycaster for mouse interaction
+            raycaster = new THREE.Raycaster();
+            mouse = new THREE.Vector2();
+            
+            // Event listeners
+            window.addEventListener('resize', onWindowResize, false);
+            renderer.domElement.addEventListener('mousemove', onMouseMove, false);
+            renderer.domElement.addEventListener('click', onMouseClick, false);
+            
+            // Hide loading screen
+            setTimeout(() => {
+                document.getElementById('loading-screen').style.display = 'none';
+            }, 1000);
+            
+            // Start animation
+            animate();
+        }
+        
+        function setupLighting() {
+            // Ambient light for base illumination
+            const ambientLight = new THREE.AmbientLight(0x0a0a0a);
+            scene.add(ambientLight);
+            
+            // Main directional light with shadows
+            const dirLight = new THREE.DirectionalLight(0xffffff, 0.8);
+            dirLight.position.set(10, 20, 10);
+            dirLight.castShadow = true;
+            dirLight.shadow.camera.left = -30;
+            dirLight.shadow.camera.right = 30;
+            dirLight.shadow.camera.top = 30;
+            dirLight.shadow.camera.bottom = -30;
+            dirLight.shadow.camera.near = 0.1;
+            dirLight.shadow.camera.far = 100;
+            dirLight.shadow.mapSize.width = 4096;
+            dirLight.shadow.mapSize.height = 4096;
+            dirLight.shadow.bias = -0.0005;
+            scene.add(dirLight);
+            
+            // Secondary light for fill
+            const fillLight = new THREE.DirectionalLight(0x4080ff, 0.3);
+            fillLight.position.set(-10, 10, -10);
+            scene.add(fillLight);
+            
+            // Point lights for diamond glow
+            diamondSystems.forEach((system, index) => {
+                if (system.status > 70) {
+                    const pointLight = new THREE.PointLight(
+                        system.status > 90 ? 0x00ff88 : 0x0088ff,
+                        0.5,
+                        10
+                    );
+                    pointLight.position.set(
+                        (system.col - 1.5) * 8,
+                        2,
+                        (system.row - 1.5) * 8 - system.layer * 3
+                    );
+                    scene.add(pointLight);
+                }
+            });
+        }
+        
+        function createDiamondGrid() {
+            // Create ground plane
+            const groundGeometry = new THREE.PlaneGeometry(100, 100);
+            const groundMaterial = new THREE.MeshStandardMaterial({
+                color: 0x0a0a0a,
+                roughness: 0.8,
+                metalness: 0.2
+            });
+            const ground = new THREE.Mesh(groundGeometry, groundMaterial);
+            ground.rotation.x = -Math.PI / 2;
+            ground.position.y = -5;
+            ground.receiveShadow = true;
+            scene.add(ground);
+            
+            // Create diamonds
+            diamondSystems.forEach((system, index) => {
+                createDiamond(system, index);
+            });
+            
+            // Update status
+            document.getElementById('activeDiamonds').textContent = 
+                diamondSystems.filter(d => d.status > 50).length;
+        }
+        
+        function createDiamond(system, index) {
+            // Diamond group
+            const diamondGroup = new THREE.Group();
+            
+            // Diamond geometry (octahedron)
+            const geometry = new THREE.OctahedronGeometry(2, 0);
+            
+            // Material based on status
+            const color = system.status > 90 ? 0x00ff88 : 
+                          system.status > 70 ? 0x00aaff :
+                          system.status > 50 ? 0xffaa00 : 0xff4444;
+            
+            const material = new THREE.MeshPhysicalMaterial({
+                color: color,
+                metalness: 0.3,
+                roughness: 0.2,
+                transmission: 0.3,
+                thickness: 0.5,
+                emissive: color,
+                emissiveIntensity: 0.2
+            });
+            
+            const diamondMesh = new THREE.Mesh(geometry, material);
+            diamondMesh.castShadow = true;
+            diamondMesh.receiveShadow = true;
+            diamondMesh.userData = system;
+            
+            // Position in 3D grid
+            const x = (system.col - 1.5) * 8;
+            const y = 2 + Math.sin(index * 0.5) * 0.5; // Slight height variation
+            const z = (system.row - 1.5) * 8 - system.layer * 3; // Depth layers
+            
+            diamondGroup.position.set(x, y, z);
+            
+            // Add to group
+            diamondGroup.add(diamondMesh);
+            
+            // Create sprite for icon
+            const canvas = document.createElement('canvas');
+            canvas.width = 256;
+            canvas.height = 256;
+            const ctx = canvas.getContext('2d');
+            
+            // Draw icon background
+            ctx.fillStyle = 'rgba(0, 0, 0, 0.5)';
+            ctx.beginPath();
+            ctx.arc(128, 128, 100, 0, Math.PI * 2);
+            ctx.fill();
+            
+            // Draw icon
+            ctx.font = '120px Arial';
+            ctx.textAlign = 'center';
+            ctx.textBaseline = 'middle';
+            ctx.fillText(system.icon, 128, 128);
+            
+            const texture = new THREE.Texture(canvas);
+            texture.needsUpdate = true;
+            
+            const spriteMaterial = new THREE.SpriteMaterial({
+                map: texture,
+                transparent: true,
+                opacity: 0.9
+            });
+            
+            const sprite = new THREE.Sprite(spriteMaterial);
+            sprite.scale.set(4, 4, 1);
+            sprite.position.y = 4;
+            diamondGroup.add(sprite);
+            
+            // Add floating animation
+            diamondGroup.userData = {
+                floatOffset: Math.random() * Math.PI * 2,
+                rotationSpeed: 0.5 + Math.random() * 0.5,
+                mesh: diamondMesh
+            };
+            
+            scene.add(diamondGroup);
+            diamondMeshes.push(diamondGroup);
+        }
+        
+        function createConnections() {
+            let connectionCount = 0;
+            
+            connectionMap.forEach(([from, to]) => {
+                const fromSystem = diamondSystems.find(s => s.id === from);
+                const toSystem = diamondSystems.find(s => s.id === to);
+                
+                if (fromSystem && toSystem) {
+                    // Only create connections between active systems
+                    if (fromSystem.status > 50 && toSystem.status > 50) {
+                        createConnection(fromSystem, toSystem);
+                        connectionCount++;
+                    }
+                }
+            });
+            
+            document.getElementById('connections').textContent = connectionCount;
+        }
+        
+        function createConnection(fromSystem, toSystem) {
+            // Calculate positions
+            const from = new THREE.Vector3(
+                (fromSystem.col - 1.5) * 8,
+                2,
+                (fromSystem.row - 1.5) * 8 - fromSystem.layer * 3
+            );
+            
+            const to = new THREE.Vector3(
+                (toSystem.col - 1.5) * 8,
+                2,
+                (toSystem.row - 1.5) * 8 - toSystem.layer * 3
+            );
+            
+            // Create bezier curve for smooth connection
+            const mid = from.clone().add(to).multiplyScalar(0.5);
+            mid.y += 5; // Arc height
+            
+            const curve = new THREE.QuadraticBezierCurve3(from, mid, to);
+            const points = curve.getPoints(50);
+            
+            // Create tube geometry for 3D connection
+            const tubeGeometry = new THREE.TubeGeometry(
+                curve,
+                64,    // segments
+                0.15,  // radius
+                8,     // radialSegments
+                false  // closed
+            );
+            
+            // Animated material
+            const tubeMaterial = new THREE.MeshPhysicalMaterial({
+                color: 0x00ff88,
+                emissive: 0x00ff88,
+                emissiveIntensity: 0.5,
+                metalness: 0.5,
+                roughness: 0.3,
+                transmission: 0.5,
+                thickness: 0.1
+            });
+            
+            const tube = new THREE.Mesh(tubeGeometry, tubeMaterial);
+            tube.castShadow = true;
+            tube.receiveShadow = true;
+            
+            // Add energy particles
+            const particleGeometry = new THREE.BufferGeometry().setFromPoints(points);
+            const particleMaterial = new THREE.PointsMaterial({
+                color: 0x00ff88,
+                size: 0.3,
+                transparent: true,
+                opacity: 0.8,
+                blending: THREE.AdditiveBlending
+            });
+            
+            const particles = new THREE.Points(particleGeometry, particleMaterial);
+            
+            const connectionGroup = new THREE.Group();
+            connectionGroup.add(tube);
+            connectionGroup.add(particles);
+            connectionGroup.userData = {
+                from: fromSystem,
+                to: toSystem,
+                particles: particles,
+                curve: curve
+            };
+            
+            scene.add(connectionGroup);
+            connections.push(connectionGroup);
+        }
+        
+        function onWindowResize() {
+            camera.aspect = window.innerWidth / window.innerHeight;
+            camera.updateProjectionMatrix();
+            renderer.setSize(window.innerWidth, window.innerHeight);
+        }
+        
+        function onMouseMove(event) {
+            // Calculate mouse position in normalized device coordinates
+            mouse.x = (event.clientX / window.innerWidth) * 2 - 1;
+            mouse.y = -(event.clientY / window.innerHeight) * 2 + 1;
+            
+            // Update raycaster
+            raycaster.setFromCamera(mouse, camera);
+            
+            // Check for intersections with diamond meshes
+            const meshes = diamondMeshes.map(g => g.children[0]); // Get actual meshes
+            const intersects = raycaster.intersectObjects(meshes);
+            
+            if (intersects.length > 0) {
+                const diamond = intersects[0].object;
+                if (hoveredDiamond !== diamond) {
+                    // Reset previous
+                    if (hoveredDiamond) {
+                        hoveredDiamond.scale.set(1, 1, 1);
+                    }
+                    
+                    // Highlight new
+                    hoveredDiamond = diamond;
+                    diamond.scale.set(1.2, 1.2, 1.2);
+                    
+                    // Show tooltip
+                    showTooltip(diamond.userData, event);
+                }
+            } else {
+                // No intersection
+                if (hoveredDiamond) {
+                    hoveredDiamond.scale.set(1, 1, 1);
+                    hoveredDiamond = null;
+                    hideTooltip();
+                }
+            }
+        }
+        
+        function onMouseClick(event) {
+            if (hoveredDiamond && hoveredDiamond.userData) {
+                console.log('Clicked:', hoveredDiamond.userData.name);
+                
+                // Trigger breakthrough animation
+                if (hoveredDiamond.userData.id === 'breakthrough') {
+                    triggerBreakthrough();
+                }
+            }
+        }
+        
+        function showTooltip(system, event) {
+            const tooltip = document.getElementById('tooltip');
+            const title = document.getElementById('tooltipTitle');
+            const content = document.getElementById('tooltipContent');
+            
+            title.textContent = `${system.icon} ${system.name}`;
+            content.innerHTML = `
+                Status: ${system.status}%<br>
+                Layer: ${system.layer + 1}<br>
+                Position: (${system.row}, ${system.col})<br>
+                ${system.status > 70 ? 'Active' : 'In Development'}
+            `;
+            
+            tooltip.style.display = 'block';
+            tooltip.style.left = event.clientX + 10 + 'px';
+            tooltip.style.top = event.clientY + 10 + 'px';
+        }
+        
+        function hideTooltip() {
+            document.getElementById('tooltip').style.display = 'none';
+        }
+        
+        function triggerBreakthrough() {
+            console.log('💎 DIAMOND BREAKTHROUGH TRIGGERED!');
+            
+            // Activate all diamonds
+            diamondMeshes.forEach((group, index) => {
+                const diamond = group.children[0];
+                diamond.material.emissiveIntensity = 1.0;
+                
+                // Pulse animation
+                const scale = 1 + Math.sin(Date.now() * 0.001 + index) * 0.2;
+                group.scale.set(scale, scale, scale);
+            });
+            
+            // Update broadcast indicator
+            document.querySelector('.broadcast-indicator').textContent = '🔴 LIVE: BREAKTHROUGH ACTIVE!';
+            document.querySelector('.broadcast-indicator').style.background = 'rgba(0, 255, 136, 0.9)';
+        }
+        
+        function animate() {
+            requestAnimationFrame(animate);
+            
+            const time = clock.getElapsedTime();
+            const delta = clock.getDelta();
+            
+            // Update controls
+            controls.update();
+            
+            // Animate diamonds
+            diamondMeshes.forEach((group, index) => {
+                const data = group.userData;
+                
+                // Floating animation
+                group.position.y = 2 + Math.sin(time + data.floatOffset) * 0.5;
+                
+                // Rotation
+                data.mesh.rotation.y += data.rotationSpeed * delta;
+                
+                // Pulse active diamonds
+                if (data.mesh.userData.status > 70) {
+                    const pulse = 1 + Math.sin(time * 2 + index) * 0.05;
+                    data.mesh.scale.set(pulse, pulse, pulse);
+                }
+            });
+            
+            // Animate connections
+            connections.forEach((conn, index) => {
+                const data = conn.userData;
+                
+                // Animate energy flow
+                if (data.particles) {
+                    const positions = data.particles.geometry.attributes.position.array;
+                    const offset = (time * 10) % positions.length;
+                    
+                    // Shift particle positions along curve
+                    for (let i = 0; i < positions.length; i += 3) {
+                        const t = ((i / 3 + offset) % 50) / 50;
+                        const point = data.curve.getPoint(t);
+                        positions[i] = point.x;
+                        positions[i + 1] = point.y;
+                        positions[i + 2] = point.z;
+                    }
+                    
+                    data.particles.geometry.attributes.position.needsUpdate = true;
+                }
+                
+                // Pulse connection tubes
+                const pulse = 0.5 + Math.sin(time * 3 + index) * 0.5;
+                conn.children[0].material.emissiveIntensity = pulse;
+            });
+            
+            // Update FPS
+            const fps = Math.round(1 / delta);
+            document.getElementById('fps').textContent = fps;
+            
+            // Render scene
+            renderer.render(scene, camera);
+        }
+        
+        // Initialize on load
+        window.addEventListener('load', init);
+    </script>
+</body>
+</html>

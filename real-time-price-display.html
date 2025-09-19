@@ -1,0 +1,734 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Real-Time Price Display - Tiered Data Quality</title>
+    <style>
+        body {
+            font-family: 'Monaco', 'Menlo', 'Consolas', monospace;
+            background: #0a0a0a;
+            color: #00ff88;
+            margin: 0;
+            padding: 20px;
+        }
+
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+        }
+
+        h1 {
+            text-align: center;
+            color: #00ff88;
+            text-shadow: 0 0 20px #00ff88;
+            margin-bottom: 40px;
+        }
+
+        /* Price Card Styles */
+        .price-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+            gap: 20px;
+            margin-bottom: 40px;
+        }
+
+        .price-card {
+            position: relative;
+            padding: 20px;
+            border-radius: 10px;
+            transition: all 0.3s ease;
+            overflow: hidden;
+        }
+
+        /* Data Quality Tiers */
+        .price-card.realtime {
+            border: 2px solid gold;
+            background: rgba(255, 215, 0, 0.1);
+            box-shadow: 0 0 20px rgba(255, 215, 0, 0.3);
+        }
+
+        .price-card.cached {
+            border: 1px solid silver;
+            background: rgba(192, 192, 192, 0.1);
+            box-shadow: 0 0 10px rgba(192, 192, 192, 0.2);
+        }
+
+        .price-card.demo {
+            border: 1px dashed orange;
+            background: rgba(255, 165, 0, 0.1);
+            box-shadow: 0 0 5px rgba(255, 165, 0, 0.1);
+        }
+
+        .price-card.stale {
+            border: 1px dotted gray;
+            background: rgba(128, 128, 128, 0.1);
+            opacity: 0.7;
+        }
+
+        /* Quality Badge */
+        .quality-badge {
+            position: absolute;
+            top: 10px;
+            right: 10px;
+            padding: 4px 12px;
+            border-radius: 20px;
+            font-size: 12px;
+            font-weight: bold;
+            text-transform: uppercase;
+            display: flex;
+            align-items: center;
+            gap: 5px;
+        }
+
+        .quality-badge.realtime {
+            background: gold;
+            color: #000;
+        }
+
+        .quality-badge.cached {
+            background: silver;
+            color: #000;
+        }
+
+        .quality-badge.demo {
+            background: orange;
+            color: #000;
+        }
+
+        .quality-badge.stale {
+            background: gray;
+            color: #fff;
+        }
+
+        .quality-badge .icon {
+            font-size: 14px;
+        }
+
+        /* Price Display */
+        .ticker-symbol {
+            font-size: 24px;
+            font-weight: bold;
+            margin-bottom: 10px;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .ticker-logo {
+            width: 32px;
+            height: 32px;
+            border-radius: 50%;
+        }
+
+        .price-value {
+            font-size: 36px;
+            font-weight: bold;
+            margin: 10px 0;
+            display: flex;
+            align-items: baseline;
+            gap: 10px;
+        }
+
+        .price-value.positive {
+            color: #00ff88;
+        }
+
+        .price-value.negative {
+            color: #ff4444;
+        }
+
+        .price-change {
+            font-size: 18px;
+            display: flex;
+            align-items: center;
+            gap: 5px;
+        }
+
+        .price-change.positive {
+            color: #00ff88;
+        }
+
+        .price-change.negative {
+            color: #ff4444;
+        }
+
+        .arrow {
+            font-size: 20px;
+        }
+
+        /* Metadata */
+        .price-metadata {
+            margin-top: 15px;
+            padding-top: 15px;
+            border-top: 1px solid rgba(255, 255, 255, 0.2);
+            font-size: 12px;
+            color: #888;
+        }
+
+        .metadata-row {
+            display: flex;
+            justify-content: space-between;
+            margin: 5px 0;
+        }
+
+        /* Data Freshness Indicator */
+        .freshness-bar {
+            margin-top: 10px;
+            height: 4px;
+            background: rgba(255, 255, 255, 0.1);
+            border-radius: 2px;
+            overflow: hidden;
+            position: relative;
+        }
+
+        .freshness-fill {
+            height: 100%;
+            transition: width 0.3s ease, background-color 0.3s ease;
+        }
+
+        .freshness-fill.fresh {
+            background: #00ff88;
+        }
+
+        .freshness-fill.aging {
+            background: #ffcc00;
+        }
+
+        .freshness-fill.stale {
+            background: #ff4444;
+        }
+
+        /* Tier Upgrade Prompt */
+        .upgrade-prompt {
+            background: rgba(255, 215, 0, 0.1);
+            border: 1px solid gold;
+            border-radius: 8px;
+            padding: 15px;
+            margin-top: 15px;
+            text-align: center;
+        }
+
+        .upgrade-prompt button {
+            background: gold;
+            color: #000;
+            border: none;
+            padding: 8px 20px;
+            border-radius: 20px;
+            font-weight: bold;
+            cursor: pointer;
+            margin-top: 10px;
+            transition: all 0.3s ease;
+        }
+
+        .upgrade-prompt button:hover {
+            background: #ffcc00;
+            transform: translateY(-2px);
+        }
+
+        /* Loading States */
+        .loading {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            height: 200px;
+        }
+
+        .spinner {
+            border: 3px solid rgba(255, 255, 255, 0.1);
+            border-radius: 50%;
+            border-top: 3px solid #00ff88;
+            width: 40px;
+            height: 40px;
+            animation: spin 1s linear infinite;
+        }
+
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+
+        /* Controls */
+        .controls {
+            display: flex;
+            gap: 20px;
+            margin-bottom: 30px;
+            flex-wrap: wrap;
+            align-items: center;
+        }
+
+        .tier-selector {
+            display: flex;
+            gap: 10px;
+            align-items: center;
+        }
+
+        .tier-button {
+            padding: 8px 16px;
+            border: 1px solid #333;
+            background: rgba(255, 255, 255, 0.1);
+            color: #fff;
+            border-radius: 20px;
+            cursor: pointer;
+            transition: all 0.3s ease;
+        }
+
+        .tier-button.active {
+            background: #00ff88;
+            color: #000;
+            border-color: #00ff88;
+        }
+
+        .tier-button:hover {
+            border-color: #00ff88;
+        }
+
+        /* WebSocket Connection Status */
+        .connection-status {
+            position: fixed;
+            bottom: 20px;
+            right: 20px;
+            padding: 10px 20px;
+            border-radius: 20px;
+            font-size: 12px;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .connection-status.connected {
+            background: rgba(0, 255, 136, 0.2);
+            border: 1px solid #00ff88;
+            color: #00ff88;
+        }
+
+        .connection-status.disconnected {
+            background: rgba(255, 68, 68, 0.2);
+            border: 1px solid #ff4444;
+            color: #ff4444;
+        }
+
+        .status-dot {
+            width: 8px;
+            height: 8px;
+            border-radius: 50%;
+            background: currentColor;
+        }
+
+        /* Responsive */
+        @media (max-width: 768px) {
+            .price-value {
+                font-size: 28px;
+            }
+            
+            .ticker-symbol {
+                font-size: 20px;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>💰 Real-Time Price Display</h1>
+        
+        <div class="controls">
+            <div class="tier-selector">
+                <span>Simulate Tier:</span>
+                <button class="tier-button active" data-tier="free">Free</button>
+                <button class="tier-button" data-tier="paid">Paid</button>
+                <button class="tier-button" data-tier="premium">Premium</button>
+            </div>
+            
+            <button id="refreshBtn" style="padding: 8px 20px; background: #00ff88; color: #000; border: none; border-radius: 20px; cursor: pointer;">
+                🔄 Refresh Data
+            </button>
+        </div>
+        
+        <div class="price-grid" id="priceGrid">
+            <!-- Price cards will be inserted here -->
+        </div>
+        
+        <div class="connection-status disconnected" id="connectionStatus">
+            <span class="status-dot"></span>
+            <span>Disconnected</span>
+        </div>
+    </div>
+
+    <script>
+        class PriceDisplay {
+            constructor() {
+                this.currentTier = 'free';
+                this.ws = null;
+                this.prices = new Map();
+                this.tickers = ['BTC', 'ETH', 'SOL', 'BNB', 'mlb:nyy', 'nba:lakers'];
+                this.init();
+            }
+            
+            init() {
+                this.setupEventListeners();
+                this.connectWebSocket();
+                this.loadPrices();
+            }
+            
+            setupEventListeners() {
+                // Tier selector
+                document.querySelectorAll('.tier-button').forEach(btn => {
+                    btn.addEventListener('click', (e) => {
+                        document.querySelectorAll('.tier-button').forEach(b => b.classList.remove('active'));
+                        e.target.classList.add('active');
+                        this.currentTier = e.target.dataset.tier;
+                        this.loadPrices();
+                    });
+                });
+                
+                // Refresh button
+                document.getElementById('refreshBtn').addEventListener('click', () => {
+                    this.loadPrices();
+                });
+            }
+            
+            connectWebSocket() {
+                // Connect to real-time updates
+                try {
+                    this.ws = new WebSocket('ws://localhost:9999');
+                    
+                    this.ws.onopen = () => {
+                        this.updateConnectionStatus(true);
+                        console.log('Connected to real-time updates');
+                    };
+                    
+                    this.ws.onmessage = (event) => {
+                        const data = JSON.parse(event.data);
+                        this.handleWebSocketMessage(data);
+                    };
+                    
+                    this.ws.onclose = () => {
+                        this.updateConnectionStatus(false);
+                        setTimeout(() => this.connectWebSocket(), 5000);
+                    };
+                    
+                    this.ws.onerror = (error) => {
+                        console.error('WebSocket error:', error);
+                        this.updateConnectionStatus(false);
+                    };
+                } catch (error) {
+                    console.error('Failed to connect WebSocket:', error);
+                    this.updateConnectionStatus(false);
+                }
+            }
+            
+            handleWebSocketMessage(data) {
+                switch (data.type) {
+                    case 'price_update':
+                        this.updatePrice(data.ticker, data.data);
+                        break;
+                    case 'data_quality_change':
+                        this.updateDataQuality(data.ticker, data.quality);
+                        break;
+                }
+            }
+            
+            async loadPrices() {
+                const grid = document.getElementById('priceGrid');
+                
+                for (const ticker of this.tickers) {
+                    const existingCard = document.getElementById(`price-${ticker}`);
+                    if (!existingCard) {
+                        grid.innerHTML += this.createLoadingCard(ticker);
+                    }
+                    
+                    // Simulate API call
+                    setTimeout(() => {
+                        const data = this.generateMockData(ticker);
+                        this.updatePrice(ticker, data);
+                    }, Math.random() * 1000);
+                }
+            }
+            
+            createLoadingCard(ticker) {
+                return `
+                    <div class="price-card demo" id="price-${ticker}">
+                        <div class="loading">
+                            <div class="spinner"></div>
+                        </div>
+                    </div>
+                `;
+            }
+            
+            updatePrice(ticker, data) {
+                const card = document.getElementById(`price-${ticker}`);
+                if (!card) return;
+                
+                // Determine quality based on tier and data
+                const quality = this.getDataQuality(data);
+                
+                // Update card class
+                card.className = `price-card ${quality}`;
+                
+                // Update card content
+                card.innerHTML = this.createPriceCard(ticker, data, quality);
+                
+                // Store price data
+                this.prices.set(ticker, data);
+                
+                // Start freshness timer
+                this.startFreshnessTimer(ticker, data);
+            }
+            
+            getDataQuality(data) {
+                if (this.currentTier === 'premium' && data.isRealTime) return 'realtime';
+                if (this.currentTier === 'paid' && data.cached && data.cacheAge < 10000) return 'cached';
+                if (data.quality === 'demo') return 'demo';
+                if (data.cacheAge > 300000) return 'stale';
+                return 'cached';
+            }
+            
+            createPriceCard(ticker, data, quality) {
+                const isCrypto = !ticker.includes(':');
+                const changePercent = data.changePercent24h || data.percentChange24h || 0;
+                const isPositive = changePercent >= 0;
+                
+                let content = `
+                    ${this.createQualityBadge(quality, data)}
+                    
+                    <div class="ticker-symbol">
+                        ${this.getTickerLogo(ticker)}
+                        ${ticker}
+                    </div>
+                    
+                    <div class="price-value ${isPositive ? 'positive' : 'negative'}">
+                        ${isCrypto ? '$' : ''}${this.formatPrice(data.price || 0)}
+                    </div>
+                    
+                    <div class="price-change ${isPositive ? 'positive' : 'negative'}">
+                        <span class="arrow">${isPositive ? '▲' : '▼'}</span>
+                        ${Math.abs(changePercent).toFixed(2)}%
+                        ${data.change24h ? `($${Math.abs(data.change24h).toFixed(2)})` : ''}
+                    </div>
+                    
+                    ${this.createFreshnessBar(data)}
+                    
+                    <div class="price-metadata">
+                        ${this.createMetadata(ticker, data)}
+                    </div>
+                    
+                    ${this.createUpgradePrompt(quality)}
+                `;
+                
+                return content;
+            }
+            
+            createQualityBadge(quality, data) {
+                const badges = {
+                    realtime: { icon: '⚡', label: 'REAL-TIME' },
+                    cached: { icon: '🔄', label: `LIVE (${Math.floor((data.cacheAge || 0) / 1000)}s)` },
+                    demo: { icon: '🎲', label: 'DEMO' },
+                    stale: { icon: '⏰', label: 'STALE' }
+                };
+                
+                const badge = badges[quality] || badges.demo;
+                
+                return `
+                    <div class="quality-badge ${quality}">
+                        <span class="icon">${badge.icon}</span>
+                        ${badge.label}
+                    </div>
+                `;
+            }
+            
+            createFreshnessBar(data) {
+                const maxAge = this.currentTier === 'premium' ? 0 : 
+                             this.currentTier === 'paid' ? 10000 : 300000;
+                
+                const age = data.cacheAge || 0;
+                const freshness = maxAge > 0 ? Math.max(0, 100 - (age / maxAge * 100)) : 100;
+                
+                const freshClass = freshness > 80 ? 'fresh' : 
+                                 freshness > 50 ? 'aging' : 'stale';
+                
+                return `
+                    <div class="freshness-bar">
+                        <div class="freshness-fill ${freshClass}" style="width: ${freshness}%"></div>
+                    </div>
+                `;
+            }
+            
+            createMetadata(ticker, data) {
+                const rows = [];
+                
+                if (data.source) {
+                    rows.push(`
+                        <div class="metadata-row">
+                            <span>Source:</span>
+                            <span>${data.source}</span>
+                        </div>
+                    `);
+                }
+                
+                if (data.volume24h) {
+                    rows.push(`
+                        <div class="metadata-row">
+                            <span>24h Volume:</span>
+                            <span>$${this.formatVolume(data.volume24h)}</span>
+                        </div>
+                    `);
+                }
+                
+                if (data.marketCap) {
+                    rows.push(`
+                        <div class="metadata-row">
+                            <span>Market Cap:</span>
+                            <span>$${this.formatVolume(data.marketCap)}</span>
+                        </div>
+                    `);
+                }
+                
+                rows.push(`
+                    <div class="metadata-row">
+                        <span>Updated:</span>
+                        <span>${new Date(data.timestamp).toLocaleTimeString()}</span>
+                    </div>
+                `);
+                
+                return rows.join('');
+            }
+            
+            createUpgradePrompt(quality) {
+                if (this.currentTier === 'premium') return '';
+                
+                if (quality === 'demo') {
+                    return `
+                        <div class="upgrade-prompt">
+                            <div>📈 This is demo data</div>
+                            <div style="font-size: 12px; margin-top: 5px;">
+                                Upgrade to ${this.currentTier === 'free' ? 'Paid' : 'Premium'} for real-time prices
+                            </div>
+                            <button>Upgrade Now</button>
+                        </div>
+                    `;
+                }
+                
+                if (this.currentTier === 'free' && quality === 'cached') {
+                    return `
+                        <div class="upgrade-prompt">
+                            <div>⏱️ 5-minute cached data</div>
+                            <div style="font-size: 12px; margin-top: 5px;">
+                                Upgrade for fresher data
+                            </div>
+                            <button>View Plans</button>
+                        </div>
+                    `;
+                }
+                
+                return '';
+            }
+            
+            startFreshnessTimer(ticker, data) {
+                // Update freshness bar every second
+                const intervalId = setInterval(() => {
+                    const card = document.getElementById(`price-${ticker}`);
+                    if (!card) {
+                        clearInterval(intervalId);
+                        return;
+                    }
+                    
+                    data.cacheAge = (data.cacheAge || 0) + 1000;
+                    const freshnessBar = card.querySelector('.freshness-bar');
+                    if (freshnessBar) {
+                        freshnessBar.outerHTML = this.createFreshnessBar(data);
+                    }
+                }, 1000);
+            }
+            
+            getTickerLogo(ticker) {
+                const logos = {
+                    'BTC': '₿',
+                    'ETH': 'Ξ',
+                    'SOL': '◎',
+                    'BNB': '🔶',
+                    'mlb:nyy': '⚾',
+                    'nba:lakers': '🏀'
+                };
+                
+                return logos[ticker] ? `<span style="font-size: 28px;">${logos[ticker]}</span>` : '';
+            }
+            
+            formatPrice(price) {
+                if (price >= 1000) {
+                    return price.toLocaleString('en-US', { maximumFractionDigits: 2 });
+                } else if (price >= 1) {
+                    return price.toFixed(2);
+                } else {
+                    return price.toFixed(4);
+                }
+            }
+            
+            formatVolume(volume) {
+                if (volume >= 1e9) {
+                    return (volume / 1e9).toFixed(2) + 'B';
+                } else if (volume >= 1e6) {
+                    return (volume / 1e6).toFixed(2) + 'M';
+                } else if (volume >= 1e3) {
+                    return (volume / 1e3).toFixed(2) + 'K';
+                }
+                return volume.toFixed(0);
+            }
+            
+            updateConnectionStatus(connected) {
+                const status = document.getElementById('connectionStatus');
+                status.className = `connection-status ${connected ? 'connected' : 'disconnected'}`;
+                status.innerHTML = `
+                    <span class="status-dot"></span>
+                    <span>${connected ? 'Connected' : 'Disconnected'}</span>
+                `;
+            }
+            
+            generateMockData(ticker) {
+                const isCrypto = !ticker.includes(':');
+                const baseData = {
+                    timestamp: Date.now(),
+                    source: this.currentTier === 'free' ? 'demo' : 
+                            isCrypto ? 'coingecko' : 'espn',
+                    quality: this.currentTier === 'free' ? 'demo' : 
+                            this.currentTier === 'paid' ? 'cached' : 'realtime',
+                    isRealTime: this.currentTier === 'premium',
+                    cached: this.currentTier === 'paid',
+                    cacheAge: this.currentTier === 'paid' ? Math.random() * 10000 : 0
+                };
+                
+                if (isCrypto) {
+                    const prices = {
+                        'BTC': 52000 + Math.random() * 2000,
+                        'ETH': 3200 + Math.random() * 200,
+                        'SOL': 110 + Math.random() * 10,
+                        'BNB': 420 + Math.random() * 20
+                    };
+                    
+                    return {
+                        ...baseData,
+                        price: prices[ticker] || 100,
+                        changePercent24h: (Math.random() - 0.5) * 10,
+                        change24h: (Math.random() - 0.5) * 1000,
+                        volume24h: Math.random() * 1e9,
+                        marketCap: Math.random() * 1e11
+                    };
+                } else {
+                    // Sports data
+                    return {
+                        ...baseData,
+                        price: Math.floor(Math.random() * 10),
+                        homeScore: Math.floor(Math.random() * 10),
+                        awayScore: Math.floor(Math.random() * 10),
+                        period: Math.floor(Math.random() * 9) + 1
+                    };
+                }
+            }
+        }
+        
+        // Initialize on load
+        document.addEventListener('DOMContentLoaded', () => {
+            new PriceDisplay();
+        });
+    </script>
+</body>
+</html>

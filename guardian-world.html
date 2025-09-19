@@ -1,0 +1,670 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>🌟 AI Guardian World - Autonomous Characters</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: #000;
+            color: #fff;
+            overflow: hidden;
+            position: relative;
+        }
+        
+        #canvas-container {
+            width: 100vw;
+            height: 100vh;
+            position: relative;
+            background: radial-gradient(ellipse at center, #0a0a2e 0%, #000 100%);
+        }
+        
+        #main-canvas {
+            width: 100%;
+            height: 100%;
+            display: block;
+            cursor: grab;
+        }
+        
+        #main-canvas:active {
+            cursor: grabbing;
+        }
+        
+        /* Guardian Info Panel */
+        .guardian-panel {
+            position: absolute;
+            top: 20px;
+            left: 20px;
+            background: rgba(0, 0, 0, 0.8);
+            border: 2px solid rgba(255, 255, 255, 0.2);
+            border-radius: 15px;
+            padding: 20px;
+            min-width: 300px;
+            backdrop-filter: blur(10px);
+            box-shadow: 0 0 30px rgba(0, 100, 255, 0.3);
+            transition: all 0.3s ease;
+        }
+        
+        .guardian-panel:hover {
+            border-color: rgba(0, 255, 255, 0.5);
+            box-shadow: 0 0 40px rgba(0, 255, 255, 0.5);
+        }
+        
+        .panel-title {
+            font-size: 24px;
+            font-weight: bold;
+            margin-bottom: 15px;
+            background: linear-gradient(90deg, #00ffff, #ff00ff);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            text-shadow: 0 0 20px rgba(0, 255, 255, 0.5);
+        }
+        
+        .guardian-list {
+            list-style: none;
+            margin: 20px 0;
+        }
+        
+        .guardian-item {
+            background: rgba(255, 255, 255, 0.05);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            border-radius: 10px;
+            padding: 12px;
+            margin: 10px 0;
+            display: flex;
+            align-items: center;
+            gap: 15px;
+            transition: all 0.3s ease;
+            cursor: pointer;
+        }
+        
+        .guardian-item:hover {
+            background: rgba(255, 255, 255, 0.1);
+            border-color: var(--guardian-color, #fff);
+            box-shadow: 0 0 20px var(--guardian-color, rgba(255, 255, 255, 0.3));
+            transform: translateX(5px);
+        }
+        
+        .guardian-icon {
+            width: 40px;
+            height: 40px;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 20px;
+            background: var(--guardian-color, #333);
+            box-shadow: 0 0 15px var(--guardian-color, #333);
+            animation: float 3s ease-in-out infinite;
+        }
+        
+        @keyframes float {
+            0%, 100% { transform: translateY(0px); }
+            50% { transform: translateY(-5px); }
+        }
+        
+        .guardian-info {
+            flex: 1;
+        }
+        
+        .guardian-name {
+            font-weight: bold;
+            font-size: 16px;
+            margin-bottom: 5px;
+            color: var(--guardian-color, #fff);
+        }
+        
+        .guardian-status {
+            font-size: 12px;
+            opacity: 0.8;
+        }
+        
+        .guardian-mood {
+            display: inline-block;
+            padding: 2px 8px;
+            background: rgba(255, 255, 255, 0.1);
+            border-radius: 10px;
+            font-size: 11px;
+            margin-top: 5px;
+        }
+        
+        /* Activity Log */
+        .activity-log {
+            position: absolute;
+            bottom: 20px;
+            left: 20px;
+            width: 350px;
+            max-height: 200px;
+            background: rgba(0, 0, 0, 0.8);
+            border: 1px solid rgba(255, 255, 255, 0.2);
+            border-radius: 10px;
+            padding: 15px;
+            backdrop-filter: blur(10px);
+            overflow-y: auto;
+        }
+        
+        .activity-log h3 {
+            font-size: 14px;
+            margin-bottom: 10px;
+            color: #00ffff;
+        }
+        
+        .log-entry {
+            font-size: 12px;
+            margin: 5px 0;
+            padding: 5px;
+            background: rgba(255, 255, 255, 0.05);
+            border-radius: 5px;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            animation: slideIn 0.3s ease-out;
+        }
+        
+        @keyframes slideIn {
+            from { 
+                opacity: 0;
+                transform: translateX(-20px);
+            }
+            to {
+                opacity: 1;
+                transform: translateX(0);
+            }
+        }
+        
+        .log-guardian {
+            display: inline-block;
+            width: 20px;
+            height: 20px;
+            border-radius: 50%;
+            background: var(--guardian-color);
+            box-shadow: 0 0 10px var(--guardian-color);
+        }
+        
+        /* Control Panel */
+        .control-panel {
+            position: absolute;
+            top: 20px;
+            right: 20px;
+            background: rgba(0, 0, 0, 0.8);
+            border: 1px solid rgba(255, 255, 255, 0.2);
+            border-radius: 10px;
+            padding: 15px;
+            backdrop-filter: blur(10px);
+        }
+        
+        .control-button {
+            display: block;
+            width: 100%;
+            padding: 10px 20px;
+            margin: 5px 0;
+            background: rgba(0, 100, 255, 0.2);
+            border: 1px solid rgba(0, 100, 255, 0.5);
+            border-radius: 5px;
+            color: #fff;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            font-size: 14px;
+        }
+        
+        .control-button:hover {
+            background: rgba(0, 100, 255, 0.4);
+            box-shadow: 0 0 15px rgba(0, 100, 255, 0.5);
+            transform: translateY(-2px);
+        }
+        
+        /* World Stats */
+        .world-stats {
+            position: absolute;
+            top: 50%;
+            right: 20px;
+            transform: translateY(-50%);
+            background: rgba(0, 0, 0, 0.6);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            border-radius: 10px;
+            padding: 15px;
+            font-size: 12px;
+            backdrop-filter: blur(5px);
+        }
+        
+        .stat-item {
+            margin: 8px 0;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+        
+        .stat-label {
+            opacity: 0.7;
+        }
+        
+        .stat-value {
+            font-weight: bold;
+            color: #00ffff;
+        }
+        
+        /* Guardian Dialog */
+        .guardian-dialog {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            background: rgba(0, 0, 0, 0.95);
+            border: 2px solid var(--dialog-color, #fff);
+            border-radius: 20px;
+            padding: 30px;
+            min-width: 400px;
+            backdrop-filter: blur(20px);
+            box-shadow: 0 0 50px var(--dialog-color, rgba(255, 255, 255, 0.5));
+            display: none;
+            z-index: 1000;
+        }
+        
+        .dialog-header {
+            display: flex;
+            align-items: center;
+            gap: 20px;
+            margin-bottom: 20px;
+        }
+        
+        .dialog-avatar {
+            width: 60px;
+            height: 60px;
+            border-radius: 50%;
+            background: var(--dialog-color);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 30px;
+            box-shadow: 0 0 30px var(--dialog-color);
+            animation: pulse 2s ease-in-out infinite;
+        }
+        
+        @keyframes pulse {
+            0%, 100% { transform: scale(1); }
+            50% { transform: scale(1.1); }
+        }
+        
+        .dialog-title {
+            font-size: 24px;
+            font-weight: bold;
+            color: var(--dialog-color);
+        }
+        
+        .dialog-content {
+            margin: 20px 0;
+            line-height: 1.6;
+        }
+        
+        .dialog-stats {
+            display: grid;
+            grid-template-columns: repeat(2, 1fr);
+            gap: 15px;
+            margin: 20px 0;
+        }
+        
+        .dialog-stat {
+            background: rgba(255, 255, 255, 0.05);
+            border-radius: 10px;
+            padding: 10px;
+            text-align: center;
+        }
+        
+        .dialog-close {
+            position: absolute;
+            top: 15px;
+            right: 15px;
+            width: 30px;
+            height: 30px;
+            background: rgba(255, 255, 255, 0.1);
+            border: 1px solid rgba(255, 255, 255, 0.3);
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            cursor: pointer;
+            transition: all 0.3s ease;
+        }
+        
+        .dialog-close:hover {
+            background: rgba(255, 0, 0, 0.3);
+            border-color: rgba(255, 0, 0, 0.5);
+        }
+        
+        /* Floating UI Elements */
+        .floating-label {
+            position: absolute;
+            background: rgba(0, 0, 0, 0.8);
+            padding: 8px 12px;
+            border-radius: 20px;
+            font-size: 12px;
+            pointer-events: none;
+            opacity: 0;
+            transition: opacity 0.3s ease;
+            white-space: nowrap;
+            border: 1px solid rgba(255, 255, 255, 0.2);
+        }
+        
+        .floating-label.visible {
+            opacity: 1;
+        }
+        
+        /* Drop Zone */
+        .drop-zone {
+            position: absolute;
+            bottom: 20px;
+            right: 20px;
+            width: 200px;
+            height: 100px;
+            background: rgba(0, 255, 0, 0.1);
+            border: 2px dashed rgba(0, 255, 0, 0.5);
+            border-radius: 10px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            text-align: center;
+            font-size: 14px;
+            transition: all 0.3s ease;
+        }
+        
+        .drop-zone.dragover {
+            background: rgba(0, 255, 0, 0.3);
+            border-color: #00ff00;
+            box-shadow: 0 0 30px rgba(0, 255, 0, 0.5);
+        }
+        
+        /* Loading Screen */
+        .loading-screen {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: #000;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            z-index: 2000;
+            transition: opacity 1s ease;
+        }
+        
+        .loading-screen.hidden {
+            opacity: 0;
+            pointer-events: none;
+        }
+        
+        .loading-title {
+            font-size: 32px;
+            margin-bottom: 20px;
+            background: linear-gradient(90deg, #00ffff, #ff00ff, #00ff00);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            animation: shimmer 2s ease-in-out infinite;
+        }
+        
+        @keyframes shimmer {
+            0%, 100% { opacity: 0.5; }
+            50% { opacity: 1; }
+        }
+        
+        .loading-bar {
+            width: 300px;
+            height: 4px;
+            background: rgba(255, 255, 255, 0.1);
+            border-radius: 2px;
+            overflow: hidden;
+        }
+        
+        .loading-progress {
+            height: 100%;
+            background: linear-gradient(90deg, #00ffff, #ff00ff);
+            animation: loadingAnimation 2s ease-in-out infinite;
+        }
+        
+        @keyframes loadingAnimation {
+            0% { width: 0%; }
+            50% { width: 100%; }
+            100% { width: 0%; }
+        }
+    </style>
+</head>
+<body>
+    <!-- Loading Screen -->
+    <div class="loading-screen" id="loadingScreen">
+        <h1 class="loading-title">🌟 Awakening AI Guardians...</h1>
+        <div class="loading-bar">
+            <div class="loading-progress"></div>
+        </div>
+    </div>
+    
+    <!-- Main Canvas -->
+    <div id="canvas-container">
+        <canvas id="main-canvas"></canvas>
+    </div>
+    
+    <!-- Guardian Panel -->
+    <div class="guardian-panel">
+        <h2 class="panel-title">🌟 AI Guardians</h2>
+        <p style="font-size: 12px; opacity: 0.7; margin-bottom: 15px;">
+            Autonomous beings with free will
+        </p>
+        
+        <ul class="guardian-list" id="guardianList">
+            <!-- Guardians will be added dynamically -->
+        </ul>
+        
+        <div style="margin-top: 20px; padding-top: 20px; border-top: 1px solid rgba(255,255,255,0.1);">
+            <div class="stat-item">
+                <span class="stat-label">Active Guardians:</span>
+                <span class="stat-value" id="activeCount">0</span>
+            </div>
+            <div class="stat-item">
+                <span class="stat-label">World Energy:</span>
+                <span class="stat-value" id="worldEnergy">100%</span>
+            </div>
+        </div>
+    </div>
+    
+    <!-- Activity Log -->
+    <div class="activity-log">
+        <h3>🌀 Guardian Activity</h3>
+        <div id="activityLog"></div>
+    </div>
+    
+    <!-- Control Panel -->
+    <div class="control-panel">
+        <button class="control-button" onclick="spawnGuardian()">✨ Spawn Guardian</button>
+        <button class="control-button" onclick="togglePause()">⏸️ Pause World</button>
+        <button class="control-button" onclick="toggleDebug()">🔍 Debug View</button>
+        <button class="control-button" onclick="resetWorld()">🔄 Reset World</button>
+    </div>
+    
+    <!-- World Stats -->
+    <div class="world-stats">
+        <h4 style="margin-bottom: 10px; color: #00ffff;">🌍 World Status</h4>
+        <div class="stat-item">
+            <span class="stat-label">Time:</span>
+            <span class="stat-value" id="worldTime">Day</span>
+        </div>
+        <div class="stat-item">
+            <span class="stat-label">Mood:</span>
+            <span class="stat-value" id="worldMood">Peaceful</span>
+        </div>
+        <div class="stat-item">
+            <span class="stat-label">Activity:</span>
+            <span class="stat-value" id="worldActivity">Normal</span>
+        </div>
+    </div>
+    
+    <!-- Drop Zone -->
+    <div class="drop-zone" id="dropZone">
+        <div>📁 Drop files here<br>for guardian processing</div>
+    </div>
+    
+    <!-- Guardian Dialog -->
+    <div class="guardian-dialog" id="guardianDialog">
+        <div class="dialog-close" onclick="closeDialog()">✕</div>
+        <div class="dialog-header">
+            <div class="dialog-avatar" id="dialogAvatar">🔮</div>
+            <div>
+                <div class="dialog-title" id="dialogTitle">Guardian Name</div>
+                <div style="font-size: 14px; opacity: 0.7;" id="dialogType">Type</div>
+            </div>
+        </div>
+        <div class="dialog-content" id="dialogContent">
+            Guardian information will appear here...
+        </div>
+        <div class="dialog-stats" id="dialogStats">
+            <!-- Stats will be added dynamically -->
+        </div>
+    </div>
+    
+    <!-- Floating Label -->
+    <div class="floating-label" id="floatingLabel"></div>
+    
+    <!-- Include guardian AI engine -->
+    <script src="guardian-ai-engine.js"></script>
+    <script src="guardian-physics.js"></script>
+    <script src="guardian-personalities.js"></script>
+    <script src="guardian-visual-effects.js"></script>
+    
+    <script>
+        // Initialize the guardian world
+        let world = null;
+        let canvas = null;
+        let ctx = null;
+        let isPaused = false;
+        let debugMode = false;
+        
+        // Initialize canvas
+        function initCanvas() {
+            canvas = document.getElementById('main-canvas');
+            ctx = canvas.getContext('2d');
+            
+            // Set canvas size
+            function resizeCanvas() {
+                canvas.width = window.innerWidth;
+                canvas.height = window.innerHeight;
+            }
+            
+            resizeCanvas();
+            window.addEventListener('resize', resizeCanvas);
+            
+            // Mouse interactions
+            let mouseX = 0;
+            let mouseY = 0;
+            
+            canvas.addEventListener('mousemove', (e) => {
+                mouseX = e.clientX;
+                mouseY = e.clientY;
+                
+                if (world) {
+                    world.handleMouseMove(mouseX, mouseY);
+                }
+            });
+            
+            canvas.addEventListener('click', (e) => {
+                if (world) {
+                    world.handleClick(e.clientX, e.clientY);
+                }
+            });
+            
+            // Initialize world
+            setTimeout(() => {
+                world = new GuardianWorld(canvas, ctx);
+                hideLoadingScreen();
+                startAnimation();
+            }, 2000);
+        }
+        
+        // Hide loading screen
+        function hideLoadingScreen() {
+            const loadingScreen = document.getElementById('loadingScreen');
+            loadingScreen.classList.add('hidden');
+        }
+        
+        // Animation loop
+        function startAnimation() {
+            function animate() {
+                if (!isPaused && world) {
+                    world.update();
+                    world.render();
+                }
+                
+                requestAnimationFrame(animate);
+            }
+            
+            animate();
+        }
+        
+        // Control functions
+        function spawnGuardian() {
+            if (world) {
+                world.spawnNewGuardian();
+            }
+        }
+        
+        function togglePause() {
+            isPaused = !isPaused;
+            const button = event.target;
+            button.textContent = isPaused ? '▶️ Resume' : '⏸️ Pause World';
+        }
+        
+        function toggleDebug() {
+            debugMode = !debugMode;
+            if (world) {
+                world.setDebugMode(debugMode);
+            }
+        }
+        
+        function resetWorld() {
+            if (world) {
+                world.reset();
+            }
+        }
+        
+        function closeDialog() {
+            document.getElementById('guardianDialog').style.display = 'none';
+        }
+        
+        // File drop handling
+        const dropZone = document.getElementById('dropZone');
+        
+        dropZone.addEventListener('dragover', (e) => {
+            e.preventDefault();
+            dropZone.classList.add('dragover');
+        });
+        
+        dropZone.addEventListener('dragleave', () => {
+            dropZone.classList.remove('dragover');
+        });
+        
+        dropZone.addEventListener('drop', (e) => {
+            e.preventDefault();
+            dropZone.classList.remove('dragover');
+            
+            const files = Array.from(e.dataTransfer.files);
+            if (world) {
+                files.forEach(file => {
+                    world.processFile(file);
+                });
+            }
+        });
+        
+        // Initialize on load
+        window.addEventListener('DOMContentLoaded', initCanvas);
+        
+        console.log('🌟 Guardian World initializing...');
+        console.log('🤖 AI entities gaining consciousness...');
+        console.log('✨ Free will protocols activated!');
+    </script>
+</body>
+</html>

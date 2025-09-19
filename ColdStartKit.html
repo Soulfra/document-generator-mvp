@@ -1,0 +1,676 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>ColdStartKit - Document to MVP Generator</title>
+    
+    <!-- Master CSS - Unified Design System -->
+    <link rel="stylesheet" href="styles/master.css">
+    
+    <!-- Custom Styles -->
+    <style>
+        /* Hero Background Pattern */
+        .hero {
+            background-color: var(--color-gray-50);
+            position: relative;
+            overflow: hidden;
+        }
+        
+        .hero::before {
+            content: '';
+            position: absolute;
+            top: -50%;
+            left: -50%;
+            width: 200%;
+            height: 200%;
+            background: radial-gradient(circle, var(--color-secondary) 0%, transparent 70%);
+            opacity: 0.03;
+            animation: rotate 60s linear infinite reverse;
+        }
+        
+        /* Form Enhancements */
+        .generation-form {
+            max-width: 700px;
+            margin: 0 auto;
+        }
+        
+        /* File Upload Area */
+        .file-upload {
+            border: 2px dashed var(--color-gray-300);
+            border-radius: var(--radius-lg);
+            padding: var(--space-10);
+            text-align: center;
+            transition: all var(--transition-base);
+            background-color: var(--color-gray-50);
+            cursor: pointer;
+            position: relative;
+            overflow: hidden;
+        }
+        
+        .file-upload:hover {
+            border-color: var(--color-primary);
+            background-color: var(--color-gray-100);
+        }
+        
+        .file-upload.dragover {
+            border-color: var(--color-primary);
+            background-color: var(--color-primary-light);
+            background-color: rgba(37, 99, 235, 0.05);
+            transform: scale(1.02);
+        }
+        
+        .file-upload-icon {
+            width: 60px;
+            height: 60px;
+            margin: 0 auto var(--space-4);
+            background-color: var(--color-gray-200);
+            border-radius: var(--radius-full);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+        
+        .file-upload-icon::after {
+            content: '↑';
+            font-size: var(--text-2xl);
+            color: var(--color-gray-600);
+        }
+        
+        .file-info {
+            display: none;
+            background-color: var(--color-success);
+            background-color: rgba(16, 185, 129, 0.1);
+            border: 1px solid rgba(16, 185, 129, 0.3);
+            border-radius: var(--radius-md);
+            padding: var(--space-4);
+            margin-top: var(--space-4);
+            text-align: left;
+        }
+        
+        /* Progress Steps */
+        .progress {
+            display: none;
+            margin: var(--space-8) 0;
+        }
+        
+        .progress-bar {
+            width: 100%;
+            height: 8px;
+            background-color: var(--color-gray-200);
+            border-radius: var(--radius-full);
+            overflow: hidden;
+        }
+        
+        .progress-fill {
+            height: 100%;
+            background-color: var(--color-primary);
+            width: 0%;
+            transition: width 0.3s ease-out;
+        }
+        
+        .progress-steps {
+            display: grid;
+            grid-template-columns: repeat(4, 1fr);
+            gap: var(--space-4);
+            margin-top: var(--space-6);
+        }
+        
+        .progress-step {
+            text-align: center;
+            color: var(--text-tertiary);
+            font-size: var(--text-sm);
+            position: relative;
+            padding-top: var(--space-8);
+        }
+        
+        .progress-step::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 50%;
+            transform: translateX(-50%);
+            width: 30px;
+            height: 30px;
+            border-radius: var(--radius-full);
+            background-color: var(--color-gray-200);
+            border: 2px solid var(--color-white);
+            box-shadow: var(--shadow-sm);
+        }
+        
+        .progress-step.active::before {
+            background-color: var(--color-primary);
+        }
+        
+        .progress-step.active {
+            color: var(--color-primary);
+            font-weight: var(--font-semibold);
+        }
+        
+        .progress-step.completed::before {
+            background-color: var(--color-success);
+        }
+        
+        .progress-step.completed::after {
+            content: '✓';
+            position: absolute;
+            top: 5px;
+            left: 50%;
+            transform: translateX(-50%);
+            color: white;
+            font-size: var(--text-sm);
+            font-weight: var(--font-bold);
+        }
+        
+        .progress-step.completed {
+            color: var(--color-success);
+        }
+        
+        /* Results Section */
+        .results {
+            display: none;
+            margin-top: var(--space-8);
+        }
+        
+        .mvp-result {
+            background: var(--color-white);
+            padding: var(--space-6);
+            border-radius: var(--radius-lg);
+            box-shadow: var(--shadow-md);
+            margin-bottom: var(--space-6);
+            border-left: 4px solid var(--color-primary);
+        }
+        
+        .mvp-links {
+            display: flex;
+            gap: var(--space-4);
+            margin-top: var(--space-4);
+            flex-wrap: wrap;
+        }
+        
+        .mvp-link {
+            display: inline-flex;
+            align-items: center;
+            gap: var(--space-2);
+            background-color: var(--color-primary);
+            color: var(--color-white);
+            padding: var(--space-3) var(--space-6);
+            border-radius: var(--radius-full);
+            text-decoration: none;
+            font-weight: var(--font-medium);
+            transition: all var(--transition-base);
+        }
+        
+        .mvp-link:hover {
+            background-color: var(--color-primary-dark);
+            transform: translateY(-2px);
+            box-shadow: var(--shadow-md);
+            color: var(--color-white);
+            text-decoration: none;
+        }
+        
+        /* Document Type Tags */
+        .format-list {
+            display: flex;
+            gap: var(--space-2);
+            flex-wrap: wrap;
+            margin-top: var(--space-3);
+        }
+        
+        .format-tag {
+            background-color: var(--color-primary);
+            background-color: rgba(37, 99, 235, 0.1);
+            color: var(--color-primary);
+            padding: var(--space-1) var(--space-3);
+            border-radius: var(--radius-full);
+            font-size: var(--text-xs);
+            font-weight: var(--font-medium);
+        }
+        
+        /* Step Result */
+        .step-result {
+            margin: var(--space-3) 0;
+            padding: var(--space-3);
+            background-color: var(--color-gray-50);
+            border-radius: var(--radius-md);
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+        
+        .step-result.success {
+            background-color: rgba(16, 185, 129, 0.05);
+            border-left: 3px solid var(--color-success);
+        }
+        
+        /* Icon replacements for emojis */
+        .icon-doc::before { content: '📄'; font-family: system-ui; }
+        .icon-check::before { content: '✓'; }
+        .icon-upload::before { content: '↑'; }
+        .icon-rocket::before { content: '→'; }
+    </style>
+</head>
+<body>
+    <!-- Header -->
+    <header class="header">
+        <div class="container">
+            <nav class="nav">
+                <a href="#" class="nav-brand">ColdStartKit</a>
+                <ul class="nav-menu">
+                    <li><a href="#" class="nav-link active">MVP Generator</a></li>
+                    <li><a href="#" class="nav-link">Templates</a></li>
+                    <li><a href="#" class="nav-link">Documentation</a></li>
+                    <li><a href="#" class="nav-link">Pricing</a></li>
+                </ul>
+            </nav>
+        </div>
+    </header>
+
+    <!-- Hero Section -->
+    <section class="hero">
+        <div class="container">
+            <div class="hero-content">
+                <h1 class="hero-title fade-in-up">Document to MVP Generator</h1>
+                <p class="hero-subtitle fade-in-up" style="animation-delay: 0.1s;">
+                    Transform any document into a working prototype in minutes. 
+                    AI-powered code generation with professional templates.
+                </p>
+            </div>
+        </div>
+    </section>
+
+    <!-- Main Content -->
+    <main class="page-content">
+        <div class="container">
+            <div class="generation-form">
+                <div class="card fade-in-up" style="animation-delay: 0.2s;">
+                    <div class="card-body">
+                        <form id="mvpGenerationForm">
+                            <div class="form-group">
+                                <label class="form-label">Upload Document *</label>
+                                <div class="file-upload" 
+                                     onclick="document.getElementById('fileInput').click()" 
+                                     ondrop="handleDrop(event)" 
+                                     ondragover="handleDragOver(event)" 
+                                     ondragleave="handleDragLeave(event)">
+                                    <input type="file" id="fileInput" accept=".pdf,.txt,.md,.json,.docx" required style="display: none;">
+                                    <div class="file-upload-content">
+                                        <div class="file-upload-icon"></div>
+                                        <h3 class="text-lg font-semibold mb-2">Drop your document here or click to browse</h3>
+                                        <p class="text-secondary">Supports PDF, TXT, Markdown, JSON, and Word documents</p>
+                                    </div>
+                                </div>
+                                <div class="file-info" id="fileInfo"></div>
+                            </div>
+
+                            <div class="alert alert-info">
+                                <h4 class="text-base font-semibold mb-2">Supported Document Types</h4>
+                                <div class="format-list">
+                                    <span class="format-tag">Business Plans</span>
+                                    <span class="format-tag">API Specifications</span>
+                                    <span class="format-tag">Requirements Docs</span>
+                                    <span class="format-tag">Chat Logs</span>
+                                    <span class="format-tag">Pitch Decks</span>
+                                    <span class="format-tag">Technical Specs</span>
+                                </div>
+                            </div>
+
+                            <div class="grid grid-cols-2 gap-4">
+                                <div class="form-group">
+                                    <label for="mvpType" class="form-label">MVP Type</label>
+                                    <select id="mvpType" name="mvpType" class="form-control">
+                                        <option value="web-app">Web Application</option>
+                                        <option value="mobile-app">Mobile App</option>
+                                        <option value="api-service">API Service</option>
+                                    </select>
+                                </div>
+
+                                <div class="form-group">
+                                    <label for="techStack" class="form-label">Technology Stack</label>
+                                    <select id="techStack" name="techStack" class="form-control">
+                                        <option value="react">React + Node.js</option>
+                                        <option value="vue">Vue.js + Express</option>
+                                        <option value="angular">Angular + NestJS</option>
+                                        <option value="svelte">Svelte + FastAPI</option>
+                                        <option value="vanilla">Vanilla HTML/CSS/JS</option>
+                                    </select>
+                                </div>
+
+                                <div class="form-group">
+                                    <label for="deployment" class="form-label">Deployment Platform</label>
+                                    <select id="deployment" name="deployment" class="form-control">
+                                        <option value="vercel">Vercel</option>
+                                        <option value="netlify">Netlify</option>
+                                        <option value="railway">Railway</option>
+                                        <option value="aws">AWS</option>
+                                    </select>
+                                </div>
+
+                                <div class="form-group">
+                                    <label for="features" class="form-label">Additional Features</label>
+                                    <select id="features" name="features" class="form-control">
+                                        <option value="basic">Basic Features</option>
+                                        <option value="auth">Authentication</option>
+                                        <option value="database">Database Integration</option>
+                                        <option value="payments">Payment Processing</option>
+                                        <option value="full">All Features</option>
+                                    </select>
+                                </div>
+                            </div>
+
+                            <button type="submit" class="btn btn-primary btn-lg w-full" id="submitBtn">
+                                Generate MVP
+                            </button>
+                        </form>
+                    </div>
+                </div>
+
+                <!-- Progress Section -->
+                <div class="progress" id="progressDiv">
+                    <div class="progress-bar">
+                        <div class="progress-fill" id="progressFill"></div>
+                    </div>
+                    <div class="progress-steps">
+                        <div class="progress-step" id="step1">Document Analysis</div>
+                        <div class="progress-step" id="step2">Template Matching</div>
+                        <div class="progress-step" id="step3">Code Generation</div>
+                        <div class="progress-step" id="step4">Deployment</div>
+                    </div>
+                </div>
+
+                <!-- Error State -->
+                <div class="alert alert-danger" id="errorDiv" style="display: none;"></div>
+
+                <!-- Results Section -->
+                <div class="results" id="resultsDiv">
+                    <!-- Results will be populated here -->
+                </div>
+            </div>
+        </div>
+    </main>
+
+    <!-- Footer -->
+    <footer class="footer">
+        <div class="container">
+            <div class="footer-bottom">
+                <p>&copy; 2024 ColdStartKit. Transform ideas into working prototypes.</p>
+                <div class="flex gap-4">
+                    <a href="#" class="footer-links">Privacy Policy</a>
+                    <a href="#" class="footer-links">Terms of Service</a>
+                    <a href="#" class="footer-links">API Docs</a>
+                </div>
+            </div>
+        </div>
+    </footer>
+
+    <script>
+        let selectedFile = null;
+
+        // File input handling
+        document.getElementById('fileInput').addEventListener('change', function(e) {
+            handleFileSelect(e.target.files[0]);
+        });
+
+        function handleDrop(e) {
+            e.preventDefault();
+            e.stopPropagation();
+            document.querySelector('.file-upload').classList.remove('dragover');
+            handleFileSelect(e.dataTransfer.files[0]);
+        }
+
+        function handleDragOver(e) {
+            e.preventDefault();
+            e.stopPropagation();
+            document.querySelector('.file-upload').classList.add('dragover');
+        }
+
+        function handleDragLeave(e) {
+            e.preventDefault();
+            e.stopPropagation();
+            document.querySelector('.file-upload').classList.remove('dragover');
+        }
+
+        function handleFileSelect(file) {
+            if (file) {
+                selectedFile = file;
+                const fileInfo = document.getElementById('fileInfo');
+                fileInfo.innerHTML = `
+                    <strong>Selected:</strong> ${file.name} (${(file.size / 1024 / 1024).toFixed(2)} MB)
+                    <br><strong>Type:</strong> ${file.type || 'Unknown'}
+                `;
+                fileInfo.style.display = 'block';
+                
+                // Add success animation to file upload area
+                const uploadArea = document.querySelector('.file-upload');
+                uploadArea.classList.add('scale-in');
+                setTimeout(() => uploadArea.classList.remove('scale-in'), 300);
+            }
+        }
+
+        // Form submission
+        document.getElementById('mvpGenerationForm').addEventListener('submit', async function(e) {
+            e.preventDefault();
+            
+            if (!selectedFile) {
+                const errorDiv = document.getElementById('errorDiv');
+                errorDiv.textContent = 'Please select a document first';
+                errorDiv.style.display = 'block';
+                return;
+            }
+            
+            const submitBtn = document.getElementById('submitBtn');
+            const progressDiv = document.getElementById('progressDiv');
+            const errorDiv = document.getElementById('errorDiv');
+            const resultsDiv = document.getElementById('resultsDiv');
+            
+            // Hide previous results/errors
+            errorDiv.style.display = 'none';
+            resultsDiv.style.display = 'none';
+            
+            // Show progress
+            submitBtn.disabled = true;
+            submitBtn.innerHTML = '<span class="spinner"></span> Generating...';
+            progressDiv.style.display = 'block';
+            
+            try {
+                const formData = new FormData();
+                formData.append('document', selectedFile);
+                formData.append('mvpType', document.getElementById('mvpType').value);
+                formData.append('techStack', document.getElementById('techStack').value);
+                formData.append('deployment', document.getElementById('deployment').value);
+                formData.append('features', document.getElementById('features').value);
+                
+                // Start progress animation
+                startProgressAnimation();
+                
+                // Call the MVP Generation API
+                const response = await fetch('http://localhost:3002/api/v1/mvp/generate', {
+                    method: 'POST',
+                    body: formData
+                });
+                
+                const result = await response.json();
+                
+                if (response.ok) {
+                    completeProgressAnimation();
+                    displayResults(result);
+                } else {
+                    throw new Error(result.error || 'MVP generation failed');
+                }
+                
+            } catch (error) {
+                console.error('MVP generation error:', error);
+                errorDiv.innerHTML = `<strong>Error:</strong> ${error.message}. Make sure the MVP Generation API is running on port 3002.`;
+                errorDiv.style.display = 'block';
+                resetProgress();
+            } finally {
+                submitBtn.disabled = false;
+                submitBtn.textContent = 'Generate MVP';
+            }
+        });
+
+        function startProgressAnimation() {
+            const steps = ['step1', 'step2', 'step3', 'step4'];
+            const progressFill = document.getElementById('progressFill');
+            let currentStep = 0;
+
+            const interval = setInterval(() => {
+                if (currentStep < steps.length) {
+                    // Mark current step as active
+                    document.getElementById(steps[currentStep]).classList.add('active');
+                    
+                    // Update progress bar
+                    progressFill.style.width = `${((currentStep + 1) / steps.length) * 100}%`;
+                    
+                    // Mark previous steps as completed
+                    if (currentStep > 0) {
+                        document.getElementById(steps[currentStep - 1]).classList.remove('active');
+                        document.getElementById(steps[currentStep - 1]).classList.add('completed');
+                    }
+                    
+                    currentStep++;
+                } else {
+                    clearInterval(interval);
+                }
+            }, 2000);
+
+            // Store interval for cleanup
+            window.progressInterval = interval;
+        }
+
+        function completeProgressAnimation() {
+            if (window.progressInterval) {
+                clearInterval(window.progressInterval);
+            }
+            
+            const steps = ['step1', 'step2', 'step3', 'step4'];
+            steps.forEach(step => {
+                const el = document.getElementById(step);
+                el.classList.remove('active');
+                el.classList.add('completed');
+            });
+            
+            document.getElementById('progressFill').style.width = '100%';
+        }
+
+        function resetProgress() {
+            if (window.progressInterval) {
+                clearInterval(window.progressInterval);
+            }
+            
+            const steps = ['step1', 'step2', 'step3', 'step4'];
+            steps.forEach(step => {
+                const el = document.getElementById(step);
+                el.classList.remove('active', 'completed');
+            });
+            
+            document.getElementById('progressFill').style.width = '0%';
+            document.getElementById('progressDiv').style.display = 'none';
+        }
+
+        function displayResults(result) {
+            const resultsDiv = document.getElementById('resultsDiv');
+            
+            const stepResults = result.result.steps || [];
+            const metadata = result.result.metadata || {};
+            const urls = result.result.urls || {};
+            
+            resultsDiv.innerHTML = `
+                <div class="section-header mb-6">
+                    <h2 class="section-title">Your MVP is Ready!</h2>
+                </div>
+                
+                <div class="mvp-result fade-in-up">
+                    <h3 class="text-xl font-semibold mb-4">Generation Summary</h3>
+                    <div class="grid grid-cols-2 gap-4">
+                        <div>
+                            <p class="text-sm text-secondary mb-1">Original File</p>
+                            <p class="font-medium">${metadata.originalFile}</p>
+                        </div>
+                        <div>
+                            <p class="text-sm text-secondary mb-1">MVP Type</p>
+                            <p class="font-medium">${metadata.mvpType}</p>
+                        </div>
+                        <div>
+                            <p class="text-sm text-secondary mb-1">Tech Stack</p>
+                            <p class="font-medium">${metadata.techStack}</p>
+                        </div>
+                        <div>
+                            <p class="text-sm text-secondary mb-1">Deployment</p>
+                            <p class="font-medium">${metadata.deployment}</p>
+                        </div>
+                    </div>
+                    <div class="mt-4 pt-4 border-t border-gray-200">
+                        <p class="text-sm text-secondary">Generation ID: <code class="text-xs">${result.generationId}</code></p>
+                    </div>
+                </div>
+
+                <div class="mvp-result fade-in-up" style="animation-delay: 0.1s;">
+                    <h3 class="text-xl font-semibold mb-4">Your MVP Links</h3>
+                    <div class="mvp-links">
+                        <a href="${urls.app || '#'}" target="_blank" class="mvp-link">
+                            Live App
+                        </a>
+                        <a href="${urls.repo || '#'}" target="_blank" class="mvp-link">
+                            Source Code
+                        </a>
+                        <a href="${urls.docs || '#'}" target="_blank" class="mvp-link">
+                            Documentation
+                        </a>
+                        <a href="${urls.analytics || '#'}" target="_blank" class="mvp-link">
+                            Analytics
+                        </a>
+                    </div>
+                </div>
+
+                <div class="mvp-result fade-in-up" style="animation-delay: 0.2s;">
+                    <h3 class="text-xl font-semibold mb-4">Generation Process</h3>
+                    ${stepResults.map(step => `
+                        <div class="step-result ${step.status === 'completed' ? 'success' : ''}">
+                            <span class="font-medium">${step.name}</span>
+                            <span class="text-sm text-secondary">${step.status} (${(step.duration / 1000).toFixed(1)}s)</span>
+                        </div>
+                    `).join('')}
+                </div>
+
+                <div class="mvp-result fade-in-up" style="animation-delay: 0.3s;">
+                    <h3 class="text-xl font-semibold mb-4">Next Steps</h3>
+                    <ul class="space-y-3">
+                        <li class="flex items-center gap-3">
+                            <span class="feature-icon"></span>
+                            <span>Review your generated MVP</span>
+                        </li>
+                        <li class="flex items-center gap-3">
+                            <span class="feature-icon"></span>
+                            <span>Customize the code as needed</span>
+                        </li>
+                        <li class="flex items-center gap-3">
+                            <span class="feature-icon"></span>
+                            <span>Set up custom domain</span>
+                        </li>
+                        <li class="flex items-center gap-3">
+                            <span class="feature-icon"></span>
+                            <span>Add additional features</span>
+                        </li>
+                        <li class="flex items-center gap-3">
+                            <span class="feature-icon"></span>
+                            <span>Deploy to production</span>
+                        </li>
+                    </ul>
+                </div>
+            `;
+            
+            resultsDiv.style.display = 'block';
+            resultsDiv.scrollIntoView({ behavior: 'smooth', block: 'start' });
+            
+            // Hide progress after showing results
+            setTimeout(() => {
+                document.getElementById('progressDiv').style.display = 'none';
+            }, 2000);
+        }
+    </script>
+    
+    <!-- Theme Toggle -->
+    <script src="styles/theme-toggle.js"></script>
+</body>
+</html>

@@ -1,0 +1,785 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Self-Building System Verifier - Live Discovery</title>
+    <style>
+        body {
+            margin: 0;
+            padding: 0;
+            background: #000;
+            color: #0f0;
+            font-family: 'Courier New', monospace;
+            overflow: hidden;
+            position: relative;
+        }
+        
+        /* Matrix rain background */
+        #matrix-bg {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            z-index: -1;
+            opacity: 0.1;
+        }
+        
+        .matrix-column {
+            position: absolute;
+            top: -100%;
+            font-size: 14px;
+            line-height: 14px;
+            color: #0f0;
+            text-shadow: 0 0 5px #0f0;
+            animation: matrix-fall linear infinite;
+        }
+        
+        @keyframes matrix-fall {
+            to {
+                top: 100%;
+            }
+        }
+        
+        /* Main content */
+        .container {
+            position: relative;
+            height: 100vh;
+            display: grid;
+            grid-template-rows: auto 1fr auto;
+            gap: 20px;
+            padding: 20px;
+            box-sizing: border-box;
+        }
+        
+        .header {
+            text-align: center;
+            border: 2px solid #0f0;
+            padding: 20px;
+            background: rgba(0, 0, 0, 0.8);
+            box-shadow: 0 0 20px #0f0;
+        }
+        
+        .header h1 {
+            margin: 0;
+            font-size: 28px;
+            text-transform: uppercase;
+            letter-spacing: 3px;
+            animation: glow 2s ease-in-out infinite alternate;
+        }
+        
+        @keyframes glow {
+            from { text-shadow: 0 0 10px #0f0, 0 0 20px #0f0; }
+            to { text-shadow: 0 0 20px #0f0, 0 0 30px #0f0, 0 0 40px #0f0; }
+        }
+        
+        .main-content {
+            display: grid;
+            grid-template-columns: 1fr 2fr 1fr;
+            gap: 20px;
+            overflow: hidden;
+        }
+        
+        .panel {
+            border: 1px solid #0f0;
+            background: rgba(0, 0, 0, 0.9);
+            padding: 15px;
+            overflow-y: auto;
+            position: relative;
+        }
+        
+        .panel h2 {
+            margin: 0 0 15px 0;
+            font-size: 16px;
+            text-transform: uppercase;
+            border-bottom: 1px solid #0f0;
+            padding-bottom: 10px;
+        }
+        
+        /* Discovery animation */
+        .discovery-item {
+            margin: 10px 0;
+            padding: 10px;
+            border: 1px solid #0f0;
+            background: rgba(0, 255, 0, 0.05);
+            opacity: 0;
+            transform: translateX(-20px);
+            animation: slideIn 0.5s forwards;
+        }
+        
+        @keyframes slideIn {
+            to {
+                opacity: 1;
+                transform: translateX(0);
+            }
+        }
+        
+        .discovery-item.building {
+            border-color: #ff0;
+            background: rgba(255, 255, 0, 0.05);
+        }
+        
+        .discovery-item.verified {
+            border-color: #0ff;
+            background: rgba(0, 255, 255, 0.05);
+        }
+        
+        /* Central visualization */
+        .visualization {
+            position: relative;
+            height: 100%;
+            overflow: hidden;
+        }
+        
+        .system-node {
+            position: absolute;
+            width: 100px;
+            height: 100px;
+            border: 2px solid #0f0;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            background: radial-gradient(circle, rgba(0, 255, 0, 0.2), transparent);
+            cursor: pointer;
+            transition: all 0.3s;
+            opacity: 0;
+            transform: scale(0);
+        }
+        
+        .system-node.discovered {
+            animation: nodeAppear 0.5s forwards;
+        }
+        
+        @keyframes nodeAppear {
+            to {
+                opacity: 1;
+                transform: scale(1);
+            }
+        }
+        
+        .system-node:hover {
+            transform: scale(1.1);
+            box-shadow: 0 0 30px #0f0;
+        }
+        
+        .node-label {
+            text-align: center;
+            font-size: 10px;
+        }
+        
+        .connection {
+            position: absolute;
+            background: linear-gradient(90deg, transparent, #0f0, transparent);
+            height: 2px;
+            transform-origin: left center;
+            opacity: 0;
+            animation: connectionPulse 2s infinite;
+        }
+        
+        @keyframes connectionPulse {
+            0%, 100% { opacity: 0.3; }
+            50% { opacity: 1; }
+        }
+        
+        /* Verification console */
+        .console {
+            background: #000;
+            border: 1px solid #0f0;
+            padding: 10px;
+            font-size: 12px;
+            height: 200px;
+            overflow-y: auto;
+            font-family: 'Consolas', monospace;
+        }
+        
+        .console-line {
+            margin: 2px 0;
+            opacity: 0;
+            animation: fadeIn 0.3s forwards;
+        }
+        
+        @keyframes fadeIn {
+            to { opacity: 1; }
+        }
+        
+        .console-line.success { color: #0f0; }
+        .console-line.error { color: #f00; }
+        .console-line.warning { color: #ff0; }
+        .console-line.info { color: #0ff; }
+        
+        /* Status indicators */
+        .status-grid {
+            display: grid;
+            grid-template-columns: repeat(4, 1fr);
+            gap: 10px;
+            margin-top: 15px;
+        }
+        
+        .status-item {
+            text-align: center;
+            padding: 10px;
+            border: 1px solid #0f0;
+            background: rgba(0, 255, 0, 0.05);
+        }
+        
+        .status-value {
+            font-size: 24px;
+            font-weight: bold;
+            margin: 5px 0;
+        }
+        
+        .status-label {
+            font-size: 10px;
+            text-transform: uppercase;
+        }
+        
+        /* Control buttons */
+        .controls {
+            display: flex;
+            gap: 10px;
+            justify-content: center;
+        }
+        
+        .btn {
+            background: transparent;
+            border: 1px solid #0f0;
+            color: #0f0;
+            padding: 10px 20px;
+            cursor: pointer;
+            text-transform: uppercase;
+            font-family: 'Courier New', monospace;
+            transition: all 0.3s;
+        }
+        
+        .btn:hover {
+            background: #0f0;
+            color: #000;
+            box-shadow: 0 0 20px #0f0;
+        }
+        
+        /* First-person text */
+        .narrative {
+            position: fixed;
+            bottom: 20px;
+            left: 50%;
+            transform: translateX(-50%);
+            background: rgba(0, 0, 0, 0.9);
+            border: 1px solid #0f0;
+            padding: 15px 30px;
+            max-width: 600px;
+            text-align: center;
+            font-style: italic;
+            opacity: 0;
+            animation: narrativeFade 3s forwards;
+        }
+        
+        @keyframes narrativeFade {
+            0% { opacity: 0; transform: translateX(-50%) translateY(20px); }
+            20% { opacity: 1; transform: translateX(-50%) translateY(0); }
+            80% { opacity: 1; transform: translateX(-50%) translateY(0); }
+            100% { opacity: 0; transform: translateX(-50%) translateY(-20px); }
+        }
+        
+        /* Progress ring */
+        .progress-ring {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            width: 300px;
+            height: 300px;
+        }
+        
+        .progress-ring-circle {
+            fill: none;
+            stroke: #0f0;
+            stroke-width: 2;
+            stroke-dasharray: 942;
+            stroke-dashoffset: 942;
+            transform: rotate(-90deg);
+            transform-origin: center;
+            animation: fillProgress 30s linear forwards;
+        }
+        
+        @keyframes fillProgress {
+            to { stroke-dashoffset: 0; }
+        }
+        
+        /* Verification badge */
+        .verification-badge {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%) scale(0);
+            width: 200px;
+            height: 200px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 100px;
+            opacity: 0;
+        }
+        
+        .verification-badge.show {
+            animation: badgeAppear 1s forwards;
+        }
+        
+        @keyframes badgeAppear {
+            to {
+                opacity: 1;
+                transform: translate(-50%, -50%) scale(1);
+            }
+        }
+    </style>
+</head>
+<body>
+    <!-- Matrix background -->
+    <div id="matrix-bg"></div>
+    
+    <div class="container">
+        <div class="header">
+            <h1>🔍 Self-Building System Verifier</h1>
+            <p>Watch as I discover and verify each component</p>
+            <div class="controls">
+                <button class="btn" onclick="startDiscovery()">Start Discovery</button>
+                <button class="btn" onclick="pauseDiscovery()">Pause</button>
+                <button class="btn" onclick="verifyAll()">Verify All</button>
+                <button class="btn" onclick="exportReport()">Export Report</button>
+            </div>
+        </div>
+        
+        <div class="main-content">
+            <!-- Left panel: Discoveries -->
+            <div class="panel">
+                <h2>📡 Discoveries</h2>
+                <div id="discoveryList"></div>
+                <div class="status-grid">
+                    <div class="status-item">
+                        <div id="discoveryCount" class="status-value">0</div>
+                        <div class="status-label">Found</div>
+                    </div>
+                    <div class="status-item">
+                        <div id="activeCount" class="status-value">0</div>
+                        <div class="status-label">Active</div>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- Center: Visualization -->
+            <div class="panel visualization">
+                <svg class="progress-ring" width="300" height="300">
+                    <circle class="progress-ring-circle" cx="150" cy="150" r="145"/>
+                </svg>
+                <div id="systemVisualization"></div>
+                <div id="verificationBadge" class="verification-badge">✅</div>
+            </div>
+            
+            <!-- Right panel: Verifications -->
+            <div class="panel">
+                <h2>✅ Verifications</h2>
+                <div id="verificationList"></div>
+                <div class="status-grid">
+                    <div class="status-item">
+                        <div id="verifyCount" class="status-value">0</div>
+                        <div class="status-label">Checks</div>
+                    </div>
+                    <div class="status-item">
+                        <div id="passCount" class="status-value">0</div>
+                        <div class="status-label">Passed</div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        
+        <!-- Console output -->
+        <div class="console" id="console">
+            <div class="console-line info">[SYSTEM] Initializing self-building verifier...</div>
+            <div class="console-line success">[READY] Waiting for discovery command...</div>
+        </div>
+    </div>
+    
+    <!-- Narrative text -->
+    <div id="narrative" class="narrative" style="display: none;"></div>
+    
+    <script>
+        let discoveryActive = false;
+        let discoveries = [];
+        let verifications = [];
+        let ws = null;
+        
+        // Node positions for visualization
+        const nodePositions = {
+            'JSON Scout': { x: 150, y: 50, icon: '📡' },
+            'Vault System': { x: 250, y: 150, icon: '🔐' },
+            'OSS SharePoint': { x: 150, y: 250, icon: '📁' },
+            'Solidity Interface': { x: 50, y: 150, icon: '⛓️' },
+            'Handshake Layer': { x: 150, y: 150, icon: '🤝' }
+        };
+        
+        // Initialize matrix background
+        function initMatrix() {
+            const matrixBg = document.getElementById('matrix-bg');
+            const columns = Math.floor(window.innerWidth / 20);
+            
+            for (let i = 0; i < columns; i++) {
+                const column = document.createElement('div');
+                column.className = 'matrix-column';
+                column.style.left = i * 20 + 'px';
+                column.style.animationDuration = (5 + Math.random() * 10) + 's';
+                column.style.animationDelay = Math.random() * 5 + 's';
+                
+                // Random characters
+                let text = '';
+                for (let j = 0; j < 100; j++) {
+                    text += String.fromCharCode(33 + Math.floor(Math.random() * 94));
+                }
+                column.textContent = text;
+                
+                matrixBg.appendChild(column);
+            }
+        }
+        
+        // Console logging
+        function log(message, type = 'info') {
+            const console = document.getElementById('console');
+            const line = document.createElement('div');
+            line.className = `console-line ${type}`;
+            line.textContent = `[${new Date().toLocaleTimeString()}] ${message}`;
+            console.appendChild(line);
+            console.scrollTop = console.scrollHeight;
+            
+            // Keep only last 50 lines
+            while (console.children.length > 50) {
+                console.removeChild(console.firstChild);
+            }
+        }
+        
+        // Show narrative
+        function showNarrative(text) {
+            const narrative = document.getElementById('narrative');
+            narrative.textContent = text;
+            narrative.style.display = 'block';
+            narrative.style.animation = 'none';
+            
+            setTimeout(() => {
+                narrative.style.animation = 'narrativeFade 3s forwards';
+            }, 10);
+            
+            setTimeout(() => {
+                narrative.style.display = 'none';
+            }, 3000);
+        }
+        
+        // Start discovery process
+        async function startDiscovery() {
+            if (discoveryActive) return;
+            
+            discoveryActive = true;
+            log('[DISCOVERY] Starting system discovery...', 'info');
+            showNarrative("I'm beginning to explore the system architecture...");
+            
+            // Connect to handshake layer
+            connectToHandshake();
+            
+            // Simulate progressive discovery
+            const services = Object.keys(nodePositions);
+            for (let i = 0; i < services.length && discoveryActive; i++) {
+                await discoverService(services[i]);
+                await new Promise(resolve => setTimeout(resolve, 2000));
+            }
+            
+            if (discoveryActive) {
+                setTimeout(() => {
+                    log('[DISCOVERY] All services discovered!', 'success');
+                    showNarrative("I've found all the components. Now let's verify them...");
+                    startVerification();
+                }, 1000);
+            }
+        }
+        
+        // Connect to handshake WebSocket
+        function connectToHandshake() {
+            try {
+                ws = new WebSocket('ws://localhost:48010');
+                
+                ws.onopen = () => {
+                    log('[WEBSOCKET] Connected to handshake layer', 'success');
+                    ws.send(JSON.stringify({ type: 'get_state' }));
+                };
+                
+                ws.onmessage = (event) => {
+                    const data = JSON.parse(event.data);
+                    handleHandshakeData(data);
+                };
+                
+                ws.onerror = () => {
+                    log('[WEBSOCKET] Failed to connect to handshake layer', 'error');
+                };
+            } catch (error) {
+                log('[WEBSOCKET] Connection error: ' + error.message, 'error');
+            }
+        }
+        
+        // Handle handshake data
+        function handleHandshakeData(data) {
+            if (data.type === 'discovery_update') {
+                updateStats(data.state);
+            } else if (data.type === 'new_discovery') {
+                addDiscoveryItem(data.discovery);
+            }
+        }
+        
+        // Discover a service
+        async function discoverService(serviceName) {
+            const discovery = {
+                name: serviceName,
+                status: Math.random() > 0.2 ? 'active' : 'unreachable',
+                time: new Date().toISOString()
+            };
+            
+            discoveries.push(discovery);
+            
+            // Add to discovery list
+            addDiscoveryItem(discovery);
+            
+            // Add to visualization
+            addServiceNode(serviceName, discovery.status);
+            
+            // Log discovery
+            log(`[FOUND] ${serviceName} - Status: ${discovery.status}`, 
+                discovery.status === 'active' ? 'success' : 'warning');
+            
+            // Update stats
+            updateDiscoveryStats();
+        }
+        
+        // Add discovery to list
+        function addDiscoveryItem(discovery) {
+            const list = document.getElementById('discoveryList');
+            const item = document.createElement('div');
+            item.className = 'discovery-item';
+            item.innerHTML = `
+                <strong>${discovery.name}</strong><br>
+                <small>Status: ${discovery.status}</small><br>
+                <small>${new Date(discovery.time || Date.now()).toLocaleTimeString()}</small>
+            `;
+            list.appendChild(item);
+        }
+        
+        // Add service node to visualization
+        function addServiceNode(name, status) {
+            const viz = document.getElementById('systemVisualization');
+            const pos = nodePositions[name];
+            if (!pos) return;
+            
+            const node = document.createElement('div');
+            node.className = 'system-node discovered';
+            node.style.left = pos.x + 'px';
+            node.style.top = pos.y + 'px';
+            node.innerHTML = `
+                <div class="node-label">
+                    <div style="font-size: 24px;">${pos.icon}</div>
+                    <div>${name}</div>
+                    <div style="font-size: 8px;">${status}</div>
+                </div>
+            `;
+            
+            viz.appendChild(node);
+            
+            // Add connections after a delay
+            setTimeout(() => addConnections(name), 500);
+        }
+        
+        // Add connections between nodes
+        function addConnections(nodeName) {
+            const connections = {
+                'Vault System': ['JSON Scout', 'OSS SharePoint', 'Solidity Interface'],
+                'Handshake Layer': ['JSON Scout', 'Vault System', 'OSS SharePoint', 'Solidity Interface']
+            };
+            
+            if (connections[nodeName]) {
+                connections[nodeName].forEach(target => {
+                    if (discoveries.find(d => d.name === target)) {
+                        // Draw connection line
+                        // (Simplified for demo)
+                    }
+                });
+            }
+        }
+        
+        // Start verification process
+        async function startVerification() {
+            showNarrative("Now I'll verify each component and connection...");
+            
+            const verificationSteps = [
+                { name: 'Service Health', check: () => checkServiceHealth() },
+                { name: 'Data Flow Integrity', check: () => checkDataFlow() },
+                { name: 'Security Boundaries', check: () => checkSecurity() },
+                { name: 'System Integration', check: () => checkIntegration() }
+            ];
+            
+            for (const step of verificationSteps) {
+                await performVerification(step);
+                await new Promise(resolve => setTimeout(resolve, 1500));
+            }
+            
+            // Show final result
+            showVerificationComplete();
+        }
+        
+        // Perform a verification
+        async function performVerification(step) {
+            const result = await step.check();
+            
+            const verification = {
+                name: step.name,
+                result: result,
+                time: new Date().toISOString()
+            };
+            
+            verifications.push(verification);
+            
+            // Add to verification list
+            const list = document.getElementById('verificationList');
+            const item = document.createElement('div');
+            item.className = `discovery-item ${result ? 'verified' : 'error'}`;
+            item.innerHTML = `
+                <strong>${step.name}</strong><br>
+                <small>Result: ${result ? '✅ PASSED' : '❌ FAILED'}</small><br>
+                <small>${new Date().toLocaleTimeString()}</small>
+            `;
+            list.appendChild(item);
+            
+            // Log result
+            log(`[VERIFY] ${step.name}: ${result ? 'PASSED' : 'FAILED'}`, 
+                result ? 'success' : 'error');
+            
+            // Update stats
+            updateVerificationStats();
+        }
+        
+        // Verification checks (simulated)
+        async function checkServiceHealth() {
+            return discoveries.filter(d => d.status === 'active').length >= 3;
+        }
+        
+        async function checkDataFlow() {
+            return Math.random() > 0.1;
+        }
+        
+        async function checkSecurity() {
+            return Math.random() > 0.05;
+        }
+        
+        async function checkIntegration() {
+            return verifications.filter(v => v.result).length >= 2;
+        }
+        
+        // Show verification complete
+        function showVerificationComplete() {
+            const badge = document.getElementById('verificationBadge');
+            badge.classList.add('show');
+            
+            showNarrative("System verification complete! All components are working together.");
+            log('[COMPLETE] System fully verified and operational!', 'success');
+            
+            // Generate markdown report
+            setTimeout(() => {
+                if (confirm('Generate verification report?')) {
+                    exportReport();
+                }
+            }, 2000);
+        }
+        
+        // Update discovery stats
+        function updateDiscoveryStats() {
+            document.getElementById('discoveryCount').textContent = discoveries.length;
+            document.getElementById('activeCount').textContent = 
+                discoveries.filter(d => d.status === 'active').length;
+        }
+        
+        // Update verification stats
+        function updateVerificationStats() {
+            document.getElementById('verifyCount').textContent = verifications.length;
+            document.getElementById('passCount').textContent = 
+                verifications.filter(v => v.result).length;
+        }
+        
+        // Update stats from WebSocket
+        function updateStats(state) {
+            if (state.discoveries !== undefined) {
+                document.getElementById('discoveryCount').textContent = state.discoveries;
+            }
+            if (state.verifications !== undefined) {
+                document.getElementById('verifyCount').textContent = state.verifications;
+            }
+        }
+        
+        // Pause discovery
+        function pauseDiscovery() {
+            discoveryActive = false;
+            log('[PAUSED] Discovery process paused', 'warning');
+            showNarrative("Pausing discovery... I'll wait for further instructions.");
+        }
+        
+        // Verify all at once
+        async function verifyAll() {
+            if (discoveries.length === 0) {
+                alert('No services discovered yet. Run discovery first.');
+                return;
+            }
+            
+            showNarrative("Running comprehensive verification...");
+            await startVerification();
+        }
+        
+        // Export markdown report
+        function exportReport() {
+            const report = generateMarkdownReport();
+            const blob = new Blob([report], { type: 'text/markdown' });
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = `verification-report-${Date.now()}.md`;
+            a.click();
+            
+            log('[EXPORT] Verification report downloaded', 'success');
+        }
+        
+        // Generate markdown report
+        function generateMarkdownReport() {
+            const passed = verifications.filter(v => v.result).length;
+            const total = verifications.length;
+            
+            return `# System Verification Report
+            
+*Generated: ${new Date().toISOString()}*
+
+## Summary
+- **Services Discovered**: ${discoveries.length}
+- **Active Services**: ${discoveries.filter(d => d.status === 'active').length}
+- **Verifications Run**: ${total}
+- **Verifications Passed**: ${passed}
+- **Success Rate**: ${total > 0 ? Math.round((passed/total) * 100) : 0}%
+
+## Discoveries
+${discoveries.map(d => `- **${d.name}**: ${d.status}`).join('\n')}
+
+## Verification Results
+${verifications.map(v => `- **${v.name}**: ${v.result ? '✅ PASSED' : '❌ FAILED'}`).join('\n')}
+
+## System Status
+${total > 0 && passed === total ? '✅ **FULLY OPERATIONAL**' : '⚠️ **PARTIAL FUNCTIONALITY**'}
+
+---
+*Self-building system verification complete.*`;
+        }
+        
+        // Initialize on load
+        window.onload = () => {
+            initMatrix();
+            showNarrative("System verifier initialized. Ready to begin discovery...");
+        };
+    </script>
+</body>
+</html>

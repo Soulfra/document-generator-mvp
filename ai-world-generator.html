@@ -1,0 +1,1576 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>🎮 AI World Generator - Command & Play</title>
+    <style>
+        body {
+            margin: 0;
+            padding: 0;
+            background: #000;
+            font-family: 'Courier New', monospace;
+            color: #0f0;
+            overflow: hidden;
+        }
+        
+        #game-container {
+            display: flex;
+            flex-direction: column;
+            width: 100vw;
+            height: 100vh;
+        }
+        
+        #command-terminal {
+            background: #111;
+            border-bottom: 2px solid #0f0;
+            padding: 10px;
+            height: 60px;
+            display: flex;
+            align-items: center;
+            font-size: 14px;
+        }
+        
+        #command-input {
+            background: transparent;
+            border: none;
+            color: #0f0;
+            font-family: inherit;
+            font-size: 14px;
+            flex: 1;
+            outline: none;
+            margin-left: 10px;
+        }
+        
+        #game-area {
+            flex: 1;
+            position: relative;
+            display: flex;
+        }
+        
+        #world-canvas {
+            flex: 1;
+            background: #002200;
+        }
+        
+        #ui-overlay {
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            pointer-events: none;
+            z-index: 100;
+        }
+        
+        #hud {
+            position: absolute;
+            top: 20px;
+            left: 20px;
+            background: rgba(0,0,0,0.8);
+            padding: 15px;
+            border-radius: 10px;
+            border: 2px solid #0f0;
+            pointer-events: auto;
+        }
+        
+        #controls {
+            position: absolute;
+            bottom: 20px;
+            right: 20px;
+            background: rgba(0,0,0,0.8);
+            padding: 15px;
+            border-radius: 10px;
+            border: 2px solid #ff0;
+            pointer-events: auto;
+        }
+        
+        .health-bar {
+            display: flex;
+            gap: 2px;
+            margin: 5px 0;
+        }
+        
+        .heart {
+            color: #f00;
+            font-size: 16px;
+        }
+        
+        .inventory-item {
+            display: inline-block;
+            margin: 0 5px;
+            font-size: 16px;
+        }
+        
+        button {
+            background: #222;
+            color: #0f0;
+            border: 1px solid #0f0;
+            padding: 8px 12px;
+            margin: 2px;
+            cursor: pointer;
+            font-family: inherit;
+            font-size: 12px;
+            border-radius: 3px;
+            transition: all 0.2s;
+        }
+        
+        button:hover {
+            background: #0f0;
+            color: #000;
+        }
+        
+        button:active {
+            transform: scale(0.95);
+        }
+        
+        #history {
+            position: absolute;
+            bottom: 80px;
+            left: 20px;
+            background: rgba(0,0,0,0.9);
+            padding: 10px;
+            border-radius: 5px;
+            max-width: 400px;
+            max-height: 200px;
+            overflow-y: auto;
+            font-size: 12px;
+            opacity: 0.8;
+        }
+        
+        .history-entry {
+            margin: 2px 0;
+            color: #aaa;
+        }
+        
+        .history-command {
+            color: #0f0;
+        }
+        
+        .history-success {
+            color: #0f0;
+        }
+        
+        .history-error {
+            color: #f00;
+        }
+        
+        #attract-mode {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            text-align: center;
+            background: rgba(0,0,0,0.9);
+            padding: 30px;
+            border-radius: 15px;
+            border: 2px solid #0f0;
+            z-index: 1000;
+        }
+        
+        .attract-title {
+            font-size: 24px;
+            margin-bottom: 20px;
+            color: #0f0;
+            animation: pulse 2s infinite;
+        }
+        
+        @keyframes pulse {
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0.5; }
+        }
+        
+        .command-suggestion {
+            color: #ff0;
+            margin: 10px 0;
+            cursor: pointer;
+            padding: 5px 10px;
+            border-radius: 5px;
+            transition: all 0.2s;
+        }
+        
+        .command-suggestion:hover {
+            background: rgba(255,255,0,0.1);
+        }
+        
+        #export-panel {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            background: #111;
+            padding: 30px;
+            border-radius: 15px;
+            border: 2px solid #0f0;
+            display: none;
+            z-index: 1000;
+        }
+        
+        .pixelated {
+            image-rendering: pixelated;
+            image-rendering: -moz-crisp-edges;
+            image-rendering: crisp-edges;
+        }
+        
+        #world-info {
+            position: absolute;
+            top: 20px;
+            right: 20px;
+            background: rgba(0,0,0,0.8);
+            padding: 10px;
+            border-radius: 5px;
+            font-size: 12px;
+            min-width: 200px;
+        }
+        
+        .stat-line {
+            margin: 3px 0;
+            display: flex;
+            justify-content: space-between;
+        }
+        
+        .progress-bar {
+            width: 100px;
+            height: 10px;
+            background: #333;
+            border: 1px solid #0f0;
+            border-radius: 5px;
+            overflow: hidden;
+            margin: 5px 0;
+        }
+        
+        .progress-fill {
+            height: 100%;
+            background: linear-gradient(90deg, #0f0, #ff0);
+            transition: width 0.3s ease;
+        }
+    </style>
+</head>
+<body>
+    <div id="game-container">
+        <!-- Command Terminal -->
+        <div id="command-terminal">
+            <span style="color: #0f0;">COMMAND ></span>
+            <input type="text" id="command-input" placeholder="Try: generate maze 30x30 crystal_caves" autocomplete="off">
+        </div>
+        
+        <!-- Game Area -->
+        <div id="game-area">
+            <canvas id="world-canvas" class="pixelated"></canvas>
+            
+            <!-- UI Overlay -->
+            <div id="ui-overlay">
+                <!-- HUD -->
+                <div id="hud">
+                    <div>Health: <span class="health-bar" id="health-display"></span></div>
+                    <div>Score: <span id="score-display">0</span></div>
+                    <div>Level: <span id="level-display">1</span></div>
+                    <div class="inventory-item">🗝️ <span id="key-count">0</span></div>
+                    <div class="inventory-item">💎 <span id="gem-count">0</span></div>
+                    <div class="inventory-item">⚔️ <span id="weapon-display">None</span></div>
+                    <div class="inventory-item">🧪 <span id="potion-count">2</span></div>
+                </div>
+                
+                <!-- World Info -->
+                <div id="world-info">
+                    <div class="stat-line">
+                        <span>World:</span>
+                        <span id="world-name">Empty</span>
+                    </div>
+                    <div class="stat-line">
+                        <span>Size:</span>
+                        <span id="world-size">0x0</span>
+                    </div>
+                    <div class="stat-line">
+                        <span>Enemies:</span>
+                        <span id="enemy-count">0</span>
+                    </div>
+                    <div class="stat-line">
+                        <span>Completion:</span>
+                        <span id="completion-percent">0%</span>
+                    </div>
+                    <div class="progress-bar">
+                        <div class="progress-fill" id="progress-fill" style="width: 0%"></div>
+                    </div>
+                </div>
+                
+                <!-- Controls -->
+                <div id="controls">
+                    <div style="font-size: 11px; margin-bottom: 5px;">Movement: WASD | Attack: Space | Use: E</div>
+                    <button onclick="startRecording()">🎬 Record</button>
+                    <button onclick="exportWorld()">📤 Export</button>
+                    <button onclick="shareWorld()">🔗 Share</button>
+                    <button onclick="showAttractMode()">💫 Demo</button>
+                </div>
+                
+                <!-- Command History -->
+                <div id="history">
+                    <div class="history-entry">AI World Generator Ready</div>
+                    <div class="history-entry">Type commands to create worlds</div>
+                </div>
+            </div>
+        </div>
+        
+        <!-- Attract Mode -->
+        <div id="attract-mode">
+            <div class="attract-title">🎮 AI WORLD GENERATOR</div>
+            <div style="margin: 20px 0; color: #aaa; font-size: 14px;">
+                Generate playable worlds with AI commands
+            </div>
+            
+            <div style="text-align: left; margin: 20px 0;">
+                <div class="command-suggestion" onclick="runCommand('generate maze 25x25 ancient_temple')">
+                    generate maze 25x25 ancient_temple
+                </div>
+                <div class="command-suggestion" onclick="runCommand('generate dungeon 30x30 crystal_caves')">
+                    generate dungeon 30x30 crystal_caves
+                </div>
+                <div class="command-suggestion" onclick="runCommand('generate town 40x40 medieval')">
+                    generate town 40x40 medieval
+                </div>
+                <div class="command-suggestion" onclick="runCommand('generate forest 35x35 mystical')">
+                    generate forest 35x35 mystical
+                </div>
+            </div>
+            
+            <button onclick="hideAttractMode()">Start Playing</button>
+        </div>
+        
+        <!-- Export Panel -->
+        <div id="export-panel">
+            <h3>📤 Export World</h3>
+            <button onclick="exportAsPNG()">🖼️ Screenshot PNG</button>
+            <button onclick="exportAsGIF()">🎬 Animated GIF</button>
+            <button onclick="exportAsJSON()">📄 World Data</button>
+            <button onclick="exportAsPlayable()">🎮 Playable Link</button>
+            <button onclick="closeExportPanel()">❌ Close</button>
+        </div>
+        
+        <!-- Combat Interface -->
+        <div id="combat-interface" style="display: none;">
+            <div style="position: absolute; top: 0; left: 0; right: 0; bottom: 0; background: rgba(0,0,0,0.9); z-index: 2000;">
+                <div style="position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); background: #111; padding: 30px; border-radius: 15px; border: 2px solid #f00; min-width: 500px;">
+                    <h2 style="text-align: center; color: #f00; margin-bottom: 20px;">⚔️ COMBAT ⚔️</h2>
+                    
+                    <div style="display: flex; justify-content: space-between; margin-bottom: 20px;">
+                        <!-- Player Stats -->
+                        <div style="text-align: center;">
+                            <div style="font-size: 20px; margin-bottom: 10px;">🧙‍♂️ You</div>
+                            <div>HP: <span id="combat-player-hp">5</span>/<span id="combat-player-max-hp">5</span></div>
+                            <div>STR: <span id="combat-player-str">10</span></div>
+                            <div>DEF: <span id="combat-player-def">8</span></div>
+                            <div class="progress-bar" style="width: 150px; margin: 10px auto;">
+                                <div class="progress-fill" id="combat-player-hp-bar" style="width: 100%; background: #0f0;"></div>
+                            </div>
+                        </div>
+                        
+                        <!-- VS -->
+                        <div style="display: flex; align-items: center; font-size: 24px; color: #f00;">VS</div>
+                        
+                        <!-- Enemy Stats -->
+                        <div style="text-align: center;">
+                            <div style="font-size: 20px; margin-bottom: 10px;"><span id="combat-enemy-sprite">👹</span> <span id="combat-enemy-name">Goblin</span></div>
+                            <div>HP: <span id="combat-enemy-hp">3</span>/<span id="combat-enemy-max-hp">3</span></div>
+                            <div>STR: <span id="combat-enemy-str">8</span></div>
+                            <div>DEF: <span id="combat-enemy-def">6</span></div>
+                            <div class="progress-bar" style="width: 150px; margin: 10px auto;">
+                                <div class="progress-fill" id="combat-enemy-hp-bar" style="width: 100%; background: #f00;"></div>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <!-- Dice Roll Display -->
+                    <div id="dice-display" style="text-align: center; margin: 20px 0; font-size: 18px; min-height: 30px;">
+                        <div id="dice-result"></div>
+                    </div>
+                    
+                    <!-- Combat Log -->
+                    <div id="combat-log" style="background: #222; padding: 15px; border-radius: 10px; height: 150px; overflow-y: auto; margin-bottom: 20px; font-size: 14px;">
+                        <div style="color: #aaa;">Combat begins!</div>
+                    </div>
+                    
+                    <!-- Combat Actions -->
+                    <div id="combat-actions" style="display: flex; gap: 10px; justify-content: center;">
+                        <button onclick="combatAction('attack')" style="background: #f00; color: #fff; padding: 12px 20px; font-size: 16px;">⚔️ Attack</button>
+                        <button onclick="combatAction('defend')" style="background: #00f; color: #fff; padding: 12px 20px; font-size: 16px;">🛡️ Defend</button>
+                        <button onclick="combatAction('item')" style="background: #0a0; color: #fff; padding: 12px 20px; font-size: 16px;">🧪 Item</button>
+                        <button onclick="combatAction('flee')" style="background: #aa0; color: #fff; padding: 12px 20px; font-size: 16px;">🏃 Flee</button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // Game state
+        const game = {
+            world: null,
+            player: null,
+            entities: [],
+            camera: { x: 0, y: 0, mode: '3rd' }, // 3rd or 1st person
+            isPlaying: false,
+            isRecording: false,
+            frames: [],
+            score: 0,
+            level: 1,
+            inventory: { keys: 0, gems: 0, weapon: 'none', potions: 2 },
+            mode: 'explore', // explore, combat, menu
+            currentCombat: null,
+            gameLog: [],
+            turnCounter: 0
+        };
+        
+        // Canvas setup
+        const canvas = document.getElementById('world-canvas');
+        const ctx = canvas.getContext('2d');
+        
+        function resizeCanvas() {
+            canvas.width = canvas.clientWidth;
+            canvas.height = canvas.clientHeight;
+        }
+        
+        // World generation algorithms
+        class WorldGenerator {
+            static generateMaze(width, height, theme = 'default') {
+                const maze = Array(height).fill(null).map(() => Array(width).fill(1));
+                
+                // Recursive backtracking maze generation
+                function carve(x, y) {
+                    maze[y][x] = 0;
+                    
+                    const dirs = [[0, 2], [2, 0], [0, -2], [-2, 0]];
+                    dirs.sort(() => Math.random() - 0.5);
+                    
+                    for (const [dx, dy] of dirs) {
+                        const nx = x + dx;
+                        const ny = y + dy;
+                        
+                        if (nx > 0 && nx < width - 1 && ny > 0 && ny < height - 1 && maze[ny][nx] === 1) {
+                            maze[y + dy/2][x + dx/2] = 0;
+                            carve(nx, ny);
+                        }
+                    }
+                }
+                
+                carve(1, 1);
+                
+                // Add entrance and exit
+                maze[1][0] = 0; // entrance
+                maze[height-2][width-1] = 0; // exit
+                
+                return this.createWorld(maze, width, height, 'maze', theme);
+            }
+            
+            static generateDungeon(width, height, theme = 'default') {
+                const dungeon = Array(height).fill(null).map(() => Array(width).fill(1));
+                
+                // Create rooms
+                const rooms = [];
+                for (let i = 0; i < 8; i++) {
+                    const roomW = 4 + Math.floor(Math.random() * 6);
+                    const roomH = 4 + Math.floor(Math.random() * 6);
+                    const roomX = Math.floor(Math.random() * (width - roomW - 2)) + 1;
+                    const roomY = Math.floor(Math.random() * (height - roomH - 2)) + 1;
+                    
+                    // Check if room overlaps
+                    let overlaps = false;
+                    for (const room of rooms) {
+                        if (roomX < room.x + room.w && roomX + roomW > room.x &&
+                            roomY < room.y + room.h && roomY + roomH > room.y) {
+                            overlaps = true;
+                            break;
+                        }
+                    }
+                    
+                    if (!overlaps) {
+                        rooms.push({ x: roomX, y: roomY, w: roomW, h: roomH });
+                        
+                        // Carve room
+                        for (let y = roomY; y < roomY + roomH; y++) {
+                            for (let x = roomX; x < roomX + roomW; x++) {
+                                dungeon[y][x] = 0;
+                            }
+                        }
+                    }
+                }
+                
+                // Connect rooms with corridors
+                for (let i = 1; i < rooms.length; i++) {
+                    const prev = rooms[i-1];
+                    const curr = rooms[i];
+                    
+                    const x1 = prev.x + Math.floor(prev.w / 2);
+                    const y1 = prev.y + Math.floor(prev.h / 2);
+                    const x2 = curr.x + Math.floor(curr.w / 2);
+                    const y2 = curr.y + Math.floor(curr.h / 2);
+                    
+                    // Horizontal corridor
+                    for (let x = Math.min(x1, x2); x <= Math.max(x1, x2); x++) {
+                        dungeon[y1][x] = 0;
+                    }
+                    
+                    // Vertical corridor  
+                    for (let y = Math.min(y1, y2); y <= Math.max(y1, y2); y++) {
+                        dungeon[y][x2] = 0;
+                    }
+                }
+                
+                return this.createWorld(dungeon, width, height, 'dungeon', theme);
+            }
+            
+            static generateTown(width, height, theme = 'default') {
+                const town = Array(height).fill(null).map(() => Array(width).fill(0));
+                
+                // Create roads
+                for (let x = 0; x < width; x += 8) {
+                    for (let y = 0; y < height; y++) {
+                        town[y][x] = 2; // road
+                    }
+                }
+                
+                for (let y = 0; y < height; y += 8) {
+                    for (let x = 0; x < width; x++) {
+                        town[y][x] = 2; // road
+                    }
+                }
+                
+                // Add buildings
+                for (let y = 2; y < height - 2; y += 8) {
+                    for (let x = 2; x < width - 2; x += 8) {
+                        if (Math.random() > 0.3) {
+                            const buildingW = 3 + Math.floor(Math.random() * 3);
+                            const buildingH = 3 + Math.floor(Math.random() * 3);
+                            
+                            for (let by = 0; by < buildingH; by++) {
+                                for (let bx = 0; bx < buildingW; bx++) {
+                                    if (x + bx < width && y + by < height) {
+                                        town[y + by][x + bx] = 3; // building
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+                
+                return this.createWorld(town, width, height, 'town', theme);
+            }
+            
+            static generateForest(width, height, theme = 'default') {
+                const forest = Array(height).fill(null).map(() => Array(width).fill(0));
+                
+                // Add trees randomly
+                for (let y = 0; y < height; y++) {
+                    for (let x = 0; x < width; x++) {
+                        if (Math.random() > 0.6) {
+                            forest[y][x] = 4; // tree
+                        }
+                    }
+                }
+                
+                // Create clearings
+                for (let i = 0; i < 5; i++) {
+                    const cx = Math.floor(Math.random() * width);
+                    const cy = Math.floor(Math.random() * height);
+                    const radius = 3 + Math.floor(Math.random() * 4);
+                    
+                    for (let y = cy - radius; y <= cy + radius; y++) {
+                        for (let x = cx - radius; x <= cx + radius; x++) {
+                            if (x >= 0 && x < width && y >= 0 && y < height) {
+                                const dist = Math.sqrt((x - cx) ** 2 + (y - cy) ** 2);
+                                if (dist <= radius) {
+                                    forest[y][x] = 0;
+                                }
+                            }
+                        }
+                    }
+                }
+                
+                return this.createWorld(forest, width, height, 'forest', theme);
+            }
+            
+            static createWorld(grid, width, height, type, theme) {
+                const world = {
+                    grid,
+                    width,
+                    height,
+                    type,
+                    theme,
+                    entities: [],
+                    items: [],
+                    playerStart: null
+                };
+                
+                // Find player start position
+                for (let y = 0; y < height; y++) {
+                    for (let x = 0; x < width; x++) {
+                        if (grid[y][x] === 0) {
+                            world.playerStart = { x, y };
+                            break;
+                        }
+                    }
+                    if (world.playerStart) break;
+                }
+                
+                // Add enemies and items based on world type
+                this.populateWorld(world);
+                
+                return world;
+            }
+            
+            static populateWorld(world) {
+                const emptySpaces = [];
+                
+                // Find all empty spaces
+                for (let y = 0; y < world.height; y++) {
+                    for (let x = 0; x < world.width; x++) {
+                        if (world.grid[y][x] === 0) {
+                            emptySpaces.push({ x, y });
+                        }
+                    }
+                }
+                
+                // Add enemies (10-20% of empty spaces)
+                const enemyCount = Math.floor(emptySpaces.length * (0.1 + Math.random() * 0.1));
+                for (let i = 0; i < enemyCount; i++) {
+                    const pos = emptySpaces[Math.floor(Math.random() * emptySpaces.length)];
+                    const enemyTypes = [
+                        { sprite: '👹', name: 'Goblin', health: 3, strength: 8, defense: 6 },
+                        { sprite: '🧟', name: 'Zombie', health: 4, strength: 9, defense: 5 },
+                        { sprite: '🐺', name: 'Wolf', health: 2, strength: 10, defense: 7 },
+                        { sprite: '🕷️', name: 'Spider', health: 2, strength: 6, defense: 8 }
+                    ];
+                    const enemyType = enemyTypes[Math.floor(Math.random() * enemyTypes.length)];
+                    
+                    world.entities.push({
+                        type: 'enemy',
+                        x: pos.x,
+                        y: pos.y,
+                        health: enemyType.health,
+                        maxHealth: enemyType.health,
+                        sprite: enemyType.sprite,
+                        name: enemyType.name,
+                        strength: enemyType.strength,
+                        defense: enemyType.defense
+                    });
+                }
+                
+                // Add items (5-10% of empty spaces)
+                const itemCount = Math.floor(emptySpaces.length * (0.05 + Math.random() * 0.05));
+                for (let i = 0; i < itemCount; i++) {
+                    const pos = emptySpaces[Math.floor(Math.random() * emptySpaces.length)];
+                    const itemTypes = [
+                        { type: 'key', sprite: '🗝️', value: 1 },
+                        { type: 'gem', sprite: '💎', value: 10 },
+                        { type: 'potion', sprite: '🧪', value: 1 },
+                        { type: 'weapon', sprite: '⚔️', value: 1 }
+                    ];
+                    const item = itemTypes[Math.floor(Math.random() * itemTypes.length)];
+                    world.items.push({
+                        ...item,
+                        x: pos.x,
+                        y: pos.y
+                    });
+                }
+            }
+        }
+        
+        // Game logging system
+        function logAction(action, details = {}) {
+            const logEntry = {
+                turn: game.turnCounter,
+                timestamp: Date.now(),
+                action: action,
+                details: details,
+                playerPos: game.player ? { x: game.player.x, y: game.player.y } : null
+            };
+            game.gameLog.push(logEntry);
+            console.log('Game Log:', logEntry);
+        }
+        
+        // Dice rolling system
+        function rollDice(sides = 20, count = 1) {
+            const rolls = [];
+            for (let i = 0; i < count; i++) {
+                rolls.push(Math.floor(Math.random() * sides) + 1);
+            }
+            const total = rolls.reduce((a, b) => a + b, 0);
+            
+            // Show dice animation
+            showDiceRoll(rolls, total);
+            
+            logAction('dice_roll', { dice: `${count}d${sides}`, rolls: rolls, total: total });
+            return total;
+        }
+        
+        function showDiceRoll(rolls, total) {
+            const diceDisplay = document.getElementById('dice-result');
+            
+            // Animate dice rolling
+            let counter = 0;
+            const interval = setInterval(() => {
+                diceDisplay.innerHTML = `🎲 Rolling... ${Math.floor(Math.random() * 20) + 1}`;
+                counter++;
+                if (counter >= 10) {
+                    clearInterval(interval);
+                    diceDisplay.innerHTML = `🎲 Rolled: ${rolls.join(', ')} = <strong>${total}</strong>`;
+                }
+            }, 100);
+        }
+        
+        // Player class
+        class Player {
+            constructor(x, y) {
+                this.x = x;
+                this.y = y;
+                this.maxHealth = 5;
+                this.health = this.maxHealth;
+                this.sprite = '🧙‍♂️';
+                this.facing = 'down';
+                
+                // D&D-style stats
+                this.stats = {
+                    strength: 10 + Math.floor(Math.random() * 8), // 10-17
+                    defense: 8 + Math.floor(Math.random() * 6),   // 8-13
+                    dexterity: 10 + Math.floor(Math.random() * 6), // 10-15
+                    level: 1,
+                    experience: 0
+                };
+                
+                this.defending = false;
+            }
+            
+            move(dx, dy) {
+                if (!game.world) return false;
+                
+                const newX = this.x + dx;
+                const newY = this.y + dy;
+                
+                // Check bounds
+                if (newX < 0 || newX >= game.world.width || 
+                    newY < 0 || newY >= game.world.height) {
+                    return false;
+                }
+                
+                // Check for walls
+                if (game.world.grid[newY][newX] === 1) {
+                    return false;
+                }
+                
+                // Check for enemy collision - trigger combat instead of allowing movement
+                for (const entity of game.world.entities) {
+                    if (entity.x === newX && entity.y === newY) {
+                        enterCombat(entity);
+                        return false; // Block movement, stay in current position for combat
+                    }
+                }
+                
+                this.x = newX;
+                this.y = newY;
+                
+                // Check for items
+                for (let i = game.world.items.length - 1; i >= 0; i--) {
+                    const item = game.world.items[i];
+                    if (item.x === this.x && item.y === this.y) {
+                        this.collectItem(item);
+                        game.world.items.splice(i, 1);
+                    }
+                }
+                
+                // Update camera
+                game.camera.x = this.x * 32 - canvas.width / 2;
+                game.camera.y = this.y * 32 - canvas.height / 2;
+                
+                return true;
+            }
+            
+            collectItem(item) {
+                switch (item.type) {
+                    case 'key':
+                        game.inventory.keys += item.value;
+                        addToHistory(`Collected key! Total: ${game.inventory.keys}`, 'success');
+                        break;
+                    case 'gem':
+                        game.inventory.gems += item.value;
+                        game.score += item.value * 10;
+                        addToHistory(`Collected gem! +${item.value * 10} points`, 'success');
+                        break;
+                    case 'weapon':
+                        game.inventory.weapon = 'sword';
+                        addToHistory('Equipped sword!', 'success');
+                        break;
+                    case 'potion':
+                        game.inventory.potions += item.value;
+                        addToHistory(`Collected potion! Total: ${game.inventory.potions}`, 'success');
+                        break;
+                }
+                updateHUD();
+            }
+            
+            takeDamage(amount) {
+                this.health -= amount;
+                if (this.health <= 0) {
+                    addToHistory('Game Over! Press R to restart', 'error');
+                    game.isPlaying = false;
+                }
+                updateHUD();
+            }
+        }
+        
+        // Combat System
+        function enterCombat(enemy) {
+            game.mode = 'combat';
+            game.currentCombat = {
+                enemy: enemy,
+                playerTurn: true,
+                round: 1
+            };
+            
+            // Show combat interface
+            document.getElementById('combat-interface').style.display = 'block';
+            
+            // Update combat UI with current stats
+            updateCombatUI();
+            
+            // Log combat start
+            logAction('combat_started', { enemy: enemy.sprite, playerHP: game.player.health, enemyHP: enemy.health });
+            addToCombatLog(`🔥 Combat begins! You face a ${enemy.sprite}`);
+            addToCombatLog(`💪 Your stats: STR ${game.player.stats.strength}, DEF ${game.player.stats.defense}`);
+        }
+        
+        function combatAction(action) {
+            if (game.mode !== 'combat' || !game.currentCombat.playerTurn) return;
+            
+            const enemy = game.currentCombat.enemy;
+            let damage = 0;
+            let message = '';
+            
+            switch (action) {
+                case 'attack':
+                    // Player attacks enemy
+                    const attackRoll = rollDice(1, 20);
+                    const damageRoll = rollDice(1, 6);
+                    const playerDamage = Math.max(1, damageRoll + Math.floor((game.player.stats.strength - 10) / 2));
+                    const adjustedDamage = Math.max(1, playerDamage - Math.floor((enemy.defense - 10) / 2));
+                    
+                    enemy.health -= adjustedDamage;
+                    message = `⚔️ You attack! Rolled ${attackRoll} (damage: ${adjustedDamage})`;
+                    addToCombatLog(message);
+                    logAction('player_attack', { roll: attackRoll, damage: adjustedDamage, enemyHP: enemy.health });
+                    break;
+                    
+                case 'defend':
+                    game.player.defending = true;
+                    message = '🛡️ You defend! Damage reduced next turn.';
+                    addToCombatLog(message);
+                    logAction('player_defend', {});
+                    break;
+                    
+                case 'item':
+                    if (game.inventory.potions > 0) {
+                        game.player.health = Math.min(game.player.maxHealth, game.player.health + 2);
+                        game.inventory.potions--;
+                        message = '🧪 Used potion! Health restored.';
+                        addToCombatLog(message);
+                        logAction('player_item', { item: 'potion', newHP: game.player.health });
+                    } else {
+                        message = '❌ No potions available!';
+                        addToCombatLog(message);
+                        return; // Don't end turn if no item used
+                    }
+                    break;
+                    
+                case 'flee':
+                    const fleeRoll = rollDice(1, 20);
+                    if (fleeRoll > 10) {
+                        message = `🏃 You successfully flee! (rolled ${fleeRoll})`;
+                        addToCombatLog(message);
+                        exitCombat();
+                        logAction('player_flee_success', { roll: fleeRoll });
+                        return;
+                    } else {
+                        message = `❌ Failed to flee! (rolled ${fleeRoll})`;
+                        addToCombatLog(message);
+                        logAction('player_flee_fail', { roll: fleeRoll });
+                    }
+                    break;
+            }
+            
+            // Check if enemy is dead
+            if (enemy.health <= 0) {
+                addToCombatLog(`💀 ${enemy.sprite} defeated! You win!`);
+                game.score += 100;
+                game.player.stats.experience += 25;
+                
+                // Remove enemy from world
+                const index = game.world.entities.indexOf(enemy);
+                if (index > -1) {
+                    game.world.entities.splice(index, 1);
+                }
+                
+                logAction('combat_victory', { enemy: enemy.sprite, xpGained: 25, score: game.score });
+                exitCombat();
+                return;
+            }
+            
+            // Enemy turn
+            game.currentCombat.playerTurn = false;
+            setTimeout(() => enemyTurn(), 1000);
+            
+            updateCombatUI();
+        }
+        
+        function enemyTurn() {
+            const enemy = game.currentCombat.enemy;
+            const attackRoll = rollDice(1, 20);
+            const damageRoll = rollDice(1, 4);
+            let enemyDamage = Math.max(1, damageRoll + Math.floor((enemy.strength - 10) / 2));
+            
+            // Apply player defense
+            if (game.player.defending) {
+                enemyDamage = Math.max(1, Math.floor(enemyDamage / 2));
+                game.player.defending = false;
+            }
+            
+            const finalDamage = Math.max(1, enemyDamage - Math.floor((game.player.stats.defense - 10) / 2));
+            
+            game.player.health -= finalDamage;
+            addToCombatLog(`👹 ${enemy.sprite} attacks! Rolled ${attackRoll} (damage: ${finalDamage})`);
+            logAction('enemy_attack', { roll: attackRoll, damage: finalDamage, playerHP: game.player.health });
+            
+            // Check if player is dead
+            if (game.player.health <= 0) {
+                addToCombatLog('💀 You have been defeated! Press R to restart.');
+                game.isPlaying = false;
+                logAction('combat_defeat', {});
+                exitCombat();
+                return;
+            }
+            
+            // Back to player turn
+            game.currentCombat.playerTurn = true;
+            game.currentCombat.round++;
+            updateCombatUI();
+        }
+        
+        function updateCombatUI() {
+            if (game.mode !== 'combat') return;
+            
+            const enemy = game.currentCombat.enemy;
+            
+            // Update player stats
+            document.getElementById('combat-player-hp').textContent = game.player.health;
+            document.getElementById('combat-player-max-hp').textContent = game.player.maxHealth;
+            document.getElementById('combat-player-str').textContent = game.player.stats.strength;
+            document.getElementById('combat-player-def').textContent = game.player.stats.defense;
+            
+            // Update player health bar
+            const playerHPPercent = (game.player.health / game.player.maxHealth) * 100;
+            document.getElementById('combat-player-hp-bar').style.width = playerHPPercent + '%';
+            document.getElementById('combat-player-hp-bar').style.background = playerHPPercent > 30 ? '#0f0' : '#f80';
+            
+            // Update enemy stats
+            document.getElementById('combat-enemy-sprite').textContent = enemy.sprite;
+            document.getElementById('combat-enemy-name').textContent = enemy.name || 'Enemy';
+            document.getElementById('combat-enemy-hp').textContent = enemy.health;
+            document.getElementById('combat-enemy-max-hp').textContent = enemy.maxHealth;
+            document.getElementById('combat-enemy-str').textContent = enemy.strength;
+            document.getElementById('combat-enemy-def').textContent = enemy.defense;
+            
+            // Update enemy health bar
+            const enemyHPPercent = (enemy.health / enemy.maxHealth) * 100;
+            document.getElementById('combat-enemy-hp-bar').style.width = enemyHPPercent + '%';
+        }
+        
+        function addToCombatLog(message) {
+            const log = document.getElementById('combat-log');
+            const timestamp = new Date().toLocaleTimeString();
+            log.innerHTML += `<div>[${timestamp}] ${message}</div>`;
+            log.scrollTop = log.scrollHeight;
+        }
+        
+        function exitCombat() {
+            game.mode = 'explore';
+            game.currentCombat = null;
+            document.getElementById('combat-interface').style.display = 'none';
+            updateHUD();
+        }
+        
+        // Command processor
+        const CommandProcessor = {
+            commands: {
+                'generate': this.generateWorld,
+                'spawn': this.spawnEntity,
+                'add': this.addContent,
+                'set': this.setSetting,
+                'play': this.startGame,
+                'help': this.showHelp,
+                'export': this.exportWorld,
+                'record': this.startRecording
+            },
+            
+            process(input) {
+                const parts = input.toLowerCase().trim().split(' ');
+                const command = parts[0];
+                const args = parts.slice(1);
+                
+                addToHistory(`> ${input}`, 'command');
+                
+                switch (command) {
+                    case 'generate':
+                        this.generateWorld(args);
+                        break;
+                    case 'spawn':
+                        this.spawnEntity(args);
+                        break;
+                    case 'add':
+                        this.addContent(args);
+                        break;
+                    case 'play':
+                        this.startGame();
+                        break;
+                    case 'help':
+                        this.showHelp();
+                        break;
+                    case 'clear':
+                        this.clearWorld();
+                        break;
+                    default:
+                        addToHistory(`Unknown command: ${command}. Type 'help' for commands.`, 'error');
+                }
+            },
+            
+            generateWorld(args) {
+                if (args.length < 3) {
+                    addToHistory('Usage: generate <type> <size> <theme>', 'error');
+                    addToHistory('Types: maze, dungeon, town, forest', 'error');
+                    return;
+                }
+                
+                const type = args[0];
+                const size = args[1].split('x');
+                const theme = args[2] || 'default';
+                
+                if (size.length !== 2) {
+                    addToHistory('Size must be in format: 30x30', 'error');
+                    return;
+                }
+                
+                const width = parseInt(size[0]);
+                const height = parseInt(size[1]);
+                
+                if (width < 10 || height < 10 || width > 100 || height > 100) {
+                    addToHistory('Size must be between 10x10 and 100x100', 'error');
+                    return;
+                }
+                
+                let world;
+                switch (type) {
+                    case 'maze':
+                        world = WorldGenerator.generateMaze(width, height, theme);
+                        break;
+                    case 'dungeon':
+                        world = WorldGenerator.generateDungeon(width, height, theme);
+                        break;
+                    case 'town':
+                        world = WorldGenerator.generateTown(width, height, theme);
+                        break;
+                    case 'forest':
+                        world = WorldGenerator.generateForest(width, height, theme);
+                        break;
+                    default:
+                        addToHistory(`Unknown world type: ${type}`, 'error');
+                        return;
+                }
+                
+                game.world = world;
+                
+                // Create player at start position
+                if (world.playerStart) {
+                    game.player = new Player(world.playerStart.x, world.playerStart.y);
+                    game.camera.x = game.player.x * 32 - canvas.width / 2;
+                    game.camera.y = game.player.y * 32 - canvas.height / 2;
+                }
+                
+                addToHistory(`Generated ${type} world (${width}x${height}) with theme '${theme}'`, 'success');
+                addToHistory(`Enemies: ${world.entities.length}, Items: ${world.items.length}`, 'success');
+                
+                updateWorldInfo();
+                game.isPlaying = true;
+            },
+            
+            spawnEntity(args) {
+                if (!game.world) {
+                    addToHistory('No world loaded. Generate a world first.', 'error');
+                    return;
+                }
+                
+                const type = args[0];
+                const count = parseInt(args[1]) || 1;
+                
+                // Find empty spaces
+                const emptySpaces = [];
+                for (let y = 0; y < game.world.height; y++) {
+                    for (let x = 0; x < game.world.width; x++) {
+                        if (game.world.grid[y][x] === 0) {
+                            emptySpaces.push({ x, y });
+                        }
+                    }
+                }
+                
+                for (let i = 0; i < count && emptySpaces.length > 0; i++) {
+                    const pos = emptySpaces.splice(Math.floor(Math.random() * emptySpaces.length), 1)[0];
+                    
+                    if (type === 'enemy' || type === 'enemies') {
+                        const enemyTypes = [
+                            { sprite: '👹', name: 'Goblin', health: 3, strength: 8, defense: 6 },
+                            { sprite: '🧟', name: 'Zombie', health: 4, strength: 9, defense: 5 },
+                            { sprite: '🐺', name: 'Wolf', health: 2, strength: 10, defense: 7 },
+                            { sprite: '🕷️', name: 'Spider', health: 2, strength: 6, defense: 8 }
+                        ];
+                        const enemyType = enemyTypes[Math.floor(Math.random() * enemyTypes.length)];
+                        
+                        game.world.entities.push({
+                            type: 'enemy',
+                            x: pos.x,
+                            y: pos.y,
+                            health: enemyType.health,
+                            maxHealth: enemyType.health,
+                            sprite: enemyType.sprite,
+                            name: enemyType.name,
+                            strength: enemyType.strength,
+                            defense: enemyType.defense
+                        });
+                    }
+                }
+                
+                addToHistory(`Spawned ${count} ${type}(s)`, 'success');
+                updateWorldInfo();
+            },
+            
+            startGame() {
+                if (!game.world || !game.player) {
+                    addToHistory('No world or player. Generate a world first.', 'error');
+                    return;
+                }
+                
+                game.isPlaying = true;
+                addToHistory('Game started! Use WASD to move, Space to attack, E to use items.', 'success');
+                hideAttractMode();
+            },
+            
+            showHelp() {
+                const helpText = [
+                    'Commands:',
+                    '  generate <type> <size> <theme> - Create world',
+                    '  spawn <type> <count> - Add entities',
+                    '  play - Start the game',
+                    '  clear - Clear current world',
+                    '',
+                    'Examples:',
+                    '  generate maze 30x30 ancient_temple',
+                    '  generate dungeon 25x25 crystal_caves',
+                    '  spawn enemies 10',
+                    '  play'
+                ];
+                
+                helpText.forEach(line => addToHistory(line, 'success'));
+            },
+            
+            clearWorld() {
+                game.world = null;
+                game.player = null;
+                game.entities = [];
+                game.isPlaying = false;
+                addToHistory('World cleared', 'success');
+                updateWorldInfo();
+            }
+        };
+        
+        // Rendering
+        function render() {
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+            
+            if (!game.world) {
+                // Show empty world message
+                ctx.fillStyle = '#333';
+                ctx.font = '24px Courier New';
+                ctx.textAlign = 'center';
+                ctx.fillText('No world loaded', canvas.width / 2, canvas.height / 2);
+                ctx.fillText('Type a command to generate a world', canvas.width / 2, canvas.height / 2 + 30);
+                return;
+            }
+            
+            const tileSize = 32;
+            
+            // Calculate visible area
+            const startX = Math.floor(game.camera.x / tileSize);
+            const startY = Math.floor(game.camera.y / tileSize);
+            const endX = Math.ceil((game.camera.x + canvas.width) / tileSize);
+            const endY = Math.ceil((game.camera.y + canvas.height) / tileSize);
+            
+            // Draw world tiles
+            for (let y = Math.max(0, startY); y < Math.min(game.world.height, endY); y++) {
+                for (let x = Math.max(0, startX); x < Math.min(game.world.width, endX); x++) {
+                    const screenX = x * tileSize - game.camera.x;
+                    const screenY = y * tileSize - game.camera.y;
+                    
+                    const tile = game.world.grid[y][x];
+                    
+                    // Draw tile
+                    switch (tile) {
+                        case 0: // floor
+                            ctx.fillStyle = '#228B22';
+                            break;
+                        case 1: // wall
+                            ctx.fillStyle = '#8B4513';
+                            break;
+                        case 2: // road
+                            ctx.fillStyle = '#696969';
+                            break;
+                        case 3: // building
+                            ctx.fillStyle = '#4169E1';
+                            break;
+                        case 4: // tree
+                            ctx.fillStyle = '#006400';
+                            break;
+                        default:
+                            ctx.fillStyle = '#333';
+                    }
+                    
+                    ctx.fillRect(screenX, screenY, tileSize, tileSize);
+                    
+                    // Draw tile border
+                    ctx.strokeStyle = '#000';
+                    ctx.lineWidth = 1;
+                    ctx.strokeRect(screenX, screenY, tileSize, tileSize);
+                    
+                    // Draw tile emoji
+                    if (tile === 1) {
+                        ctx.font = '20px Arial';
+                        ctx.textAlign = 'center';
+                        ctx.fillText('🧱', screenX + tileSize/2, screenY + tileSize/2 + 5);
+                    } else if (tile === 4) {
+                        ctx.font = '20px Arial';
+                        ctx.textAlign = 'center';
+                        ctx.fillText('🌳', screenX + tileSize/2, screenY + tileSize/2 + 5);
+                    }
+                }
+            }
+            
+            // Draw items
+            game.world.items.forEach(item => {
+                const screenX = item.x * tileSize - game.camera.x;
+                const screenY = item.y * tileSize - game.camera.y;
+                
+                if (screenX > -tileSize && screenX < canvas.width && 
+                    screenY > -tileSize && screenY < canvas.height) {
+                    ctx.font = '24px Arial';
+                    ctx.textAlign = 'center';
+                    ctx.fillText(item.sprite, screenX + tileSize/2, screenY + tileSize/2 + 5);
+                }
+            });
+            
+            // Draw entities
+            game.world.entities.forEach(entity => {
+                const screenX = entity.x * tileSize - game.camera.x;
+                const screenY = entity.y * tileSize - game.camera.y;
+                
+                if (screenX > -tileSize && screenX < canvas.width && 
+                    screenY > -tileSize && screenY < canvas.height) {
+                    ctx.font = '24px Arial';
+                    ctx.textAlign = 'center';
+                    ctx.fillText(entity.sprite, screenX + tileSize/2, screenY + tileSize/2 + 5);
+                }
+            });
+            
+            // Draw player
+            if (game.player) {
+                const screenX = game.player.x * tileSize - game.camera.x;
+                const screenY = game.player.y * tileSize - game.camera.y;
+                
+                ctx.font = '24px Arial';
+                ctx.textAlign = 'center';
+                ctx.fillText(game.player.sprite, screenX + tileSize/2, screenY + tileSize/2 + 5);
+            }
+            
+            // Record frame if needed
+            if (game.isRecording) {
+                captureFrame();
+            }
+        }
+        
+        // UI functions
+        function addToHistory(message, type = 'normal') {
+            const history = document.getElementById('history');
+            const entry = document.createElement('div');
+            entry.className = `history-entry history-${type}`;
+            entry.textContent = message;
+            history.appendChild(entry);
+            
+            // Keep only last 10 entries
+            while (history.children.length > 10) {
+                history.removeChild(history.firstChild);
+            }
+            
+            history.scrollTop = history.scrollHeight;
+        }
+        
+        function updateHUD() {
+            // Health
+            const healthDisplay = document.getElementById('health-display');
+            healthDisplay.innerHTML = '';
+            for (let i = 0; i < (game.player?.maxHealth || 5); i++) {
+                const heart = document.createElement('span');
+                heart.className = 'heart';
+                heart.textContent = i < (game.player?.health || 0) ? '♥' : '♡';
+                healthDisplay.appendChild(heart);
+            }
+            
+            // Score and level
+            document.getElementById('score-display').textContent = game.score;
+            document.getElementById('level-display').textContent = game.level;
+            
+            // Inventory
+            document.getElementById('key-count').textContent = game.inventory.keys;
+            document.getElementById('gem-count').textContent = game.inventory.gems;
+            document.getElementById('weapon-display').textContent = 
+                game.inventory.weapon === 'none' ? 'None' : '⚔️ Sword';
+            document.getElementById('potion-count').textContent = game.inventory.potions;
+        }
+        
+        function updateWorldInfo() {
+            if (game.world) {
+                document.getElementById('world-name').textContent = 
+                    `${game.world.type} (${game.world.theme})`;
+                document.getElementById('world-size').textContent = 
+                    `${game.world.width}x${game.world.height}`;
+                document.getElementById('enemy-count').textContent = game.world.entities.length;
+                
+                // Calculate completion percentage
+                const totalItems = game.world.items.length + 
+                    (game.inventory.keys + game.inventory.gems);
+                const collectedItems = game.inventory.keys + game.inventory.gems;
+                const completion = totalItems > 0 ? Math.floor((collectedItems / totalItems) * 100) : 0;
+                
+                document.getElementById('completion-percent').textContent = `${completion}%`;
+                document.getElementById('progress-fill').style.width = `${completion}%`;
+            } else {
+                document.getElementById('world-name').textContent = 'Empty';
+                document.getElementById('world-size').textContent = '0x0';
+                document.getElementById('enemy-count').textContent = '0';
+                document.getElementById('completion-percent').textContent = '0%';
+                document.getElementById('progress-fill').style.width = '0%';
+            }
+        }
+        
+        function showAttractMode() {
+            document.getElementById('attract-mode').style.display = 'block';
+        }
+        
+        function hideAttractMode() {
+            document.getElementById('attract-mode').style.display = 'none';
+        }
+        
+        function runCommand(command) {
+            document.getElementById('command-input').value = command;
+            CommandProcessor.process(command);
+            hideAttractMode();
+        }
+        
+        // Export functions
+        function exportWorld() {
+            document.getElementById('export-panel').style.display = 'block';
+        }
+        
+        function closeExportPanel() {
+            document.getElementById('export-panel').style.display = 'none';
+        }
+        
+        function exportAsPNG() {
+            canvas.toBlob(blob => {
+                const url = URL.createObjectURL(blob);
+                const a = document.createElement('a');
+                a.href = url;
+                a.download = `world-${Date.now()}.png`;
+                a.click();
+            });
+            closeExportPanel();
+        }
+        
+        function exportAsJSON() {
+            const data = {
+                world: game.world,
+                player: game.player ? {
+                    x: game.player.x,
+                    y: game.player.y,
+                    health: game.player.health
+                } : null,
+                score: game.score,
+                inventory: game.inventory,
+                created: new Date().toISOString()
+            };
+            
+            const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = `world-data-${Date.now()}.json`;
+            a.click();
+            closeExportPanel();
+        }
+        
+        function exportAsGIF() {
+            if (!game.isRecording) {
+                startRecording();
+                setTimeout(() => {
+                    // Stop recording after 3 seconds
+                    game.isRecording = false;
+                    // Here you would process the frames into a GIF
+                    addToHistory('GIF export would process frames here', 'success');
+                }, 3000);
+            }
+            closeExportPanel();
+        }
+        
+        function exportAsPlayable() {
+            // Create shareable link
+            const worldData = btoa(JSON.stringify(game.world));
+            const url = `${window.location.origin}${window.location.pathname}?world=${worldData}`;
+            
+            navigator.clipboard.writeText(url).then(() => {
+                addToHistory('Shareable link copied to clipboard!', 'success');
+            });
+            closeExportPanel();
+        }
+        
+        function shareWorld() {
+            exportAsPlayable();
+        }
+        
+        function startRecording() {
+            game.isRecording = !game.isRecording;
+            game.frames = [];
+            addToHistory(game.isRecording ? 'Recording started' : 'Recording stopped', 'success');
+        }
+        
+        function captureFrame() {
+            if (game.frames.length < 60) {
+                canvas.toBlob(blob => {
+                    game.frames.push(blob);
+                });
+            } else {
+                game.isRecording = false;
+            }
+        }
+        
+        // Event listeners
+        document.getElementById('command-input').addEventListener('keydown', (e) => {
+            if (e.key === 'Enter') {
+                const command = e.target.value.trim();
+                if (command) {
+                    CommandProcessor.process(command);
+                    e.target.value = '';
+                }
+            }
+        });
+        
+        // Keyboard controls
+        document.addEventListener('keydown', (e) => {
+            if (!game.isPlaying || !game.player) return;
+            
+            let moved = false;
+            switch (e.key.toLowerCase()) {
+                case 'w':
+                case 'arrowup':
+                    moved = game.player.move(0, -1);
+                    break;
+                case 's':
+                case 'arrowdown':
+                    moved = game.player.move(0, 1);
+                    break;
+                case 'a':
+                case 'arrowleft':
+                    moved = game.player.move(-1, 0);
+                    break;
+                case 'd':
+                case 'arrowright':
+                    moved = game.player.move(1, 0);
+                    break;
+                case ' ':
+                    // Attack
+                    e.preventDefault();
+                    addToHistory('Attack!', 'success');
+                    break;
+                case 'e':
+                    // Use item
+                    addToHistory('Use item', 'success');
+                    break;
+                case 'r':
+                    // Restart if dead
+                    if (!game.isPlaying && game.world) {
+                        game.player = new Player(game.world.playerStart.x, game.world.playerStart.y);
+                        game.player.health = game.player.maxHealth;
+                        game.isPlaying = true;
+                        addToHistory('Game restarted!', 'success');
+                        updateHUD();
+                    }
+                    break;
+            }
+            
+            if (moved) {
+                updateHUD();
+            }
+        });
+        
+        // Initialize
+        window.addEventListener('resize', resizeCanvas);
+        resizeCanvas();
+        
+        // Animation loop
+        function gameLoop() {
+            render();
+            requestAnimationFrame(gameLoop);
+        }
+        
+        // Start
+        updateHUD();
+        updateWorldInfo();
+        gameLoop();
+        
+        // Show attract mode initially
+        showAttractMode();
+        
+        // Check for shared world in URL
+        const urlParams = new URLSearchParams(window.location.search);
+        const sharedWorld = urlParams.get('world');
+        if (sharedWorld) {
+            try {
+                const worldData = JSON.parse(atob(sharedWorld));
+                game.world = worldData;
+                if (worldData.playerStart) {
+                    game.player = new Player(worldData.playerStart.x, worldData.playerStart.y);
+                }
+                game.isPlaying = true;
+                hideAttractMode();
+                addToHistory('Loaded shared world!', 'success');
+                updateWorldInfo();
+            } catch (e) {
+                addToHistory('Failed to load shared world', 'error');
+            }
+        }
+        
+        // Make functions available globally
+        window.exportWorld = exportWorld;
+        window.shareWorld = shareWorld;
+        window.startRecording = startRecording;
+        window.showAttractMode = showAttractMode;
+        window.hideAttractMode = hideAttractMode;
+        window.runCommand = runCommand;
+        window.exportAsPNG = exportAsPNG;
+        window.exportAsGIF = exportAsGIF;
+        window.exportAsJSON = exportAsJSON;
+        window.exportAsPlayable = exportAsPlayable;
+        window.closeExportPanel = closeExportPanel;
+    </script>
+</body>
+</html>

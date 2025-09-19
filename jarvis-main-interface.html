@@ -1,0 +1,747 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name=\"viewport\" content="width=device-width, initial-scale=1.0">
+    <title>🦾🤖 Jarvis HUD - Document Generator</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            font-family: 'SF Mono', 'Monaco', 'Inconsolata', 'Fira Code', monospace;
+            background: radial-gradient(circle at center, #001122, #000000);
+            color: #00ffff;
+            min-height: 100vh;
+            overflow: hidden;
+            position: relative;
+        }
+        
+        /* Animated background grid */
+        .grid-background {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background-image: 
+                linear-gradient(rgba(0, 255, 255, 0.1) 1px, transparent 1px),
+                linear-gradient(90deg, rgba(0, 255, 255, 0.1) 1px, transparent 1px);
+            background-size: 50px 50px;
+            animation: gridPulse 4s ease-in-out infinite;
+            z-index: -1;
+        }
+        
+        @keyframes gridPulse {
+            0%, 100% { opacity: 0.3; }
+            50% { opacity: 0.6; }
+        }
+        
+        .header {
+            background: rgba(0, 0, 0, 0.9);
+            border-bottom: 2px solid #00ffff;
+            padding: 20px;
+            text-align: center;
+            backdrop-filter: blur(10px);
+            border-image: linear-gradient(90deg, #00ffff, #0099ff, #00ffff) 1;
+        }
+        
+        .header h1 {
+            font-size: 32px;
+            text-shadow: 0 0 30px #00ffff;
+            margin-bottom: 5px;
+            animation: textGlow 2s ease-in-out infinite;
+        }
+        
+        @keyframes textGlow {
+            0%, 100% { text-shadow: 0 0 30px #00ffff; }
+            50% { text-shadow: 0 0 50px #00ffff, 0 0 70px #0099ff; }
+        }
+        
+        .header p {
+            color: #99ccff;
+            font-size: 16px;
+        }
+        
+        .main-dashboard {
+            display: grid;
+            grid-template-columns: 300px 1fr 300px;
+            height: calc(100vh - 100px);
+            gap: 20px;
+            padding: 20px;
+        }
+        
+        .sidebar {
+            background: rgba(0, 20, 40, 0.8);
+            border: 2px solid #00ffff;
+            border-radius: 15px;
+            padding: 20px;
+            backdrop-filter: blur(10px);
+            box-shadow: 0 0 30px rgba(0, 255, 255, 0.2);
+        }
+        
+        .central-display {
+            background: rgba(0, 10, 20, 0.9);
+            border: 2px solid #00ffff;
+            border-radius: 15px;
+            padding: 20px;
+            position: relative;
+            overflow: hidden;
+        }
+        
+        .hud-activation {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            text-align: center;
+        }
+        
+        .hud-button {
+            background: linear-gradient(45deg, #00ffff, #0099ff);
+            color: #000;
+            border: none;
+            padding: 20px 40px;
+            font-size: 24px;
+            font-weight: bold;
+            border-radius: 50px;
+            cursor: pointer;
+            transition: all 0.3s;
+            text-transform: uppercase;
+            box-shadow: 0 0 30px rgba(0, 255, 255, 0.5);
+            font-family: inherit;
+        }
+        
+        .hud-button:hover {
+            transform: scale(1.1);
+            box-shadow: 0 0 50px rgba(0, 255, 255, 0.8);
+        }
+        
+        .hud-button.active {
+            background: linear-gradient(45deg, #ff4444, #ff6666);
+            animation: pulse 1s infinite;
+        }
+        
+        @keyframes pulse {
+            0%, 100% { transform: translate(-50%, -50%) scale(1); }
+            50% { transform: translate(-50%, -50%) scale(1.05); }
+        }
+        
+        .status-panel {
+            background: rgba(0, 0, 0, 0.5);
+            border-radius: 10px;
+            padding: 15px;
+            margin-bottom: 20px;
+        }
+        
+        .status-item {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 10px;
+            font-size: 14px;
+        }
+        
+        .status-dot {
+            width: 10px;
+            height: 10px;
+            border-radius: 50%;
+            background: #ff0000;
+            transition: all 0.3s;
+        }
+        
+        .status-dot.active {
+            background: #00ff00;
+            box-shadow: 0 0 10px #00ff00;
+        }
+        
+        .control-panel {
+            background: rgba(0, 0, 0, 0.5);
+            border-radius: 10px;
+            padding: 15px;
+            margin-bottom: 20px;
+        }
+        
+        .control-button {
+            width: 100%;
+            background: linear-gradient(45deg, #004466, #006699);
+            color: #00ffff;
+            border: 1px solid #00ffff;
+            padding: 10px;
+            margin-bottom: 10px;
+            border-radius: 5px;
+            cursor: pointer;
+            font-family: inherit;
+            transition: all 0.3s;
+        }
+        
+        .control-button:hover {
+            background: linear-gradient(45deg, #006699, #0099cc);
+            box-shadow: 0 0 15px rgba(0, 255, 255, 0.3);
+        }
+        
+        .live-feed {
+            height: 300px;
+            background: rgba(0, 0, 0, 0.3);
+            border: 1px solid #00ffff;
+            border-radius: 10px;
+            padding: 15px;
+            overflow-y: auto;
+            font-size: 12px;
+            line-height: 1.4;
+        }
+        
+        .feed-entry {
+            background: rgba(0, 255, 255, 0.1);
+            padding: 8px;
+            margin-bottom: 8px;
+            border-radius: 5px;
+            border-left: 3px solid #00ffff;
+        }
+        
+        .feed-entry.thought {
+            border-left-color: #00ffff;
+        }
+        
+        .feed-entry.action {
+            border-left-color: #ff0040;
+        }
+        
+        .feed-entry.exploration {
+            border-left-color: #ff00ff;
+        }
+        
+        .system-info {
+            background: rgba(0, 0, 0, 0.5);
+            border-radius: 10px;
+            padding: 15px;
+            font-size: 12px;
+        }
+        
+        .info-row {
+            display: flex;
+            justify-content: space-between;
+            margin-bottom: 8px;
+        }
+        
+        .integration-status {
+            background: rgba(0, 20, 40, 0.8);
+            border-radius: 10px;
+            padding: 15px;
+            margin-bottom: 20px;
+        }
+        
+        .integration-item {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            margin-bottom: 12px;
+            padding: 8px;
+            background: rgba(0, 0, 0, 0.3);
+            border-radius: 5px;
+        }
+        
+        .integration-icon {
+            width: 20px;
+            height: 20px;
+            font-size: 16px;
+            text-align: center;
+        }
+        
+        .platform-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 10px;
+            margin-top: 15px;
+        }
+        
+        .platform-card {
+            background: rgba(0, 0, 0, 0.5);
+            border: 1px solid #00ffff;
+            border-radius: 8px;
+            padding: 12px;
+            text-align: center;
+            cursor: pointer;
+            transition: all 0.3s;
+        }
+        
+        .platform-card:hover {
+            background: rgba(0, 255, 255, 0.1);
+            box-shadow: 0 0 15px rgba(0, 255, 255, 0.2);
+        }
+        
+        .platform-card.active {
+            border-color: #00ff00;
+            background: rgba(0, 255, 0, 0.1);
+        }
+        
+        .notification {
+            position: fixed;
+            top: 20px;
+            right: 20px;
+            background: rgba(0, 255, 255, 0.9);
+            color: #000;
+            padding: 15px 20px;
+            border-radius: 10px;
+            font-weight: bold;
+            z-index: 9999;
+            transform: translateX(100%);
+            transition: transform 0.3s;
+        }
+        
+        .notification.show {
+            transform: translateX(0);
+        }
+        
+        .holographic-display {
+            position: absolute;
+            bottom: 20px;
+            left: 20px;
+            right: 20px;
+            height: 150px;
+            background: rgba(0, 255, 255, 0.05);
+            border: 1px solid #00ffff;
+            border-radius: 10px;
+            padding: 15px;
+            backdrop-filter: blur(5px);
+        }
+        
+        .arc-reactor {
+            position: absolute;
+            top: 20px;
+            right: 20px;
+            width: 60px;
+            height: 60px;
+            border: 2px solid #00ffff;
+            border-radius: 50%;
+            background: radial-gradient(circle, #00ffff, #004466);
+            animation: reactorPulse 2s ease-in-out infinite;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 20px;
+        }
+        
+        @keyframes reactorPulse {
+            0%, 100% { 
+                box-shadow: 0 0 20px #00ffff;
+                transform: scale(1);
+            }
+            50% { 
+                box-shadow: 0 0 40px #00ffff, 0 0 60px #0099ff;
+                transform: scale(1.05);
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="grid-background"></div>
+    
+    <div class="header">
+        <h1>🦾🤖 J.A.R.V.I.S. HUD</h1>
+        <p>Just A Rather Very Intelligent System - Document Generator Interface</p>
+    </div>
+    
+    <div class="main-dashboard">
+        <!-- Left Sidebar - System Status -->
+        <div class="sidebar">
+            <h3 style="color: #00ffff; margin-bottom: 15px;">🔍 System Status</h3>
+            
+            <div class="status-panel">
+                <div class="status-item">
+                    <span>HUD Overlay</span>
+                    <div class="status-dot" id="hudStatus"></div>
+                </div>
+                <div class="status-item">
+                    <span>Reasoning Viz</span>
+                    <div class="status-dot" id="reasoningStatus"></div>
+                </div>
+                <div class="status-item">
+                    <span>AI Bridge</span>
+                    <div class="status-dot" id="aiStatus"></div>
+                </div>
+                <div class="status-item">
+                    <span>Fog of War</span>
+                    <div class="status-dot" id="fogStatus"></div>
+                </div>
+                <div class="status-item">
+                    <span>Boss Room</span>
+                    <div class="status-dot" id="bossStatus"></div>
+                </div>
+            </div>
+            
+            <div class="control-panel">
+                <h4 style="color: #99ccff; margin-bottom: 10px;">🎮 Controls</h4>
+                <button class="control-button" onclick="openReasoningViz()">🧠 Reasoning Viz</button>
+                <button class="control-button" onclick="openAIBridge()">🤖 AI Bridge</button>
+                <button class="control-button" onclick="openFogOfWar()">🌫️ Fog of War</button>
+                <button class="control-button" onclick="openBossRoom()">👑 Boss Room</button>
+                <button class="control-button" onclick="openSettings()">⚙️ Settings</button>
+            </div>
+            
+            <div class="live-feed">
+                <h4 style="color: #99ccff; margin-bottom: 10px;">📡 Live Feed</h4>
+                <div id="liveFeed">
+                    <div class="feed-entry thought">
+                        <strong>[12:34:56] THOUGHT:</strong> Initializing Jarvis HUD system
+                    </div>
+                    <div class="feed-entry action">
+                        <strong>[12:34:57] ACTION:</strong> Loading interface components
+                    </div>
+                    <div class="feed-entry exploration">
+                        <strong>[12:34:58] EXPLORE:</strong> Scanning available integrations
+                    </div>
+                </div>
+            </div>
+        </div>
+        
+        <!-- Central Display - HUD Activation -->
+        <div class="central-display">
+            <div class="arc-reactor">⚡</div>
+            
+            <div class="hud-activation">
+                <h2 style="color: #00ffff; margin-bottom: 20px;">Iron Man HUD Interface</h2>
+                <p style="color: #99ccff; margin-bottom: 30px; max-width: 400px;">
+                    Activate the holographic overlay to see reasoning streams, 
+                    fog of war exploration, and AI context in real-time across all your screens.
+                </p>
+                
+                <button class="hud-button" id="hudToggle" onclick="toggleHUD()">
+                    <span id="hudButtonText">🚀 ACTIVATE HUD</span>
+                </button>
+                
+                <div style="margin-top: 30px;">
+                    <p style="color: #666; font-size: 14px;">
+                        Hotkey: <strong>Ctrl/Cmd + J</strong>
+                    </p>
+                </div>
+            </div>
+            
+            <div class="holographic-display">
+                <h4 style="color: #00ffff; margin-bottom: 10px;">🌐 Cross-Platform Deployment</h4>
+                <div class="platform-grid">
+                    <div class="platform-card active" onclick="selectPlatform('electron')">
+                        <div>💻 Electron</div>
+                        <small>Native App</small>
+                    </div>
+                    <div class="platform-card" onclick="selectPlatform('pwa')">
+                        <div>📱 PWA</div>
+                        <small>Web App</small>
+                    </div>
+                    <div class="platform-card" onclick="selectPlatform('chrome')">
+                        <div>🌐 Chrome</div>
+                        <small>Browser</small>
+                    </div>
+                    <div class="platform-card" onclick="selectPlatform('chromebook')">
+                        <div>📚 Chromebook</div>
+                        <small>Chrome OS</small>
+                    </div>
+                </div>
+            </div>
+        </div>
+        
+        <!-- Right Sidebar - Integration Status -->
+        <div class="sidebar">
+            <h3 style="color: #00ffff; margin-bottom: 15px;">🔗 Integrations</h3>
+            
+            <div class="integration-status">
+                <div class="integration-item">
+                    <div class="integration-icon">🧠</div>
+                    <div>
+                        <div style="font-weight: bold;">Reasoning Stream</div>
+                        <div style="font-size: 11px; color: #888;">Real-time thought visualization</div>
+                    </div>
+                    <div class="status-dot active"></div>
+                </div>
+                
+                <div class="integration-item">
+                    <div class="integration-icon">🌫️</div>
+                    <div>
+                        <div style="font-weight: bold;">Fog of War</div>
+                        <div style="font-size: 11px; color: #888;">3D website exploration</div>
+                    </div>
+                    <div class="status-dot active"></div>
+                </div>
+                
+                <div class="integration-item">
+                    <div class="integration-icon">👑</div>
+                    <div>
+                        <div style="font-weight: bold;">Boss Room Cursor</div>
+                        <div style="font-size: 11px; color: #888;">Environmental overlay</div>
+                    </div>
+                    <div class="status-dot active"></div>
+                </div>
+                
+                <div class="integration-item">
+                    <div class="integration-icon">🤖</div>
+                    <div>
+                        <div style="font-weight: bold;">AI Bridge</div>
+                        <div style="font-size: 11px; color: #888;">Context sharing</div>
+                    </div>
+                    <div class="status-dot active"></div>
+                </div>
+                
+                <div class="integration-item">
+                    <div class="integration-icon">📡</div>
+                    <div>
+                        <div style="font-weight: bold;">Broadcasting</div>
+                        <div style="font-size: 11px; color: #888;">Multi-platform streaming</div>
+                    </div>
+                    <div class="status-dot"></div>
+                </div>
+            </div>
+            
+            <div class="system-info">
+                <h4 style="color: #99ccff; margin-bottom: 10px;">💻 System Info</h4>
+                <div class="info-row">
+                    <span>Platform:</span>
+                    <span id="platform">Electron</span>
+                </div>
+                <div class="info-row">
+                    <span>Memory:</span>
+                    <span id="memory">Loading...</span>
+                </div>
+                <div class="info-row">
+                    <span>Uptime:</span>
+                    <span id="uptime">00:00:00</span>
+                </div>
+                <div class="info-row">
+                    <span>Reasoning Entries:</span>
+                    <span id="reasoningCount">0</span>
+                </div>
+                <div class="info-row">
+                    <span>Active Connections:</span>
+                    <span id="connections">0</span>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <div class="notification" id="notification"></div>
+    
+    <script>
+        class JarvisMainInterface {
+            constructor() {
+                this.hudActive = false;
+                this.selectedPlatform = 'electron';
+                this.startTime = Date.now();
+                
+                this.init();
+            }
+            
+            init() {
+                this.updateSystemInfo();
+                this.startStatusUpdater();
+                this.connectToServices();
+                
+                // Listen for HUD events
+                if (window.electronAPI) {
+                    window.electronAPI.onHUDActivated(() => {
+                        this.hudActive = true;
+                        this.updateHUDButton();
+                        this.showNotification('🦾 HUD Activated - Overlay ready on all screens');
+                    });
+                    
+                    window.electronAPI.onHUDDeactivated(() => {
+                        this.hudActive = false;
+                        this.updateHUDButton();
+                        this.showNotification('🛑 HUD Deactivated');
+                    });
+                }
+                
+                console.log('🦾🤖 Jarvis Main Interface initialized');
+            }
+            
+            async connectToServices() {
+                // Test reasoning viz
+                try {
+                    const response = await fetch('http://localhost:3006/api/status');
+                    if (response.ok) {
+                        document.getElementById('reasoningStatus').classList.add('active');
+                    }
+                } catch (error) {
+                    console.log('Reasoning viz not available');
+                }
+                
+                // Test AI bridge
+                try {
+                    const response = await fetch('http://localhost:3007/api/ai/context');
+                    if (response.ok) {
+                        document.getElementById('aiStatus').classList.add('active');
+                    }
+                } catch (error) {
+                    console.log('AI bridge not available');
+                }
+                
+                // Mark fog of war and boss room as active (integrated)
+                document.getElementById('fogStatus').classList.add('active');
+                document.getElementById('bossStatus').classList.add('active');
+            }
+            
+            updateSystemInfo() {
+                // Update platform info
+                document.getElementById('platform').textContent = process.platform || 'Web';
+                
+                // Update memory usage
+                if (process.memoryUsage) {
+                    const memory = Math.round(process.memoryUsage().heapUsed / 1024 / 1024);
+                    document.getElementById('memory').textContent = `${memory} MB`;
+                }
+                
+                // Update reasoning count (would fetch from service)
+                document.getElementById('reasoningCount').textContent = '42';
+                document.getElementById('connections').textContent = '3';
+            }
+            
+            startStatusUpdater() {
+                setInterval(() => {
+                    this.updateUptime();
+                    this.updateLiveFeed();
+                }, 1000);
+            }
+            
+            updateUptime() {
+                const uptime = Math.floor((Date.now() - this.startTime) / 1000);
+                const hours = Math.floor(uptime / 3600);
+                const minutes = Math.floor((uptime % 3600) / 60);
+                const seconds = uptime % 60;
+                
+                document.getElementById('uptime').textContent = 
+                    `${hours.toString().padStart(2, '0')}:${minutes.toString().padStart(2, '0')}:${seconds.toString().padStart(2, '0')}`;
+            }
+            
+            updateLiveFeed() {
+                // Simulate live feed updates
+                const feedTypes = ['thought', 'action', 'exploration'];
+                const messages = [
+                    'Monitoring system performance',
+                    'Processing reasoning data',
+                    'Analyzing user patterns',
+                    'Optimizing AI responses',
+                    'Updating holographic display'
+                ];
+                
+                if (Math.random() < 0.1) { // 10% chance per second
+                    const type = feedTypes[Math.floor(Math.random() * feedTypes.length)];
+                    const message = messages[Math.floor(Math.random() * messages.length)];
+                    const time = new Date().toLocaleTimeString();
+                    
+                    const feedEntry = document.createElement('div');
+                    feedEntry.className = `feed-entry ${type}`;
+                    feedEntry.innerHTML = `<strong>[${time}] ${type.toUpperCase()}:</strong> ${message}`;
+                    
+                    const liveFeed = document.getElementById('liveFeed');
+                    liveFeed.appendChild(feedEntry);
+                    
+                    // Keep only last 10 entries
+                    while (liveFeed.children.length > 10) {
+                        liveFeed.removeChild(liveFeed.firstChild);
+                    }
+                    
+                    // Scroll to bottom
+                    liveFeed.scrollTop = liveFeed.scrollHeight;
+                }
+            }
+            
+            updateHUDButton() {
+                const button = document.getElementById('hudToggle');
+                const text = document.getElementById('hudButtonText');
+                
+                if (this.hudActive) {
+                    button.classList.add('active');
+                    text.textContent = '🛑 DEACTIVATE HUD';
+                    document.getElementById('hudStatus').classList.add('active');
+                } else {
+                    button.classList.remove('active');
+                    text.textContent = '🚀 ACTIVATE HUD';
+                    document.getElementById('hudStatus').classList.remove('active');
+                }
+            }
+            
+            showNotification(message) {
+                const notification = document.getElementById('notification');
+                notification.textContent = message;
+                notification.classList.add('show');
+                
+                setTimeout(() => {
+                    notification.classList.remove('show');
+                }, 3000);
+            }
+        }
+        
+        // Global functions
+        async function toggleHUD() {
+            if (window.electronAPI) {
+                await window.electronAPI.toggleHUD();
+            } else {
+                // Web fallback
+                jarvis.hudActive = !jarvis.hudActive;
+                jarvis.updateHUDButton();
+                jarvis.showNotification(jarvis.hudActive ? '🦾 HUD Activated' : '🛑 HUD Deactivated');
+            }
+        }
+        
+        function selectPlatform(platform) {
+            document.querySelectorAll('.platform-card').forEach(card => {
+                card.classList.remove('active');
+            });
+            
+            event.target.closest('.platform-card').classList.add('active');
+            jarvis.selectedPlatform = platform;
+            
+            jarvis.showNotification(`📱 Platform: ${platform}`);
+        }
+        
+        function openReasoningViz() {
+            window.open('http://localhost:3006', '_blank');
+        }
+        
+        function openAIBridge() {
+            window.open('http://localhost:3007', '_blank');
+        }
+        
+        function openFogOfWar() {
+            window.open('fog-of-war-3d-explorer.html', '_blank');
+        }
+        
+        function openBossRoom() {
+            window.open('boss-room-cursor-overlay.html', '_blank');
+        }
+        
+        async function openSettings() {
+            if (window.electronAPI) {
+                await window.electronAPI.openSettings();
+            } else {
+                jarvis.showNotification('⚙️ Settings would open here');
+            }
+        }
+        
+        // Initialize interface
+        const jarvis = new JarvisMainInterface();
+        
+        // Handle keyboard shortcuts
+        document.addEventListener('keydown', (e) => {
+            // Ctrl/Cmd + J for HUD toggle
+            if ((e.ctrlKey || e.metaKey) && e.key === 'j') {
+                e.preventDefault();
+                toggleHUD();
+            }
+            
+            // Ctrl/Cmd + Shift + R for quick reasoning log
+            if ((e.ctrlKey || e.metaKey) && e.shiftKey && e.key === 'R') {
+                e.preventDefault();
+                jarvis.showNotification('🧠 Quick reasoning log (not implemented in web)');
+            }
+        });
+        
+        console.log('🦾🤖 JARVIS MAIN INTERFACE');
+        console.log('==========================');
+        console.log('🚀 Iron Man HUD ready for activation');
+        console.log('🎮 All systems integrated');
+        console.log('📱 Cross-platform deployment enabled');
+    </script>
+</body>
+</html>

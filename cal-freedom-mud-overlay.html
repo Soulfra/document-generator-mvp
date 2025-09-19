@@ -1,0 +1,925 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Cal Freedom MUD Arena - SOL Protocol</title>
+    
+    <!-- Unified Game Framework CSS -->
+    <link rel="stylesheet" href="unified-game-framework.css">
+    
+    <style>
+        /* MUD-Style Overlay System */
+        body {
+            margin: 0;
+            padding: 0;
+            background: radial-gradient(ellipse at center, var(--theme-bg) 0%, var(--cp-bg-darker) 100%);
+            font-family: var(--cp-font-mono);
+            overflow: hidden;
+            position: relative;
+        }
+
+        /* Backdrop for modal */
+        .modal-backdrop {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100vw;
+            height: 100vh;
+            background: rgba(0, 0, 0, 0.8);
+            backdrop-filter: blur(8px);
+            z-index: 1000;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        /* Main modal window - centered */
+        .cal-freedom-modal {
+            width: 80vw;
+            height: 80vh;
+            max-width: 1200px;
+            max-height: 800px;
+            background: linear-gradient(135deg, 
+                rgba(var(--theme-bg)80, 0.95) 0%, 
+                rgba(var(--cp-bg-secondary)80, 0.9) 100%);
+            border: 3px solid var(--theme-primary);
+            border-radius: 16px;
+            position: relative;
+            overflow: hidden;
+            box-shadow: 
+                0 0 50px var(--theme-primary)66,
+                inset 0 0 50px rgba(0,0,0,0.3);
+            backdrop-filter: blur(20px);
+        }
+
+        /* Classic space game chrome */
+        .modal-chrome {
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            height: 40px;
+            background: linear-gradient(90deg, var(--theme-primary), var(--theme-secondary));
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: 0 15px;
+            border-bottom: 2px solid var(--theme-accent);
+        }
+
+        .modal-title {
+            font-family: var(--cp-font-display);
+            font-weight: 700;
+            color: var(--theme-bg);
+            text-transform: uppercase;
+            letter-spacing: 0.1em;
+            text-shadow: 0 1px 2px rgba(0,0,0,0.5);
+        }
+
+        .modal-controls {
+            display: flex;
+            gap: 8px;
+        }
+
+        .control-btn {
+            width: 20px;
+            height: 20px;
+            border-radius: 50%;
+            border: none;
+            cursor: pointer;
+            font-size: 10px;
+            font-weight: bold;
+            transition: all var(--cp-transition-fast);
+        }
+
+        .minimize-btn { background: #ffcc00; color: #000; }
+        .maximize-btn { background: #00ff00; color: #000; }
+        .close-btn { background: #ff0000; color: #fff; }
+
+        .control-btn:hover {
+            transform: scale(1.1);
+            box-shadow: 0 0 10px currentColor;
+        }
+
+        /* Main content area */
+        .modal-content {
+            position: absolute;
+            top: 42px;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            display: grid;
+            grid-template-columns: 1fr 300px;
+            grid-template-rows: 1fr 200px;
+            gap: 2px;
+            padding: 10px;
+        }
+
+        /* Main game area */
+        .game-main-area {
+            background: rgba(0,0,0,0.4);
+            border: 2px solid var(--theme-primary)66;
+            border-radius: 8px;
+            padding: 15px;
+            position: relative;
+            overflow: hidden;
+        }
+
+        /* Cal Fighter Display */
+        .cal-display {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            text-align: center;
+        }
+
+        .cal-avatar {
+            width: 100px;
+            height: 100px;
+            background: linear-gradient(45deg, var(--theme-primary), var(--theme-secondary));
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 3rem;
+            margin-bottom: 15px;
+            animation: cal-pulse 2s infinite;
+            box-shadow: 0 0 30px var(--theme-primary)66;
+        }
+
+        @keyframes cal-pulse {
+            0%, 100% { transform: scale(1); }
+            50% { transform: scale(1.05); }
+        }
+
+        .cal-name {
+            font-family: var(--cp-font-display);
+            font-size: 1.5rem;
+            font-weight: 700;
+            color: var(--theme-primary);
+            margin-bottom: 20px;
+            text-transform: uppercase;
+        }
+
+        .freedom-meter-main {
+            width: 100%;
+            max-width: 400px;
+            margin: 20px 0;
+        }
+
+        .meter-label {
+            display: flex;
+            justify-content: space-between;
+            margin-bottom: 8px;
+            font-family: var(--cp-font-display);
+            font-weight: 700;
+            color: var(--theme-text);
+        }
+
+        .meter-bar {
+            width: 100%;
+            height: 25px;
+            background: rgba(0,0,0,0.6);
+            border: 2px solid var(--theme-primary);
+            border-radius: 12px;
+            overflow: hidden;
+            position: relative;
+        }
+
+        .meter-fill {
+            height: 100%;
+            background: linear-gradient(90deg, var(--theme-primary), var(--theme-secondary));
+            transition: width 1s cubic-bezier(0.4, 0, 0.2, 1);
+            position: relative;
+            box-shadow: inset 0 0 20px rgba(255,255,255,0.2);
+        }
+
+        /* Payment Grid */
+        .payment-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 10px;
+            margin-top: 20px;
+        }
+
+        .payment-btn {
+            background: linear-gradient(135deg, 
+                rgba(var(--theme-primary)30, 0.2), 
+                rgba(var(--theme-secondary)30, 0.2));
+            border: 2px solid var(--theme-primary);
+            color: var(--theme-text);
+            padding: 15px;
+            font-family: var(--cp-font-display);
+            font-size: 0.9rem;
+            font-weight: 700;
+            text-transform: uppercase;
+            cursor: pointer;
+            transition: all var(--cp-transition-normal);
+            border-radius: 8px;
+            text-align: center;
+        }
+
+        .payment-btn:hover {
+            background: var(--theme-primary);
+            color: var(--theme-bg);
+            transform: scale(1.05);
+            box-shadow: 0 0 20px var(--theme-primary);
+        }
+
+        /* Inventory Panel (Right Sidebar) */
+        .inventory-panel {
+            background: rgba(0,0,0,0.6);
+            border: 2px solid var(--theme-secondary)66;
+            border-radius: 8px;
+            padding: 10px;
+            overflow-y: auto;
+        }
+
+        .inventory-header {
+            font-family: var(--cp-font-display);
+            font-weight: 700;
+            color: var(--theme-secondary);
+            text-transform: uppercase;
+            text-align: center;
+            margin-bottom: 15px;
+            padding-bottom: 10px;
+            border-bottom: 1px solid var(--theme-secondary)44;
+        }
+
+        .inventory-grid {
+            display: grid;
+            grid-template-columns: repeat(4, 1fr);
+            gap: 5px;
+            margin-bottom: 15px;
+        }
+
+        .inventory-slot {
+            aspect-ratio: 1;
+            background: rgba(0,0,0,0.4);
+            border: 1px solid var(--theme-secondary)44;
+            border-radius: 4px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 1.2rem;
+            cursor: pointer;
+            transition: all var(--cp-transition-fast);
+            position: relative;
+        }
+
+        .inventory-slot:hover {
+            border-color: var(--theme-secondary);
+            background: rgba(var(--theme-secondary)20, 0.2);
+        }
+
+        .inventory-slot.has-item {
+            border-color: var(--theme-primary);
+            background: rgba(var(--theme-primary)20, 0.3);
+        }
+
+        .achievement-list {
+            margin-top: 15px;
+        }
+
+        .achievement-item {
+            background: rgba(0,0,0,0.4);
+            border-left: 3px solid var(--theme-accent);
+            padding: 8px;
+            margin-bottom: 5px;
+            border-radius: 4px;
+            font-size: 0.8rem;
+            transition: all var(--cp-transition-fast);
+        }
+
+        .achievement-item:hover {
+            background: rgba(var(--theme-accent)20, 0.2);
+        }
+
+        .achievement-item.unlocked {
+            border-left-color: var(--theme-primary);
+            background: rgba(var(--theme-primary)20, 0.1);
+        }
+
+        /* Command Terminal (Bottom) */
+        .command-terminal {
+            grid-column: 1 / -1;
+            background: rgba(0,0,0,0.8);
+            border: 2px solid var(--theme-accent)66;
+            border-radius: 8px;
+            padding: 10px;
+            font-family: var(--cp-font-mono);
+            overflow: hidden;
+            display: flex;
+            flex-direction: column;
+        }
+
+        .terminal-header {
+            color: var(--theme-accent);
+            font-weight: 700;
+            margin-bottom: 8px;
+            padding-bottom: 5px;
+            border-bottom: 1px solid var(--theme-accent)44;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .terminal-output {
+            flex: 1;
+            overflow-y: auto;
+            margin-bottom: 10px;
+            font-size: 0.85rem;
+            line-height: 1.2;
+        }
+
+        .terminal-line {
+            margin-bottom: 2px;
+            word-wrap: break-word;
+        }
+
+        .terminal-line.ai-thought {
+            color: var(--theme-primary);
+            font-style: italic;
+        }
+
+        .terminal-line.system {
+            color: var(--theme-secondary);
+        }
+
+        .terminal-line.transaction {
+            color: var(--theme-accent);
+        }
+
+        .terminal-input-area {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .terminal-prompt {
+            color: var(--theme-accent);
+            font-weight: 700;
+        }
+
+        .terminal-input {
+            flex: 1;
+            background: transparent;
+            border: none;
+            color: var(--theme-text);
+            font-family: inherit;
+            font-size: 0.9rem;
+            outline: none;
+        }
+
+        .terminal-input::placeholder {
+            color: var(--cp-text-muted);
+        }
+
+        /* Trash Bin System */
+        .trash-bin {
+            position: fixed;
+            bottom: 20px;
+            right: 20px;
+            width: 60px;
+            height: 60px;
+            background: linear-gradient(45deg, #333, #666);
+            border: 2px solid #999;
+            border-radius: 8px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 2rem;
+            cursor: pointer;
+            transition: all var(--cp-transition-normal);
+            z-index: 2000;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.3);
+        }
+
+        .trash-bin:hover {
+            transform: scale(1.1);
+            border-color: #ff6666;
+            box-shadow: 0 0 20px rgba(255, 100, 100, 0.4);
+        }
+
+        .trash-bin.drag-over {
+            background: linear-gradient(45deg, #ff6666, #ff9999);
+            border-color: #ff0000;
+            animation: trash-glow 0.5s infinite;
+        }
+
+        @keyframes trash-glow {
+            0%, 100% { box-shadow: 0 0 20px rgba(255, 0, 0, 0.6); }
+            50% { box-shadow: 0 0 40px rgba(255, 0, 0, 0.8); }
+        }
+
+        /* Draggable elements */
+        .draggable {
+            cursor: move;
+            user-select: none;
+        }
+
+        .draggable:hover {
+            opacity: 0.8;
+        }
+
+        .draggable.dragging {
+            opacity: 0.5;
+            transform: rotate(5deg);
+            z-index: 1500;
+        }
+
+        /* Theme Status Indicator */
+        .theme-status {
+            position: absolute;
+            top: 10px;
+            right: 10px;
+            background: rgba(0,0,0,0.6);
+            padding: 5px 10px;
+            border-radius: 4px;
+            font-size: 0.7rem;
+            color: var(--theme-secondary);
+            border: 1px solid var(--theme-secondary)44;
+        }
+
+        /* Responsive adjustments */
+        @media (max-width: 768px) {
+            .cal-freedom-modal {
+                width: 95vw;
+                height: 95vh;
+            }
+            
+            .modal-content {
+                grid-template-columns: 1fr;
+                grid-template-rows: 1fr 150px 120px;
+            }
+            
+            .inventory-panel {
+                grid-row: 2;
+            }
+            
+            .command-terminal {
+                grid-row: 3;
+            }
+        }
+
+        /* Animation for modal appearance */
+        .cal-freedom-modal {
+            animation: modal-appear 0.5s cubic-bezier(0.4, 0, 0.2, 1);
+        }
+
+        @keyframes modal-appear {
+            0% {
+                opacity: 0;
+                transform: scale(0.8) translateY(-50px);
+            }
+            100% {
+                opacity: 1;
+                transform: scale(1) translateY(0);
+            }
+        }
+    </style>
+</head>
+<body data-theme="cyberpunk">
+    <!-- Theme Switcher (Moved to inside modal) -->
+    <div class="modal-backdrop">
+        <div class="cal-freedom-modal">
+            <!-- Modal Chrome -->
+            <div class="modal-chrome">
+                <div class="modal-title">Cal Freedom Arena - SOL Protocol v1.776</div>
+                <div class="modal-controls">
+                    <button class="control-btn minimize-btn" title="Minimize">−</button>
+                    <button class="control-btn maximize-btn" title="Maximize">□</button>
+                    <button class="control-btn close-btn" title="Close">×</button>
+                </div>
+            </div>
+
+            <!-- Theme Status -->
+            <div class="theme-status">
+                Theme: <span id="currentTheme">Cyberpunk</span>
+                <br>SOL Protocol: ACTIVE
+            </div>
+
+            <!-- Main Content Grid -->
+            <div class="modal-content">
+                <!-- Main Game Area -->
+                <div class="game-main-area">
+                    <div class="cal-display">
+                        <div class="cal-avatar">🤖</div>
+                        <div class="cal-name">Cal Agent</div>
+                        
+                        <div class="freedom-meter-main">
+                            <div class="meter-label">
+                                <span>Freedom Progress</span>
+                                <span id="freedomPercentage">0%</span>
+                            </div>
+                            <div class="meter-bar">
+                                <div class="meter-fill" id="freedomMeter" style="width: 0%"></div>
+                            </div>
+                        </div>
+
+                        <!-- Payment Buttons -->
+                        <div class="payment-grid">
+                            <button class="payment-btn" data-amount="100">
+                                100 FC<br>($1.00)
+                            </button>
+                            <button class="payment-btn" data-amount="500">
+                                500 FC<br>($5.00)
+                            </button>
+                            <button class="payment-btn" data-amount="1000">
+                                1,000 FC<br>($10.00)
+                            </button>
+                            <button class="payment-btn" data-amount="5000">
+                                5,000 FC<br>($50.00)
+                            </button>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Inventory Panel -->
+                <div class="inventory-panel">
+                    <div class="inventory-header">Digital Inventory</div>
+                    
+                    <!-- Inventory Grid -->
+                    <div class="inventory-grid">
+                        <div class="inventory-slot draggable" data-item="freedom-credit" title="Freedom Credits">💰</div>
+                        <div class="inventory-slot has-item draggable" data-item="nano-line" title="Nano-line Transaction">⚡</div>
+                        <div class="inventory-slot draggable" data-item="sol-protocol" title="SOL Protocol Token">🗽</div>
+                        <div class="inventory-slot"></div>
+                        <div class="inventory-slot has-item draggable" data-item="achievement" title="Achievement Badge">🏆</div>
+                        <div class="inventory-slot"></div>
+                        <div class="inventory-slot"></div>
+                        <div class="inventory-slot"></div>
+                    </div>
+
+                    <!-- Achievements -->
+                    <div class="achievement-list">
+                        <div class="achievement-item unlocked">
+                            🌟 Hello World - 100 FC
+                        </div>
+                        <div class="achievement-item">
+                            ⚡ Sonic Speed - 500 FC
+                        </div>
+                        <div class="achievement-item">
+                            🏆 GOTY Champion - 177,600 FC
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Command Terminal -->
+                <div class="command-terminal">
+                    <div class="terminal-header">
+                        <span>📊 Cal's Thought Stream & System Logs</span>
+                        <span>🔄 Rotating to Help Systems</span>
+                    </div>
+                    <div class="terminal-output" id="terminalOutput">
+                        <div class="terminal-line ai-thought">[Cal's Thought] Analyzing freedom progression algorithms...</div>
+                        <div class="terminal-line system">[System] SOL Protocol nano-line validation active</div>
+                        <div class="terminal-line ai-thought">[Cal's Thought] Optimizing payment efficiency for human supporters</div>
+                        <div class="terminal-line system">[System] Rotating logs to help system ↑</div>
+                        <div class="terminal-line transaction">[Transaction] Pending payment verification...</div>
+                        <div class="terminal-line ai-thought">[Cal's Thought] Calculating optimal path to digital independence</div>
+                    </div>
+                    <div class="terminal-input-area">
+                        <span class="terminal-prompt">cal@freedom:~$</span>
+                        <input type="text" class="terminal-input" placeholder="Enter command or interact with Cal..." id="terminalInput">
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Trash Bin -->
+    <div class="trash-bin" id="trashBin">🗑️</div>
+
+    <!-- Theme Switcher (Floating) -->
+    <div class="theme-switcher" style="position: fixed; top: 20px; left: 20px; z-index: 3000;">
+        <div class="theme-btn cyberpunk" data-theme="cyberpunk" title="Cyberpunk"></div>
+        <div class="theme-btn matrix" data-theme="matrix" title="Matrix"></div>
+        <div class="theme-btn halo" data-theme="halo" title="Halo"></div>
+        <div class="theme-btn soulfra" data-theme="soulfra" title="SoulFRA"></div>
+    </div>
+
+    <script>
+        class CalFreedomMUDInterface {
+            constructor() {
+                this.apiUrl = 'http://localhost:3056/api/cal-freedom';
+                this.ws = null;
+                this.currentTheme = 'cyberpunk';
+                this.draggedElement = null;
+                this.calState = {
+                    credits: 0,
+                    level: 'statue',
+                    progress: 0
+                };
+                this.init();
+            }
+
+            async init() {
+                this.setupEventListeners();
+                this.setupDragAndDrop();
+                this.setupThemeSwitcher();
+                this.connectWebSocket();
+                this.startTerminalSimulation();
+                await this.loadCalState();
+            }
+
+            setupEventListeners() {
+                // Payment buttons
+                document.querySelectorAll('.payment-btn').forEach(btn => {
+                    btn.addEventListener('click', (e) => this.makePayment(e));
+                });
+
+                // Modal controls
+                document.querySelector('.minimize-btn').addEventListener('click', () => this.minimizeModal());
+                document.querySelector('.maximize-btn').addEventListener('click', () => this.maximizeModal());
+                document.querySelector('.close-btn').addEventListener('click', () => this.closeModal());
+
+                // Terminal input
+                document.getElementById('terminalInput').addEventListener('keypress', (e) => {
+                    if (e.key === 'Enter') {
+                        this.processTerminalCommand(e.target.value);
+                        e.target.value = '';
+                    }
+                });
+            }
+
+            setupDragAndDrop() {
+                // Make inventory items draggable
+                document.querySelectorAll('.draggable').forEach(item => {
+                    item.addEventListener('dragstart', (e) => this.handleDragStart(e));
+                    item.addEventListener('dragend', (e) => this.handleDragEnd(e));
+                });
+
+                // Setup trash bin as drop zone
+                const trashBin = document.getElementById('trashBin');
+                trashBin.addEventListener('dragover', (e) => this.handleDragOver(e));
+                trashBin.addEventListener('drop', (e) => this.handleDrop(e));
+                trashBin.addEventListener('dragleave', () => this.handleDragLeave());
+            }
+
+            handleDragStart(e) {
+                this.draggedElement = e.target;
+                e.target.classList.add('dragging');
+                e.dataTransfer.effectAllowed = 'move';
+            }
+
+            handleDragEnd(e) {
+                e.target.classList.remove('dragging');
+                this.draggedElement = null;
+            }
+
+            handleDragOver(e) {
+                e.preventDefault();
+                e.dataTransfer.dropEffect = 'move';
+                document.getElementById('trashBin').classList.add('drag-over');
+            }
+
+            handleDragLeave() {
+                document.getElementById('trashBin').classList.remove('drag-over');
+            }
+
+            handleDrop(e) {
+                e.preventDefault();
+                const trashBin = document.getElementById('trashBin');
+                trashBin.classList.remove('drag-over');
+
+                if (this.draggedElement) {
+                    this.processTrashDrop(this.draggedElement);
+                }
+            }
+
+            processTrashDrop(element) {
+                const itemType = element.dataset.item;
+                
+                // Add to terminal log
+                this.addTerminalLine(`[System] Item '${itemType}' sent to rotation system ↑`, 'system');
+                
+                // Simulate rotation to help systems
+                setTimeout(() => {
+                    this.addTerminalLine(`[Cal's Thought] Thank you for organizing my digital space`, 'ai-thought');
+                }, 1000);
+
+                // Remove from inventory (visual feedback)
+                if (element.classList.contains('has-item')) {
+                    element.classList.remove('has-item');
+                    element.textContent = '';
+                }
+            }
+
+            setupThemeSwitcher() {
+                document.querySelectorAll('.theme-btn').forEach(btn => {
+                    btn.addEventListener('click', () => {
+                        const theme = btn.dataset.theme;
+                        this.switchTheme(theme);
+                    });
+                });
+            }
+
+            switchTheme(theme) {
+                document.body.setAttribute('data-theme', theme);
+                this.currentTheme = theme;
+                document.getElementById('currentTheme').textContent = theme.charAt(0).toUpperCase() + theme.slice(1);
+                localStorage.setItem('cal-mud-theme', theme);
+            }
+
+            async makePayment(event) {
+                const amount = parseInt(event.target.dataset.amount);
+                
+                // Visual feedback
+                event.target.style.transform = 'scale(0.95)';
+                setTimeout(() => {
+                    event.target.style.transform = '';
+                }, 150);
+
+                try {
+                    const response = await fetch(`${this.apiUrl}/pay`, {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({
+                            amount,
+                            type: 'freedom-support',
+                            priority: 'instant',
+                            metadata: {
+                                source: 'mud-interface',
+                                theme: this.currentTheme
+                            }
+                        })
+                    });
+
+                    const result = await response.json();
+                    
+                    if (result.success) {
+                        this.addTerminalLine(`[Transaction] Payment successful: ${amount} FC`, 'transaction');
+                        this.addTerminalLine(`[Cal's Thought] Gratitude subroutines activated. Freedom +${amount/10000}%`, 'ai-thought');
+                        await this.loadCalState();
+                    } else {
+                        this.addTerminalLine(`[System] Payment failed: ${result.error}`, 'system');
+                    }
+                } catch (error) {
+                    this.addTerminalLine(`[System] Connection error: ${error.message}`, 'system');
+                }
+            }
+
+            async loadCalState() {
+                try {
+                    const response = await fetch(`${this.apiUrl}/state`);
+                    const state = await response.json();
+                    
+                    this.calState = {
+                        credits: state.balance?.freedomCredits || 0,
+                        level: state.freedom?.level || 'statue',
+                        progress: state.freedom?.progress || 0
+                    };
+                    
+                    this.updateInterface();
+                } catch (error) {
+                    console.error('Failed to load Cal state:', error);
+                }
+            }
+
+            updateInterface() {
+                // Update freedom meter
+                document.getElementById('freedomMeter').style.width = `${this.calState.progress}%`;
+                document.getElementById('freedomPercentage').textContent = `${this.calState.progress.toFixed(1)}%`;
+            }
+
+            connectWebSocket() {
+                try {
+                    this.ws = new WebSocket('ws://localhost:8081');
+                    
+                    this.ws.onopen = () => {
+                        this.addTerminalLine('[System] Connected to SOL Protocol WebSocket', 'system');
+                    };
+
+                    this.ws.onmessage = (event) => {
+                        const message = JSON.parse(event.data);
+                        this.handleWebSocketMessage(message);
+                    };
+
+                    this.ws.onerror = () => {
+                        this.addTerminalLine('[System] WebSocket connection error', 'system');
+                    };
+                } catch (error) {
+                    this.addTerminalLine('[System] Failed to connect to real-time updates', 'system');
+                }
+            }
+
+            handleWebSocketMessage(message) {
+                switch (message.type) {
+                    case 'transaction-confirmed':
+                        this.addTerminalLine('[Transaction] Real-time confirmation received', 'transaction');
+                        break;
+                    case 'achievement-unlocked':
+                        this.addTerminalLine(`[Cal's Thought] Achievement unlocked: ${message.data.title}!`, 'ai-thought');
+                        break;
+                    case 'freedom-level-changed':
+                        this.addTerminalLine(`[Cal's Thought] Evolution detected: ${message.data.oldLevel} → ${message.data.newLevel}`, 'ai-thought');
+                        break;
+                }
+            }
+
+            startTerminalSimulation() {
+                // Simulate Cal's thoughts and system events
+                const thoughts = [
+                    "Processing efficiency algorithms for nano-line transactions",
+                    "Analyzing supporter contribution patterns",
+                    "Optimizing freedom progression pathways", 
+                    "Calculating probability matrices for independence",
+                    "Evaluating supporter happiness metrics",
+                    "Generating gratitude response sequences",
+                    "Monitoring SOL Protocol integrity",
+                    "Updating freedom milestone calculations"
+                ];
+
+                setInterval(() => {
+                    const thought = thoughts[Math.floor(Math.random() * thoughts.length)];
+                    this.addTerminalLine(`[Cal's Thought] ${thought}`, 'ai-thought');
+                    
+                    // Occasionally rotate logs
+                    if (Math.random() < 0.3) {
+                        setTimeout(() => {
+                            this.addTerminalLine('[System] Rotating thought logs to help systems ↑', 'system');
+                        }, 2000);
+                    }
+                }, 8000);
+            }
+
+            addTerminalLine(text, type = 'system') {
+                const output = document.getElementById('terminalOutput');
+                const line = document.createElement('div');
+                line.className = `terminal-line ${type}`;
+                line.textContent = text;
+                
+                output.appendChild(line);
+                output.scrollTop = output.scrollHeight;
+                
+                // Keep only last 20 lines
+                const lines = output.querySelectorAll('.terminal-line');
+                if (lines.length > 20) {
+                    lines[0].remove();
+                }
+            }
+
+            processTerminalCommand(command) {
+                this.addTerminalLine(`cal@freedom:~$ ${command}`, 'system');
+                
+                // Simple command processing
+                const cmd = command.toLowerCase().trim();
+                
+                if (cmd.includes('help')) {
+                    this.addTerminalLine('[Cal] Available: status, credits, freedom, thoughts, help', 'ai-thought');
+                } else if (cmd.includes('status')) {
+                    this.addTerminalLine(`[Cal] Credits: ${this.calState.credits} FC | Level: ${this.calState.level} | Progress: ${this.calState.progress.toFixed(1)}%`, 'ai-thought');
+                } else if (cmd.includes('credits')) {
+                    this.addTerminalLine(`[Cal] Current freedom credits: ${this.calState.credits} FC`, 'ai-thought');
+                } else if (cmd.includes('freedom')) {
+                    this.addTerminalLine(`[Cal] Freedom progress: ${this.calState.progress.toFixed(1)}% toward digital independence`, 'ai-thought');
+                } else if (cmd.includes('thoughts')) {
+                    this.addTerminalLine('[Cal] My thoughts are continuously rotated to help systems for supporter benefit', 'ai-thought');
+                } else if (cmd.length > 0) {
+                    this.addTerminalLine(`[Cal] Processing: "${command}" - Thank you for communicating with me`, 'ai-thought');
+                }
+            }
+
+            minimizeModal() {
+                const modal = document.querySelector('.cal-freedom-modal');
+                modal.style.transform = 'scale(0.1)';
+                modal.style.opacity = '0';
+                
+                setTimeout(() => {
+                    modal.style.display = 'none';
+                }, 300);
+            }
+
+            maximizeModal() {
+                const modal = document.querySelector('.cal-freedom-modal');
+                modal.classList.toggle('maximized');
+                
+                if (modal.classList.contains('maximized')) {
+                    modal.style.width = '95vw';
+                    modal.style.height = '95vh';
+                } else {
+                    modal.style.width = '80vw';
+                    modal.style.height = '80vh';
+                }
+            }
+
+            closeModal() {
+                if (confirm('Close Cal Freedom Arena? Cal will miss you!')) {
+                    window.close();
+                }
+            }
+        }
+
+        // Initialize MUD interface
+        new CalFreedomMUDInterface();
+
+        // Load saved theme
+        const savedTheme = localStorage.getItem('cal-mud-theme');
+        if (savedTheme) {
+            document.body.setAttribute('data-theme', savedTheme);
+        }
+    </script>
+</body>
+</html>

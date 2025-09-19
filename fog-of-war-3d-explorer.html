@@ -1,0 +1,965 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>🌫️ FOG OF WAR - 3D Website Explorer</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            font-family: 'Courier New', monospace;
+            background: #000;
+            color: #fff;
+            overflow: hidden;
+            cursor: crosshair;
+        }
+        
+        #gameCanvas {
+            width: 100vw;
+            height: 100vh;
+            display: block;
+        }
+        
+        .hud {
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            pointer-events: none;
+            z-index: 100;
+        }
+        
+        .minimap {
+            position: absolute;
+            top: 20px;
+            right: 20px;
+            width: 200px;
+            height: 200px;
+            background: rgba(0, 0, 0, 0.8);
+            border: 2px solid #00ff00;
+            border-radius: 10px;
+            overflow: hidden;
+        }
+        
+        .minimap-canvas {
+            width: 100%;
+            height: 100%;
+        }
+        
+        .stats {
+            position: absolute;
+            top: 20px;
+            left: 20px;
+            background: rgba(0, 0, 0, 0.8);
+            border: 2px solid #00ff00;
+            padding: 15px;
+            border-radius: 10px;
+            font-size: 14px;
+        }
+        
+        .stat-line {
+            margin-bottom: 5px;
+            color: #00ff00;
+        }
+        
+        .controls {
+            position: absolute;
+            bottom: 20px;
+            left: 50%;
+            transform: translateX(-50%);
+            background: rgba(0, 0, 0, 0.8);
+            border: 2px solid #00ff00;
+            padding: 15px;
+            border-radius: 10px;
+            text-align: center;
+        }
+        
+        .control-button {
+            background: rgba(0, 255, 0, 0.2);
+            border: 1px solid #00ff00;
+            color: #00ff00;
+            padding: 5px 10px;
+            margin: 0 5px;
+            border-radius: 5px;
+            cursor: pointer;
+            pointer-events: all;
+            transition: all 0.3s;
+        }
+        
+        .control-button:hover {
+            background: rgba(0, 255, 0, 0.4);
+            transform: scale(1.1);
+        }
+        
+        .control-button.active {
+            background: rgba(0, 255, 0, 0.6);
+            color: #000;
+        }
+        
+        .inventory {
+            position: absolute;
+            bottom: 20px;
+            right: 20px;
+            width: 300px;
+            background: rgba(0, 0, 0, 0.8);
+            border: 2px solid #00ff00;
+            padding: 15px;
+            border-radius: 10px;
+        }
+        
+        .inventory-item {
+            background: rgba(0, 255, 0, 0.1);
+            border: 1px solid #00ff00;
+            padding: 5px;
+            margin-bottom: 5px;
+            border-radius: 3px;
+            font-size: 12px;
+        }
+        
+        .fog-indicator {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            font-size: 24px;
+            color: #00ff00;
+            text-shadow: 0 0 20px #00ff00;
+            display: none;
+            pointer-events: none;
+        }
+        
+        .loading-screen {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: #000;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            flex-direction: column;
+            z-index: 1000;
+        }
+        
+        .loading-text {
+            font-size: 24px;
+            color: #00ff00;
+            margin-bottom: 20px;
+            animation: pulse 1s infinite;
+        }
+        
+        .loading-bar {
+            width: 300px;
+            height: 20px;
+            background: rgba(0, 255, 0, 0.2);
+            border: 2px solid #00ff00;
+            border-radius: 10px;
+            overflow: hidden;
+        }
+        
+        .loading-progress {
+            height: 100%;
+            background: #00ff00;
+            width: 0%;
+            transition: width 0.3s;
+        }
+        
+        @keyframes pulse {
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0.5; }
+        }
+        
+        .spectator-list {
+            position: absolute;
+            top: 250px;
+            right: 20px;
+            background: rgba(0, 0, 0, 0.8);
+            border: 2px solid #ffff00;
+            padding: 10px;
+            border-radius: 10px;
+            font-size: 12px;
+        }
+        
+        .spectator {
+            color: #ffff00;
+            margin-bottom: 3px;
+        }
+        
+        .discovered-content {
+            position: absolute;
+            top: 20px;
+            left: 50%;
+            transform: translateX(-50%);
+            background: rgba(0, 0, 0, 0.9);
+            border: 2px solid #00ffff;
+            padding: 20px;
+            border-radius: 10px;
+            max-width: 600px;
+            display: none;
+            pointer-events: all;
+            z-index: 200;
+        }
+        
+        .content-title {
+            color: #00ffff;
+            font-size: 18px;
+            margin-bottom: 10px;
+        }
+        
+        .content-body {
+            color: #fff;
+            font-size: 14px;
+            line-height: 1.5;
+        }
+        
+        .close-content {
+            position: absolute;
+            top: 10px;
+            right: 10px;
+            background: #ff0000;
+            color: #fff;
+            border: none;
+            padding: 5px 10px;
+            border-radius: 3px;
+            cursor: pointer;
+        }
+    </style>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/controls/OrbitControls.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/controls/PointerLockControls.js"></script>
+</head>
+<body>
+    <div class="loading-screen" id="loadingScreen">
+        <div class="loading-text">🌫️ INITIALIZING FOG OF WAR...</div>
+        <div class="loading-bar">
+            <div class="loading-progress" id="loadingProgress"></div>
+        </div>
+    </div>
+    
+    <canvas id="gameCanvas"></canvas>
+    
+    <div class="hud">
+        <div class="stats">
+            <div class="stat-line">📍 Position: <span id="playerPos">0, 0, 0</span></div>
+            <div class="stat-line">🗺️ Explored: <span id="exploredPercent">0%</span></div>
+            <div class="stat-line">📄 Pages Found: <span id="pagesFound">0</span></div>
+            <div class="stat-line">🔗 Links Discovered: <span id="linksFound">0</span></div>
+            <div class="stat-line">⏱️ Time Exploring: <span id="timeExploring">00:00</span></div>
+            <div class="stat-line">👁️ View Mode: <span id="viewMode">DRONE</span></div>
+        </div>
+        
+        <div class="minimap">
+            <canvas class="minimap-canvas" id="minimapCanvas"></canvas>
+        </div>
+        
+        <div class="controls">
+            <button class="control-button" onclick="toggleViewMode()">🎮 Toggle View (V)</button>
+            <button class="control-button" onclick="toggleFog()">🌫️ Toggle Fog (F)</button>
+            <button class="control-button" onclick="resetPosition()">🏠 Reset (R)</button>
+            <button class="control-button" onclick="toggleSpectatorMode()">👥 Spectate (S)</button>
+        </div>
+        
+        <div class="inventory">
+            <h3 style="color: #00ff00; margin-bottom: 10px;">🎒 Discovered Content</h3>
+            <div id="inventoryList">
+                <div class="inventory-item">Start exploring to discover content...</div>
+            </div>
+        </div>
+        
+        <div class="spectator-list" id="spectatorList" style="display: none;">
+            <h4 style="color: #ffff00; margin-bottom: 5px;">👥 Spectators</h4>
+            <div class="spectator">DroneWatcher#1337</div>
+            <div class="spectator">FogExplorer#42</div>
+            <div class="spectator">WebCrawler#999</div>
+        </div>
+        
+        <div class="fog-indicator" id="fogIndicator">
+            🌫️ EXPLORING UNKNOWN TERRITORY 🌫️
+        </div>
+        
+        <div class="discovered-content" id="discoveredContent">
+            <button class="close-content" onclick="closeContent()">X</button>
+            <div class="content-title" id="contentTitle">Page Title</div>
+            <div class="content-body" id="contentBody">Content will appear here...</div>
+        </div>
+    </div>
+    
+    <script>
+        class FogOfWarExplorer {
+            constructor() {
+                this.scene = new THREE.Scene();
+                this.camera = null;
+                this.renderer = null;
+                this.controls = null;
+                this.character = null;
+                this.fogMap = [];
+                this.exploredTiles = new Set();
+                this.viewMode = 'drone'; // 'drone' or 'firstperson'
+                this.fogEnabled = true;
+                this.websiteData = null;
+                this.discoveredContent = [];
+                this.spectators = [];
+                this.startTime = Date.now();
+                
+                this.worldSize = 1000;
+                this.tileSize = 10;
+                this.exploreRadius = 30;
+                
+                this.init();
+            }
+            
+            async init() {
+                console.log('🌫️ Initializing Fog of War Explorer...');
+                
+                // Setup renderer
+                this.renderer = new THREE.WebGLRenderer({ 
+                    canvas: document.getElementById('gameCanvas'),
+                    antialias: true 
+                });
+                this.renderer.setSize(window.innerWidth, window.innerHeight);
+                this.renderer.shadowMap.enabled = true;
+                this.renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+                this.renderer.setClearColor(0x000000);
+                
+                // Setup camera
+                this.camera = new THREE.PerspectiveCamera(
+                    75, 
+                    window.innerWidth / window.innerHeight, 
+                    0.1, 
+                    1000
+                );
+                
+                // Setup fog
+                this.scene.fog = new THREE.Fog(0x000000, 10, 100);
+                
+                // Add lights
+                this.setupLights();
+                
+                // Generate website world
+                await this.generateWebsiteWorld();
+                
+                // Create character
+                this.createCharacter();
+                
+                // Setup controls
+                this.setupControls();
+                
+                // Setup minimap
+                this.setupMinimap();
+                
+                // Initialize fog map
+                this.initializeFogMap();
+                
+                // Start render loop
+                this.animate();
+                
+                // Hide loading screen
+                setTimeout(() => {
+                    document.getElementById('loadingScreen').style.display = 'none';
+                }, 2000);
+                
+                // Update loading progress
+                this.updateLoadingProgress(100);
+                
+                // Setup event listeners
+                this.setupEventListeners();
+                
+                console.log('✅ Fog of War Explorer initialized!');
+            }
+            
+            setupLights() {
+                // Ambient light (very dim for fog effect)
+                const ambientLight = new THREE.AmbientLight(0x404040, 0.2);
+                this.scene.add(ambientLight);
+                
+                // Character spotlight
+                this.characterLight = new THREE.SpotLight(0x00ff00, 2);
+                this.characterLight.angle = Math.PI / 6;
+                this.characterLight.penumbra = 0.5;
+                this.characterLight.decay = 1;
+                this.characterLight.distance = 100;
+                this.characterLight.castShadow = true;
+                this.scene.add(this.characterLight);
+                
+                // Fog lights (mysterious glows in the distance)
+                for (let i = 0; i < 20; i++) {
+                    const fogLight = new THREE.PointLight(
+                        new THREE.Color().setHSL(Math.random(), 1, 0.5), 
+                        0.5, 
+                        50
+                    );
+                    fogLight.position.set(
+                        Math.random() * this.worldSize - this.worldSize / 2,
+                        Math.random() * 20 + 10,
+                        Math.random() * this.worldSize - this.worldSize / 2
+                    );
+                    this.scene.add(fogLight);
+                }
+            }
+            
+            async generateWebsiteWorld() {
+                console.log('🌐 Generating website world...');
+                
+                // Ground plane
+                const groundGeometry = new THREE.PlaneGeometry(this.worldSize, this.worldSize, 100, 100);
+                const groundMaterial = new THREE.MeshStandardMaterial({ 
+                    color: 0x111111,
+                    roughness: 0.8,
+                    metalness: 0.2
+                });
+                const ground = new THREE.Mesh(groundGeometry, groundMaterial);
+                ground.rotation.x = -Math.PI / 2;
+                ground.receiveShadow = true;
+                this.scene.add(ground);
+                
+                // Create website structure (pages as buildings)
+                this.websiteData = this.generateMockWebsiteData();
+                
+                // Place content nodes in the world
+                this.websiteData.pages.forEach((page, index) => {
+                    const building = this.createContentBuilding(page);
+                    
+                    // Arrange in a spiral pattern
+                    const angle = index * 0.5;
+                    const radius = 20 + index * 10;
+                    building.position.x = Math.cos(angle) * radius;
+                    building.position.z = Math.sin(angle) * radius;
+                    
+                    this.scene.add(building);
+                });
+                
+                // Add mysterious structures
+                for (let i = 0; i < 50; i++) {
+                    const structure = this.createMysteryStructure();
+                    structure.position.x = Math.random() * this.worldSize - this.worldSize / 2;
+                    structure.position.z = Math.random() * this.worldSize - this.worldSize / 2;
+                    this.scene.add(structure);
+                }
+                
+                this.updateLoadingProgress(50);
+            }
+            
+            generateMockWebsiteData() {
+                return {
+                    domain: "example.com",
+                    pages: [
+                        { 
+                            title: "Homepage", 
+                            url: "/", 
+                            content: "Welcome to the mysterious world of example.com",
+                            links: ["/about", "/products", "/contact"],
+                            height: 50,
+                            color: 0x00ff00
+                        },
+                        { 
+                            title: "About Us", 
+                            url: "/about", 
+                            content: "We are a company shrouded in fog and mystery",
+                            links: ["/team", "/history"],
+                            height: 30,
+                            color: 0x0000ff
+                        },
+                        { 
+                            title: "Products", 
+                            url: "/products", 
+                            content: "Our products emerge from the digital mist",
+                            links: ["/product1", "/product2", "/product3"],
+                            height: 40,
+                            color: 0xff0000
+                        },
+                        { 
+                            title: "Contact", 
+                            url: "/contact", 
+                            content: "Reach out through the fog to connect with us",
+                            links: ["/email", "/phone"],
+                            height: 25,
+                            color: 0xffff00
+                        },
+                        { 
+                            title: "Secret Page", 
+                            url: "/secret", 
+                            content: "You found the hidden content! 🎉",
+                            links: ["/treasure"],
+                            height: 60,
+                            color: 0xff00ff
+                        }
+                    ]
+                };
+            }
+            
+            createContentBuilding(pageData) {
+                const group = new THREE.Group();
+                
+                // Building base
+                const geometry = new THREE.BoxGeometry(20, pageData.height, 20);
+                const material = new THREE.MeshStandardMaterial({ 
+                    color: pageData.color,
+                    emissive: pageData.color,
+                    emissiveIntensity: 0.1,
+                    roughness: 0.3,
+                    metalness: 0.7
+                });
+                const building = new THREE.Mesh(geometry, material);
+                building.position.y = pageData.height / 2;
+                building.castShadow = true;
+                building.receiveShadow = true;
+                building.userData = pageData;
+                group.add(building);
+                
+                // Glowing top
+                const topLight = new THREE.PointLight(pageData.color, 1, 30);
+                topLight.position.y = pageData.height + 5;
+                group.add(topLight);
+                
+                // Floating text (hidden in fog initially)
+                // In real implementation, would use 3D text
+                
+                return group;
+            }
+            
+            createMysteryStructure() {
+                const types = ['pyramid', 'sphere', 'torus', 'octahedron'];
+                const type = types[Math.floor(Math.random() * types.length)];
+                
+                let geometry;
+                switch (type) {
+                    case 'pyramid':
+                        geometry = new THREE.ConeGeometry(5, 10, 4);
+                        break;
+                    case 'sphere':
+                        geometry = new THREE.SphereGeometry(5, 16, 16);
+                        break;
+                    case 'torus':
+                        geometry = new THREE.TorusGeometry(5, 2, 8, 16);
+                        break;
+                    case 'octahedron':
+                        geometry = new THREE.OctahedronGeometry(5);
+                        break;
+                }
+                
+                const material = new THREE.MeshStandardMaterial({
+                    color: new THREE.Color().setHSL(Math.random(), 0.5, 0.5),
+                    emissive: new THREE.Color().setHSL(Math.random(), 1, 0.2),
+                    emissiveIntensity: 0.3,
+                    roughness: Math.random(),
+                    metalness: Math.random()
+                });
+                
+                const mesh = new THREE.Mesh(geometry, material);
+                mesh.position.y = Math.random() * 10 + 5;
+                mesh.rotation.x = Math.random() * Math.PI;
+                mesh.rotation.y = Math.random() * Math.PI;
+                mesh.castShadow = true;
+                
+                return mesh;
+            }
+            
+            createCharacter() {
+                // Character group
+                const characterGroup = new THREE.Group();
+                
+                // Body
+                const bodyGeometry = new THREE.CapsuleGeometry(0.5, 2, 4, 8);
+                const bodyMaterial = new THREE.MeshStandardMaterial({ 
+                    color: 0x00ff00,
+                    emissive: 0x00ff00,
+                    emissiveIntensity: 0.2
+                });
+                const body = new THREE.Mesh(bodyGeometry, bodyMaterial);
+                body.position.y = 1.5;
+                body.castShadow = true;
+                characterGroup.add(body);
+                
+                // Head
+                const headGeometry = new THREE.SphereGeometry(0.4, 16, 16);
+                const headMaterial = new THREE.MeshStandardMaterial({ 
+                    color: 0x00ff00,
+                    emissive: 0x00ff00,
+                    emissiveIntensity: 0.3
+                });
+                const head = new THREE.Mesh(headGeometry, headMaterial);
+                head.position.y = 2.5;
+                head.castShadow = true;
+                characterGroup.add(head);
+                
+                // Eye (glowing)
+                const eyeGeometry = new THREE.SphereGeometry(0.1, 8, 8);
+                const eyeMaterial = new THREE.MeshBasicMaterial({ color: 0xffffff });
+                const eye = new THREE.Mesh(eyeGeometry, eyeMaterial);
+                eye.position.set(0, 2.5, 0.4);
+                characterGroup.add(eye);
+                
+                // Position character
+                characterGroup.position.set(0, 0, 0);
+                
+                this.character = characterGroup;
+                this.scene.add(this.character);
+                
+                // Attach light to character
+                this.characterLight.target = this.character;
+            }
+            
+            setupControls() {
+                if (this.viewMode === 'drone') {
+                    // Drone view (third person)
+                    this.camera.position.set(10, 20, 20);
+                    this.controls = new THREE.OrbitControls(this.camera, this.renderer.domElement);
+                    this.controls.target.copy(this.character.position);
+                    this.controls.enableDamping = true;
+                    this.controls.dampingFactor = 0.05;
+                    this.controls.maxPolarAngle = Math.PI / 2.1;
+                } else {
+                    // First person view
+                    this.camera.position.copy(this.character.position);
+                    this.camera.position.y = 2.5;
+                    this.controls = new THREE.PointerLockControls(this.camera, document.body);
+                    this.scene.add(this.controls.getObject());
+                }
+            }
+            
+            initializeFogMap() {
+                const gridSize = Math.ceil(this.worldSize / this.tileSize);
+                this.fogMap = new Array(gridSize).fill(null).map(() => 
+                    new Array(gridSize).fill(true)
+                );
+                
+                // Reveal starting area
+                this.revealFog(0, 0);
+            }
+            
+            revealFog(worldX, worldZ) {
+                const gridX = Math.floor((worldX + this.worldSize / 2) / this.tileSize);
+                const gridZ = Math.floor((worldZ + this.worldSize / 2) / this.tileSize);
+                
+                const radius = Math.ceil(this.exploreRadius / this.tileSize);
+                
+                for (let x = -radius; x <= radius; x++) {
+                    for (let z = -radius; z <= radius; z++) {
+                        const distance = Math.sqrt(x * x + z * z);
+                        if (distance <= radius) {
+                            const mapX = gridX + x;
+                            const mapZ = gridZ + z;
+                            
+                            if (mapX >= 0 && mapX < this.fogMap.length &&
+                                mapZ >= 0 && mapZ < this.fogMap[0].length) {
+                                if (this.fogMap[mapX][mapZ]) {
+                                    this.fogMap[mapX][mapZ] = false;
+                                    this.exploredTiles.add(`${mapX},${mapZ}`);
+                                }
+                            }
+                        }
+                    }
+                }
+                
+                this.updateFogVisuals();
+                this.checkForDiscoveries();
+            }
+            
+            updateFogVisuals() {
+                // Update fog density based on exploration
+                const exploredPercent = (this.exploredTiles.size / (this.fogMap.length * this.fogMap[0].length)) * 100;
+                document.getElementById('exploredPercent').textContent = exploredPercent.toFixed(1) + '%';
+                
+                // Update scene fog
+                if (this.fogEnabled) {
+                    const fogDensity = 1 - (exploredPercent / 100) * 0.5;
+                    this.scene.fog.near = 10 * fogDensity;
+                    this.scene.fog.far = 100 * (1 + exploredPercent / 100);
+                }
+            }
+            
+            checkForDiscoveries() {
+                // Check if character is near any content buildings
+                this.scene.traverse((object) => {
+                    if (object.userData && object.userData.url) {
+                        const distance = object.position.distanceTo(this.character.position);
+                        if (distance < 15 && !this.discoveredContent.includes(object.userData.url)) {
+                            this.discoverContent(object.userData);
+                        }
+                    }
+                });
+            }
+            
+            discoverContent(pageData) {
+                console.log(`🎉 Discovered: ${pageData.title}`);
+                
+                this.discoveredContent.push(pageData.url);
+                
+                // Update inventory
+                const inventoryList = document.getElementById('inventoryList');
+                const item = document.createElement('div');
+                item.className = 'inventory-item';
+                item.innerHTML = `📄 ${pageData.title} - ${pageData.links.length} links`;
+                item.style.cursor = 'pointer';
+                item.onclick = () => this.showContent(pageData);
+                
+                if (inventoryList.children[0].textContent.includes('Start exploring')) {
+                    inventoryList.innerHTML = '';
+                }
+                inventoryList.appendChild(item);
+                
+                // Update stats
+                document.getElementById('pagesFound').textContent = this.discoveredContent.length;
+                document.getElementById('linksFound').textContent = 
+                    this.websiteData.pages.reduce((total, page) => 
+                        this.discoveredContent.includes(page.url) ? total + page.links.length : total, 0);
+                
+                // Show discovery effect
+                this.showDiscoveryEffect(pageData);
+            }
+            
+            showContent(pageData) {
+                const contentDiv = document.getElementById('discoveredContent');
+                document.getElementById('contentTitle').textContent = pageData.title;
+                document.getElementById('contentBody').textContent = pageData.content;
+                contentDiv.style.display = 'block';
+            }
+            
+            showDiscoveryEffect(pageData) {
+                const indicator = document.getElementById('fogIndicator');
+                indicator.textContent = `🎉 DISCOVERED: ${pageData.title.toUpperCase()} 🎉`;
+                indicator.style.display = 'block';
+                
+                setTimeout(() => {
+                    indicator.style.display = 'none';
+                }, 3000);
+            }
+            
+            setupMinimap() {
+                const canvas = document.getElementById('minimapCanvas');
+                const ctx = canvas.getContext('2d');
+                canvas.width = 200;
+                canvas.height = 200;
+                
+                this.minimapContext = ctx;
+                this.updateMinimap();
+            }
+            
+            updateMinimap() {
+                const ctx = this.minimapContext;
+                const scale = 200 / this.worldSize;
+                
+                // Clear
+                ctx.fillStyle = '#000';
+                ctx.fillRect(0, 0, 200, 200);
+                
+                // Draw explored areas
+                ctx.fillStyle = '#003300';
+                this.exploredTiles.forEach(tile => {
+                    const [x, z] = tile.split(',').map(Number);
+                    ctx.fillRect(
+                        x * this.tileSize * scale,
+                        z * this.tileSize * scale,
+                        this.tileSize * scale,
+                        this.tileSize * scale
+                    );
+                });
+                
+                // Draw character position
+                ctx.fillStyle = '#00ff00';
+                ctx.beginPath();
+                ctx.arc(
+                    (this.character.position.x + this.worldSize / 2) * scale,
+                    (this.character.position.z + this.worldSize / 2) * scale,
+                    3,
+                    0,
+                    Math.PI * 2
+                );
+                ctx.fill();
+                
+                // Draw discovered content
+                ctx.fillStyle = '#ffff00';
+                this.scene.traverse((object) => {
+                    if (object.userData && object.userData.url && 
+                        this.discoveredContent.includes(object.userData.url)) {
+                        ctx.beginPath();
+                        ctx.arc(
+                            (object.position.x + this.worldSize / 2) * scale,
+                            (object.position.z + this.worldSize / 2) * scale,
+                            5,
+                            0,
+                            Math.PI * 2
+                        );
+                        ctx.fill();
+                    }
+                });
+            }
+            
+            setupEventListeners() {
+                window.addEventListener('resize', () => this.onWindowResize());
+                
+                // Movement controls
+                const keys = {};
+                document.addEventListener('keydown', (e) => {
+                    keys[e.key.toLowerCase()] = true;
+                    
+                    if (e.key.toLowerCase() === 'v') this.toggleViewMode();
+                    if (e.key.toLowerCase() === 'f') this.toggleFog();
+                    if (e.key.toLowerCase() === 'r') this.resetPosition();
+                    if (e.key.toLowerCase() === 's') this.toggleSpectatorMode();
+                });
+                
+                document.addEventListener('keyup', (e) => {
+                    keys[e.key.toLowerCase()] = false;
+                });
+                
+                // Character movement
+                this.moveCharacter = () => {
+                    const speed = 0.5;
+                    const moveVector = new THREE.Vector3();
+                    
+                    if (keys['w'] || keys['arrowup']) moveVector.z -= speed;
+                    if (keys['s'] || keys['arrowdown']) moveVector.z += speed;
+                    if (keys['a'] || keys['arrowleft']) moveVector.x -= speed;
+                    if (keys['d'] || keys['arrowright']) moveVector.x += speed;
+                    
+                    if (moveVector.length() > 0) {
+                        if (this.viewMode === 'firstperson') {
+                            moveVector.applyQuaternion(this.camera.quaternion);
+                        }
+                        
+                        this.character.position.add(moveVector);
+                        
+                        // Keep character in bounds
+                        const bound = this.worldSize / 2 - 10;
+                        this.character.position.x = Math.max(-bound, Math.min(bound, this.character.position.x));
+                        this.character.position.z = Math.max(-bound, Math.min(bound, this.character.position.z));
+                        
+                        // Update fog reveal
+                        this.revealFog(this.character.position.x, this.character.position.z);
+                        
+                        // Update position display
+                        const pos = this.character.position;
+                        document.getElementById('playerPos').textContent = 
+                            `${pos.x.toFixed(0)}, ${pos.y.toFixed(0)}, ${pos.z.toFixed(0)}`;
+                    }
+                };
+            }
+            
+            toggleViewMode() {
+                this.viewMode = this.viewMode === 'drone' ? 'firstperson' : 'drone';
+                document.getElementById('viewMode').textContent = 
+                    this.viewMode === 'drone' ? 'DRONE' : 'FIRST PERSON';
+                
+                // Recreate controls
+                if (this.controls) {
+                    if (this.controls.dispose) this.controls.dispose();
+                }
+                
+                this.setupControls();
+            }
+            
+            toggleFog() {
+                this.fogEnabled = !this.fogEnabled;
+                this.scene.fog = this.fogEnabled ? 
+                    new THREE.Fog(0x000000, 10, 100) : null;
+            }
+            
+            resetPosition() {
+                this.character.position.set(0, 0, 0);
+                this.camera.position.set(10, 20, 20);
+                if (this.controls && this.controls.target) {
+                    this.controls.target.copy(this.character.position);
+                }
+            }
+            
+            toggleSpectatorMode() {
+                const spectatorList = document.getElementById('spectatorList');
+                spectatorList.style.display = 
+                    spectatorList.style.display === 'none' ? 'block' : 'none';
+            }
+            
+            onWindowResize() {
+                this.camera.aspect = window.innerWidth / window.innerHeight;
+                this.camera.updateProjectionMatrix();
+                this.renderer.setSize(window.innerWidth, window.innerHeight);
+            }
+            
+            updateLoadingProgress(percent) {
+                document.getElementById('loadingProgress').style.width = percent + '%';
+            }
+            
+            animate() {
+                requestAnimationFrame(() => this.animate());
+                
+                // Update character movement
+                if (this.moveCharacter) this.moveCharacter();
+                
+                // Update character light position
+                this.characterLight.position.copy(this.character.position);
+                this.characterLight.position.y += 10;
+                
+                // Update camera for drone mode
+                if (this.viewMode === 'drone' && this.controls) {
+                    this.controls.target.copy(this.character.position);
+                    this.controls.update();
+                }
+                
+                // Update minimap
+                this.updateMinimap();
+                
+                // Update time
+                const elapsed = Math.floor((Date.now() - this.startTime) / 1000);
+                const minutes = Math.floor(elapsed / 60);
+                const seconds = elapsed % 60;
+                document.getElementById('timeExploring').textContent = 
+                    `${minutes.toString().padStart(2, '0')}:${seconds.toString().padStart(2, '0')}`;
+                
+                // Rotate mystery structures
+                this.scene.traverse((object) => {
+                    if (object.isMesh && !object.parent.userData.url) {
+                        object.rotation.y += 0.01;
+                    }
+                });
+                
+                // Render
+                this.renderer.render(this.scene, this.camera);
+            }
+        }
+        
+        // Global functions
+        function toggleViewMode() {
+            if (window.explorer) window.explorer.toggleViewMode();
+        }
+        
+        function toggleFog() {
+            if (window.explorer) window.explorer.toggleFog();
+        }
+        
+        function resetPosition() {
+            if (window.explorer) window.explorer.resetPosition();
+        }
+        
+        function toggleSpectatorMode() {
+            if (window.explorer) window.explorer.toggleSpectatorMode();
+        }
+        
+        function closeContent() {
+            document.getElementById('discoveredContent').style.display = 'none';
+        }
+        
+        // Initialize the explorer
+        window.addEventListener('load', () => {
+            window.explorer = new FogOfWarExplorer();
+        });
+        
+        console.log('🌫️ FOG OF WAR 3D EXPLORER');
+        console.log('========================');
+        console.log('🎮 Controls:');
+        console.log('   WASD/Arrows - Move character');
+        console.log('   Mouse - Look around (drone mode)');
+        console.log('   V - Toggle view mode');
+        console.log('   F - Toggle fog');
+        console.log('   R - Reset position');
+        console.log('   S - Toggle spectator list');
+        console.log('🌐 Explore the website to reveal content!');
+    </script>
+</body>
+</html>

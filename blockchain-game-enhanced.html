@@ -1,0 +1,1150 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Blockchain Analysis Game - Enhanced with Solidity Recording</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            background: #000;
+            color: #fff;
+            font-family: 'Courier New', monospace;
+            overflow: hidden;
+            height: 100vh;
+        }
+        
+        .game-container {
+            position: relative;
+            width: 100vw;
+            height: 100vh;
+            background: linear-gradient(45deg, #0a0a0a, #1a1a2e, #16213e, #0f0f23);
+            animation: backgroundShift 30s ease-in-out infinite;
+        }
+        
+        @keyframes backgroundShift {
+            0%, 100% { background: linear-gradient(45deg, #0a0a0a, #1a1a2e, #16213e, #0f0f23); }
+            25% { background: linear-gradient(45deg, #1a1a2e, #16213e, #0f0f23, #2d1b69); }
+            50% { background: linear-gradient(45deg, #16213e, #0f0f23, #2d1b69, #0a0a0a); }
+            75% { background: linear-gradient(45deg, #0f0f23, #2d1b69, #0a0a0a, #1a1a2e); }
+        }
+        
+        /* Enhanced HUD with blockchain info */
+        .game-hud {
+            position: absolute;
+            top: 20px;
+            left: 20px;
+            right: 20px;
+            z-index: 1000;
+            display: grid;
+            grid-template-columns: 1fr 1fr 1fr 1fr;
+            gap: 20px;
+        }
+        
+        .hud-panel {
+            background: rgba(0, 0, 0, 0.9);
+            border: 2px solid #00d4ff;
+            border-radius: 10px;
+            padding: 15px;
+            font-size: 12px;
+            position: relative;
+            overflow: hidden;
+        }
+        
+        .hud-panel:before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: -100%;
+            width: 100%;
+            height: 3px;
+            background: linear-gradient(90deg, transparent, #00d4ff, transparent);
+            animation: scan 3s linear infinite;
+        }
+        
+        @keyframes scan {
+            0% { left: -100%; }
+            100% { left: 100%; }
+        }
+        
+        .hud-title {
+            color: #00d4ff;
+            font-weight: bold;
+            margin-bottom: 10px;
+            display: flex;
+            align-items: center;
+            gap: 5px;
+        }
+        
+        .score-item {
+            display: flex;
+            justify-content: space-between;
+            margin: 5px 0;
+            font-size: 11px;
+        }
+        
+        .score-value {
+            color: #4ecdc4;
+            font-weight: bold;
+        }
+        
+        .blockchain-indicator {
+            width: 8px;
+            height: 8px;
+            border-radius: 50%;
+            background: #ff6b6b;
+            display: inline-block;
+            margin-left: 5px;
+        }
+        
+        .blockchain-indicator.recording {
+            background: #4ecdc4;
+            animation: pulse 1s infinite;
+        }
+        
+        @keyframes pulse {
+            0%, 100% { opacity: 1; transform: scale(1); }
+            50% { opacity: 0.5; transform: scale(1.2); }
+        }
+        
+        /* Game Arena - same as before but with blockchain effects */
+        .game-arena {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            width: 90vw;
+            height: 70vh;
+            border: 3px solid #00d4ff;
+            border-radius: 20px;
+            background: radial-gradient(ellipse at center, rgba(0, 212, 255, 0.1), transparent);
+            overflow: hidden;
+        }
+        
+        /* Service nodes with blockchain connection status */
+        .service-node {
+            position: absolute;
+            width: 120px;
+            height: 120px;
+            border-radius: 50%;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            cursor: pointer;
+            transition: all 0.3s;
+            animation: pulse 3s ease-in-out infinite;
+            user-select: none;
+        }
+        
+        .service-node:hover {
+            transform: scale(1.2);
+            z-index: 100;
+        }
+        
+        .service-node.blockchain-connected {
+            box-shadow: 0 0 40px currentColor, inset 0 0 20px rgba(255, 255, 255, 0.1);
+        }
+        
+        .service-node.meta-layer {
+            background: radial-gradient(circle, #00d4ff, #0088cc);
+            border: 4px solid #00d4ff;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            width: 150px;
+            height: 150px;
+            z-index: 50;
+        }
+        
+        .service-node.monero {
+            background: radial-gradient(circle, #ff6600, #cc4400);
+            border: 4px solid #ff6600;
+            top: 20%;
+            left: 25%;
+        }
+        
+        .service-node.blamechain {
+            background: radial-gradient(circle, #4ecdc4, #2a9d8f);
+            border: 4px solid #4ecdc4;
+            top: 70%;
+            right: 25%;
+        }
+        
+        .service-node.handshake {
+            background: radial-gradient(circle, #6c5ce7, #5a4fcf);
+            border: 4px solid #6c5ce7;
+            bottom: 20%;
+            left: 20%;
+        }
+        
+        .service-name {
+            font-size: 12px;
+            font-weight: bold;
+            text-align: center;
+            margin-bottom: 5px;
+        }
+        
+        .service-status {
+            font-size: 10px;
+            opacity: 0.8;
+        }
+        
+        .blockchain-status {
+            font-size: 8px;
+            color: #4ecdc4;
+            margin-top: 2px;
+        }
+        
+        /* Enhanced data packets with blockchain confirmation */
+        .data-packet {
+            position: absolute;
+            width: 20px;
+            height: 20px;
+            border-radius: 50%;
+            background: #00d4ff;
+            box-shadow: 0 0 15px #00d4ff;
+            animation: packetMove 3s linear infinite;
+            z-index: 20;
+        }
+        
+        .data-packet.blockchain-bound {
+            border: 2px solid #fff;
+            animation: packetMoveToBlockchain 4s linear infinite;
+        }
+        
+        @keyframes packetMoveToBlockchain {
+            0% { opacity: 1; transform: scale(1); }
+            25% { opacity: 0.8; transform: scale(1.2); }
+            50% { opacity: 0.6; transform: scale(1.4); }
+            75% { opacity: 0.4; transform: scale(1.6); }
+            100% { opacity: 0; transform: scale(2); }
+        }
+        
+        /* Blockchain transaction effects */
+        .blockchain-transaction {
+            position: absolute;
+            width: 50px;
+            height: 50px;
+            border: 3px solid #00d4ff;
+            border-radius: 50%;
+            top: 10px;
+            right: 10px;
+            animation: blockchainConfirm 2s ease-out;
+            pointer-events: none;
+        }
+        
+        @keyframes blockchainConfirm {
+            0% { 
+                transform: scale(0) rotate(0deg);
+                opacity: 1;
+            }
+            50% { 
+                transform: scale(1.5) rotate(180deg);
+                opacity: 0.8;
+            }
+            100% { 
+                transform: scale(3) rotate(360deg);
+                opacity: 0;
+            }
+        }
+        
+        /* Enhanced controls with blockchain actions */
+        .game-controls {
+            position: absolute;
+            top: 50%;
+            right: 20px;
+            transform: translateY(-50%);
+            display: flex;
+            flex-direction: column;
+            gap: 15px;
+        }
+        
+        .control-btn {
+            width: 60px;
+            height: 60px;
+            border-radius: 50%;
+            border: 2px solid #00d4ff;
+            background: rgba(0, 212, 255, 0.2);
+            color: #00d4ff;
+            font-size: 20px;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            transition: all 0.3s;
+            position: relative;
+        }
+        
+        .control-btn:hover {
+            background: rgba(0, 212, 255, 0.4);
+            transform: scale(1.1);
+            box-shadow: 0 0 20px #00d4ff;
+        }
+        
+        .control-btn.blockchain-action {
+            border-color: #4ecdc4;
+            color: #4ecdc4;
+        }
+        
+        .control-btn.blockchain-action:hover {
+            background: rgba(78, 205, 196, 0.4);
+            box-shadow: 0 0 20px #4ecdc4;
+        }
+        
+        /* Enhanced narrative with blockchain confirmation */
+        .narrative-display {
+            position: absolute;
+            bottom: 20px;
+            left: 50%;
+            transform: translateX(-50%);
+            width: 80%;
+            background: rgba(0, 0, 0, 0.95);
+            border: 2px solid #00d4ff;
+            border-radius: 15px;
+            padding: 20px;
+            max-height: 200px;
+            overflow-y: auto;
+        }
+        
+        .narrative-entry {
+            margin: 10px 0;
+            padding: 10px;
+            background: rgba(0, 212, 255, 0.1);
+            border-left: 3px solid #00d4ff;
+            border-radius: 5px;
+            animation: narrativeAppear 0.5s ease-out;
+            position: relative;
+        }
+        
+        .narrative-entry.blockchain-confirmed {
+            border-left-color: #4ecdc4;
+            background: rgba(78, 205, 196, 0.1);
+        }
+        
+        .narrative-entry.blockchain-confirmed:after {
+            content: '⛓️';
+            position: absolute;
+            top: 5px;
+            right: 10px;
+            color: #4ecdc4;
+            font-size: 12px;
+        }
+        
+        @keyframes narrativeAppear {
+            from { opacity: 0; transform: translateY(20px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+        
+        .narrative-time {
+            font-size: 10px;
+            color: #666;
+            margin-bottom: 5px;
+            display: flex;
+            justify-content: space-between;
+        }
+        
+        .narrative-text {
+            font-style: italic;
+            line-height: 1.4;
+        }
+        
+        .blockchain-hash {
+            font-size: 8px;
+            color: #4ecdc4;
+            font-family: monospace;
+        }
+        
+        /* Session initialization */
+        .session-panel {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            background: rgba(0, 0, 0, 0.95);
+            border: 3px solid #00d4ff;
+            border-radius: 20px;
+            padding: 40px;
+            text-align: center;
+            z-index: 2000;
+        }
+        
+        .session-panel.hidden {
+            display: none;
+        }
+        
+        .session-title {
+            font-size: 24px;
+            color: #00d4ff;
+            margin-bottom: 20px;
+        }
+        
+        .session-input {
+            background: rgba(0, 212, 255, 0.1);
+            border: 2px solid #00d4ff;
+            border-radius: 10px;
+            padding: 15px;
+            color: #fff;
+            font-family: 'Courier New', monospace;
+            font-size: 14px;
+            width: 300px;
+            margin: 10px;
+        }
+        
+        .session-btn {
+            background: linear-gradient(45deg, #00d4ff, #4ecdc4);
+            border: none;
+            color: #000;
+            padding: 15px 30px;
+            margin: 10px;
+            cursor: pointer;
+            border-radius: 10px;
+            font-size: 16px;
+            font-weight: bold;
+            font-family: 'Courier New', monospace;
+            transition: all 0.3s;
+        }
+        
+        .session-btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 5px 20px rgba(0, 212, 255, 0.5);
+        }
+        
+        /* Loading states */
+        .loading {
+            text-align: center;
+            padding: 20px;
+            color: #666;
+        }
+        
+        .loading:after {
+            content: '';
+            display: inline-block;
+            width: 20px;
+            height: 20px;
+            border: 2px solid rgba(0, 212, 255, 0.3);
+            border-top: 2px solid #00d4ff;
+            border-radius: 50%;
+            animation: spin 1s linear infinite;
+            margin-left: 10px;
+        }
+        
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+    </style>
+</head>
+<body>
+    <div class="game-container">
+        <!-- Session Initialization Panel -->
+        <div class="session-panel" id="sessionPanel">
+            <div class="session-title">🎮 BLOCKCHAIN GAME SESSION</div>
+            <div style="margin-bottom: 20px; color: #aaa; font-size: 14px;">
+                All game interactions will be recorded immutably on blockchain
+            </div>
+            <input type="text" class="session-input" id="playerAddress" placeholder="Player Address (optional)">
+            <br>
+            <button class="session-btn" onclick="startBlockchainSession()">🚀 Start Session</button>
+            <button class="session-btn" onclick="deployContract()" style="background: linear-gradient(45deg, #4ecdc4, #45b7d1);">📄 Deploy Contract</button>
+            <div class="loading" id="sessionLoading" style="display: none;">Initializing blockchain session...</div>
+        </div>
+        
+        <!-- Enhanced Game HUD -->
+        <div class="game-hud">
+            <div class="hud-panel">
+                <div class="hud-title">🎮 GAME STATUS</div>
+                <div class="score-item">
+                    <span>Session ID:</span>
+                    <span class="score-value" id="sessionId">-</span>
+                </div>
+                <div class="score-item">
+                    <span>Level:</span>
+                    <span class="score-value" id="gameLevel">1</span>
+                </div>
+                <div class="score-item">
+                    <span>Score:</span>
+                    <span class="score-value" id="gameScore">0</span>
+                </div>
+                <div class="score-item">
+                    <span>Discoveries:</span>
+                    <span class="score-value" id="totalDiscoveries">0</span>
+                </div>
+            </div>
+            
+            <div class="hud-panel">
+                <div class="hud-title">⛓️ BLOCKCHAIN STATUS</div>
+                <div class="score-item">
+                    <span>Contract:</span>
+                    <span class="score-value" id="contractStatus">Not Deployed</span>
+                </div>
+                <div class="score-item">
+                    <span>Recording:</span>
+                    <span class="score-value" id="recordingStatus">Inactive</span>
+                    <span class="blockchain-indicator" id="recordingIndicator"></span>
+                </div>
+                <div class="score-item">
+                    <span>TX Count:</span>
+                    <span class="score-value" id="txCount">0</span>
+                </div>
+                <div class="score-item">
+                    <span>Gas Used:</span>
+                    <span class="score-value" id="gasUsed">0</span>
+                </div>
+            </div>
+            
+            <div class="hud-panel">
+                <div class="hud-title">📊 LIVE SERVICES</div>
+                <div class="score-item">
+                    <span>Meta Layer:</span>
+                    <span class="score-value" id="metaStatus">Inactive</span>
+                </div>
+                <div class="score-item">
+                    <span>Monero Explorer:</span>
+                    <span class="score-value" id="moneroStatus">Inactive</span>
+                </div>
+                <div class="score-item">
+                    <span>BlameChain:</span>
+                    <span class="score-value" id="blamechainStatus">Inactive</span>
+                </div>
+                <div class="score-item">
+                    <span>Handshake:</span>
+                    <span class="score-value" id="handshakeStatus">Inactive</span>
+                </div>
+            </div>
+            
+            <div class="hud-panel">
+                <div class="hud-title">🧠 META CONSCIOUSNESS</div>
+                <div class="score-item">
+                    <span>Level:</span>
+                    <span class="score-value" id="consciousnessLevel">Awakening</span>
+                </div>
+                <div class="score-item">
+                    <span>Integrity:</span>
+                    <span class="score-value" id="systemIntegrity">0%</span>
+                </div>
+                <div class="score-item">
+                    <span>On-Chain Events:</span>
+                    <span class="score-value" id="onChainEvents">0</span>
+                </div>
+            </div>
+        </div>
+        
+        <!-- Game Arena -->
+        <div class="game-arena" id="gameArena">
+            <!-- Service nodes will be dynamically created -->
+        </div>
+        
+        <!-- Enhanced Game Controls -->
+        <div class="game-controls">
+            <div class="control-btn" onclick="startDiscovery()" title="Start Discovery">
+                🔍
+            </div>
+            <div class="control-btn" onclick="boostAnalysis()" title="Boost Analysis">
+                ⚡
+            </div>
+            <div class="control-btn blockchain-action" onclick="recordStateSnapshot()" title="Record Blockchain Snapshot">
+                📸
+            </div>
+            <div class="control-btn blockchain-action" onclick="viewBlockchainData()" title="View Blockchain Data">
+                ⛓️
+            </div>
+            <div class="control-btn" onclick="viewNarrative()" title="View Narrative">
+                📖
+            </div>
+            <div class="control-btn" onclick="resetGame()" title="Reset Game">
+                🔄
+            </div>
+        </div>
+        
+        <!-- Enhanced Narrative Display -->
+        <div class="narrative-display" id="narrativeDisplay">
+            <div class="narrative-entry">
+                <div class="narrative-time">
+                    <span>Game Start</span>
+                    <span class="blockchain-hash">Waiting for blockchain...</span>
+                </div>
+                <div class="narrative-text">"Welcome to the Enhanced Blockchain Analysis Game! All interactions will be recorded immutably on-chain..."</div>
+            </div>
+        </div>
+    </div>
+    
+    <script>
+        // Enhanced game state with blockchain integration
+        let gameState = {
+            sessionId: null,
+            playerAddress: null,
+            level: 1,
+            score: 0,
+            discoveries: 0,
+            agreements: 0,
+            dataPackets: 0,
+            onChainEvents: 0,
+            txCount: 0,
+            gasUsed: 0,
+            services: new Map(),
+            isRecording: false,
+            contractDeployed: false
+        };
+        
+        // WebSocket connections
+        let websockets = {
+            meta: null,
+            monero: null,
+            blamechain: null,
+            handshake: null,
+            gameBridge: null
+        };
+        
+        const bridgeAPI = 'http://localhost:48017';
+        
+        // Initialize enhanced game
+        async function initEnhancedGame() {
+            console.log('🎮 Initializing Enhanced Blockchain Game...');
+            
+            // Check if contract is deployed
+            await checkContractStatus();
+            
+            // Connect to game broadcast bridge
+            connectToGameBridge();
+            
+            // Create service nodes
+            createServiceNodes();
+            
+            // Start update loop
+            setInterval(updateDisplay, 1000);
+        }
+        
+        // Check blockchain contract status
+        async function checkContractStatus() {
+            try {
+                const response = await fetch(`${bridgeAPI}/api/contract-status`);
+                const status = await response.json();
+                
+                gameState.contractDeployed = status.contractDeployed;
+                document.getElementById('contractStatus').textContent = 
+                    status.contractDeployed ? 'Deployed' : 'Not Deployed';
+                    
+                if (status.contractDeployed) {
+                    document.getElementById('contractStatus').style.color = '#4ecdc4';
+                }
+                
+            } catch (error) {
+                console.error('Failed to check contract status:', error);
+            }
+        }
+        
+        // Deploy blockchain contract
+        async function deployContract() {
+            const loading = document.getElementById('sessionLoading');
+            loading.style.display = 'block';
+            loading.textContent = 'Deploying GameBroadcastRegistry contract...';
+            
+            try {
+                const response = await fetch(`${bridgeAPI}/api/deploy-game-contract`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' }
+                });
+                
+                const result = await response.json();
+                
+                if (result.success) {
+                    gameState.contractDeployed = true;
+                    document.getElementById('contractStatus').textContent = 'Deployed';
+                    document.getElementById('contractStatus').style.color = '#4ecdc4';
+                    
+                    addNarrative(`📄 GameBroadcastRegistry deployed at ${result.contractAddress.substring(0, 10)}...`, result.contractAddress.substring(0, 16));
+                    
+                    // Create blockchain confirmation effect
+                    createBlockchainEffect();
+                    
+                } else {
+                    alert('Contract deployment failed: ' + result.error);
+                }
+                
+            } catch (error) {
+                alert('Deployment error: ' + error.message);
+            } finally {
+                loading.style.display = 'none';
+            }
+        }
+        
+        // Start blockchain-recorded game session
+        async function startBlockchainSession() {
+            if (!gameState.contractDeployed) {
+                alert('Please deploy the contract first!');
+                return;
+            }
+            
+            const playerInput = document.getElementById('playerAddress');
+            const playerAddress = playerInput.value.trim();
+            
+            const loading = document.getElementById('sessionLoading');
+            loading.style.display = 'block';
+            loading.textContent = 'Starting blockchain game session...';
+            
+            try {
+                const response = await fetch(`${bridgeAPI}/api/start-game-session`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ playerAddress: playerAddress || null })
+                });
+                
+                const result = await response.json();
+                
+                if (result.success) {
+                    gameState.sessionId = result.sessionId;
+                    gameState.playerAddress = result.playerAddress;
+                    gameState.isRecording = true;
+                    
+                    // Hide session panel
+                    document.getElementById('sessionPanel').classList.add('hidden');
+                    
+                    // Update display
+                    document.getElementById('sessionId').textContent = result.sessionId;
+                    document.getElementById('recordingStatus').textContent = 'Active';
+                    document.getElementById('recordingIndicator').classList.add('recording');
+                    
+                    // Add narrative
+                    addNarrative(`🎮 Blockchain game session started! Session ID: ${result.sessionId}`, result.transactionHash.substring(0, 16));
+                    
+                    // Start connecting to analysis services
+                    await connectToAnalysisServices();
+                    
+                    // Create blockchain confirmation effect
+                    createBlockchainEffect();
+                    
+                } else {
+                    alert('Session start failed: ' + result.error);
+                }
+                
+            } catch (error) {
+                alert('Session error: ' + error.message);
+            } finally {
+                loading.style.display = 'none';
+            }
+        }
+        
+        // Connect to game broadcast bridge
+        function connectToGameBridge() {
+            websockets.gameBridge = new WebSocket('ws://localhost:48018');
+            
+            websockets.gameBridge.onopen = () => {
+                console.log('🔗 Connected to Game Broadcast Bridge');
+                websockets.gameBridge.send(JSON.stringify({ type: 'subscribe_to_broadcasts' }));
+            };
+            
+            websockets.gameBridge.onmessage = (event) => {
+                const data = JSON.parse(event.data);
+                handleBroadcastBridgeMessage(data);
+            };
+            
+            websockets.gameBridge.onerror = (error) => {
+                console.error('Game Bridge WebSocket error:', error);
+            };
+        }
+        
+        // Handle messages from broadcast bridge
+        function handleBroadcastBridgeMessage(data) {
+            switch (data.type) {
+                case 'interaction_recorded':
+                    gameState.onChainEvents++;
+                    gameState.txCount++;
+                    createBlockchainEffect();
+                    addNarrative(`⛓️ Interaction recorded on blockchain: ${data.serviceName}`, 'blockchain');
+                    break;
+                    
+                case 'data_packet_recorded':
+                    gameState.onChainEvents++;
+                    gameState.txCount++;
+                    spawnBlockchainPacket(data.fromService, data.toService);
+                    break;
+                    
+                case 'narrative_recorded':
+                    gameState.onChainEvents++;
+                    gameState.txCount++;
+                    updateNarrativeWithBlockchain(data.narrative);
+                    break;
+            }
+        }
+        
+        // Connect to analysis services
+        async function connectToAnalysisServices() {
+            const services = [
+                { name: 'meta', url: 'ws://localhost:48016', display: 'Meta Layer' },
+                { name: 'monero', url: 'ws://localhost:48014', display: 'Monero Explorer' },
+                { name: 'blamechain', url: 'ws://localhost:48012', display: 'BlameChain' },
+                { name: 'handshake', url: 'ws://localhost:48010', display: 'Handshake Layer' }
+            ];
+            
+            services.forEach(service => {
+                try {
+                    const ws = new WebSocket(service.url);
+                    
+                    ws.onopen = () => {
+                        console.log(`🔗 Connected to ${service.display}`);
+                        updateServiceStatus(service.name, 'Active');
+                        websockets[service.name] = ws;
+                        
+                        // Mark service node as blockchain connected
+                        const node = document.querySelector(`.service-node.${service.name}`);
+                        if (node) {
+                            node.classList.add('blockchain-connected');
+                        }
+                    };
+                    
+                    ws.onmessage = (event) => {
+                        const data = JSON.parse(event.data);
+                        handleServiceMessage(service.name, data);
+                    };
+                    
+                    ws.onerror = () => {
+                        updateServiceStatus(service.name, 'Error');
+                    };
+                    
+                } catch (error) {
+                    console.log(`${service.display} not available`);
+                    updateServiceStatus(service.name, 'Unavailable');
+                }
+            });
+        }
+        
+        // Handle service messages with blockchain recording
+        async function handleServiceMessage(serviceName, data) {
+            // Record interaction on blockchain
+            if (gameState.isRecording && gameState.sessionId) {
+                try {
+                    await fetch(`${bridgeAPI}/api/record-interaction`, {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({
+                            sessionId: gameState.sessionId,
+                            playerAddress: gameState.playerAddress,
+                            serviceName: serviceName,
+                            interactionType: data.type || 'message',
+                            scoreGained: 25,
+                            additionalData: JSON.stringify(data)
+                        })
+                    });
+                } catch (error) {
+                    console.error('Failed to record interaction:', error);
+                }
+            }
+            
+            // Handle specific message types
+            if (data.type === 'narrative_update') {
+                addNarrative(`🧠 ${serviceName}: "${data.narrative?.text || data.text}"`, 'pending');
+                spawnDataPacket(serviceName, 'blockchain');
+                gameState.score += 50;
+            }
+            
+            if (data.type === 'discovery_recorded') {
+                gameState.discoveries++;
+                gameState.score += 75;
+                createDiscoveryEffect('50%', '50%');
+            }
+        }
+        
+        // Create service nodes
+        function createServiceNodes() {
+            const arena = document.getElementById('gameArena');
+            
+            const nodes = [
+                { class: 'meta-layer', name: 'Meta Layer', status: 'Coordinating', left: '50%', top: '50%' },
+                { class: 'monero', name: 'Monero Explorer', status: 'Analyzing', left: '25%', top: '20%' },
+                { class: 'blamechain', name: 'BlameChain', status: 'Recording', left: '75%', top: '70%' },
+                { class: 'handshake', name: 'Handshake Layer', status: 'Discovering', left: '20%', top: '80%' }
+            ];
+            
+            nodes.forEach(nodeData => {
+                const node = document.createElement('div');
+                node.className = `service-node ${nodeData.class}`;
+                node.style.left = nodeData.left;
+                node.style.top = nodeData.top;
+                node.innerHTML = `
+                    <div class="service-name">${nodeData.name}</div>
+                    <div class="service-status">${nodeData.status}</div>
+                    <div class="blockchain-status">Blockchain Ready</div>
+                `;
+                
+                node.onclick = () => nodeClicked(nodeData.class, nodeData.name);
+                
+                arena.appendChild(node);
+                gameState.services.set(nodeData.class, node);
+            });
+        }
+        
+        // Enhanced node click with blockchain recording
+        async function nodeClicked(nodeType, nodeName) {
+            if (!gameState.isRecording) return;
+            
+            const node = gameState.services.get(nodeType);
+            if (!node) return;
+            
+            // Create click effect
+            createDiscoveryEffect(node.style.left, node.style.top);
+            
+            // Record interaction on blockchain
+            try {
+                await fetch(`${bridgeAPI}/api/record-interaction`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        sessionId: gameState.sessionId,
+                        playerAddress: gameState.playerAddress,
+                        serviceName: nodeName,
+                        interactionType: 'node_click',
+                        scoreGained: 10,
+                        additionalData: `Clicked ${nodeName} node`
+                    })
+                });
+                
+                gameState.score += 10;
+                addNarrative(`🎯 Clicked ${nodeName} - Interaction recorded on blockchain!`, 'blockchain');
+                
+            } catch (error) {
+                console.error('Failed to record node click:', error);
+            }
+        }
+        
+        // Enhanced game controls with blockchain integration
+        
+        async function startDiscovery() {
+            if (!gameState.isRecording) return;
+            
+            addNarrative("🔍 Player initiated discovery sequence - Recording on blockchain!");
+            
+            try {
+                await fetch(`${bridgeAPI}/api/record-discovery`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        sessionId: gameState.sessionId,
+                        playerAddress: gameState.playerAddress,
+                        servicesDiscovered: ['meta-layer', 'monero-explorer', 'blamechain', 'handshake-layer'],
+                        totalScore: gameState.score + 100
+                    })
+                });
+                
+                gameState.score += 100;
+                createBlockchainEffect();
+                
+            } catch (error) {
+                console.error('Failed to record discovery:', error);
+            }
+        }
+        
+        async function recordStateSnapshot() {
+            if (!gameState.isRecording) return;
+            
+            try {
+                await fetch(`${bridgeAPI}/api/snapshot-state`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        sessionId: gameState.sessionId,
+                        level: gameState.level,
+                        score: gameState.score,
+                        discoveries: gameState.discoveries,
+                        agreements: gameState.agreements,
+                        dataPackets: gameState.dataPackets,
+                        consciousnessLevel: document.getElementById('consciousnessLevel').textContent,
+                        systemIntegrity: parseInt(document.getElementById('systemIntegrity').textContent)
+                    })
+                });
+                
+                addNarrative("📸 Game state snapshot recorded on blockchain!", 'blockchain');
+                createBlockchainEffect();
+                
+            } catch (error) {
+                console.error('Failed to record snapshot:', error);
+            }
+        }
+        
+        async function viewBlockchainData() {
+            if (!gameState.sessionId) return;
+            
+            try {
+                const response = await fetch(`${bridgeAPI}/api/session-broadcasts/${gameState.sessionId}`);
+                const data = await response.json();
+                
+                alert(`Blockchain Data for Session ${gameState.sessionId}:\n\n` +
+                      `Total Broadcasts: ${data.broadcasts.length}\n` +
+                      `Latest Event: ${data.broadcasts[data.broadcasts.length - 1]?.eventType || 'None'}\n` +
+                      `View full data in browser console.`);
+                      
+                console.log('Session Blockchain Data:', data);
+                
+            } catch (error) {
+                alert('Failed to fetch blockchain data: ' + error.message);
+            }
+        }
+        
+        // Visual effects
+        
+        function createBlockchainEffect() {
+            const arena = document.getElementById('gameArena');
+            const effect = document.createElement('div');
+            effect.className = 'blockchain-transaction';
+            
+            arena.appendChild(effect);
+            
+            setTimeout(() => {
+                effect.remove();
+            }, 2000);
+        }
+        
+        function createDiscoveryEffect(left, top) {
+            const arena = document.getElementById('gameArena');
+            const effect = document.createElement('div');
+            effect.className = 'discovery-effect';
+            effect.style.left = left;
+            effect.style.top = top;
+            effect.style.position = 'absolute';
+            effect.style.width = '200px';
+            effect.style.height = '200px';
+            effect.style.border = '3px solid #00d4ff';
+            effect.style.borderRadius = '50%';
+            effect.style.animation = 'discoveryPulse 1s ease-out';
+            effect.style.pointerEvents = 'none';
+            
+            arena.appendChild(effect);
+            
+            setTimeout(() => {
+                effect.remove();
+            }, 1000);
+        }
+        
+        function spawnDataPacket(from, to) {
+            const arena = document.getElementById('gameArena');
+            const packet = document.createElement('div');
+            packet.className = `data-packet ${from}`;
+            
+            if (to === 'blockchain') {
+                packet.classList.add('blockchain-bound');
+            }
+            
+            // Position and animate packet
+            packet.style.left = Math.random() * 80 + 10 + '%';
+            packet.style.top = Math.random() * 80 + 10 + '%';
+            
+            arena.appendChild(packet);
+            
+            setTimeout(() => {
+                packet.remove();
+            }, 4000);
+            
+            gameState.dataPackets++;
+        }
+        
+        function spawnBlockchainPacket(fromService, toService) {
+            spawnDataPacket(fromService, 'blockchain');
+            createBlockchainEffect();
+        }
+        
+        // Enhanced narrative functions
+        
+        function addNarrative(text, hash = 'pending') {
+            const display = document.getElementById('narrativeDisplay');
+            const entry = document.createElement('div');
+            entry.className = 'narrative-entry';
+            
+            if (hash === 'blockchain') {
+                entry.classList.add('blockchain-confirmed');
+            }
+            
+            entry.innerHTML = `
+                <div class="narrative-time">
+                    <span>${new Date().toLocaleTimeString()}</span>
+                    <span class="blockchain-hash">${hash}</span>
+                </div>
+                <div class="narrative-text">"${text}"</div>
+            `;
+            
+            display.appendChild(entry);
+            
+            // Keep only last 8 entries
+            while (display.children.length > 8) {
+                display.removeChild(display.firstChild);
+            }
+            
+            display.scrollTop = display.scrollHeight;
+        }
+        
+        function updateNarrativeWithBlockchain(narrativeText) {
+            const entries = document.querySelectorAll('.narrative-entry');
+            const lastEntry = entries[entries.length - 1];
+            
+            if (lastEntry && lastEntry.textContent.includes(narrativeText)) {
+                lastEntry.classList.add('blockchain-confirmed');
+                const hashSpan = lastEntry.querySelector('.blockchain-hash');
+                if (hashSpan) {
+                    hashSpan.textContent = 'Confirmed ⛓️';
+                }
+            }
+        }
+        
+        // Update service status
+        function updateServiceStatus(service, status) {
+            const statusMap = {
+                meta: 'metaStatus',
+                monero: 'moneroStatus',
+                blamechain: 'blamechainStatus',
+                handshake: 'handshakeStatus'
+            };
+            
+            const element = document.getElementById(statusMap[service]);
+            if (element) {
+                element.textContent = status;
+                element.style.color = status === 'Active' ? '#4ecdc4' : '#666';
+            }
+        }
+        
+        // Update display
+        function updateDisplay() {
+            document.getElementById('gameLevel').textContent = gameState.level;
+            document.getElementById('gameScore').textContent = gameState.score;
+            document.getElementById('totalDiscoveries').textContent = gameState.discoveries;
+            document.getElementById('txCount').textContent = gameState.txCount;
+            document.getElementById('onChainEvents').textContent = gameState.onChainEvents;
+            
+            // Level progression
+            const newLevel = Math.floor(gameState.score / 1000) + 1;
+            if (newLevel > gameState.level) {
+                gameState.level = newLevel;
+                addNarrative(`🎉 Level Up! Reached level ${newLevel}!`, 'blockchain');
+            }
+            
+            // Update consciousness level
+            const consciousness = ['Awakening', 'Aware', 'Analyzing', 'Coordinating', 'Transcendent'];
+            const level = Math.min(Math.floor(gameState.agreements / 2), consciousness.length - 1);
+            document.getElementById('consciousnessLevel').textContent = consciousness[level];
+        }
+        
+        // Utility functions
+        function boostAnalysis() {
+            if (gameState.isRecording) {
+                addNarrative("⚡ Analysis boost activated! Recording boost on blockchain!", 'blockchain');
+                gameState.score += 50;
+            }
+        }
+        
+        function viewNarrative() {
+            const display = document.getElementById('narrativeDisplay');
+            display.style.maxHeight = display.style.maxHeight === '400px' ? '200px' : '400px';
+        }
+        
+        function resetGame() {
+            if (confirm('Reset the game? This will end the current blockchain session.')) {
+                location.reload();
+            }
+        }
+        
+        // Initialize game on load
+        window.onload = initEnhancedGame;
+    </script>
+</body>
+</html>

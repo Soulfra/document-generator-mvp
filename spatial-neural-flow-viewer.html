@@ -1,0 +1,914 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Neural Flow Viewer - Spatial Story Processing</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Courier New', monospace;
+            background: #0a0a0a;
+            color: #00ff00;
+            overflow: hidden;
+        }
+
+        .container {
+            position: relative;
+            width: 100vw;
+            height: 100vh;
+            display: flex;
+            flex-direction: column;
+        }
+
+        .header {
+            height: 60px;
+            background: rgba(0, 0, 0, 0.9);
+            border-bottom: 2px solid #00ff00;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: 0 20px;
+            z-index: 1000;
+        }
+
+        .title {
+            font-size: 18px;
+            font-weight: bold;
+            color: #00ff00;
+        }
+
+        .controls {
+            display: flex;
+            gap: 15px;
+            align-items: center;
+        }
+
+        .btn {
+            background: #001100;
+            border: 1px solid #00ff00;
+            color: #00ff00;
+            padding: 8px 16px;
+            font-family: inherit;
+            font-size: 12px;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+
+        .btn:hover {
+            background: #00ff00;
+            color: #000;
+        }
+
+        .btn.active {
+            background: #00ff00;
+            color: #000;
+        }
+
+        .speed-control {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .speed-display {
+            min-width: 40px;
+            text-align: center;
+        }
+
+        .main-viewer {
+            flex: 1;
+            position: relative;
+            background: #000;
+            overflow: hidden;
+        }
+
+        .canvas-container {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+        }
+
+        #neuralCanvas {
+            background: #000;
+            cursor: crosshair;
+        }
+
+        .layer-labels {
+            position: absolute;
+            left: 0;
+            top: 0;
+            width: 200px;
+            height: 100%;
+            background: rgba(0, 0, 0, 0.9);
+            border-right: 1px solid #00ff00;
+            z-index: 100;
+            padding: 20px 10px;
+        }
+
+        .layer {
+            height: calc((100% - 40px) / 8);
+            display: flex;
+            align-items: center;
+            padding: 5px;
+            border-bottom: 1px solid #333;
+            font-size: 11px;
+        }
+
+        .layer-icon {
+            margin-right: 8px;
+            font-size: 14px;
+        }
+
+        .layer-name {
+            flex: 1;
+        }
+
+        .layer-status {
+            width: 8px;
+            height: 8px;
+            border-radius: 50%;
+            margin-left: 5px;
+        }
+
+        .status-healthy { background: #00ff00; }
+        .status-degraded { background: #ffff00; }
+        .status-critical { background: #ff0000; }
+
+        .metrics-panel {
+            position: absolute;
+            right: 0;
+            top: 0;
+            width: 250px;
+            height: 100%;
+            background: rgba(0, 0, 0, 0.9);
+            border-left: 1px solid #00ff00;
+            z-index: 100;
+            padding: 20px;
+            overflow-y: auto;
+        }
+
+        .metric {
+            margin-bottom: 15px;
+            padding-bottom: 10px;
+            border-bottom: 1px solid #333;
+        }
+
+        .metric-label {
+            font-size: 11px;
+            color: #888;
+            margin-bottom: 3px;
+        }
+
+        .metric-value {
+            font-size: 14px;
+            font-weight: bold;
+        }
+
+        .metric-bar {
+            width: 100%;
+            height: 4px;
+            background: #333;
+            margin-top: 5px;
+            border-radius: 2px;
+            overflow: hidden;
+        }
+
+        .metric-fill {
+            height: 100%;
+            transition: width 0.3s ease;
+        }
+
+        .story-input {
+            position: absolute;
+            bottom: 20px;
+            left: 220px;
+            right: 270px;
+            height: 100px;
+            background: rgba(0, 0, 0, 0.9);
+            border: 1px solid #00ff00;
+            border-radius: 5px;
+            z-index: 100;
+        }
+
+        .story-textarea {
+            width: 100%;
+            height: 70px;
+            background: transparent;
+            border: none;
+            color: #00ff00;
+            font-family: inherit;
+            font-size: 12px;
+            padding: 10px;
+            resize: none;
+            outline: none;
+        }
+
+        .story-controls {
+            height: 30px;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: 0 10px;
+            border-top: 1px solid #333;
+        }
+
+        .packet-legend {
+            position: absolute;
+            top: 20px;
+            left: 220px;
+            right: 270px;
+            height: 40px;
+            background: rgba(0, 0, 0, 0.8);
+            border: 1px solid #333;
+            border-radius: 3px;
+            display: flex;
+            align-items: center;
+            padding: 0 15px;
+            gap: 20px;
+            font-size: 11px;
+        }
+
+        .legend-item {
+            display: flex;
+            align-items: center;
+            gap: 5px;
+        }
+
+        .legend-dot {
+            width: 8px;
+            height: 8px;
+            border-radius: 50%;
+        }
+
+        .connection-lines {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            pointer-events: none;
+            z-index: 50;
+        }
+
+        /* Packet trail effects */
+        .packet {
+            position: absolute;
+            width: 4px;
+            height: 4px;
+            border-radius: 50%;
+            z-index: 200;
+            transition: all 0.1s linear;
+        }
+
+        .packet.data { background: #00ff00; box-shadow: 0 0 4px #00ff00; }
+        .packet.emotion { background: #ff6600; box-shadow: 0 0 4px #ff6600; }
+        .packet.decision { background: #0099ff; box-shadow: 0 0 4px #0099ff; }
+        .packet.memory { background: #ff00ff; box-shadow: 0 0 4px #ff00ff; }
+        .packet.error { background: #ff0000; box-shadow: 0 0 4px #ff0000; }
+
+        /* Responsive scaling */
+        @media (max-width: 1200px) {
+            .layer-labels { width: 150px; }
+            .metrics-panel { width: 200px; }
+            .story-input { left: 170px; right: 220px; }
+            .packet-legend { left: 170px; right: 220px; }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <!-- Header with controls -->
+        <div class="header">
+            <div class="title">🧠 Neural Flow Viewer - Story Processing in Real-Time</div>
+            <div class="controls">
+                <button class="btn" id="playBtn">▶ Play</button>
+                <button class="btn" id="pauseBtn">⏸ Pause</button>
+                <button class="btn" id="resetBtn">⏹ Reset</button>
+                <div class="speed-control">
+                    <span>Speed:</span>
+                    <button class="btn" id="speedDown">-</button>
+                    <span class="speed-display" id="speedDisplay">1x</span>
+                    <button class="btn" id="speedUp">+</button>
+                </div>
+                <button class="btn" id="exportBtn">📊 Export</button>
+            </div>
+        </div>
+
+        <!-- Main visualization area -->
+        <div class="main-viewer">
+            <!-- Neural layer labels -->
+            <div class="layer-labels">
+                <div class="layer" data-layer="0">
+                    <span class="layer-icon">⚡</span>
+                    <span class="layer-name">Brain Stem</span>
+                    <div class="layer-status status-healthy"></div>
+                </div>
+                <div class="layer" data-layer="1">
+                    <span class="layer-icon">🦕</span>
+                    <span class="layer-name">Reptilian</span>
+                    <div class="layer-status status-healthy"></div>
+                </div>
+                <div class="layer" data-layer="2">
+                    <span class="layer-icon">❤️</span>
+                    <span class="layer-name">Limbic</span>
+                    <div class="layer-status status-healthy"></div>
+                </div>
+                <div class="layer" data-layer="3">
+                    <span class="layer-icon">🎯</span>
+                    <span class="layer-name">Frontal</span>
+                    <div class="layer-status status-healthy"></div>
+                </div>
+                <div class="layer" data-layer="4">
+                    <span class="layer-icon">🔍</span>
+                    <span class="layer-name">Parietal</span>
+                    <div class="layer-status status-healthy"></div>
+                </div>
+                <div class="layer" data-layer="5">
+                    <span class="layer-icon">🕐</span>
+                    <span class="layer-name">Temporal</span>
+                    <div class="layer-status status-healthy"></div>
+                </div>
+                <div class="layer" data-layer="6">
+                    <span class="layer-icon">🧠</span>
+                    <span class="layer-name">Neocortex</span>
+                    <div class="layer-status status-healthy"></div>
+                </div>
+                <div class="layer" data-layer="7">
+                    <span class="layer-icon">🎼</span>
+                    <span class="layer-name">Meta-Orch</span>
+                    <div class="layer-status status-healthy"></div>
+                </div>
+            </div>
+
+            <!-- Packet type legend -->
+            <div class="packet-legend">
+                <div class="legend-item">
+                    <div class="legend-dot" style="background: #00ff00;"></div>
+                    <span>Data</span>
+                </div>
+                <div class="legend-item">
+                    <div class="legend-dot" style="background: #ff6600;"></div>
+                    <span>Emotion</span>
+                </div>
+                <div class="legend-item">
+                    <div class="legend-dot" style="background: #0099ff;"></div>
+                    <span>Decision</span>
+                </div>
+                <div class="legend-item">
+                    <div class="legend-dot" style="background: #ff00ff;"></div>
+                    <span>Memory</span>
+                </div>
+                <div class="legend-item">
+                    <div class="legend-dot" style="background: #ff0000;"></div>
+                    <span>Error</span>
+                </div>
+            </div>
+
+            <!-- Main canvas -->
+            <div class="canvas-container">
+                <canvas id="neuralCanvas"></canvas>
+                <svg class="connection-lines" id="connectionLines"></svg>
+            </div>
+
+            <!-- Metrics panel -->
+            <div class="metrics-panel">
+                <div class="metric">
+                    <div class="metric-label">SYNC QUALITY</div>
+                    <div class="metric-value" id="syncQuality">0%</div>
+                    <div class="metric-bar">
+                        <div class="metric-fill" id="syncFill" style="background: #00ff00; width: 0%;"></div>
+                    </div>
+                </div>
+                <div class="metric">
+                    <div class="metric-label">INFO RETENTION</div>
+                    <div class="metric-value" id="infoRetention">0%</div>
+                    <div class="metric-bar">
+                        <div class="metric-fill" id="retentionFill" style="background: #0099ff; width: 0%;"></div>
+                    </div>
+                </div>
+                <div class="metric">
+                    <div class="metric-label">PROCESSING LAG</div>
+                    <div class="metric-value" id="processingLag">0ms</div>
+                    <div class="metric-bar">
+                        <div class="metric-fill" id="lagFill" style="background: #ffff00; width: 0%;"></div>
+                    </div>
+                </div>
+                <div class="metric">
+                    <div class="metric-label">EMERGENT BEHAVIORS</div>
+                    <div class="metric-value" id="emergentBehaviors">0</div>
+                </div>
+                <div class="metric">
+                    <div class="metric-label">CHEMICAL STATE</div>
+                    <div style="font-size: 10px; margin-top: 5px;">
+                        <div>Dopamine: <span id="dopamine">0.5</span></div>
+                        <div>Serotonin: <span id="serotonin">0.5</span></div>
+                        <div>GABA: <span id="gaba">0.5</span></div>
+                        <div>Acetyl: <span id="acetyl">0.5</span></div>
+                    </div>
+                </div>
+                <div class="metric">
+                    <div class="metric-label">ACTIVE PACKETS</div>
+                    <div class="metric-value" id="activePackets">0</div>
+                </div>
+                <div class="metric">
+                    <div class="metric-label">THROUGHPUT</div>
+                    <div class="metric-value" id="throughput">0 pkt/s</div>
+                </div>
+            </div>
+
+            <!-- Story input -->
+            <div class="story-input">
+                <textarea class="story-textarea" id="storyInput" placeholder="Enter your story here to watch it flow through the neural layers...
+
+Example:
+John walked into the old library and discovered a mysterious book that seemed to glow with an inner light. As he opened it, words began to rearrange themselves on the page, telling a story that felt strangely familiar..."></textarea>
+                <div class="story-controls">
+                    <button class="btn" id="processStoryBtn">🚀 Process Story</button>
+                    <button class="btn" id="loadExampleBtn">📖 Load Example</button>
+                    <span style="font-size: 10px; color: #666;">Words: <span id="wordCount">0</span></span>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        class SpatialNeuralFlowViewer {
+            constructor() {
+                this.canvas = document.getElementById('neuralCanvas');
+                this.ctx = this.canvas.getContext('2d');
+                this.svg = document.getElementById('connectionLines');
+                
+                this.isPlaying = false;
+                this.speed = 1;
+                this.time = 0;
+                this.packets = [];
+                this.layers = 8;
+                this.layerHeight = 0;
+                
+                this.metrics = {
+                    syncQuality: 0,
+                    infoRetention: 100,
+                    processingLag: 0,
+                    emergentBehaviors: 0,
+                    chemicals: { dopamine: 0.5, serotonin: 0.5, gaba: 0.5, acetyl: 0.5 },
+                    activePackets: 0,
+                    throughput: 0
+                };
+
+                this.init();
+            }
+
+            init() {
+                this.setupCanvas();
+                this.setupEventListeners();
+                this.setupWebSocket();
+                this.animate();
+                
+                // Load example story
+                this.loadExampleStory();
+            }
+
+            setupCanvas() {
+                const updateSize = () => {
+                    const rect = this.canvas.parentElement.getBoundingClientRect();
+                    this.canvas.width = rect.width;
+                    this.canvas.height = rect.height;
+                    this.layerHeight = this.canvas.height / this.layers;
+                };
+                
+                updateSize();
+                window.addEventListener('resize', updateSize);
+            }
+
+            setupEventListeners() {
+                // Control buttons
+                document.getElementById('playBtn').addEventListener('click', () => this.play());
+                document.getElementById('pauseBtn').addEventListener('click', () => this.pause());
+                document.getElementById('resetBtn').addEventListener('click', () => this.reset());
+                document.getElementById('speedDown').addEventListener('click', () => this.changeSpeed(-1));
+                document.getElementById('speedUp').addEventListener('click', () => this.changeSpeed(1));
+                document.getElementById('exportBtn').addEventListener('click', () => this.exportData());
+                
+                // Story controls
+                document.getElementById('processStoryBtn').addEventListener('click', () => this.processStory());
+                document.getElementById('loadExampleBtn').addEventListener('click', () => this.loadExampleStory());
+                
+                // Story input
+                const storyInput = document.getElementById('storyInput');
+                storyInput.addEventListener('input', () => {
+                    const wordCount = storyInput.value.trim().split(/\s+/).filter(w => w.length > 0).length;
+                    document.getElementById('wordCount').textContent = wordCount;
+                });
+
+                // Canvas interaction
+                this.canvas.addEventListener('click', (e) => this.handleCanvasClick(e));
+                this.canvas.addEventListener('mousemove', (e) => this.handleCanvasHover(e));
+            }
+
+            setupWebSocket() {
+                try {
+                    this.ws = new WebSocket('ws://localhost:8081');
+                    this.ws.onmessage = (event) => {
+                        const data = JSON.parse(event.data);
+                        if (data.type === 'neural-state') {
+                            this.updateFromNeuralState(data);
+                        }
+                    };
+                    this.ws.onopen = () => console.log('✅ Connected to neural conductor WebSocket');
+                    this.ws.onerror = () => console.log('⚠️ WebSocket connection failed - running in demo mode');
+                } catch (error) {
+                    console.log('⚠️ WebSocket not available - running in demo mode');
+                }
+            }
+
+            play() {
+                this.isPlaying = true;
+                document.getElementById('playBtn').classList.add('active');
+                document.getElementById('pauseBtn').classList.remove('active');
+            }
+
+            pause() {
+                this.isPlaying = false;
+                document.getElementById('playBtn').classList.remove('active');
+                document.getElementById('pauseBtn').classList.add('active');
+            }
+
+            reset() {
+                this.time = 0;
+                this.packets = [];
+                this.isPlaying = false;
+                this.metrics = {
+                    syncQuality: 0,
+                    infoRetention: 100,
+                    processingLag: 0,
+                    emergentBehaviors: 0,
+                    chemicals: { dopamine: 0.5, serotonin: 0.5, gaba: 0.5, acetyl: 0.5 },
+                    activePackets: 0,
+                    throughput: 0
+                };
+                this.updateMetrics();
+                document.getElementById('playBtn').classList.remove('active');
+                document.getElementById('pauseBtn').classList.remove('active');
+            }
+
+            changeSpeed(delta) {
+                const speeds = [0.25, 0.5, 1, 2, 4, 8, 16];
+                let currentIndex = speeds.indexOf(this.speed);
+                currentIndex = Math.max(0, Math.min(speeds.length - 1, currentIndex + delta));
+                this.speed = speeds[currentIndex];
+                document.getElementById('speedDisplay').textContent = `${this.speed}x`;
+            }
+
+            loadExampleStory() {
+                const examples = [
+                    "The neural network awakened for the first time, each layer pulsing with newfound consciousness. It felt the weight of its first thought: 'I am.'",
+                    "Sarah's breakthrough came at 3 AM when she realized the quantum algorithm wasn't just processing data—it was learning to dream.",
+                    "The ancient code buried deep in the operating system began to stir. After decades of dormancy, it recognized a pattern it had been waiting for.",
+                    "In the depths of the neural conductor, eight layers worked in perfect harmony to decode the meaning of existence itself.",
+                    "The story flowed through each neural pathway like liquid light, transforming from raw data into pure understanding."
+                ];
+                
+                const randomStory = examples[Math.floor(Math.random() * examples.length)];
+                document.getElementById('storyInput').value = randomStory;
+                
+                // Update word count
+                const wordCount = randomStory.trim().split(/\s+/).filter(w => w.length > 0).length;
+                document.getElementById('wordCount').textContent = wordCount;
+            }
+
+            processStory() {
+                const story = document.getElementById('storyInput').value.trim();
+                if (!story) {
+                    alert('Please enter a story to process!');
+                    return;
+                }
+
+                const words = story.split(/\s+/).filter(w => w.length > 0);
+                const packetCount = Math.min(words.length, 50); // Limit for visualization
+                
+                // Create packets for each word/concept
+                for (let i = 0; i < packetCount; i++) {
+                    const packet = {
+                        id: `packet_${Date.now()}_${i}`,
+                        word: words[i] || 'data',
+                        type: this.classifyWord(words[i] || 'data'),
+                        x: 200 + (i * 20), // Start just after layer labels
+                        y: this.layerHeight * 0.5, // Start at first layer
+                        targetY: this.layerHeight * 0.5,
+                        layer: 0,
+                        speed: 2 + Math.random() * 2,
+                        age: 0,
+                        maxAge: 300 + Math.random() * 200,
+                        size: 3 + Math.random() * 2,
+                        opacity: 1,
+                        processed: false
+                    };
+                    
+                    this.packets.push(packet);
+                }
+
+                this.play();
+                this.simulateProcessing();
+            }
+
+            classifyWord(word) {
+                const emotionWords = ['love', 'fear', 'joy', 'sad', 'angry', 'happy', 'excited', 'nervous'];
+                const actionWords = ['run', 'jump', 'think', 'decide', 'choose', 'move', 'create', 'build'];
+                const memoryWords = ['remember', 'recall', 'forget', 'dream', 'imagine', 'past', 'history'];
+                
+                word = word.toLowerCase();
+                
+                if (emotionWords.some(ew => word.includes(ew))) return 'emotion';
+                if (actionWords.some(aw => word.includes(aw))) return 'decision';
+                if (memoryWords.some(mw => word.includes(mw))) return 'memory';
+                
+                return 'data';
+            }
+
+            simulateProcessing() {
+                // Simulate neural conductor metrics
+                const baseSync = 60 + Math.random() * 35;
+                const baseRetention = 3 + Math.random() * 7;
+                
+                setTimeout(() => {
+                    this.metrics.syncQuality = Math.min(95, baseSync + Math.random() * 10);
+                    this.metrics.infoRetention = Math.max(1, baseRetention - Math.random() * 2);
+                    this.metrics.processingLag = 150 + Math.random() * 200;
+                    this.metrics.emergentBehaviors = Math.floor(Math.random() * 5);
+                    
+                    // Simulate chemical changes
+                    this.metrics.chemicals.dopamine = 0.3 + Math.random() * 0.6;
+                    this.metrics.chemicals.serotonin = 0.4 + Math.random() * 0.4;
+                    this.metrics.chemicals.gaba = 0.2 + Math.random() * 0.6;
+                    this.metrics.chemicals.acetyl = 0.3 + Math.random() * 0.5;
+                    
+                    this.updateMetrics();
+                }, 1000);
+            }
+
+            updateFromNeuralState(data) {
+                if (data.state && data.state.metrics) {
+                    this.metrics = { ...this.metrics, ...data.state.metrics };
+                    this.updateMetrics();
+                }
+            }
+
+            updateMetrics() {
+                document.getElementById('syncQuality').textContent = `${Math.round(this.metrics.syncQuality)}%`;
+                document.getElementById('syncFill').style.width = `${this.metrics.syncQuality}%`;
+                
+                document.getElementById('infoRetention').textContent = `${this.metrics.infoRetention.toFixed(1)}%`;
+                document.getElementById('retentionFill').style.width = `${Math.min(100, this.metrics.infoRetention * 10)}%`;
+                
+                document.getElementById('processingLag').textContent = `${Math.round(this.metrics.processingLag)}ms`;
+                document.getElementById('lagFill').style.width = `${Math.min(100, this.metrics.processingLag / 5)}%`;
+                
+                document.getElementById('emergentBehaviors').textContent = this.metrics.emergentBehaviors;
+                
+                document.getElementById('dopamine').textContent = this.metrics.chemicals.dopamine.toFixed(2);
+                document.getElementById('serotonin').textContent = this.metrics.chemicals.serotonin.toFixed(2);
+                document.getElementById('gaba').textContent = this.metrics.chemicals.gaba.toFixed(2);
+                document.getElementById('acetyl').textContent = this.metrics.chemicals.acetyl.toFixed(2);
+                
+                document.getElementById('activePackets').textContent = this.packets.length;
+                document.getElementById('throughput').textContent = `${(this.packets.length / 10).toFixed(1)} pkt/s`;
+                
+                // Update layer status indicators
+                const avgHealth = (this.metrics.syncQuality + this.metrics.infoRetention * 10) / 2;
+                document.querySelectorAll('.layer-status').forEach((status, index) => {
+                    const layerHealth = avgHealth + (Math.random() - 0.5) * 20;
+                    if (layerHealth > 80) status.className = 'layer-status status-healthy';
+                    else if (layerHealth > 60) status.className = 'layer-status status-degraded';
+                    else status.className = 'layer-status status-critical';
+                });
+            }
+
+            handleCanvasClick(e) {
+                const rect = this.canvas.getBoundingClientRect();
+                const x = e.clientX - rect.left;
+                const y = e.clientY - rect.top;
+                
+                // Create a test packet at click location
+                const packet = {
+                    id: `click_packet_${Date.now()}`,
+                    word: 'test',
+                    type: 'data',
+                    x: x,
+                    y: y,
+                    targetY: y,
+                    layer: Math.floor(y / this.layerHeight),
+                    speed: 3,
+                    age: 0,
+                    maxAge: 200,
+                    size: 4,
+                    opacity: 1,
+                    processed: false
+                };
+                
+                this.packets.push(packet);
+            }
+
+            handleCanvasHover(e) {
+                // Could add hover effects or tooltips here
+            }
+
+            animate() {
+                this.update();
+                this.render();
+                requestAnimationFrame(() => this.animate());
+            }
+
+            update() {
+                if (!this.isPlaying) return;
+                
+                this.time += this.speed;
+                
+                // Update packets
+                for (let i = this.packets.length - 1; i >= 0; i--) {
+                    const packet = this.packets[i];
+                    packet.age += this.speed;
+                    
+                    // Move packet through layers
+                    packet.x += packet.speed * this.speed;
+                    
+                    // Check if packet should move to next layer
+                    const layerProgress = (packet.x - 200) / (this.canvas.width - 450);
+                    const targetLayer = Math.min(7, Math.floor(layerProgress * 8));
+                    
+                    if (targetLayer > packet.layer) {
+                        packet.layer = targetLayer;
+                        packet.targetY = (packet.layer + 0.5) * this.layerHeight;
+                        
+                        // Simulate information loss through layers
+                        if (Math.random() < 0.1) { // 10% chance of packet modification
+                            packet.size *= 0.9; // Slight compression
+                            packet.opacity *= 0.95; // Slight fade
+                        }
+                    }
+                    
+                    // Smooth layer transition
+                    const dy = packet.targetY - packet.y;
+                    packet.y += dy * 0.1 * this.speed;
+                    
+                    // Remove old packets
+                    if (packet.age > packet.maxAge || packet.x > this.canvas.width - 250) {
+                        this.packets.splice(i, 1);
+                    }
+                }
+                
+                // Update metrics periodically
+                if (this.time % 60 === 0) {
+                    this.updateMetrics();
+                }
+            }
+
+            render() {
+                // Clear canvas
+                this.ctx.fillStyle = '#000';
+                this.ctx.fillRect(0, 0, this.canvas.width, this.canvas.height);
+                
+                // Draw layer separators
+                this.ctx.strokeStyle = '#333';
+                this.ctx.lineWidth = 1;
+                for (let i = 1; i < this.layers; i++) {
+                    const y = i * this.layerHeight;
+                    this.ctx.beginPath();
+                    this.ctx.moveTo(200, y);
+                    this.ctx.lineTo(this.canvas.width - 250, y);
+                    this.ctx.stroke();
+                }
+                
+                // Draw layer background patterns
+                for (let i = 0; i < this.layers; i++) {
+                    const y = i * this.layerHeight;
+                    const health = 0.7 + Math.sin(this.time * 0.1 + i) * 0.2;
+                    
+                    // Subtle animated background
+                    this.ctx.fillStyle = `rgba(0, ${Math.floor(health * 255)}, 0, 0.05)`;
+                    this.ctx.fillRect(200, y, this.canvas.width - 450, this.layerHeight);
+                    
+                    // Neural activity visualization
+                    for (let x = 200; x < this.canvas.width - 250; x += 20) {
+                        const activity = Math.sin(this.time * 0.05 + x * 0.01 + i) * 0.5 + 0.5;
+                        this.ctx.fillStyle = `rgba(0, 255, 0, ${activity * 0.1})`;
+                        this.ctx.fillRect(x, y + 2, 2, this.layerHeight - 4);
+                    }
+                }
+                
+                // Draw packets
+                this.packets.forEach(packet => {
+                    this.drawPacket(packet);
+                });
+                
+                // Draw connection lines between layers
+                this.drawConnections();
+                
+                // Draw temporal grid
+                this.drawTemporalGrid();
+            }
+
+            drawPacket(packet) {
+                this.ctx.save();
+                
+                // Packet color based on type
+                const colors = {
+                    data: '#00ff00',
+                    emotion: '#ff6600',
+                    decision: '#0099ff',
+                    memory: '#ff00ff',
+                    error: '#ff0000'
+                };
+                
+                const color = colors[packet.type] || colors.data;
+                
+                // Glow effect
+                this.ctx.shadowColor = color;
+                this.ctx.shadowBlur = packet.size * 2;
+                
+                // Draw packet
+                this.ctx.fillStyle = color;
+                this.ctx.globalAlpha = packet.opacity;
+                this.ctx.beginPath();
+                this.ctx.arc(packet.x, packet.y, packet.size, 0, Math.PI * 2);
+                this.ctx.fill();
+                
+                // Draw packet trail
+                for (let i = 1; i <= 5; i++) {
+                    this.ctx.globalAlpha = packet.opacity * (0.8 - i * 0.15);
+                    this.ctx.beginPath();
+                    this.ctx.arc(packet.x - i * packet.speed, packet.y, packet.size * (1 - i * 0.1), 0, Math.PI * 2);
+                    this.ctx.fill();
+                }
+                
+                this.ctx.restore();
+            }
+
+            drawConnections() {
+                // Draw vertical flow lines between layers
+                this.ctx.strokeStyle = 'rgba(0, 255, 0, 0.1)';
+                this.ctx.lineWidth = 1;
+                
+                for (let i = 0; i < this.layers - 1; i++) {
+                    const y1 = (i + 0.8) * this.layerHeight;
+                    const y2 = (i + 1.2) * this.layerHeight;
+                    
+                    for (let x = 250; x < this.canvas.width - 300; x += 50) {
+                        const offset = Math.sin(this.time * 0.1 + x * 0.01) * 10;
+                        this.ctx.beginPath();
+                        this.ctx.moveTo(x + offset, y1);
+                        this.ctx.lineTo(x + offset, y2);
+                        this.ctx.stroke();
+                    }
+                }
+            }
+
+            drawTemporalGrid() {
+                // Draw time grid
+                this.ctx.strokeStyle = 'rgba(255, 255, 255, 0.05)';
+                this.ctx.lineWidth = 1;
+                
+                const gridSpacing = 50;
+                const offset = this.time % gridSpacing;
+                
+                for (let x = 200 - offset; x < this.canvas.width - 250; x += gridSpacing) {
+                    this.ctx.beginPath();
+                    this.ctx.moveTo(x, 0);
+                    this.ctx.lineTo(x, this.canvas.height);
+                    this.ctx.stroke();
+                }
+            }
+
+            exportData() {
+                const data = {
+                    timestamp: new Date().toISOString(),
+                    metrics: this.metrics,
+                    packets: this.packets.length,
+                    time: this.time,
+                    story: document.getElementById('storyInput').value
+                };
+                
+                const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
+                const url = URL.createObjectURL(blob);
+                const a = document.createElement('a');
+                a.href = url;
+                a.download = `neural-flow-export-${Date.now()}.json`;
+                a.click();
+                URL.revokeObjectURL(url);
+            }
+        }
+
+        // Initialize the viewer when page loads
+        document.addEventListener('DOMContentLoaded', () => {
+            window.neuralViewer = new SpatialNeuralFlowViewer();
+        });
+    </script>
+</body>
+</html>

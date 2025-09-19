@@ -1,0 +1,809 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>🌈 Color-State Proof Dashboard</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #1e1e2e 0%, #2d2d44 100%);
+            color: white;
+            min-height: 100vh;
+            overflow-x: hidden;
+        }
+
+        .dashboard {
+            display: grid;
+            grid-template-columns: 1fr 1fr 1fr;
+            grid-template-rows: auto 1fr 1fr;
+            gap: 20px;
+            padding: 20px;
+            min-height: 100vh;
+        }
+
+        .header {
+            grid-column: 1 / -1;
+            text-align: center;
+            background: rgba(255, 255, 255, 0.1);
+            backdrop-filter: blur(10px);
+            border-radius: 15px;
+            padding: 20px;
+            border: 1px solid rgba(255, 255, 255, 0.2);
+        }
+
+        .header h1 {
+            font-size: 2.5em;
+            margin-bottom: 10px;
+            background: linear-gradient(45deg, #ff6b6b, #4ecdc4, #45b7d1, #96ceb4);
+            background-size: 400% 400%;
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            animation: gradientShift 3s ease-in-out infinite;
+        }
+
+        @keyframes gradientShift {
+            0%, 100% { background-position: 0% 50%; }
+            50% { background-position: 100% 50%; }
+        }
+
+        .card {
+            background: rgba(255, 255, 255, 0.1);
+            backdrop-filter: blur(10px);
+            border-radius: 15px;
+            padding: 20px;
+            border: 1px solid rgba(255, 255, 255, 0.2);
+            transition: all 0.3s ease;
+        }
+
+        .card:hover {
+            transform: translateY(-5px);
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.3);
+        }
+
+        .color-state-display {
+            text-align: center;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .color-orb {
+            width: 200px;
+            height: 200px;
+            border-radius: 50%;
+            margin: 20px auto;
+            position: relative;
+            transition: all 1s ease;
+            animation: breathe 3s ease-in-out infinite;
+            box-shadow: 0 0 50px rgba(255, 255, 255, 0.3);
+        }
+
+        @keyframes breathe {
+            0%, 100% { transform: scale(1); }
+            50% { transform: scale(1.1); }
+        }
+
+        .color-orb.green { background: radial-gradient(circle, #00ff00, #00cc00); }
+        .color-orb.purple { background: radial-gradient(circle, #8000ff, #6000cc); }
+        .color-orb.gold { background: radial-gradient(circle, #ffd700, #ffb347); }
+        .color-orb.yellow { background: radial-gradient(circle, #ffff00, #ffcc00); }
+        .color-orb.red { background: radial-gradient(circle, #ff0000, #cc0000); }
+
+        .state-info {
+            margin-top: 20px;
+        }
+
+        .state-name {
+            font-size: 2em;
+            font-weight: bold;
+            margin-bottom: 10px;
+        }
+
+        .frequency {
+            font-size: 1.2em;
+            opacity: 0.8;
+            margin: 5px 0;
+        }
+
+        .progress-bar {
+            width: 100%;
+            height: 10px;
+            background: rgba(255, 255, 255, 0.2);
+            border-radius: 5px;
+            overflow: hidden;
+            margin: 15px 0;
+        }
+
+        .progress-fill {
+            height: 100%;
+            background: linear-gradient(90deg, #4ecdc4, #44e5e5);
+            border-radius: 5px;
+            transition: width 0.5s ease;
+            position: relative;
+        }
+
+        .progress-fill::after {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.3), transparent);
+            animation: shimmer 2s infinite;
+        }
+
+        @keyframes shimmer {
+            0% { transform: translateX(-100%); }
+            100% { transform: translateX(100%); }
+        }
+
+        .metric-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 15px;
+            margin-top: 20px;
+        }
+
+        .metric {
+            text-align: center;
+            padding: 15px;
+            background: rgba(255, 255, 255, 0.05);
+            border-radius: 10px;
+            border: 1px solid rgba(255, 255, 255, 0.1);
+        }
+
+        .metric-value {
+            font-size: 2em;
+            font-weight: bold;
+            margin-bottom: 5px;
+        }
+
+        .metric-label {
+            font-size: 0.9em;
+            opacity: 0.7;
+        }
+
+        .sync-status {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            margin: 10px 0;
+            padding: 10px;
+            background: rgba(255, 255, 255, 0.05);
+            border-radius: 8px;
+        }
+
+        .sync-indicator {
+            width: 12px;
+            height: 12px;
+            border-radius: 50%;
+            margin-right: 10px;
+        }
+
+        .sync-indicator.synced { background: #4ecdc4; animation: pulse 2s infinite; }
+        .sync-indicator.syncing { background: #ffd700; animation: spin 1s linear infinite; }
+        .sync-indicator.error { background: #ff6b6b; }
+
+        @keyframes pulse {
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0.5; }
+        }
+
+        @keyframes spin {
+            from { transform: rotate(0deg); }
+            to { transform: rotate(360deg); }
+        }
+
+        .dance-visualization {
+            text-align: center;
+            position: relative;
+        }
+
+        .dancers {
+            display: flex;
+            justify-content: space-around;
+            margin: 20px 0;
+        }
+
+        .dancer {
+            font-size: 4em;
+            transition: all 0.5s ease;
+            cursor: pointer;
+        }
+
+        .dancer.dancing {
+            animation: dance 2s ease-in-out infinite;
+        }
+
+        @keyframes dance {
+            0%, 100% { transform: rotate(-10deg); }
+            50% { transform: rotate(10deg); }
+        }
+
+        .harmony-visualizer {
+            height: 100px;
+            background: rgba(255, 255, 255, 0.05);
+            border-radius: 10px;
+            margin: 20px 0;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .wave {
+            position: absolute;
+            width: 100%;
+            height: 100%;
+            background: linear-gradient(90deg, 
+                transparent 0%, 
+                rgba(78, 205, 196, 0.3) 25%, 
+                rgba(78, 205, 196, 0.6) 50%, 
+                rgba(78, 205, 196, 0.3) 75%, 
+                transparent 100%);
+            animation: wave 3s ease-in-out infinite;
+        }
+
+        @keyframes wave {
+            0%, 100% { transform: translateX(-100%); }
+            50% { transform: translateX(100%); }
+        }
+
+        .log-feed {
+            max-height: 200px;
+            overflow-y: auto;
+            background: rgba(0, 0, 0, 0.3);
+            border-radius: 10px;
+            padding: 15px;
+            font-family: 'Courier New', monospace;
+            font-size: 0.9em;
+        }
+
+        .log-entry {
+            margin: 5px 0;
+            padding: 3px 0;
+            border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+        }
+
+        .log-entry:last-child {
+            border-bottom: none;
+        }
+
+        .timestamp {
+            color: #888;
+            margin-right: 10px;
+        }
+
+        .connection-status {
+            position: fixed;
+            top: 20px;
+            right: 20px;
+            background: rgba(0, 0, 0, 0.8);
+            padding: 10px 15px;
+            border-radius: 20px;
+            border: 1px solid rgba(255, 255, 255, 0.2);
+            z-index: 1000;
+        }
+
+        .status-dot {
+            display: inline-block;
+            width: 8px;
+            height: 8px;
+            border-radius: 50%;
+            margin-right: 8px;
+        }
+
+        .status-dot.connected { background: #4ecdc4; animation: pulse 2s infinite; }
+        .status-dot.disconnected { background: #ff6b6b; }
+
+        .controls {
+            margin-top: 20px;
+            text-align: center;
+        }
+
+        .btn {
+            background: linear-gradient(45deg, #4ecdc4, #44e5e5);
+            color: white;
+            border: none;
+            padding: 12px 24px;
+            border-radius: 25px;
+            cursor: pointer;
+            margin: 5px;
+            font-weight: bold;
+            transition: all 0.3s ease;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+        }
+
+        .btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 5px 15px rgba(78, 205, 196, 0.4);
+        }
+
+        .btn.secondary {
+            background: linear-gradient(45deg, #6c5ce7, #a29bfe);
+        }
+
+        .btn.danger {
+            background: linear-gradient(45deg, #ff6b6b, #ff5252);
+        }
+
+        @media (max-width: 768px) {
+            .dashboard {
+                grid-template-columns: 1fr;
+                grid-template-rows: auto auto auto auto;
+            }
+            
+            .color-orb {
+                width: 150px;
+                height: 150px;
+            }
+            
+            .header h1 {
+                font-size: 2em;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="dashboard">
+        <!-- Header -->
+        <div class="header">
+            <h1>🌈 Color-State Proof Dashboard</h1>
+            <p>Real-time King/Queen dance validation with color-coded state transitions</p>
+            <div class="controls">
+                <button class="btn" onclick="forceStateTransition('purple')">🟪 Force Purple</button>
+                <button class="btn secondary" onclick="forceStateTransition('gold')">🟡 Force Gold</button>
+                <button class="btn danger" onclick="forceStateTransition('red')">🔴 Force Red</button>
+                <button class="btn" onclick="resetToGreen()">🟢 Reset Green</button>
+            </div>
+        </div>
+
+        <!-- Color State Display -->
+        <div class="card color-state-display">
+            <h2>🎨 Current State</h2>
+            <div class="color-orb green" id="colorOrb"></div>
+            <div class="state-info">
+                <div class="state-name" id="stateName">Green</div>
+                <div class="frequency" id="frequency">♪ 528 Hz</div>
+                <div class="frequency" id="harmony">♫ Harmony: 633 Hz</div>
+                <div class="frequency" id="timeInState">Time: 0s</div>
+            </div>
+            <div class="progress-bar">
+                <div class="progress-fill" id="proofProgress" style="width: 0%"></div>
+            </div>
+            <div style="margin-top: 10px;">
+                Proof Score: <span id="proofScore">0</span>%
+            </div>
+        </div>
+
+        <!-- King Metrics -->
+        <div class="card">
+            <h2>👑 King (Technical)</h2>
+            <div class="metric-grid">
+                <div class="metric">
+                    <div class="metric-value" id="kingLatency">--</div>
+                    <div class="metric-label">Latency (ms)</div>
+                </div>
+                <div class="metric">
+                    <div class="metric-value" id="kingErrors">--</div>
+                    <div class="metric-label">Error Count</div>
+                </div>
+                <div class="metric">
+                    <div class="metric-value" id="kingCpu">--</div>
+                    <div class="metric-label">CPU Usage</div>
+                </div>
+                <div class="metric">
+                    <div class="metric-value" id="kingMemory">--</div>
+                    <div class="metric-label">Memory</div>
+                </div>
+            </div>
+            <div class="sync-status">
+                <div style="display: flex; align-items: center;">
+                    <div class="sync-indicator synced" id="kingSync"></div>
+                    King Database
+                </div>
+                <span id="kingSyncTime">--</span>
+            </div>
+        </div>
+
+        <!-- Queen Metrics -->
+        <div class="card">
+            <h2>👸 Queen (Human)</h2>
+            <div class="metric-grid">
+                <div class="metric">
+                    <div class="metric-value" id="queenSatisfaction">--</div>
+                    <div class="metric-label">Satisfaction</div>
+                </div>
+                <div class="metric">
+                    <div class="metric-value" id="queenConfusion">--</div>
+                    <div class="metric-label">Confusion</div>
+                </div>
+                <div class="metric">
+                    <div class="metric-value" id="queenCompletion">--</div>
+                    <div class="metric-label">Completion</div>
+                </div>
+                <div class="metric">
+                    <div class="metric-value" id="queenEmotion">--</div>
+                    <div class="metric-label">Emotion</div>
+                </div>
+            </div>
+            <div class="sync-status">
+                <div style="display: flex; align-items: center;">
+                    <div class="sync-indicator synced" id="queenSync"></div>
+                    Queen Database
+                </div>
+                <span id="queenSyncTime">--</span>
+            </div>
+        </div>
+
+        <!-- Dance Visualization -->
+        <div class="card dance-visualization">
+            <h2>💃 Dance Synchronization</h2>
+            <div class="dancers">
+                <div class="dancer" id="kingDancer">👑</div>
+                <div class="dancer" id="queenDancer">👸</div>
+            </div>
+            <div class="harmony-visualizer">
+                <div class="wave" id="harmonyWave"></div>
+            </div>
+            <div class="metric-grid">
+                <div class="metric">
+                    <div class="metric-value" id="syncScore">--</div>
+                    <div class="metric-label">Sync Score</div>
+                </div>
+                <div class="metric">
+                    <div class="metric-value" id="danceEvents">--</div>
+                    <div class="metric-label">Dance Events</div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Database Sync Status -->
+        <div class="card">
+            <h2>🌉 Database Bridge</h2>
+            <div class="sync-status">
+                <div style="display: flex; align-items: center;">
+                    <div class="sync-indicator synced" id="localDbSync"></div>
+                    Local SQLite
+                </div>
+                <span id="localDbStatus">Connected</span>
+            </div>
+            <div class="sync-status">
+                <div style="display: flex; align-items: center;">
+                    <div class="sync-indicator syncing" id="cloudDbSync"></div>
+                    Cloud PostgreSQL
+                </div>
+                <span id="cloudDbStatus">Syncing...</span>
+            </div>
+            <div class="progress-bar">
+                <div class="progress-fill" id="syncProgress" style="width: 75%"></div>
+            </div>
+            <div style="margin-top: 15px; text-align: center;">
+                Queue: <span id="syncQueueLength">0</span> | 
+                Success: <span id="syncSuccessCount">0</span> | 
+                Failed: <span id="syncFailedCount">0</span>
+            </div>
+        </div>
+
+        <!-- Activity Log -->
+        <div class="card">
+            <h2>📜 Activity Log</h2>
+            <div class="log-feed" id="logFeed">
+                <div class="log-entry">
+                    <span class="timestamp">--:--:--</span>
+                    <span>🌈 Color-State Proof Dashboard initialized</span>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Connection Status -->
+    <div class="connection-status">
+        <span class="status-dot connected" id="connectionDot"></span>
+        <span id="connectionStatus">Connected</span>
+    </div>
+
+    <script>
+        class ProofDashboard {
+            constructor() {
+                this.ws = null;
+                this.currentState = 'green';
+                this.stateStartTime = Date.now();
+                this.proofScore = 0;
+                this.danceCount = 0;
+                this.syncStats = { successful: 0, failed: 0, queue: 0 };
+                
+                this.init();
+            }
+
+            init() {
+                this.connectWebSocket();
+                this.startTimeUpdater();
+                this.simulateInitialData();
+                this.addLogEntry('🌈 Color-State Proof Dashboard initialized');
+            }
+
+            connectWebSocket() {
+                try {
+                    // Try to connect to the secure memory bridge
+                    this.ws = new WebSocket('ws://localhost:9995');
+                    
+                    this.ws.onopen = () => {
+                        this.updateConnectionStatus(true);
+                        this.addLogEntry('🔗 Connected to secure memory bridge');
+                    };
+
+                    this.ws.onmessage = (event) => {
+                        const data = JSON.parse(event.data);
+                        this.handleMessage(data);
+                    };
+
+                    this.ws.onclose = () => {
+                        this.updateConnectionStatus(false);
+                        this.addLogEntry('🔌 Disconnected from bridge, retrying...');
+                        setTimeout(() => this.connectWebSocket(), 5000);
+                    };
+
+                    this.ws.onerror = () => {
+                        this.updateConnectionStatus(false);
+                        this.addLogEntry('❌ WebSocket connection error');
+                    };
+
+                } catch (error) {
+                    this.updateConnectionStatus(false);
+                    console.warn('WebSocket not available, using simulation mode');
+                    this.startSimulationMode();
+                }
+            }
+
+            handleMessage(data) {
+                switch (data.type) {
+                    case 'state_change':
+                        this.updateColorState(data.state, data);
+                        break;
+                    case 'proof_attempt':
+                        this.updateProofScore(data.score);
+                        break;
+                    case 'king_metrics':
+                        this.updateKingMetrics(data);
+                        break;
+                    case 'queen_metrics':
+                        this.updateQueenMetrics(data);
+                        break;
+                    case 'dance_event':
+                        this.updateDanceVisualization(data);
+                        break;
+                    case 'sync_status':
+                        this.updateSyncStatus(data);
+                        break;
+                }
+            }
+
+            updateColorState(stateName, data) {
+                this.currentState = stateName;
+                this.stateStartTime = Date.now();
+                
+                const orb = document.getElementById('colorOrb');
+                const name = document.getElementById('stateName');
+                const frequency = document.getElementById('frequency');
+                const harmony = document.getElementById('harmony');
+                
+                // Update orb color
+                orb.className = `color-orb ${stateName}`;
+                
+                // Update text
+                name.textContent = data.emoji ? `${data.emoji} ${stateName.charAt(0).toUpperCase() + stateName.slice(1)}` : stateName;
+                frequency.textContent = `♪ ${data.frequency || 528} Hz`;
+                harmony.textContent = `♫ Harmony: ${data.harmony || 633} Hz`;
+                
+                this.addLogEntry(`🎨 State changed to ${stateName} (${data.reason || 'automatic'})`);
+            }
+
+            updateProofScore(score) {
+                this.proofScore = score || this.proofScore;
+                document.getElementById('proofScore').textContent = this.proofScore;
+                document.getElementById('proofProgress').style.width = `${this.proofScore}%`;
+                
+                if (this.proofScore >= 85) {
+                    this.addLogEntry(`✅ Proof threshold reached: ${this.proofScore}%`);
+                }
+            }
+
+            updateKingMetrics(metrics) {
+                document.getElementById('kingLatency').textContent = `${metrics.latencyMs || '--'}ms`;
+                document.getElementById('kingErrors').textContent = metrics.errorCount || '--';
+                document.getElementById('kingCpu').textContent = `${metrics.cpuUsage || '--'}%`;
+                document.getElementById('kingMemory').textContent = `${metrics.memoryUsage || '--'}%`;
+                
+                const syncIndicator = document.getElementById('kingSync');
+                syncIndicator.className = 'sync-indicator ' + (metrics.synced ? 'synced' : 'syncing');
+                
+                if (metrics.errorCount > 5) {
+                    this.addLogEntry(`⚠️ King error count high: ${metrics.errorCount}`);
+                }
+            }
+
+            updateQueenMetrics(metrics) {
+                document.getElementById('queenSatisfaction').textContent = `${metrics.satisfaction || '--'}%`;
+                document.getElementById('queenConfusion').textContent = `${metrics.confusionLevel || '--'}%`;
+                document.getElementById('queenCompletion').textContent = `${metrics.completionRate || '--'}%`;
+                document.getElementById('queenEmotion').textContent = metrics.emotionState || '--';
+                
+                const syncIndicator = document.getElementById('queenSync');
+                syncIndicator.className = 'sync-indicator ' + (metrics.synced ? 'synced' : 'syncing');
+                
+                if (metrics.satisfaction < 30) {
+                    this.addLogEntry(`😟 Queen satisfaction low: ${metrics.satisfaction}%`);
+                }
+            }
+
+            updateDanceVisualization(danceData) {
+                this.danceCount++;
+                document.getElementById('syncScore').textContent = `${danceData.syncScore || '--'}%`;
+                document.getElementById('danceEvents').textContent = this.danceCount;
+                
+                // Animate dancers
+                const kingDancer = document.getElementById('kingDancer');
+                const queenDancer = document.getElementById('queenDancer');
+                
+                kingDancer.classList.add('dancing');
+                queenDancer.classList.add('dancing');
+                
+                setTimeout(() => {
+                    kingDancer.classList.remove('dancing');
+                    queenDancer.classList.remove('dancing');
+                }, 2000);
+                
+                this.addLogEntry(`💃 Dance: ${danceData.danceType || 'unknown'} (sync: ${danceData.syncScore || 0}%)`);
+            }
+
+            updateSyncStatus(syncData) {
+                this.syncStats = { ...this.syncStats, ...syncData };
+                
+                document.getElementById('syncQueueLength').textContent = this.syncStats.queue || 0;
+                document.getElementById('syncSuccessCount').textContent = this.syncStats.successful || 0;
+                document.getElementById('syncFailedCount').textContent = this.syncStats.failed || 0;
+                
+                const progress = this.syncStats.queue > 0 ? 
+                    ((this.syncStats.successful / (this.syncStats.successful + this.syncStats.failed + this.syncStats.queue)) * 100) : 100;
+                
+                document.getElementById('syncProgress').style.width = `${progress}%`;
+            }
+
+            updateConnectionStatus(connected) {
+                const dot = document.getElementById('connectionDot');
+                const status = document.getElementById('connectionStatus');
+                
+                if (connected) {
+                    dot.className = 'status-dot connected';
+                    status.textContent = 'Connected';
+                } else {
+                    dot.className = 'status-dot disconnected';
+                    status.textContent = 'Disconnected';
+                }
+            }
+
+            startTimeUpdater() {
+                setInterval(() => {
+                    const timeInState = Math.floor((Date.now() - this.stateStartTime) / 1000);
+                    document.getElementById('timeInState').textContent = `Time: ${timeInState}s`;
+                }, 1000);
+            }
+
+            addLogEntry(message) {
+                const logFeed = document.getElementById('logFeed');
+                const now = new Date();
+                const timestamp = now.toTimeString().split(' ')[0];
+                
+                const entry = document.createElement('div');
+                entry.className = 'log-entry';
+                entry.innerHTML = `<span class="timestamp">${timestamp}</span><span>${message}</span>`;
+                
+                logFeed.appendChild(entry);
+                logFeed.scrollTop = logFeed.scrollHeight;
+                
+                // Keep only last 50 entries
+                while (logFeed.children.length > 50) {
+                    logFeed.removeChild(logFeed.firstChild);
+                }
+            }
+
+            simulateInitialData() {
+                // Simulate initial metrics
+                setTimeout(() => {
+                    this.updateKingMetrics({
+                        latencyMs: 125,
+                        errorCount: 0,
+                        cpuUsage: 45.2,
+                        memoryUsage: 67.8,
+                        synced: true
+                    });
+                }, 1000);
+
+                setTimeout(() => {
+                    this.updateQueenMetrics({
+                        satisfaction: 85,
+                        confusionLevel: 15,
+                        completionRate: 92.5,
+                        emotionState: 'happy',
+                        synced: true
+                    });
+                }, 1500);
+
+                setTimeout(() => {
+                    this.updateProofScore(45);
+                }, 2000);
+            }
+
+            startSimulationMode() {
+                this.addLogEntry('🎭 Starting simulation mode...');
+                
+                // Simulate state changes
+                setInterval(() => {
+                    const states = ['green', 'purple', 'gold', 'yellow'];
+                    const randomState = states[Math.floor(Math.random() * states.length)];
+                    
+                    this.updateColorState(randomState, {
+                        emoji: this.getStateEmoji(randomState),
+                        frequency: this.getStateFrequency(randomState),
+                        harmony: this.getStateFrequency(randomState) * 1.2,
+                        reason: 'simulation'
+                    });
+                }, 10000);
+
+                // Simulate proof score updates
+                setInterval(() => {
+                    this.proofScore = Math.min(100, this.proofScore + Math.random() * 10 - 3);
+                    this.updateProofScore(this.proofScore);
+                }, 5000);
+
+                // Simulate dance events
+                setInterval(() => {
+                    this.updateDanceVisualization({
+                        danceType: ['waltz', 'tango', 'salsa'][Math.floor(Math.random() * 3)],
+                        syncScore: Math.floor(Math.random() * 40 + 60)
+                    });
+                }, 15000);
+            }
+
+            getStateEmoji(state) {
+                const emojis = { green: '🟢', purple: '🟪', gold: '🟡', yellow: '🟡', red: '🔴' };
+                return emojis[state] || '🟢';
+            }
+
+            getStateFrequency(state) {
+                const frequencies = { green: 528, purple: 432, gold: 741, yellow: 396, red: 963 };
+                return frequencies[state] || 528;
+            }
+
+            sendCommand(command, data) {
+                if (this.ws && this.ws.readyState === WebSocket.OPEN) {
+                    this.ws.send(JSON.stringify({ command, ...data }));
+                } else {
+                    this.addLogEntry(`📤 Command queued: ${command} (not connected)`);
+                }
+            }
+        }
+
+        // Global functions for buttons
+        function forceStateTransition(state) {
+            dashboard.sendCommand('force_state', { state });
+            dashboard.addLogEntry(`🎯 Forcing state transition to ${state}`);
+        }
+
+        function resetToGreen() {
+            dashboard.sendCommand('reset_state');
+            dashboard.addLogEntry('🔄 Resetting to green state');
+        }
+
+        // Initialize dashboard
+        const dashboard = new ProofDashboard();
+    </script>
+</body>
+</html>

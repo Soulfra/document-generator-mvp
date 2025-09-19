@@ -1,0 +1,702 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>🎵 Live Multi-Layer System Dashboard 🎵</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            font-family: 'Courier New', monospace;
+            background: linear-gradient(45deg, #0a0a0a, #1a1a2e, #16213e);
+            color: #00ff00;
+            min-height: 100vh;
+            overflow-x: auto;
+        }
+        
+        .container {
+            padding: 20px;
+            max-width: 1400px;
+            margin: 0 auto;
+        }
+        
+        .header {
+            text-align: center;
+            margin-bottom: 30px;
+            animation: pulse 2s infinite;
+        }
+        
+        .header h1 {
+            font-size: 2.5em;
+            text-shadow: 0 0 20px #00ff00;
+            margin-bottom: 10px;
+        }
+        
+        .system-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(350px, 1fr));
+            gap: 20px;
+            margin-bottom: 30px;
+        }
+        
+        .system-card {
+            background: rgba(0, 255, 0, 0.1);
+            border: 2px solid #00ff00;
+            border-radius: 10px;
+            padding: 20px;
+            position: relative;
+            overflow: hidden;
+        }
+        
+        .system-card::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: -100%;
+            width: 100%;
+            height: 100%;
+            background: linear-gradient(90deg, transparent, rgba(0, 255, 0, 0.2), transparent);
+            animation: scan 3s infinite;
+        }
+        
+        .system-card.online {
+            border-color: #00ff00;
+            box-shadow: 0 0 20px rgba(0, 255, 0, 0.3);
+        }
+        
+        .system-card.offline {
+            border-color: #ff3300;
+            color: #ff3300;
+        }
+        
+        .system-title {
+            font-size: 1.4em;
+            font-weight: bold;
+            margin-bottom: 15px;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+        }
+        
+        .status-indicator {
+            width: 12px;
+            height: 12px;
+            border-radius: 50%;
+            background: #00ff00;
+            animation: blink 1s infinite;
+        }
+        
+        .status-indicator.offline {
+            background: #ff3300;
+            animation: none;
+        }
+        
+        .system-stats {
+            font-size: 0.9em;
+            line-height: 1.6;
+        }
+        
+        .live-section {
+            background: rgba(0, 255, 0, 0.05);
+            border: 1px solid #00ff00;
+            border-radius: 8px;
+            padding: 20px;
+            margin-bottom: 20px;
+        }
+        
+        .live-section h3 {
+            margin-bottom: 15px;
+            color: #00ffff;
+            text-shadow: 0 0 10px #00ffff;
+        }
+        
+        .log-container {
+            height: 300px;
+            overflow-y: auto;
+            background: rgba(0, 0, 0, 0.5);
+            border: 1px solid #333;
+            border-radius: 5px;
+            padding: 10px;
+            font-size: 0.85em;
+            line-height: 1.4;
+        }
+        
+        .log-entry {
+            margin-bottom: 5px;
+            opacity: 0;
+            animation: fadeIn 0.5s forwards;
+        }
+        
+        .log-entry.new {
+            background: rgba(0, 255, 0, 0.2);
+            padding: 2px 5px;
+            border-radius: 3px;
+        }
+        
+        .timestamp {
+            color: #666;
+            font-size: 0.8em;
+        }
+        
+        .groove-visualizer {
+            height: 150px;
+            background: rgba(0, 0, 0, 0.7);
+            border: 1px solid #00ff00;
+            border-radius: 5px;
+            position: relative;
+            overflow: hidden;
+            margin: 15px 0;
+        }
+        
+        .beat-indicator {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            font-size: 2em;
+            font-weight: bold;
+            text-shadow: 0 0 15px currentColor;
+        }
+        
+        .waveform {
+            position: absolute;
+            bottom: 0;
+            left: 0;
+            right: 0;
+            height: 30px;
+            background: linear-gradient(90deg, transparent, #00ff00, transparent);
+            opacity: 0.6;
+            animation: wave 2s infinite;
+        }
+        
+        .trust-meter {
+            width: 100%;
+            height: 20px;
+            background: rgba(0, 0, 0, 0.5);
+            border-radius: 10px;
+            overflow: hidden;
+            margin: 10px 0;
+        }
+        
+        .trust-fill {
+            height: 100%;
+            background: linear-gradient(90deg, #ff3300, #ffff00, #00ff00);
+            border-radius: 10px;
+            transition: width 0.5s ease;
+        }
+        
+        .controls {
+            display: flex;
+            gap: 10px;
+            margin: 20px 0;
+            flex-wrap: wrap;
+        }
+        
+        .btn {
+            background: rgba(0, 255, 0, 0.2);
+            border: 1px solid #00ff00;
+            color: #00ff00;
+            padding: 10px 20px;
+            border-radius: 5px;
+            cursor: pointer;
+            font-family: inherit;
+            transition: all 0.3s;
+        }
+        
+        .btn:hover {
+            background: rgba(0, 255, 0, 0.4);
+            box-shadow: 0 0 10px rgba(0, 255, 0, 0.5);
+        }
+        
+        .dimensional-portals {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 10px;
+            margin: 15px 0;
+        }
+        
+        .portal {
+            aspect-ratio: 1;
+            border: 1px solid #00ffff;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 0.8em;
+            position: relative;
+            overflow: hidden;
+        }
+        
+        .portal.active {
+            background: radial-gradient(circle, rgba(0, 255, 255, 0.3), transparent);
+            animation: portalSpin 3s linear infinite;
+        }
+        
+        @keyframes pulse {
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0.7; }
+        }
+        
+        @keyframes blink {
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0.3; }
+        }
+        
+        @keyframes scan {
+            0% { left: -100%; }
+            100% { left: 100%; }
+        }
+        
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(10px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+        
+        @keyframes wave {
+            0%, 100% { transform: scaleX(1); }
+            50% { transform: scaleX(1.2); }
+        }
+        
+        @keyframes portalSpin {
+            from { transform: rotate(0deg); }
+            to { transform: rotate(360deg); }
+        }
+        
+        .error { color: #ff3300; }
+        .success { color: #00ff00; }
+        .warning { color: #ffff00; }
+        .info { color: #00ffff; }
+        
+        @media (max-width: 768px) {
+            .system-grid {
+                grid-template-columns: 1fr;
+            }
+            
+            .header h1 {
+                font-size: 1.8em;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>🎵 LIVE MULTI-LAYER SYSTEM DASHBOARD 🎵</h1>
+            <p>Real-time monitoring of all system layers</p>
+        </div>
+
+        <div class="controls">
+            <button class="btn" onclick="triggerBassDrop()">🔊 TRIGGER BASS DROP</button>
+            <button class="btn" onclick="changeBPM()">🎼 CHANGE BPM</button>
+            <button class="btn" onclick="scrapeWebsite()">🌐 SCRAPE WEBSITE</button>
+            <button class="btn" onclick="refreshAll()">🔄 REFRESH ALL</button>
+        </div>
+
+        <div class="system-grid">
+            <!-- Orchestrator -->
+            <div class="system-card" id="orchestrator-card">
+                <div class="system-title">
+                    🎭 Orchestrator <span class="status-indicator" id="orchestrator-status"></span>
+                </div>
+                <div class="system-stats" id="orchestrator-stats">
+                    <div>Port: 3001</div>
+                    <div>Status: <span id="orchestrator-status-text">Checking...</span></div>
+                    <div>Events: <span id="orchestrator-events">-</span></div>
+                    <div>Broadcasts: <span id="orchestrator-broadcasts">-</span></div>
+                    <div>Uptime: <span id="orchestrator-uptime">-</span></div>
+                </div>
+            </div>
+
+            <!-- Flask API -->
+            <div class="system-card" id="flask-card">
+                <div class="system-title">
+                    🐍 Flask API <span class="status-indicator" id="flask-status"></span>
+                </div>
+                <div class="system-stats" id="flask-stats">
+                    <div>Port: 5002</div>
+                    <div>Status: <span id="flask-status-text">Checking...</span></div>
+                    <div>WebSocket: <span id="flask-websocket">-</span></div>
+                    <div>Connections: <span id="flask-connections">-</span></div>
+                </div>
+            </div>
+
+            <!-- CryptoNote v4 -->
+            <div class="system-card" id="cryptonote-card">
+                <div class="system-title">
+                    🔐 CryptoNote v4 <span class="status-indicator" id="cryptonote-status"></span>
+                </div>
+                <div class="system-stats" id="cryptonote-stats">
+                    <div>Port: 3004</div>
+                    <div>Status: <span id="cryptonote-status-text">Checking...</span></div>
+                    <div>Encrypted: <span id="cryptonote-encrypted">-</span></div>
+                    <div>Wormholes: <span id="cryptonote-wormholes">Active</span></div>
+                </div>
+            </div>
+
+            <!-- Hyper-Dimensional -->
+            <div class="system-card" id="hyper-card">
+                <div class="system-title">
+                    🌌 Hyper-Dimensional <span class="status-indicator" id="hyper-status"></span>
+                </div>
+                <div class="system-stats" id="hyper-stats">
+                    <div>Port: 3005</div>
+                    <div>Status: <span id="hyper-status-text">Checking...</span></div>
+                    <div>Signatures: <span id="hyper-signatures">-</span></div>
+                    <div>Portals: <span id="hyper-portals">-</span></div>
+                    <div>Tunnels: <span id="hyper-tunnels">-</span></div>
+                </div>
+                <div class="dimensional-portals" id="dimensional-portals">
+                    <!-- Portals will be dynamically populated -->
+                </div>
+            </div>
+
+            <!-- Groove Layer -->
+            <div class="system-card" id="groove-card">
+                <div class="system-title">
+                    🎵 Groove Layer <span class="status-indicator" id="groove-status"></span>
+                </div>
+                <div class="system-stats" id="groove-stats">
+                    <div>Port: 3006</div>
+                    <div>Status: <span id="groove-status-text">Checking...</span></div>
+                    <div>BPM: <span id="groove-bpm">-</span></div>
+                    <div>Phase: <span id="groove-phase">-</span></div>
+                    <div>Beat: <span id="groove-beat">-</span></div>
+                </div>
+                <div class="groove-visualizer">
+                    <div class="beat-indicator" id="beat-indicator">♪</div>
+                    <div class="waveform"></div>
+                </div>
+            </div>
+
+            <!-- Web DJ -->
+            <div class="system-card" id="webdj-card">
+                <div class="system-title">
+                    🌐 Web DJ <span class="status-indicator" id="webdj-status"></span>
+                </div>
+                <div class="system-stats" id="webdj-stats">
+                    <div>Port: 3007</div>
+                    <div>Status: <span id="webdj-status-text">Checking...</span></div>
+                    <div>Tracks: <span id="webdj-tracks">-</span></div>
+                    <div>GitHub DJs: <span id="webdj-github">-</span></div>
+                    <div>Wiki Cache: <span id="webdj-wiki">-</span></div>
+                </div>
+            </div>
+
+            <!-- Trust Handshake -->
+            <div class="system-card" id="trust-card">
+                <div class="system-title">
+                    🤝 Trust Handshake <span class="status-indicator" id="trust-status"></span>
+                </div>
+                <div class="system-stats" id="trust-stats">
+                    <div>Port: 3008</div>
+                    <div>Status: <span id="trust-status-text">Checking...</span></div>
+                    <div>Trust Level: <span id="trust-level">-</span></div>
+                    <div>Handshakes: <span id="trust-handshakes">-</span></div>
+                </div>
+                <div class="trust-meter">
+                    <div class="trust-fill" id="trust-fill" style="width: 0%"></div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Live Logs Section -->
+        <div class="live-section">
+            <h3>🧠 Real-Time Logic Stream</h3>
+            <div class="log-container" id="logic-log">
+                <div class="log-entry">Initializing logic stream...</div>
+            </div>
+        </div>
+
+        <div class="live-section">
+            <h3>📡 Live Broadcast Log</h3>
+            <div class="log-container" id="broadcast-log">
+                <div class="log-entry">Monitoring broadcast activity...</div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // System status tracking
+        const systems = {
+            orchestrator: { url: 'http://localhost:3001/status', port: 3001 },
+            flask: { url: 'http://localhost:5002/api/metrics', port: 5002 },
+            cryptonote: { url: 'http://localhost:3004/cryptonote/status', port: 3004 },
+            hyper: { url: 'http://localhost:3005/hyper/status', port: 3005 },
+            groove: { url: 'http://localhost:3006/groove/status', port: 3006 },
+            webdj: { url: 'http://localhost:3007/webdj/status', port: 3007 },
+            trust: { url: 'http://localhost:3008/trust/status', port: 3008 }
+        };
+
+        let logCounter = 0;
+        let lastLogicEntry = null;
+
+        // Update system status
+        async function updateSystemStatus() {
+            for (const [name, system] of Object.entries(systems)) {
+                try {
+                    const response = await fetch(system.url);
+                    const data = await response.json();
+                    
+                    updateSystemCard(name, data, true);
+                } catch (error) {
+                    updateSystemCard(name, null, false);
+                }
+            }
+        }
+
+        function updateSystemCard(name, data, online) {
+            const card = document.getElementById(`${name}-card`);
+            const status = document.getElementById(`${name}-status`);
+            const statusText = document.getElementById(`${name}-status-text`);
+
+            if (online) {
+                card.classList.add('online');
+                card.classList.remove('offline');
+                status.classList.remove('offline');
+                statusText.textContent = 'Online';
+                statusText.className = 'success';
+
+                // Update specific system data
+                updateSystemData(name, data);
+            } else {
+                card.classList.add('offline');
+                card.classList.remove('online');
+                status.classList.add('offline');
+                statusText.textContent = 'Offline';
+                statusText.className = 'error';
+            }
+        }
+
+        function updateSystemData(name, data) {
+            switch (name) {
+                case 'orchestrator':
+                    if (data.metrics) {
+                        document.getElementById('orchestrator-events').textContent = data.metrics.totalEvents || '-';
+                        document.getElementById('orchestrator-broadcasts').textContent = data.metrics.totalBroadcasts || '-';
+                        document.getElementById('orchestrator-uptime').textContent = formatUptime(data.metrics.uptime);
+                    }
+                    break;
+
+                case 'hyper':
+                    if (data.signatures) {
+                        document.getElementById('hyper-signatures').textContent = data.signatures.chainLength || '-';
+                    }
+                    if (data.dimensional) {
+                        document.getElementById('hyper-portals').textContent = data.dimensional.totalPortals || '-';
+                        document.getElementById('hyper-tunnels').textContent = data.dimensional.activeTunnels || '-';
+                        updateDimensionalPortals(data.dimensional.portalStatus);
+                    }
+                    break;
+
+                case 'groove':
+                    if (data.timing) {
+                        document.getElementById('groove-bpm').textContent = data.timing.bpm || '-';
+                        document.getElementById('groove-phase').textContent = data.timing.phase || '-';
+                        document.getElementById('groove-beat').textContent = data.timing.currentBeat || '-';
+                        updateBeatIndicator(data.timing.phase, data.timing.currentBeat);
+                    }
+                    break;
+
+                case 'webdj':
+                    if (data.stats) {
+                        document.getElementById('webdj-tracks').textContent = data.stats.tracksProcessed || '-';
+                        document.getElementById('webdj-github').textContent = data.stats.githubDJsConnected || '-';
+                        document.getElementById('webdj-wiki').textContent = data.stats.wikiCacheSize || '-';
+                    }
+                    break;
+
+                case 'trust':
+                    if (data.logic && data.logic.recentDecisions.length > 0) {
+                        const recentDecision = data.logic.recentDecisions[0];
+                        if (recentDecision.category === 'trust' && recentDecision.data.trustLevel) {
+                            const trustLevel = Math.round(recentDecision.data.trustLevel * 100);
+                            document.getElementById('trust-level').textContent = `${trustLevel}%`;
+                            document.getElementById('trust-fill').style.width = `${trustLevel}%`;
+                        }
+                    }
+                    if (data.handshakes) {
+                        document.getElementById('trust-handshakes').textContent = 
+                            `${data.handshakes.active} active, ${data.handshakes.completed} completed`;
+                    }
+                    break;
+            }
+        }
+
+        function updateDimensionalPortals(portals) {
+            const container = document.getElementById('dimensional-portals');
+            container.innerHTML = '';
+
+            if (portals) {
+                portals.slice(0, 9).forEach(portal => {
+                    const div = document.createElement('div');
+                    div.className = 'portal';
+                    if (portal.energy > 50) {
+                        div.classList.add('active');
+                    }
+                    div.innerHTML = `<div>${portal.name.substring(0, 5)}<br>${portal.energy}</div>`;
+                    container.appendChild(div);
+                });
+            }
+        }
+
+        function updateBeatIndicator(phase, beat) {
+            const indicator = document.getElementById('beat-indicator');
+            
+            const phaseEmojis = {
+                intro: '🎼',
+                verse: '🎤',
+                chorus: '🎵',
+                bridge: '🌉',
+                drop: '🔥',
+                outro: '🎶'
+            };
+
+            indicator.textContent = phaseEmojis[phase] || '♪';
+            
+            // Pulse on beat 1
+            if (beat === 1) {
+                indicator.style.transform = 'translate(-50%, -50%) scale(1.5)';
+                setTimeout(() => {
+                    indicator.style.transform = 'translate(-50%, -50%) scale(1)';
+                }, 200);
+            }
+        }
+
+        // Update logic stream
+        async function updateLogicStream() {
+            try {
+                const response = await fetch('http://localhost:3008/trust/logic?limit=10');
+                const data = await response.json();
+                
+                if (data.recentLogic && data.recentLogic.length > 0) {
+                    const logContainer = document.getElementById('logic-log');
+                    
+                    data.recentLogic.forEach(entry => {
+                        if (!lastLogicEntry || entry.timestamp > lastLogicEntry) {
+                            addLogEntry('logic-log', `[${entry.component}] ${entry.decision} - ${entry.reasoning}`, 'info');
+                            lastLogicEntry = entry.timestamp;
+                        }
+                    });
+                }
+            } catch (error) {
+                // Silently fail
+            }
+        }
+
+        function addLogEntry(containerId, message, type = 'info') {
+            const container = document.getElementById(containerId);
+            const entry = document.createElement('div');
+            entry.className = `log-entry new ${type}`;
+            entry.innerHTML = `<span class="timestamp">${new Date().toLocaleTimeString()}</span> ${message}`;
+            
+            container.appendChild(entry);
+            
+            // Remove old entries (keep last 50)
+            const entries = container.children;
+            if (entries.length > 50) {
+                container.removeChild(entries[0]);
+            }
+            
+            // Scroll to bottom
+            container.scrollTop = container.scrollHeight;
+            
+            // Remove 'new' class after animation
+            setTimeout(() => {
+                entry.classList.remove('new');
+            }, 500);
+        }
+
+        // Control functions
+        async function triggerBassDrop() {
+            try {
+                const response = await fetch('http://localhost:3006/groove/drop', { method: 'POST' });
+                const data = await response.json();
+                
+                if (data.success) {
+                    addLogEntry('broadcast-log', '🔊 BASS DROP TRIGGERED! Maximum energy blast!', 'success');
+                }
+            } catch (error) {
+                addLogEntry('broadcast-log', '❌ Bass drop failed - Groove layer offline', 'error');
+            }
+        }
+
+        async function changeBPM() {
+            const newBPM = prompt('Enter new BPM (60-200):', '140');
+            if (newBPM && newBPM >= 60 && newBPM <= 200) {
+                try {
+                    const response = await fetch('http://localhost:3006/groove/bpm', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({ bpm: parseInt(newBPM) })
+                    });
+                    const data = await response.json();
+                    
+                    if (data.success) {
+                        addLogEntry('broadcast-log', `🎼 BPM changed to ${newBPM}! System synchronized.`, 'success');
+                    }
+                } catch (error) {
+                    addLogEntry('broadcast-log', '❌ BPM change failed - Groove layer offline', 'error');
+                }
+            }
+        }
+
+        async function scrapeWebsite() {
+            const url = prompt('Enter website URL to scrape for audio:', 'https://archive.org/details/GratefulDead');
+            if (url) {
+                try {
+                    const response = await fetch('http://localhost:3007/webdj/scrape', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({ url: url })
+                    });
+                    const data = await response.json();
+                    
+                    if (data.success) {
+                        addLogEntry('broadcast-log', `🌐 Scraped ${data.count} audio sources from ${url}`, 'success');
+                    }
+                } catch (error) {
+                    addLogEntry('broadcast-log', '❌ Website scraping failed - Web DJ offline', 'error');
+                }
+            }
+        }
+
+        function refreshAll() {
+            location.reload();
+        }
+
+        function formatUptime(ms) {
+            if (!ms) return '-';
+            const minutes = Math.floor(ms / 60000);
+            const hours = Math.floor(minutes / 60);
+            
+            if (hours > 0) {
+                return `${hours}h ${minutes % 60}m`;
+            } else {
+                return `${minutes}m`;
+            }
+        }
+
+        // Initialize and start monitoring
+        function init() {
+            addLogEntry('logic-log', 'Dashboard initialized - Starting system monitoring...', 'info');
+            addLogEntry('broadcast-log', 'Broadcast monitoring active - All systems ready!', 'info');
+            
+            // Update system status every 3 seconds
+            updateSystemStatus();
+            setInterval(updateSystemStatus, 3000);
+            
+            // Update logic stream every 2 seconds
+            updateLogicStream();
+            setInterval(updateLogicStream, 2000);
+        }
+
+        // Start when page loads
+        document.addEventListener('DOMContentLoaded', init);
+    </script>
+</body>
+</html>

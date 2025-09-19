@@ -1,0 +1,574 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>🌍 Closed Loop Terrain Generator - Document to GIF Pipeline</title>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/gif.js@0.2.0/dist/gif.js"></script>
+    <style>
+        body {
+            margin: 0;
+            padding: 0;
+            background: #000;
+            font-family: 'Courier New', monospace;
+            color: #0f0;
+            overflow: hidden;
+        }
+        
+        #container {
+            position: relative;
+            width: 100vw;
+            height: 100vh;
+        }
+        
+        #canvas {
+            width: 100%;
+            height: 100%;
+        }
+        
+        #controls {
+            position: absolute;
+            top: 20px;
+            left: 20px;
+            background: rgba(0,0,0,0.8);
+            border: 2px solid #0f0;
+            padding: 20px;
+            border-radius: 10px;
+            max-width: 300px;
+        }
+        
+        #drop-zone {
+            border: 2px dashed #0f0;
+            padding: 20px;
+            margin: 10px 0;
+            text-align: center;
+            border-radius: 5px;
+            cursor: pointer;
+            transition: all 0.3s;
+        }
+        
+        #drop-zone:hover, #drop-zone.dragover {
+            background: rgba(0,255,0,0.1);
+            border-color: #0ff;
+        }
+        
+        button {
+            background: #0f0;
+            color: #000;
+            border: none;
+            padding: 10px 20px;
+            margin: 5px;
+            cursor: pointer;
+            font-family: inherit;
+            font-weight: bold;
+            border-radius: 3px;
+            transition: all 0.3s;
+        }
+        
+        button:hover {
+            background: #0ff;
+            box-shadow: 0 0 10px #0ff;
+        }
+        
+        button:disabled {
+            background: #333;
+            color: #666;
+            cursor: not-allowed;
+        }
+        
+        #status {
+            margin: 10px 0;
+            font-size: 12px;
+            color: #0ff;
+        }
+        
+        #location-selector {
+            margin: 10px 0;
+        }
+        
+        select {
+            background: #111;
+            color: #0f0;
+            border: 1px solid #0f0;
+            padding: 5px;
+            font-family: inherit;
+        }
+        
+        #schema-monitor {
+            position: absolute;
+            top: 20px;
+            right: 20px;
+            background: rgba(0,0,0,0.8);
+            border: 2px solid #f0f;
+            padding: 15px;
+            border-radius: 10px;
+            font-size: 10px;
+            max-width: 250px;
+            max-height: 300px;
+            overflow-y: auto;
+        }
+        
+        .schema-entry {
+            margin: 3px 0;
+            padding-left: 10px;
+            border-left: 2px solid #f0f;
+        }
+        
+        #gif-preview {
+            position: absolute;
+            bottom: 20px;
+            right: 20px;
+            background: rgba(0,0,0,0.8);
+            border: 2px solid #ff0;
+            padding: 10px;
+            border-radius: 10px;
+            display: none;
+        }
+        
+        #gif-preview img {
+            max-width: 200px;
+            max-height: 200px;
+        }
+    </style>
+</head>
+<body>
+    <div id="container">
+        <div id="canvas"></div>
+        
+        <div id="controls">
+            <h3>🌍 Terrain Generator</h3>
+            <div id="drop-zone">
+                Drop document here or click to select
+                <input type="file" id="file-input" style="display: none" accept=".txt,.md,.json,.html,.js">
+            </div>
+            
+            <div id="location-selector">
+                <label>Base Location:</label>
+                <select id="location">
+                    <option value="kickapoo">Kickapoo Valley, WI</option>
+                    <option value="sapri">Sapri, Italy</option>
+                    <option value="random">Random Mix</option>
+                </select>
+            </div>
+            
+            <button id="generate-gif" disabled>Generate GIF</button>
+            <button id="export-terminal" disabled>Export for Terminal</button>
+            <button id="randomize">Randomize Terrain</button>
+            
+            <div id="status">Ready to process documents...</div>
+        </div>
+        
+        <div id="schema-monitor">
+            <h4>📊 Schema Monitor</h4>
+            <div id="schema-content">
+                <div class="schema-entry">No document loaded</div>
+            </div>
+        </div>
+        
+        <div id="gif-preview">
+            <h4>GIF Preview</h4>
+            <img id="gif-output" src="" alt="Generated GIF">
+            <br>
+            <button id="download-gif">Download GIF</button>
+        </div>
+    </div>
+
+    <script>
+        // Geographic data for height map generation
+        const LOCATIONS = {
+            kickapoo: {
+                name: 'Kickapoo Valley, Wisconsin',
+                lat: 43.4558,
+                lng: -90.8806,
+                elevation: 400, // meters
+                features: {
+                    valleys: 0.7,
+                    ridges: 0.3,
+                    roughness: 0.4,
+                    scale: 50
+                }
+            },
+            sapri: {
+                name: 'Sapri, Italy',
+                lat: 40.0756,
+                lng: 15.6278,
+                elevation: 5, // coastal
+                features: {
+                    mountains: 0.8,
+                    coast: 0.2,
+                    roughness: 0.6,
+                    scale: 80
+                }
+            }
+        };
+
+        // Three.js setup
+        let scene, camera, renderer;
+        let terrain, water;
+        let animationId;
+        let documentData = null;
+        let gifFrames = [];
+        let isRecording = false;
+
+        function init() {
+            scene = new THREE.Scene();
+            scene.fog = new THREE.Fog(0x000033, 100, 500);
+            
+            camera = new THREE.PerspectiveCamera(
+                75,
+                window.innerWidth / window.innerHeight,
+                0.1,
+                1000
+            );
+            camera.position.set(0, 50, 100);
+            camera.lookAt(0, 0, 0);
+            
+            renderer = new THREE.WebGLRenderer({ antialias: true });
+            renderer.setSize(window.innerWidth, window.innerHeight);
+            renderer.setClearColor(0x000033);
+            document.getElementById('canvas').appendChild(renderer.domElement);
+            
+            // Lighting
+            const ambientLight = new THREE.AmbientLight(0x404040);
+            scene.add(ambientLight);
+            
+            const directionalLight = new THREE.DirectionalLight(0xffffff, 1);
+            directionalLight.position.set(50, 100, 50);
+            directionalLight.castShadow = true;
+            scene.add(directionalLight);
+            
+            // Initial terrain
+            createTerrain();
+            
+            // Start animation
+            animate();
+        }
+
+        function createTerrain(locationKey = 'kickapoo') {
+            // Remove old terrain
+            if (terrain) {
+                scene.remove(terrain);
+            }
+            
+            const location = LOCATIONS[locationKey] || LOCATIONS.kickapoo;
+            const size = 200;
+            const segments = 64;
+            
+            const geometry = new THREE.PlaneGeometry(size, size, segments, segments);
+            const vertices = geometry.attributes.position.array;
+            
+            // Generate height map based on location features and document data
+            for (let i = 0; i < vertices.length; i += 3) {
+                const x = vertices[i];
+                const y = vertices[i + 1];
+                
+                // Base height from location
+                let height = location.elevation * 0.01;
+                
+                // Add features
+                height += noise(x * 0.05, y * 0.05) * location.features.roughness * 20;
+                height += noise(x * 0.02, y * 0.02) * location.features.scale;
+                
+                // Influence from document data
+                if (documentData) {
+                    const dataInfluence = getDataInfluence(x, y, i / 3);
+                    height += dataInfluence * 10;
+                }
+                
+                vertices[i + 2] = height;
+            }
+            
+            geometry.computeVertexNormals();
+            
+            // Multi-layer shader material
+            const material = new THREE.ShaderMaterial({
+                uniforms: {
+                    time: { value: 0 },
+                    baseColor: { value: new THREE.Color(0x228b22) },
+                    highlightColor: { value: new THREE.Color(0x00ff00) },
+                    waterLevel: { value: location.elevation * 0.005 }
+                },
+                vertexShader: `
+                    varying vec3 vNormal;
+                    varying vec3 vPosition;
+                    varying float vHeight;
+                    
+                    void main() {
+                        vNormal = normal;
+                        vPosition = position;
+                        vHeight = position.z;
+                        gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0);
+                    }
+                `,
+                fragmentShader: `
+                    uniform float time;
+                    uniform vec3 baseColor;
+                    uniform vec3 highlightColor;
+                    uniform float waterLevel;
+                    
+                    varying vec3 vNormal;
+                    varying vec3 vPosition;
+                    varying float vHeight;
+                    
+                    void main() {
+                        vec3 color = baseColor;
+                        
+                        // Height-based coloring
+                        float heightFactor = smoothstep(0.0, 30.0, vHeight);
+                        color = mix(vec3(0.2, 0.4, 0.8), color, heightFactor);
+                        
+                        // Highlight based on data
+                        float highlight = sin(vPosition.x * 0.1 + time) * sin(vPosition.y * 0.1 + time);
+                        color = mix(color, highlightColor, highlight * 0.2);
+                        
+                        // Simple lighting
+                        float light = dot(vNormal, normalize(vec3(1.0, 1.0, 0.5)));
+                        color *= (0.5 + light * 0.5);
+                        
+                        gl_FragColor = vec4(color, 1.0);
+                    }
+                `,
+                wireframe: false
+            });
+            
+            terrain = new THREE.Mesh(geometry, material);
+            terrain.rotation.x = -Math.PI / 2;
+            scene.add(terrain);
+        }
+
+        // Simple noise function
+        function noise(x, y) {
+            return Math.sin(x * 12.9898 + y * 78.233) * 43758.5453 % 1;
+        }
+
+        // Get data influence based on document structure
+        function getDataInfluence(x, y, index) {
+            if (!documentData) return 0;
+            
+            const dataIndex = index % documentData.length;
+            const char = documentData.charCodeAt(dataIndex);
+            const normalized = char / 255;
+            
+            return normalized * Math.sin(x * 0.1) * Math.cos(y * 0.1);
+        }
+
+        function animate() {
+            animationId = requestAnimationFrame(animate);
+            
+            // Update shader uniforms
+            if (terrain && terrain.material.uniforms) {
+                terrain.material.uniforms.time.value += 0.01;
+            }
+            
+            // Rotate camera around terrain
+            const time = Date.now() * 0.0005;
+            camera.position.x = Math.cos(time) * 150;
+            camera.position.z = Math.sin(time) * 150;
+            camera.lookAt(0, 0, 0);
+            
+            renderer.render(scene, camera);
+            
+            // Capture frames for GIF
+            if (isRecording && gifFrames.length < 60) {
+                captureFrame();
+            }
+        }
+
+        function captureFrame() {
+            renderer.domElement.toBlob((blob) => {
+                const reader = new FileReader();
+                reader.onload = (e) => {
+                    const img = new Image();
+                    img.onload = () => {
+                        gifFrames.push(img);
+                        updateStatus(`Recording: ${gifFrames.length}/60 frames`);
+                        
+                        if (gifFrames.length >= 60) {
+                            isRecording = false;
+                            generateGIF();
+                        }
+                    };
+                    img.src = e.target.result;
+                };
+                reader.readAsDataURL(blob);
+            });
+        }
+
+        function generateGIF() {
+            updateStatus('Generating GIF...');
+            
+            const gif = new GIF({
+                workers: 2,
+                quality: 10,
+                width: 320,
+                height: 240
+            });
+            
+            gifFrames.forEach((frame, i) => {
+                gif.addFrame(frame, { delay: 50 });
+            });
+            
+            gif.on('finished', (blob) => {
+                const url = URL.createObjectURL(blob);
+                document.getElementById('gif-output').src = url;
+                document.getElementById('gif-preview').style.display = 'block';
+                
+                // Enable download
+                document.getElementById('download-gif').onclick = () => {
+                    const a = document.createElement('a');
+                    a.href = url;
+                    a.download = `terrain-${Date.now()}.gif`;
+                    a.click();
+                };
+                
+                updateStatus('GIF generated successfully!');
+                document.getElementById('export-terminal').disabled = false;
+            });
+            
+            gif.render();
+        }
+
+        function updateStatus(message) {
+            document.getElementById('status').textContent = message;
+        }
+
+        function updateSchemaMonitor(data) {
+            const monitor = document.getElementById('schema-content');
+            monitor.innerHTML = '';
+            
+            if (typeof data === 'string') {
+                // Analyze document structure
+                const lines = data.split('\n').slice(0, 20);
+                lines.forEach((line, i) => {
+                    const indent = line.search(/\S/);
+                    const entry = document.createElement('div');
+                    entry.className = 'schema-entry';
+                    entry.style.paddingLeft = `${indent * 5 + 10}px`;
+                    entry.textContent = `L${i + 1}: ${line.trim().substring(0, 30)}...`;
+                    monitor.appendChild(entry);
+                });
+            } else if (typeof data === 'object') {
+                // Show JSON structure
+                const showObject = (obj, prefix = '') => {
+                    Object.keys(obj).slice(0, 10).forEach(key => {
+                        const entry = document.createElement('div');
+                        entry.className = 'schema-entry';
+                        entry.style.paddingLeft = `${prefix.length * 10 + 10}px`;
+                        entry.textContent = `${key}: ${typeof obj[key]}`;
+                        monitor.appendChild(entry);
+                    });
+                };
+                showObject(data);
+            }
+        }
+
+        // File handling
+        const dropZone = document.getElementById('drop-zone');
+        const fileInput = document.getElementById('file-input');
+        
+        dropZone.addEventListener('click', () => fileInput.click());
+        
+        dropZone.addEventListener('dragover', (e) => {
+            e.preventDefault();
+            dropZone.classList.add('dragover');
+        });
+        
+        dropZone.addEventListener('dragleave', () => {
+            dropZone.classList.remove('dragover');
+        });
+        
+        dropZone.addEventListener('drop', (e) => {
+            e.preventDefault();
+            dropZone.classList.remove('dragover');
+            
+            const file = e.dataTransfer.files[0];
+            if (file) processFile(file);
+        });
+        
+        fileInput.addEventListener('change', (e) => {
+            const file = e.target.files[0];
+            if (file) processFile(file);
+        });
+        
+        function processFile(file) {
+            const reader = new FileReader();
+            reader.onload = (e) => {
+                documentData = e.target.result;
+                updateSchemaMonitor(documentData);
+                createTerrain(document.getElementById('location').value);
+                updateStatus(`Loaded: ${file.name}`);
+                document.getElementById('generate-gif').disabled = false;
+            };
+            reader.readAsText(file);
+        }
+        
+        // Button handlers
+        document.getElementById('generate-gif').addEventListener('click', () => {
+            if (!isRecording) {
+                gifFrames = [];
+                isRecording = true;
+                updateStatus('Recording frames...');
+            }
+        });
+        
+        document.getElementById('export-terminal').addEventListener('click', () => {
+            // Convert GIF to terminal-friendly format
+            const asciiArt = generateASCIIFromGIF();
+            const blob = new Blob([asciiArt], { type: 'text/plain' });
+            const url = URL.createObjectURL(blob);
+            
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = `terrain-terminal-${Date.now()}.txt`;
+            a.click();
+            
+            updateStatus('Exported for terminal!');
+        });
+        
+        document.getElementById('randomize').addEventListener('click', () => {
+            // Mix both locations
+            const locations = ['kickapoo', 'sapri', 'random'];
+            const random = locations[Math.floor(Math.random() * locations.length)];
+            document.getElementById('location').value = random;
+            createTerrain(random);
+        });
+        
+        document.getElementById('location').addEventListener('change', (e) => {
+            createTerrain(e.target.value);
+        });
+        
+        function generateASCIIFromGIF() {
+            // Simple ASCII representation for terminal
+            const chars = ' .,:;ox%#@';
+            let ascii = '=== TERRAIN GIF SEQUENCE ===\n\n';
+            
+            // Generate a few ASCII frames
+            for (let frame = 0; frame < 10; frame++) {
+                ascii += `Frame ${frame + 1}:\n`;
+                for (let y = 0; y < 20; y++) {
+                    for (let x = 0; x < 40; x++) {
+                        const height = noise(x * 0.1 + frame * 0.1, y * 0.1);
+                        const charIndex = Math.floor(height * chars.length);
+                        ascii += chars[charIndex] || ' ';
+                    }
+                    ascii += '\n';
+                }
+                ascii += '\n';
+            }
+            
+            return ascii;
+        }
+        
+        // Handle window resize
+        window.addEventListener('resize', () => {
+            camera.aspect = window.innerWidth / window.innerHeight;
+            camera.updateProjectionMatrix();
+            renderer.setSize(window.innerWidth, window.innerHeight);
+        });
+        
+        // Initialize
+        init();
+    </script>
+</body>
+</html>

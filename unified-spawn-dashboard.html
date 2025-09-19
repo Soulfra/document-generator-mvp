@@ -1,0 +1,545 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Unified Event Spawn Dashboard</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            background: #0a0a0a;
+            color: #00ff00;
+            font-family: 'Courier New', monospace;
+            overflow: hidden;
+        }
+        
+        #game-world {
+            position: relative;
+            width: 100vw;
+            height: 100vh;
+            background: radial-gradient(circle at center, #1a1a2e, #0a0a0a);
+            cursor: crosshair;
+        }
+        
+        /* Corner spawn zones */
+        .spawn-corner {
+            position: absolute;
+            width: 100px;
+            height: 100px;
+            border: 2px dashed #00ff00;
+            opacity: 0.3;
+            transition: all 0.3s;
+        }
+        
+        .spawn-corner.active {
+            opacity: 0.8;
+            background: radial-gradient(circle, rgba(0,255,0,0.2), transparent);
+            animation: pulse 2s infinite;
+        }
+        
+        .spawn-corner.top-left { top: 0; left: 0; }
+        .spawn-corner.top-right { top: 0; right: 0; }
+        .spawn-corner.bottom-left { bottom: 0; left: 0; }
+        .spawn-corner.bottom-right { bottom: 0; right: 0; }
+        
+        /* Spawned entities */
+        .entity {
+            position: absolute;
+            font-size: 2em;
+            transition: all 0.3s;
+            cursor: pointer;
+            animation: spawn 0.5s ease-out;
+        }
+        
+        .entity:hover {
+            transform: scale(1.2);
+            filter: drop-shadow(0 0 10px currentColor);
+        }
+        
+        .entity.despawning {
+            animation: despawn 0.8s ease-in forwards;
+        }
+        
+        /* Entity types */
+        .entity.loot_chest { color: gold; }
+        .entity.experience_orb { color: #00ffff; }
+        .entity.item_drop { color: #ff00ff; }
+        .entity.gold_coin { color: #ffff00; }
+        .entity.error_dragon { color: #ff0000; }
+        .entity.celebration_fairy { color: #ff69b4; }
+        .entity.portal { color: #9400d3; }
+        
+        /* Hover menu */
+        .entity-menu {
+            position: absolute;
+            background: rgba(0,0,0,0.9);
+            border: 1px solid #00ff00;
+            padding: 5px;
+            border-radius: 5px;
+            display: none;
+            z-index: 1000;
+        }
+        
+        .entity-menu.visible {
+            display: block;
+        }
+        
+        .menu-action {
+            padding: 5px 10px;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+        
+        .menu-action:hover {
+            background: #00ff00;
+            color: #000;
+        }
+        
+        /* Status panel */
+        #status-panel {
+            position: fixed;
+            top: 10px;
+            left: 10px;
+            background: rgba(0,0,0,0.8);
+            border: 1px solid #00ff00;
+            padding: 10px;
+            font-size: 12px;
+            min-width: 200px;
+        }
+        
+        #event-log {
+            position: fixed;
+            bottom: 10px;
+            left: 10px;
+            background: rgba(0,0,0,0.8);
+            border: 1px solid #00ff00;
+            padding: 10px;
+            font-size: 10px;
+            max-height: 200px;
+            overflow-y: auto;
+            min-width: 300px;
+        }
+        
+        .log-entry {
+            margin: 2px 0;
+            opacity: 0.8;
+        }
+        
+        .log-entry.spawn { color: #00ff00; }
+        .log-entry.despawn { color: #ff0000; }
+        .log-entry.event { color: #ffff00; }
+        .log-entry.interaction { color: #00ffff; }
+        
+        /* RNG visualization */
+        #rng-visualizer {
+            position: fixed;
+            top: 10px;
+            right: 10px;
+            width: 100px;
+            height: 100px;
+            background: rgba(0,0,0,0.8);
+            border: 1px solid #00ff00;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 24px;
+        }
+        
+        #rng-value {
+            animation: rng-spin 1s linear infinite;
+        }
+        
+        /* Boss fight area */
+        .boss-arena {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            width: 300px;
+            height: 300px;
+            border: 3px solid #ff0000;
+            border-radius: 50%;
+            opacity: 0;
+            transition: all 0.5s;
+        }
+        
+        .boss-arena.active {
+            opacity: 0.5;
+            animation: boss-pulse 2s infinite;
+        }
+        
+        /* Animations */
+        @keyframes spawn {
+            from {
+                transform: scale(0) rotate(0deg);
+                opacity: 0;
+            }
+            to {
+                transform: scale(1) rotate(360deg);
+                opacity: 1;
+            }
+        }
+        
+        @keyframes despawn {
+            to {
+                transform: scale(0) rotate(-360deg);
+                opacity: 0;
+            }
+        }
+        
+        @keyframes pulse {
+            0%, 100% { transform: scale(1); }
+            50% { transform: scale(1.1); }
+        }
+        
+        @keyframes boss-pulse {
+            0%, 100% { 
+                box-shadow: 0 0 20px rgba(255,0,0,0.5);
+            }
+            50% { 
+                box-shadow: 0 0 40px rgba(255,0,0,0.8);
+            }
+        }
+        
+        @keyframes rng-spin {
+            from { transform: rotate(0deg); }
+            to { transform: rotate(360deg); }
+        }
+        
+        /* Control buttons */
+        #controls {
+            position: fixed;
+            top: 10px;
+            left: 50%;
+            transform: translateX(-50%);
+            display: flex;
+            gap: 10px;
+        }
+        
+        button {
+            background: #000;
+            color: #00ff00;
+            border: 1px solid #00ff00;
+            padding: 10px 20px;
+            cursor: pointer;
+            font-family: inherit;
+            transition: all 0.2s;
+        }
+        
+        button:hover {
+            background: #00ff00;
+            color: #000;
+        }
+    </style>
+</head>
+<body>
+    <div id="game-world">
+        <!-- Spawn corners -->
+        <div class="spawn-corner top-left" data-corner="top-left"></div>
+        <div class="spawn-corner top-right" data-corner="top-right"></div>
+        <div class="spawn-corner bottom-left" data-corner="bottom-left"></div>
+        <div class="spawn-corner bottom-right" data-corner="bottom-right"></div>
+        
+        <!-- Boss arena (appears during boss fights) -->
+        <div class="boss-arena" id="boss-arena"></div>
+    </div>
+    
+    <!-- Status panel -->
+    <div id="status-panel">
+        <h3>System Status</h3>
+        <div>Active Entities: <span id="entity-count">0</span></div>
+        <div>Total Spawned: <span id="total-spawned">0</span></div>
+        <div>RNG Entropy: <span id="rng-entropy">0</span></div>
+        <div>Connected: <span id="connection-status">❌</span></div>
+    </div>
+    
+    <!-- Event log -->
+    <div id="event-log">
+        <h3>Event Log</h3>
+        <div id="log-entries"></div>
+    </div>
+    
+    <!-- RNG visualizer -->
+    <div id="rng-visualizer">
+        <div id="rng-value">🎲</div>
+    </div>
+    
+    <!-- Control buttons -->
+    <div id="controls">
+        <button onclick="simulateBossDeath()">Simulate Boss Death</button>
+        <button onclick="spawnRandom()">Random Spawn</button>
+        <button onclick="triggerEvent('system_error')">Trigger Error</button>
+        <button onclick="saveWorldState()">Save State</button>
+    </div>
+    
+    <!-- Entity menu template -->
+    <div class="entity-menu" id="menu-template">
+        <div class="menu-action" data-action="open">Open</div>
+        <div class="menu-action" data-action="inspect">Inspect</div>
+        <div class="menu-action" data-action="pickup">Pick Up</div>
+    </div>
+
+    <script>
+        // WebSocket connection
+        let ws;
+        let entities = new Map();
+        let menus = new Map();
+        let stats = {
+            activeEntities: 0,
+            totalSpawned: 0,
+            rngEntropy: 0
+        };
+        
+        // Entity sprites
+        const sprites = {
+            loot_chest: '📦',
+            experience_orb: '✨',
+            item_drop: '💎',
+            gold_coin: '🪙',
+            error_dragon: '🐉',
+            celebration_fairy: '🧚',
+            portal: '🌀',
+            npc_merchant: '🧙',
+            boss: '👹',
+            achievement_trophy: '🏆'
+        };
+        
+        function connect() {
+            ws = new WebSocket('ws://localhost:9998');
+            
+            ws.onopen = () => {
+                console.log('Connected to orchestrator');
+                document.getElementById('connection-status').textContent = '✅';
+                addLog('Connected to server', 'event');
+            };
+            
+            ws.onmessage = (event) => {
+                const data = JSON.parse(event.data);
+                handleMessage(data);
+            };
+            
+            ws.onclose = () => {
+                document.getElementById('connection-status').textContent = '❌';
+                addLog('Disconnected from server', 'event');
+                setTimeout(connect, 3000); // Reconnect
+            };
+        }
+        
+        function handleMessage(data) {
+            switch (data.type) {
+                case 'state':
+                    // Initial state
+                    data.spawns.forEach(entity => {
+                        spawnEntity(entity);
+                    });
+                    break;
+                    
+                case 'update':
+                    handleUpdate(data.topic, data.data);
+                    break;
+            }
+        }
+        
+        function handleUpdate(topic, data) {
+            if (topic.includes('entity.spawned')) {
+                spawnEntity(data);
+            } else if (topic.includes('entity.despawned')) {
+                despawnEntity(data.id);
+            } else if (topic.includes('spawn.')) {
+                // Show spawn animation on corner
+                animateCornerSpawn(data.corner || 'top-left');
+            }
+        }
+        
+        function spawnEntity(entity) {
+            const el = document.createElement('div');
+            el.className = `entity ${entity.type}`;
+            el.id = `entity-${entity.id}`;
+            el.textContent = sprites[entity.type] || '❓';
+            el.style.left = `${entity.position.x}%`;
+            el.style.top = `${entity.position.y}%`;
+            
+            // Add hover handlers
+            el.addEventListener('mouseenter', () => {
+                ws.send(JSON.stringify({
+                    type: 'hover',
+                    entityId: entity.id
+                }));
+                showMenu(entity);
+            });
+            
+            el.addEventListener('mouseleave', () => {
+                ws.send(JSON.stringify({
+                    type: 'hover_exit',
+                    entityId: entity.id
+                }));
+                hideMenu(entity.id);
+            });
+            
+            document.getElementById('game-world').appendChild(el);
+            entities.set(entity.id, entity);
+            
+            updateStats();
+            addLog(`Spawned ${entity.type} at corner`, 'spawn');
+        }
+        
+        function despawnEntity(entityId) {
+            const el = document.getElementById(`entity-${entityId}`);
+            if (el) {
+                el.classList.add('despawning');
+                setTimeout(() => {
+                    el.remove();
+                    entities.delete(entityId);
+                    updateStats();
+                }, 800);
+                
+                const entity = entities.get(entityId);
+                if (entity) {
+                    addLog(`Despawned ${entity.type}`, 'despawn');
+                }
+            }
+        }
+        
+        function animateCornerSpawn(corner) {
+            const cornerEl = document.querySelector(`.spawn-corner[data-corner="${corner}"]`);
+            if (cornerEl) {
+                cornerEl.classList.add('active');
+                setTimeout(() => {
+                    cornerEl.classList.remove('active');
+                }, 1000);
+            }
+        }
+        
+        function showMenu(entity) {
+            let menu = menus.get(entity.id);
+            if (!menu) {
+                menu = document.getElementById('menu-template').cloneNode(true);
+                menu.id = `menu-${entity.id}`;
+                document.body.appendChild(menu);
+                menus.set(entity.id, menu);
+            }
+            
+            const entityEl = document.getElementById(`entity-${entity.id}`);
+            const rect = entityEl.getBoundingClientRect();
+            
+            menu.style.left = `${rect.right + 10}px`;
+            menu.style.top = `${rect.top}px`;
+            menu.classList.add('visible');
+            
+            // Add click handlers
+            menu.querySelectorAll('.menu-action').forEach(action => {
+                action.onclick = () => {
+                    ws.send(JSON.stringify({
+                        type: 'click',
+                        entityId: entity.id,
+                        action: action.dataset.action
+                    }));
+                    hideMenu(entity.id);
+                    addLog(`Action: ${action.dataset.action} on ${entity.type}`, 'interaction');
+                };
+            });
+        }
+        
+        function hideMenu(entityId) {
+            const menu = menus.get(entityId);
+            if (menu) {
+                menu.classList.remove('visible');
+            }
+        }
+        
+        function updateStats() {
+            document.getElementById('entity-count').textContent = entities.size;
+            document.getElementById('total-spawned').textContent = stats.totalSpawned++;
+            document.getElementById('rng-entropy').textContent = stats.rngEntropy++;
+        }
+        
+        function addLog(message, type = 'event') {
+            const log = document.getElementById('log-entries');
+            const entry = document.createElement('div');
+            entry.className = `log-entry ${type}`;
+            entry.textContent = `[${new Date().toLocaleTimeString()}] ${message}`;
+            log.appendChild(entry);
+            
+            // Keep only last 20 entries
+            while (log.children.length > 20) {
+                log.removeChild(log.firstChild);
+            }
+            
+            // Scroll to bottom
+            log.scrollTop = log.scrollHeight;
+        }
+        
+        // Control functions
+        function simulateBossDeath() {
+            addLog('BOSS DEFEATED!', 'event');
+            
+            // Show boss arena animation
+            const arena = document.getElementById('boss-arena');
+            arena.classList.add('active');
+            setTimeout(() => {
+                arena.classList.remove('active');
+            }, 3000);
+            
+            // This will be handled by the server
+            ws.send(JSON.stringify({
+                type: 'spawn_request',
+                spawn: {
+                    type: 'boss_death_trigger',
+                    trigger: 'boss_death',
+                    position: { x: 50, y: 50 }
+                }
+            }));
+        }
+        
+        function spawnRandom() {
+            const types = Object.keys(sprites);
+            const type = types[Math.floor(Math.random() * types.length)];
+            
+            ws.send(JSON.stringify({
+                type: 'spawn_request',
+                spawn: {
+                    type: type,
+                    trigger: 'manual',
+                    position: {
+                        x: Math.random() * 80 + 10,
+                        y: Math.random() * 80 + 10
+                    }
+                }
+            }));
+        }
+        
+        function triggerEvent(eventType) {
+            ws.send(JSON.stringify({
+                type: 'trigger_event',
+                event: eventType
+            }));
+        }
+        
+        function saveWorldState() {
+            addLog('World state saved', 'event');
+            // This is handled server-side
+        }
+        
+        // RNG visualizer
+        setInterval(() => {
+            const dice = ['⚀', '⚁', '⚂', '⚃', '⚄', '⚅'];
+            document.getElementById('rng-value').textContent = 
+                dice[Math.floor(Math.random() * dice.length)];
+        }, 100);
+        
+        // Connect on load
+        connect();
+        
+        // Add some initial atmosphere
+        setTimeout(() => {
+            addLog('System initialized', 'event');
+            addLog('Waiting for spawns...', 'event');
+        }, 1000);
+    </script>
+</body>
+</html>

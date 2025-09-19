@@ -1,0 +1,555 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <meta name="mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <title>Layer Manager - Responsive Index System</title>
+    <style>
+        /* Reset and base styles */
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        /* CSS Variables for responsive design */
+        :root {
+            --safe-area-inset-top: env(safe-area-inset-top);
+            --safe-area-inset-bottom: env(safe-area-inset-bottom);
+            --safe-area-inset-left: env(safe-area-inset-left);
+            --safe-area-inset-right: env(safe-area-inset-right);
+            
+            /* Responsive breakpoints */
+            --mobile: 480px;
+            --tablet: 768px;
+            --desktop: 1024px;
+            --wide: 1440px;
+            
+            /* Dynamic spacing */
+            --spacing-unit: clamp(0.5rem, 2vw, 1rem);
+            --header-height: clamp(50px, 10vh, 80px);
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            background: #0a0a0a;
+            color: #ffffff;
+            min-height: 100vh;
+            min-height: -webkit-fill-available;
+            overflow-x: hidden;
+            position: relative;
+        }
+
+        /* Prevent white/black screen of death */
+        .failsafe-container {
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: linear-gradient(135deg, #1a1a1a 0%, #2d2d2d 100%);
+            z-index: -1;
+        }
+
+        /* Main container with safe areas */
+        .main-container {
+            padding-top: var(--safe-area-inset-top);
+            padding-bottom: var(--safe-area-inset-bottom);
+            padding-left: var(--safe-area-inset-left);
+            padding-right: var(--safe-area-inset-right);
+            min-height: 100vh;
+            display: flex;
+            flex-direction: column;
+        }
+
+        /* Responsive header */
+        header {
+            height: var(--header-height);
+            background: rgba(20, 20, 20, 0.95);
+            backdrop-filter: blur(10px);
+            -webkit-backdrop-filter: blur(10px);
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: 0 var(--spacing-unit);
+            position: sticky;
+            top: 0;
+            z-index: 100;
+            border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+        }
+
+        /* Layer grid - responsive */
+        .layer-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(min(100%, 300px), 1fr));
+            gap: var(--spacing-unit);
+            padding: var(--spacing-unit);
+            flex: 1;
+            align-content: start;
+        }
+
+        /* Layer card */
+        .layer-card {
+            background: rgba(30, 30, 30, 0.9);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            border-radius: 12px;
+            padding: calc(var(--spacing-unit) * 2);
+            transition: all 0.3s ease;
+            cursor: pointer;
+            position: relative;
+            overflow: hidden;
+            min-height: 150px;
+            display: flex;
+            flex-direction: column;
+        }
+
+        .layer-card:hover {
+            transform: translateY(-2px);
+            border-color: rgba(255, 255, 255, 0.3);
+            background: rgba(40, 40, 40, 0.95);
+        }
+
+        /* Status indicator */
+        .status-indicator {
+            position: absolute;
+            top: 10px;
+            right: 10px;
+            width: 10px;
+            height: 10px;
+            border-radius: 50%;
+            background: #4CAF50;
+            animation: pulse 2s infinite;
+        }
+
+        .status-indicator.error {
+            background: #f44336;
+            animation: none;
+        }
+
+        .status-indicator.loading {
+            background: #ff9800;
+        }
+
+        @keyframes pulse {
+            0% { opacity: 1; }
+            50% { opacity: 0.5; }
+            100% { opacity: 1; }
+        }
+
+        /* Mobile-first responsive design */
+        @media (max-width: 768px) {
+            .layer-grid {
+                grid-template-columns: 1fr;
+            }
+            
+            .layer-card {
+                min-height: 120px;
+            }
+            
+            header h1 {
+                font-size: 1.2rem;
+            }
+        }
+
+        /* Tablet adjustments */
+        @media (min-width: 769px) and (max-width: 1024px) {
+            .layer-grid {
+                grid-template-columns: repeat(2, 1fr);
+            }
+        }
+
+        /* Desktop and up */
+        @media (min-width: 1025px) {
+            .main-container {
+                max-width: 1400px;
+                margin: 0 auto;
+            }
+        }
+
+        /* Prevent recursion with iframe sandboxing */
+        .layer-preview {
+            width: 100%;
+            height: 200px;
+            border: none;
+            border-radius: 8px;
+            background: #000;
+            margin-top: auto;
+        }
+
+        /* Loading states */
+        .loading-overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: rgba(0, 0, 0, 0.9);
+            display: none;
+            align-items: center;
+            justify-content: center;
+            z-index: 1000;
+        }
+
+        .loading-overlay.active {
+            display: flex;
+        }
+
+        /* Error recovery */
+        .error-boundary {
+            padding: 20px;
+            background: rgba(244, 67, 54, 0.1);
+            border: 1px solid #f44336;
+            border-radius: 8px;
+            margin: 20px;
+            display: none;
+        }
+
+        .error-boundary.active {
+            display: block;
+        }
+
+        /* Touch-friendly buttons */
+        .touch-button {
+            min-height: 44px;
+            min-width: 44px;
+            padding: 12px 24px;
+            background: rgba(255, 255, 255, 0.1);
+            border: 1px solid rgba(255, 255, 255, 0.2);
+            border-radius: 8px;
+            color: white;
+            font-size: 16px;
+            cursor: pointer;
+            transition: all 0.2s;
+            -webkit-tap-highlight-color: transparent;
+        }
+
+        .touch-button:active {
+            transform: scale(0.95);
+            background: rgba(255, 255, 255, 0.2);
+        }
+
+        /* Responsive text */
+        .responsive-text {
+            font-size: clamp(0.875rem, 2vw, 1rem);
+            line-height: 1.5;
+        }
+
+        /* Performance optimization */
+        .layer-card {
+            will-change: transform;
+            contain: layout style paint;
+        }
+
+        /* Dark mode protection */
+        @media (prefers-color-scheme: light) {
+            body {
+                background: #f5f5f5;
+                color: #333;
+            }
+            
+            .layer-card {
+                background: rgba(255, 255, 255, 0.9);
+                border-color: rgba(0, 0, 0, 0.1);
+            }
+            
+            .failsafe-container {
+                background: linear-gradient(135deg, #f0f0f0 0%, #ffffff 100%);
+            }
+        }
+    </style>
+</head>
+<body>
+    <!-- Failsafe background to prevent white/black screen -->
+    <div class="failsafe-container"></div>
+    
+    <!-- Loading overlay -->
+    <div class="loading-overlay" id="loadingOverlay">
+        <div class="spinner">Loading layers...</div>
+    </div>
+    
+    <!-- Error boundary -->
+    <div class="error-boundary" id="errorBoundary">
+        <h3>Layer Error Detected</h3>
+        <p>A layer failed to load properly. <button class="touch-button" onclick="recoverFromError()">Recover</button></p>
+    </div>
+    
+    <!-- Main container -->
+    <div class="main-container">
+        <header>
+            <h1>Layer Manager</h1>
+            <button class="touch-button" onclick="addNewLayer()">+ New Layer</button>
+        </header>
+        
+        <div class="layer-grid" id="layerGrid">
+            <!-- Layers will be dynamically inserted here -->
+        </div>
+    </div>
+
+    <script>
+        // Layer management system
+        class LayerManager {
+            constructor() {
+                this.layers = [];
+                this.activeLayer = null;
+                this.recursionDepth = 0;
+                this.maxRecursion = 3;
+                
+                // Initialize with default layers
+                this.initializeLayers();
+                
+                // Set up responsive handlers
+                this.setupResponsiveHandlers();
+                
+                // Prevent recursion
+                this.setupRecursionPrevention();
+            }
+            
+            initializeLayers() {
+                const defaultLayers = [
+                    {
+                        id: 'master-menu',
+                        name: 'Master Menu',
+                        url: './master-menu-compactor.html',
+                        status: 'active',
+                        responsive: true
+                    },
+                    {
+                        id: 'ai-economy',
+                        name: 'AI Economy Dashboard',
+                        url: './ai-economy-dashboard.html',
+                        status: 'active',
+                        responsive: true
+                    },
+                    {
+                        id: 'blamechain',
+                        name: 'Blamechain Interface',
+                        url: './blamechain-dashboard.html',
+                        status: 'loading',
+                        responsive: true
+                    },
+                    {
+                        id: 'flag-tag',
+                        name: 'Flag-Tag Control',
+                        url: './flag-tag-dashboard.html',
+                        status: 'active',
+                        responsive: true
+                    }
+                ];
+                
+                defaultLayers.forEach(layer => this.addLayer(layer));
+            }
+            
+            addLayer(layerConfig) {
+                const layerCard = document.createElement('div');
+                layerCard.className = 'layer-card';
+                layerCard.id = `layer-${layerConfig.id}`;
+                
+                layerCard.innerHTML = `
+                    <h3>${layerConfig.name}</h3>
+                    <div class="status-indicator ${layerConfig.status}"></div>
+                    <p class="responsive-text">Layer: ${layerConfig.id}</p>
+                    <p class="responsive-text">Status: ${layerConfig.status}</p>
+                    ${layerConfig.responsive ? '<p class="responsive-text">✅ Responsive</p>' : '<p class="responsive-text">⚠️ Desktop Only</p>'}
+                    <iframe 
+                        class="layer-preview" 
+                        src="${layerConfig.url}" 
+                        sandbox="allow-scripts allow-same-origin"
+                        loading="lazy"
+                        onload="this.style.opacity='1'"
+                        onerror="handleIframeError('${layerConfig.id}')"
+                        style="opacity: 0; transition: opacity 0.3s;"
+                    ></iframe>
+                `;
+                
+                layerCard.onclick = () => this.openLayer(layerConfig);
+                
+                document.getElementById('layerGrid').appendChild(layerCard);
+                this.layers.push(layerConfig);
+            }
+            
+            openLayer(layer) {
+                // Check recursion depth
+                if (this.recursionDepth >= this.maxRecursion) {
+                    console.warn('Max recursion depth reached');
+                    this.showError('Maximum layer depth reached');
+                    return;
+                }
+                
+                this.recursionDepth++;
+                
+                // Open in current window or new tab based on screen size
+                if (window.innerWidth < 768) {
+                    // Mobile: navigate in same window
+                    window.location.href = layer.url;
+                } else {
+                    // Desktop: open in new tab
+                    window.open(layer.url, '_blank');
+                }
+                
+                // Reset recursion counter after navigation
+                setTimeout(() => {
+                    this.recursionDepth = 0;
+                }, 1000);
+            }
+            
+            setupResponsiveHandlers() {
+                // Handle orientation changes
+                window.addEventListener('orientationchange', () => {
+                    this.adjustLayout();
+                });
+                
+                // Handle resize
+                let resizeTimeout;
+                window.addEventListener('resize', () => {
+                    clearTimeout(resizeTimeout);
+                    resizeTimeout = setTimeout(() => {
+                        this.adjustLayout();
+                    }, 250);
+                });
+                
+                // Handle visibility changes (prevent black screen)
+                document.addEventListener('visibilitychange', () => {
+                    if (!document.hidden) {
+                        this.refreshLayers();
+                    }
+                });
+            }
+            
+            setupRecursionPrevention() {
+                // Detect if we're in an iframe
+                if (window !== window.top) {
+                    console.log('Running in iframe, limiting functionality');
+                    document.body.style.opacity = '0.8';
+                    
+                    // Prevent further iframe nesting
+                    const iframes = document.querySelectorAll('iframe');
+                    iframes.forEach(iframe => {
+                        iframe.style.display = 'none';
+                    });
+                }
+                
+                // Set recursion flag in session storage
+                const depth = parseInt(sessionStorage.getItem('layerDepth') || '0');
+                sessionStorage.setItem('layerDepth', (depth + 1).toString());
+                
+                // Clear on unload
+                window.addEventListener('beforeunload', () => {
+                    sessionStorage.setItem('layerDepth', '0');
+                });
+            }
+            
+            adjustLayout() {
+                const width = window.innerWidth;
+                const grid = document.getElementById('layerGrid');
+                
+                if (width < 480) {
+                    // Mobile
+                    grid.style.gridTemplateColumns = '1fr';
+                } else if (width < 768) {
+                    // Large mobile
+                    grid.style.gridTemplateColumns = 'repeat(auto-fit, minmax(250px, 1fr))';
+                } else if (width < 1024) {
+                    // Tablet
+                    grid.style.gridTemplateColumns = 'repeat(2, 1fr)';
+                } else {
+                    // Desktop
+                    grid.style.gridTemplateColumns = 'repeat(auto-fit, minmax(300px, 1fr))';
+                }
+            }
+            
+            refreshLayers() {
+                // Refresh layer status without causing recursion
+                this.layers.forEach(layer => {
+                    const statusEl = document.querySelector(`#layer-${layer.id} .status-indicator`);
+                    if (statusEl) {
+                        // Simple connectivity check
+                        fetch(layer.url, { method: 'HEAD', mode: 'no-cors' })
+                            .then(() => {
+                                statusEl.className = 'status-indicator active';
+                            })
+                            .catch(() => {
+                                statusEl.className = 'status-indicator error';
+                            });
+                    }
+                });
+            }
+            
+            showError(message) {
+                const errorBoundary = document.getElementById('errorBoundary');
+                errorBoundary.querySelector('p').textContent = message;
+                errorBoundary.classList.add('active');
+                
+                setTimeout(() => {
+                    errorBoundary.classList.remove('active');
+                }, 5000);
+            }
+        }
+        
+        // Global functions
+        function addNewLayer() {
+            const name = prompt('Layer name:');
+            const url = prompt('Layer URL:');
+            
+            if (name && url) {
+                window.layerManager.addLayer({
+                    id: name.toLowerCase().replace(/\s+/g, '-'),
+                    name: name,
+                    url: url,
+                    status: 'loading',
+                    responsive: confirm('Is this layer responsive?')
+                });
+            }
+        }
+        
+        function handleIframeError(layerId) {
+            console.error(`Failed to load layer: ${layerId}`);
+            const statusEl = document.querySelector(`#layer-${layerId} .status-indicator`);
+            if (statusEl) {
+                statusEl.className = 'status-indicator error';
+            }
+        }
+        
+        function recoverFromError() {
+            // Clear all iframes to prevent cascade
+            const iframes = document.querySelectorAll('iframe');
+            iframes.forEach(iframe => {
+                iframe.src = 'about:blank';
+            });
+            
+            // Reload layer manager
+            setTimeout(() => {
+                window.location.reload();
+            }, 500);
+        }
+        
+        // Initialize on load
+        window.addEventListener('DOMContentLoaded', () => {
+            window.layerManager = new LayerManager();
+            
+            // Hide loading overlay
+            setTimeout(() => {
+                document.getElementById('loadingOverlay').classList.remove('active');
+            }, 500);
+        });
+        
+        // Prevent pull-to-refresh on mobile
+        let lastTouchY = 0;
+        document.addEventListener('touchstart', e => {
+            lastTouchY = e.touches[0].clientY;
+        }, { passive: false });
+        
+        document.addEventListener('touchmove', e => {
+            const touchY = e.touches[0].clientY;
+            const touchDiff = touchY - lastTouchY;
+            
+            if (window.scrollY === 0 && touchDiff > 0) {
+                e.preventDefault();
+            }
+            
+            lastTouchY = touchY;
+        }, { passive: false });
+    </script>
+</body>
+</html>

@@ -1,0 +1,768 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>🎵 Diamond Broadcasting LOG-AGGREGATOR Demo</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            background: #000;
+            color: #fff;
+            overflow: hidden;
+        }
+
+        .demo-container {
+            width: 100vw;
+            height: 100vh;
+            display: flex;
+            flex-direction: column;
+        }
+
+        .demo-header {
+            background: rgba(0, 255, 136, 0.1);
+            padding: 20px;
+            border-bottom: 2px solid #00ff88;
+            text-align: center;
+        }
+
+        .demo-title {
+            font-size: 32px;
+            color: #00ff88;
+            margin-bottom: 10px;
+        }
+
+        .demo-subtitle {
+            font-size: 16px;
+            color: #ccc;
+        }
+
+        .demo-content {
+            flex: 1;
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 20px;
+            padding: 20px;
+        }
+
+        .demo-section {
+            background: rgba(255, 255, 255, 0.05);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            border-radius: 15px;
+            padding: 20px;
+            overflow-y: auto;
+        }
+
+        .section-title {
+            font-size: 20px;
+            color: #00ff88;
+            margin-bottom: 15px;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .diamond-grid {
+            display: grid;
+            grid-template-columns: repeat(4, 1fr);
+            gap: 10px;
+            margin-bottom: 20px;
+        }
+
+        .diamond-tile {
+            aspect-ratio: 1;
+            background: rgba(255, 255, 255, 0.1);
+            border: 2px solid rgba(255, 255, 255, 0.2);
+            border-radius: 10px;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            position: relative;
+        }
+
+        .diamond-tile:hover {
+            transform: scale(1.05);
+            border-color: #00ff88;
+        }
+
+        .diamond-tile.bright {
+            background: rgba(0, 255, 136, 0.3);
+            border-color: #00ff88;
+            box-shadow: 0 0 20px rgba(0, 255, 136, 0.3);
+        }
+
+        .diamond-tile.active {
+            background: rgba(0, 255, 136, 0.2);
+            border-color: #00ff88;
+        }
+
+        .diamond-tile.dim {
+            background: rgba(255, 136, 0, 0.2);
+            border-color: #ff8800;
+        }
+
+        .diamond-tile.broken {
+            background: rgba(255, 68, 68, 0.2);
+            border-color: #ff4444;
+            opacity: 0.6;
+        }
+
+        .tile-icon {
+            font-size: 20px;
+            margin-bottom: 5px;
+        }
+
+        .tile-name {
+            font-size: 10px;
+            text-align: center;
+            color: #ccc;
+        }
+
+        .tile-health {
+            position: absolute;
+            bottom: 2px;
+            left: 2px;
+            right: 2px;
+            height: 3px;
+            background: rgba(255, 255, 255, 0.2);
+            border-radius: 2px;
+            overflow: hidden;
+        }
+
+        .health-bar {
+            height: 100%;
+            background: #00ff88;
+            width: 75%;
+            transition: width 0.5s ease;
+        }
+
+        .reasoning-layers {
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+        }
+
+        .reasoning-layer {
+            background: rgba(0, 0, 0, 0.3);
+            padding: 10px;
+            border-radius: 8px;
+            border-left: 4px solid #00ff88;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .layer-info {
+            display: flex;
+            flex-direction: column;
+        }
+
+        .layer-name {
+            font-weight: bold;
+            color: #00ff88;
+        }
+
+        .layer-freq {
+            font-size: 12px;
+            color: #888;
+        }
+
+        .layer-status {
+            font-size: 12px;
+            padding: 2px 8px;
+            border-radius: 4px;
+            background: rgba(0, 255, 136, 0.2);
+            color: #00ff88;
+        }
+
+        .musical-display {
+            background: rgba(0, 0, 0, 0.3);
+            padding: 15px;
+            border-radius: 10px;
+            margin-bottom: 15px;
+        }
+
+        .chord-display {
+            font-size: 24px;
+            text-align: center;
+            color: #00ff88;
+            margin-bottom: 10px;
+        }
+
+        .bitmap-display {
+            font-family: monospace;
+            font-size: 14px;
+            color: #00ff88;
+            text-align: center;
+            background: rgba(0, 0, 0, 0.5);
+            padding: 8px;
+            border-radius: 4px;
+        }
+
+        .camera-controls {
+            display: flex;
+            gap: 10px;
+            margin-top: 15px;
+        }
+
+        .camera-btn {
+            padding: 8px 12px;
+            background: rgba(0, 255, 136, 0.1);
+            border: 1px solid #00ff88;
+            color: #00ff88;
+            border-radius: 6px;
+            cursor: pointer;
+            font-size: 12px;
+            transition: background 0.2s;
+        }
+
+        .camera-btn:hover {
+            background: rgba(0, 255, 136, 0.2);
+        }
+
+        .camera-btn.active {
+            background: #00ff88;
+            color: #000;
+        }
+
+        .log-stream {
+            max-height: 200px;
+            overflow-y: auto;
+            background: rgba(0, 0, 0, 0.3);
+            border-radius: 8px;
+            padding: 10px;
+            font-family: monospace;
+            font-size: 12px;
+            line-height: 1.4;
+        }
+
+        .log-entry {
+            margin-bottom: 5px;
+            padding: 3px 0;
+        }
+
+        .log-timestamp {
+            color: #888;
+            margin-right: 8px;
+        }
+
+        .log-type {
+            color: #00ff88;
+            margin-right: 8px;
+        }
+
+        .log-content {
+            color: #fff;
+        }
+
+        .broadcast-indicator {
+            position: fixed;
+            top: 20px;
+            right: 20px;
+            background: rgba(255, 68, 68, 0.9);
+            padding: 10px 15px;
+            border-radius: 20px;
+            font-size: 12px;
+            font-weight: bold;
+            animation: pulse 2s infinite;
+        }
+
+        @keyframes pulse {
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0.7; }
+        }
+
+        .connection-status {
+            position: fixed;
+            bottom: 20px;
+            left: 20px;
+            background: rgba(0, 0, 0, 0.8);
+            padding: 10px;
+            border-radius: 8px;
+            border: 1px solid #00ff88;
+            font-size: 12px;
+        }
+
+        @media (max-width: 768px) {
+            .demo-content {
+                grid-template-columns: 1fr;
+                gap: 10px;
+                padding: 10px;
+            }
+
+            .diamond-grid {
+                grid-template-columns: repeat(2, 1fr);
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="demo-container">
+        <div class="demo-header">
+            <div class="demo-title">🎵 Diamond Broadcasting LOG-AGGREGATOR</div>
+            <div class="demo-subtitle">Musical logs broadcasting through diamond tiles with neural reasoning layers</div>
+        </div>
+
+        <div class="demo-content">
+            <!-- Left Panel: Diamond Grid -->
+            <div class="demo-section">
+                <div class="section-title">
+                    💎 Diamond Grid - Live Tile Shading
+                </div>
+                
+                <div class="diamond-grid" id="diamondGrid">
+                    <!-- Tiles will be populated by JavaScript -->
+                </div>
+
+                <div class="musical-display">
+                    <div class="chord-display" id="currentChord">C-major 😊</div>
+                    <div class="bitmap-display" id="currentBitmap">████████████████</div>
+                </div>
+
+                <div class="camera-controls">
+                    <button class="camera-btn active" onclick="switchCamera('overview')">📊 Overview</button>
+                    <button class="camera-btn" onclick="switchCamera('first-person')">👁️ First Person</button>
+                    <button class="camera-btn" onclick="switchCamera('musical')">🎵 Musical</button>
+                    <button class="camera-btn" onclick="switchCamera('bitmap')">🔢 Bitmap</button>
+                </div>
+            </div>
+
+            <!-- Right Panel: Reasoning Layers & Logs -->
+            <div class="demo-section">
+                <div class="section-title">
+                    🧠 7-Layer Neural Reasoning Engine
+                </div>
+
+                <div class="reasoning-layers" id="reasoningLayers">
+                    <!-- Layers will be populated by JavaScript -->
+                </div>
+
+                <div class="section-title" style="margin-top: 20px;">
+                    📡 Live Log Broadcast Stream
+                </div>
+
+                <div class="log-stream" id="logStream">
+                    <!-- Logs will be streamed here -->
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Status Indicators -->
+    <div class="broadcast-indicator" id="broadcastIndicator">
+        🔴 LIVE: Broadcasting to Diamond Grid
+    </div>
+
+    <div class="connection-status" id="connectionStatus">
+        📡 WebSocket: Connecting...
+    </div>
+
+    <script>
+        // Demo Data and State
+        let ws = null;
+        let currentCamera = 'overview';
+        let systemHealth = 75;
+        
+        const diamondTiles = [
+            // Row 1 - Core Systems
+            { id: 'working-system', icon: '🔧', name: 'Working System', health: 100, shade: 'bright' },
+            { id: 'pirate-game', icon: '🏴‍☠️', name: 'Pirate Game', health: 95, shade: 'bright' },
+            { id: 'qr-hunt', icon: '📱', name: 'QR Hunt', health: 90, shade: 'active' },
+            { id: 'deep-engine', icon: '🧠', name: 'Deep Engine', health: 85, shade: 'active' },
+            
+            // Row 2 - Integration Layer  
+            { id: 'voxel-engine', icon: '🎨', name: 'Voxel Engine', health: 80, shade: 'active' },
+            { id: 'payment-hub', icon: '💳', name: 'Payment Hub', health: 75, shade: 'active' },
+            { id: 'hex-grid', icon: '⬡', name: 'Hex Grid', health: 85, shade: 'active' },
+            { id: 'dashboard', icon: '📊', name: 'Dashboard', health: 70, shade: 'active' },
+            
+            // Row 3 - Broadcasting Layer
+            { id: 'broadcast-system', icon: '📡', name: 'Broadcast', health: 60, shade: 'dim' },
+            { id: 'log-aggregator', icon: '🎵', name: 'Log Orchestra', health: 75, shade: 'bright' },
+            { id: 'shiprekt', icon: '🚢', name: 'ShipRekt', health: 30, shade: 'dim' },
+            { id: 'llm-router', icon: '🤖', name: 'LLM Router', health: 65, shade: 'active' },
+            
+            // Row 4 - Diamond Layer
+            { id: 'unified-world', icon: '🌍', name: 'Unified World', health: 50, shade: 'dim' },
+            { id: 'nft-engine', icon: '🖼️', name: 'NFT Engine', health: 40, shade: 'dim' },
+            { id: 'mobile-app', icon: '📲', name: 'Mobile App', health: 35, shade: 'dim' },
+            { id: 'breakthrough', icon: '💎', name: 'BREAKTHROUGH', health: 100, shade: 'bright' }
+        ];
+
+        const reasoningLayers = [
+            { name: 'Sensory Input', freq: '40 Hz', status: 'Active' },
+            { name: 'Pattern Recognition', freq: '20 Hz', status: 'Processing' },
+            { name: 'Emotional Analysis', freq: '10 Hz', status: 'Active' },
+            { name: 'Executive Decision', freq: '6 Hz', status: 'Active' },
+            { name: 'Cross-Layer Integration', freq: '4 Hz', status: 'Processing' },
+            { name: 'Memory Context', freq: '2 Hz', status: 'Active' },
+            { name: 'Action Output', freq: '8 Hz', status: 'Ready' }
+        ];
+
+        let logEntries = [];
+        let currentChord = 'C-major';
+        let currentBitmap = '████████████████';
+
+        // Initialize Demo
+        function initDemo() {
+            console.log('🎵 Initializing Diamond Broadcasting Demo...');
+            
+            // Create diamond grid
+            createDiamondGrid();
+            
+            // Create reasoning layers
+            createReasoningLayers();
+            
+            // Try to connect WebSocket
+            connectWebSocket();
+            
+            // Start demo log simulation
+            startLogSimulation();
+            
+            // Update indicators
+            updateIndicators();
+            
+            console.log('✨ Demo initialized successfully!');
+        }
+
+        function createDiamondGrid() {
+            const gridContainer = document.getElementById('diamondGrid');
+            
+            diamondTiles.forEach((tile, index) => {
+                const tileElement = document.createElement('div');
+                tileElement.className = `diamond-tile ${tile.shade}`;
+                tileElement.id = `tile-${tile.id}`;
+                tileElement.onclick = () => selectTile(tile.id);
+                
+                tileElement.innerHTML = `
+                    <div class="tile-icon">${tile.icon}</div>
+                    <div class="tile-name">${tile.name}</div>
+                    <div class="tile-health">
+                        <div class="health-bar" style="width: ${tile.health}%"></div>
+                    </div>
+                `;
+                
+                gridContainer.appendChild(tileElement);
+            });
+            
+            console.log('💎 Diamond grid created with 16 tiles');
+        }
+
+        function createReasoningLayers() {
+            const layersContainer = document.getElementById('reasoningLayers');
+            
+            reasoningLayers.forEach((layer, index) => {
+                const layerElement = document.createElement('div');
+                layerElement.className = 'reasoning-layer';
+                layerElement.id = `layer-${index}`;
+                
+                layerElement.innerHTML = `
+                    <div class="layer-info">
+                        <div class="layer-name">${layer.name}</div>
+                        <div class="layer-freq">${layer.freq}</div>
+                    </div>
+                    <div class="layer-status">${layer.status}</div>
+                `;
+                
+                layersContainer.appendChild(layerElement);
+            });
+            
+            console.log('🧠 Reasoning layers created');
+        }
+
+        function connectWebSocket() {
+            try {
+                ws = new WebSocket('ws://localhost:3338');
+                
+                ws.onopen = () => {
+                    console.log('📡 WebSocket connected to Diamond Broadcast System');
+                    updateConnectionStatus('Connected', '#00ff88');
+                };
+                
+                ws.onmessage = (event) => {
+                    const data = JSON.parse(event.data);
+                    handleWebSocketMessage(data);
+                };
+                
+                ws.onclose = () => {
+                    console.log('📡 WebSocket disconnected');
+                    updateConnectionStatus('Disconnected (using simulation)', '#ff8800');
+                };
+                
+                ws.onerror = (error) => {
+                    console.error('📡 WebSocket error:', error);
+                    updateConnectionStatus('Error (using simulation)', '#ff4444');
+                };
+                
+            } catch (error) {
+                console.log('📡 WebSocket unavailable, using simulation mode');
+                updateConnectionStatus('Simulation Mode', '#4444ff');
+            }
+        }
+
+        function handleWebSocketMessage(data) {
+            switch (data.type) {
+                case 'log-music-update':
+                    updateMusicalDisplay(data.musical, data.bitmap);
+                    updateTileShading(data.health);
+                    break;
+                    
+                case 'grid-state':
+                    updateGridState(data.grid);
+                    break;
+                    
+                case 'camera-view':
+                    updateCameraView(data.viewName, data.data);
+                    break;
+                    
+                default:
+                    console.log('📡 Unknown message type:', data.type);
+            }
+        }
+
+        function startLogSimulation() {
+            // Simulate log entries
+            const sampleLogs = [
+                { type: 'INFO', content: 'Diamond broadcasting system initialized successfully' },
+                { type: 'SUCCESS', content: 'Musical verification active - C-major chord detected' },
+                { type: 'WARNING', content: 'Some tiles experiencing reduced shading intensity' },
+                { type: 'ERROR', content: 'Neural layer 3 showing processing delays' },
+                { type: 'METRIC', content: 'System health: 75% - broadcasting to 12 connected clients' }
+            ];
+
+            let logIndex = 0;
+            setInterval(() => {
+                const log = sampleLogs[logIndex % sampleLogs.length];
+                addLogEntry(log);
+                
+                // Simulate chord changes
+                if (Math.random() < 0.3) {
+                    const chords = ['C-major', 'A-minor', 'G7', 'F-diminished'];
+                    const newChord = chords[Math.floor(Math.random() * chords.length)];
+                    updateMusicalDisplay({ chord: newChord, tempo: 'allegro' }, generateRandomBitmap());
+                }
+                
+                // Simulate tile health changes
+                if (Math.random() < 0.4) {
+                    const randomTile = diamondTiles[Math.floor(Math.random() * diamondTiles.length)];
+                    randomTile.health = Math.max(20, Math.min(100, randomTile.health + (Math.random() - 0.5) * 20));
+                    updateTileHealth(randomTile.id, randomTile.health);
+                }
+                
+                logIndex++;
+            }, 3000);
+        }
+
+        function generateRandomBitmap() {
+            let bitmap = '';
+            for (let i = 0; i < 16; i++) {
+                bitmap += Math.random() > 0.3 ? '█' : '░';
+            }
+            return bitmap;
+        }
+
+        function addLogEntry(log) {
+            const timestamp = new Date().toLocaleTimeString();
+            const logElement = document.createElement('div');
+            logElement.className = 'log-entry';
+            
+            logElement.innerHTML = `
+                <span class="log-timestamp">${timestamp}</span>
+                <span class="log-type">[${log.type}]</span>
+                <span class="log-content">${log.content}</span>
+            `;
+            
+            const logStream = document.getElementById('logStream');
+            logStream.insertBefore(logElement, logStream.firstChild);
+            
+            // Keep only last 20 entries
+            if (logStream.children.length > 20) {
+                logStream.removeChild(logStream.lastChild);
+            }
+        }
+
+        function updateMusicalDisplay(musical, bitmap) {
+            if (musical && musical.chord) {
+                currentChord = musical.chord;
+                const chordEmojis = {
+                    'C-major': '😊',
+                    'A-minor': '😐', 
+                    'G7': '🚨',
+                    'F-diminished': '😰',
+                    'silence': '😴'
+                };
+                
+                document.getElementById('currentChord').textContent = 
+                    `${musical.chord} ${chordEmojis[musical.chord] || '🎵'}`;
+            }
+            
+            if (bitmap) {
+                currentBitmap = bitmap;
+                document.getElementById('currentBitmap').textContent = bitmap;
+            }
+        }
+
+        function updateTileShading(health) {
+            // Update overall system health and cascade to tiles
+            systemHealth = health || systemHealth;
+            
+            diamondTiles.forEach(tile => {
+                const element = document.getElementById(`tile-${tile.id}`);
+                if (element) {
+                    // Remove old shade classes
+                    element.className = element.className.replace(/\b(bright|active|dim|broken)\b/g, '');
+                    
+                    // Apply new shade based on health
+                    const newShade = tile.health >= 80 ? 'bright' :
+                                    tile.health >= 60 ? 'active' :
+                                    tile.health >= 40 ? 'dim' : 'broken';
+                    
+                    element.classList.add('diamond-tile', newShade);
+                    tile.shade = newShade;
+                }
+            });
+        }
+
+        function updateTileHealth(tileId, health) {
+            const tile = diamondTiles.find(t => t.id === tileId);
+            if (tile) {
+                tile.health = health;
+                const element = document.getElementById(`tile-${tileId}`);
+                if (element) {
+                    const healthBar = element.querySelector('.health-bar');
+                    if (healthBar) {
+                        healthBar.style.width = `${health}%`;
+                    }
+                }
+            }
+        }
+
+        function selectTile(tileId) {
+            console.log(`💎 Selected tile: ${tileId}`);
+            
+            // Highlight selected tile
+            document.querySelectorAll('.diamond-tile').forEach(tile => {
+                tile.style.transform = tile.id === `tile-${tileId}` ? 'scale(1.1)' : 'scale(1)';
+            });
+            
+            // Show tile-specific information
+            const tile = diamondTiles.find(t => t.id === tileId);
+            if (tile) {
+                addLogEntry({
+                    type: 'INFO',
+                    content: `Tile ${tile.name} selected - Health: ${tile.health}%, Shade: ${tile.shade}`
+                });
+                
+                // Special action for log-aggregator tile
+                if (tileId === 'log-aggregator') {
+                    addLogEntry({
+                        type: 'MUSIC',
+                        content: `🎵 Musical properties: ${currentChord} chord, bitmap: ${currentBitmap.slice(0, 8)}...`
+                    });
+                }
+            }
+        }
+
+        function switchCamera(viewName) {
+            console.log(`🎬 Switching to camera view: ${viewName}`);
+            
+            currentCamera = viewName;
+            
+            // Update button states
+            document.querySelectorAll('.camera-btn').forEach(btn => {
+                btn.classList.remove('active');
+            });
+            event.target.classList.add('active');
+            
+            // Send view change request if WebSocket connected
+            if (ws && ws.readyState === WebSocket.OPEN) {
+                ws.send(JSON.stringify({
+                    type: 'get-camera-view',
+                    viewName: viewName
+                }));
+            }
+            
+            // Simulate camera view change
+            addLogEntry({
+                type: 'CAMERA',
+                content: `📷 Switched to ${viewName} view - showing ${getViewDescription(viewName)}`
+            });
+        }
+
+        function getViewDescription(viewName) {
+            const descriptions = {
+                'overview': 'complete diamond grid with all tile states',
+                'first-person': 'immersive log processing journey',
+                'musical': 'synesthetic representation of log harmonies',
+                'bitmap': 'raw binary visualization of system state'
+            };
+            return descriptions[viewName] || 'system perspective';
+        }
+
+        function updateConnectionStatus(status, color) {
+            const statusElement = document.getElementById('connectionStatus');
+            statusElement.textContent = `📡 WebSocket: ${status}`;
+            statusElement.style.borderColor = color;
+        }
+
+        function updateIndicators() {
+            setInterval(() => {
+                // Update broadcast indicator
+                const indicator = document.getElementById('broadcastIndicator');
+                const isActive = Math.random() > 0.3;
+                indicator.style.background = isActive ? 
+                    'rgba(0, 255, 136, 0.9)' : 
+                    'rgba(255, 68, 68, 0.9)';
+                indicator.textContent = isActive ?
+                    '🔴 LIVE: Broadcasting Active' :
+                    '🟡 STANDBY: Preparing Broadcast';
+                
+                // Update reasoning layer statuses
+                reasoningLayers.forEach((layer, index) => {
+                    const layerElement = document.getElementById(`layer-${index}`);
+                    if (layerElement && Math.random() < 0.2) {
+                        const statuses = ['Active', 'Processing', 'Ready', 'Synchronizing'];
+                        const newStatus = statuses[Math.floor(Math.random() * statuses.length)];
+                        layer.status = newStatus;
+                        
+                        const statusElement = layerElement.querySelector('.layer-status');
+                        if (statusElement) {
+                            statusElement.textContent = newStatus;
+                        }
+                    }
+                });
+            }, 2000);
+        }
+
+        // Keyboard shortcuts
+        document.addEventListener('keydown', (e) => {
+            switch (e.key) {
+                case '1': switchCamera('overview'); break;
+                case '2': switchCamera('first-person'); break;
+                case '3': switchCamera('musical'); break;
+                case '4': switchCamera('bitmap'); break;
+                case 'b': case 'B': 
+                    addLogEntry({ type: 'ACTION', content: '💎 BREAKTHROUGH MODE ACTIVATED - All systems go!' });
+                    updateTileShading(100);
+                    break;
+            }
+        });
+
+        // Initialize when page loads
+        window.addEventListener('load', initDemo);
+        
+        console.log('🎵 Diamond Broadcasting LOG-AGGREGATOR Demo loaded');
+        console.log('💎 Click tiles to interact, use number keys 1-4 for camera views');
+        console.log('🚀 Press B for breakthrough mode');
+    </script>
+</body>
+</html>

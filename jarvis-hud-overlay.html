@@ -1,0 +1,828 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>🦾🤖 Jarvis HUD Overlay</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            font-family: 'SF Mono', 'Monaco', 'Inconsolata', 'Fira Code', monospace;
+            background: transparent;
+            color: #00ffff;
+            width: 100vw;
+            height: 100vh;
+            overflow: hidden;
+            position: relative;
+            pointer-events: none;
+        }
+        
+        /* Main HUD container */
+        .hud-overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            z-index: 9999;
+            pointer-events: none;
+        }
+        
+        /* Top HUD bar */
+        .hud-top-bar {
+            position: absolute;
+            top: 20px;
+            left: 50%;
+            transform: translateX(-50%);
+            background: rgba(0, 0, 0, 0.7);
+            border: 2px solid #00ffff;
+            border-radius: 25px;
+            padding: 10px 30px;
+            backdrop-filter: blur(10px);
+            box-shadow: 0 0 30px rgba(0, 255, 255, 0.3);
+            animation: hudSlideDown 1s ease-out;
+        }
+        
+        @keyframes hudSlideDown {
+            from {
+                transform: translateX(-50%) translateY(-100px);
+                opacity: 0;
+            }
+            to {
+                transform: translateX(-50%) translateY(0);
+                opacity: 1;
+            }
+        }
+        
+        .hud-title {
+            font-size: 16px;
+            font-weight: bold;
+            text-align: center;
+            text-shadow: 0 0 10px #00ffff;
+        }
+        
+        /* System status indicators */
+        .status-indicators {
+            position: absolute;
+            top: 20px;
+            right: 20px;
+            background: rgba(0, 0, 0, 0.7);
+            border: 1px solid #00ffff;
+            border-radius: 10px;
+            padding: 15px;
+            backdrop-filter: blur(10px);
+            animation: hudSlideLeft 1s ease-out 0.2s both;
+        }
+        
+        @keyframes hudSlideLeft {
+            from {
+                transform: translateX(100px);
+                opacity: 0;
+            }
+            to {
+                transform: translateX(0);
+                opacity: 1;
+            }
+        }
+        
+        .status-item {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            margin-bottom: 8px;
+            font-size: 12px;
+        }
+        
+        .status-item:last-child {
+            margin-bottom: 0;
+        }
+        
+        .status-dot {
+            width: 8px;
+            height: 8px;
+            border-radius: 50%;
+            background: #ff0000;
+            transition: all 0.3s;
+        }
+        
+        .status-dot.active {
+            background: #00ff00;
+            box-shadow: 0 0 10px #00ff00;
+            animation: pulse 2s infinite;
+        }
+        
+        @keyframes pulse {
+            0%, 100% { opacity: 1; transform: scale(1); }
+            50% { opacity: 0.7; transform: scale(1.1); }
+        }
+        
+        /* Reasoning stream display */
+        .reasoning-stream {
+            position: absolute;
+            bottom: 80px;
+            left: 20px;
+            width: 400px;
+            max-height: 300px;
+            background: rgba(0, 0, 0, 0.8);
+            border: 2px solid #00ffff;
+            border-radius: 15px;
+            padding: 15px;
+            backdrop-filter: blur(15px);
+            overflow-y: auto;
+            animation: hudSlideUp 1s ease-out 0.4s both;
+        }
+        
+        @keyframes hudSlideUp {
+            from {
+                transform: translateY(100px);
+                opacity: 0;
+            }
+            to {
+                transform: translateY(0);
+                opacity: 1;
+            }
+        }
+        
+        .stream-header {
+            font-size: 14px;
+            font-weight: bold;
+            margin-bottom: 10px;
+            text-align: center;
+            color: #00ffff;
+            text-shadow: 0 0 10px #00ffff;
+        }
+        
+        .reasoning-entry {
+            background: rgba(0, 255, 255, 0.1);
+            border-left: 3px solid #00ffff;
+            padding: 8px;
+            margin-bottom: 8px;
+            border-radius: 0 8px 8px 0;
+            font-size: 11px;
+            line-height: 1.3;
+            animation: entrySlide 0.5s ease-out;
+        }
+        
+        @keyframes entrySlide {
+            from {
+                transform: translateX(-20px);
+                opacity: 0;
+            }
+            to {
+                transform: translateX(0);
+                opacity: 1;
+            }
+        }
+        
+        .reasoning-entry.thought {
+            border-left-color: #00ffff;
+            background: rgba(0, 255, 255, 0.1);
+        }
+        
+        .reasoning-entry.action {
+            border-left-color: #ff0040;
+            background: rgba(255, 0, 64, 0.1);
+        }
+        
+        .reasoning-entry.exploration {
+            border-left-color: #ff00ff;
+            background: rgba(255, 0, 255, 0.1);
+        }
+        
+        .reasoning-entry.discovery {
+            border-left-color: #00ff00;
+            background: rgba(0, 255, 0, 0.1);
+        }
+        
+        .entry-header {
+            display: flex;
+            justify-content: space-between;
+            margin-bottom: 3px;
+            font-weight: bold;
+        }
+        
+        .entry-type {
+            text-transform: uppercase;
+            font-size: 10px;
+        }
+        
+        .entry-time {
+            font-size: 9px;
+            opacity: 0.7;
+        }
+        
+        /* AI context panel */
+        .ai-context {
+            position: absolute;
+            bottom: 80px;
+            right: 20px;
+            width: 350px;
+            background: rgba(0, 0, 0, 0.8);
+            border: 2px solid #00ff88;
+            border-radius: 15px;
+            padding: 15px;
+            backdrop-filter: blur(15px);
+            animation: hudSlideUp 1s ease-out 0.6s both;
+        }
+        
+        .context-header {
+            font-size: 14px;
+            font-weight: bold;
+            margin-bottom: 10px;
+            text-align: center;
+            color: #00ff88;
+            text-shadow: 0 0 10px #00ff88;
+        }
+        
+        .context-summary {
+            font-size: 11px;
+            line-height: 1.4;
+            color: #ccffcc;
+            max-height: 200px;
+            overflow-y: auto;
+        }
+        
+        /* Performance metrics */
+        .performance-metrics {
+            position: absolute;
+            top: 100px;
+            right: 20px;
+            background: rgba(0, 0, 0, 0.7);
+            border: 1px solid #ffff00;
+            border-radius: 10px;
+            padding: 12px;
+            backdrop-filter: blur(10px);
+            animation: hudSlideLeft 1s ease-out 0.8s both;
+        }
+        
+        .metric-row {
+            display: flex;
+            justify-content: space-between;
+            margin-bottom: 6px;
+            font-size: 11px;
+        }
+        
+        .metric-value {
+            color: #ffff00;
+            font-weight: bold;
+        }
+        
+        /* Navigation compass */
+        .nav-compass {
+            position: absolute;
+            top: 50%;
+            right: 50px;
+            transform: translateY(-50%);
+            width: 80px;
+            height: 80px;
+            border: 2px solid #00ffff;
+            border-radius: 50%;
+            background: rgba(0, 0, 0, 0.7);
+            backdrop-filter: blur(10px);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            animation: hudSlideLeft 1s ease-out 1s both;
+        }
+        
+        .compass-needle {
+            width: 2px;
+            height: 30px;
+            background: linear-gradient(to top, #ff0000, #00ffff);
+            border-radius: 1px;
+            animation: compassSpin 4s linear infinite;
+        }
+        
+        @keyframes compassSpin {
+            from { transform: rotate(0deg); }
+            to { transform: rotate(360deg); }
+        }
+        
+        /* Holographic grid overlay */
+        .holo-grid {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background-image: 
+                linear-gradient(rgba(0, 255, 255, 0.03) 1px, transparent 1px),
+                linear-gradient(90deg, rgba(0, 255, 255, 0.03) 1px, transparent 1px);
+            background-size: 100px 100px;
+            animation: gridMove 20s linear infinite;
+            pointer-events: none;
+        }
+        
+        @keyframes gridMove {
+            from { transform: translate(0, 0); }
+            to { transform: translate(100px, 100px); }
+        }
+        
+        /* Arc reactor power indicator */
+        .arc-reactor {
+            position: absolute;
+            bottom: 20px;
+            left: 50%;
+            transform: translateX(-50%);
+            width: 60px;
+            height: 60px;
+            border: 3px solid #00ffff;
+            border-radius: 50%;
+            background: radial-gradient(circle, rgba(0, 255, 255, 0.8), rgba(0, 100, 150, 0.3));
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 24px;
+            animation: reactorPulse 2s ease-in-out infinite, hudSlideUp 1s ease-out 1.2s both;
+        }
+        
+        @keyframes reactorPulse {
+            0%, 100% { 
+                box-shadow: 0 0 30px #00ffff;
+                transform: translateX(-50%) scale(1);
+            }
+            50% { 
+                box-shadow: 0 0 60px #00ffff, 0 0 90px #0099ff;
+                transform: translateX(-50%) scale(1.05);
+            }
+        }
+        
+        /* Emergency notifications */
+        .hud-notification {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            background: rgba(255, 0, 0, 0.9);
+            color: #fff;
+            padding: 20px 30px;
+            border-radius: 15px;
+            border: 2px solid #fff;
+            font-size: 16px;
+            font-weight: bold;
+            text-align: center;
+            display: none;
+            z-index: 10000;
+            animation: emergencyFlash 0.5s ease-in-out infinite;
+        }
+        
+        @keyframes emergencyFlash {
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0.7; }
+        }
+        
+        /* Fog of war integration indicator */
+        .fog-indicator {
+            position: absolute;
+            bottom: 200px;
+            left: 20px;
+            width: 60px;
+            height: 60px;
+            border: 2px solid #ff00ff;
+            border-radius: 10px;
+            background: rgba(255, 0, 255, 0.2);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 20px;
+            animation: fogPulse 3s ease-in-out infinite, hudSlideUp 1s ease-out 1.4s both;
+        }
+        
+        @keyframes fogPulse {
+            0%, 100% { 
+                box-shadow: 0 0 20px #ff00ff;
+                border-color: #ff00ff;
+            }
+            50% { 
+                box-shadow: 0 0 40px #ff00ff, 0 0 60px #ff66ff;
+                border-color: #ff66ff;
+            }
+        }
+        
+        /* Boss room integration indicator */
+        .boss-indicator {
+            position: absolute;
+            bottom: 200px;
+            right: 20px;
+            width: 60px;
+            height: 60px;
+            border: 2px solid #ffaa00;
+            border-radius: 10px;
+            background: rgba(255, 170, 0, 0.2);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 20px;
+            animation: bossGlow 2.5s ease-in-out infinite, hudSlideUp 1s ease-out 1.6s both;
+        }
+        
+        @keyframes bossGlow {
+            0%, 100% { 
+                box-shadow: 0 0 20px #ffaa00;
+                border-color: #ffaa00;
+            }
+            50% { 
+                box-shadow: 0 0 40px #ffaa00, 0 0 60px #ffcc66;
+                border-color: #ffcc66;
+            }
+        }
+        
+        /* Scrollbar styling for reasoning stream */
+        .reasoning-stream::-webkit-scrollbar {
+            width: 4px;
+        }
+        
+        .reasoning-stream::-webkit-scrollbar-track {
+            background: rgba(0, 0, 0, 0.2);
+            border-radius: 2px;
+        }
+        
+        .reasoning-stream::-webkit-scrollbar-thumb {
+            background: #00ffff;
+            border-radius: 2px;
+        }
+        
+        .reasoning-stream::-webkit-scrollbar-thumb:hover {
+            background: #0099ff;
+        }
+    </style>
+</head>
+<body>
+    <div class="hud-overlay">
+        <!-- Holographic grid background -->
+        <div class="holo-grid"></div>
+        
+        <!-- Top HUD bar -->
+        <div class="hud-top-bar">
+            <div class="hud-title">🦾🤖 J.A.R.V.I.S. ACTIVE</div>
+        </div>
+        
+        <!-- System status indicators -->
+        <div class="status-indicators">
+            <div class="status-item">
+                <div class="status-dot active" id="reasoningStatus"></div>
+                <span>Reasoning</span>
+            </div>
+            <div class="status-item">
+                <div class="status-dot active" id="aiStatus"></div>
+                <span>AI Bridge</span>
+            </div>
+            <div class="status-item">
+                <div class="status-dot active" id="fogStatus"></div>
+                <span>Fog of War</span>
+            </div>
+            <div class="status-item">
+                <div class="status-dot active" id="bossStatus"></div>
+                <span>Boss Room</span>
+            </div>
+        </div>
+        
+        <!-- Performance metrics -->
+        <div class="performance-metrics">
+            <div class="metric-row">
+                <span>CPU:</span>
+                <span class="metric-value" id="cpuUsage">45%</span>
+            </div>
+            <div class="metric-row">
+                <span>Memory:</span>
+                <span class="metric-value" id="memUsage">2.1GB</span>
+            </div>
+            <div class="metric-row">
+                <span>Network:</span>
+                <span class="metric-value" id="networkStatus">Online</span>
+            </div>
+            <div class="metric-row">
+                <span>Uptime:</span>
+                <span class="metric-value" id="uptime">00:05:23</span>
+            </div>
+        </div>
+        
+        <!-- Navigation compass -->
+        <div class="nav-compass">
+            <div class="compass-needle"></div>
+        </div>
+        
+        <!-- Reasoning stream display -->
+        <div class="reasoning-stream">
+            <div class="stream-header">🧠 Live Reasoning Stream</div>
+            <div id="reasoningEntries">
+                <div class="reasoning-entry thought">
+                    <div class="entry-header">
+                        <span class="entry-type">💭 Thought</span>
+                        <span class="entry-time">12:34:56</span>
+                    </div>
+                    <div>Jarvis HUD overlay is now active and monitoring all systems</div>
+                </div>
+                <div class="reasoning-entry action">
+                    <div class="entry-header">
+                        <span class="entry-type">🔴 Action</span>
+                        <span class="entry-time">12:34:57</span>
+                    </div>
+                    <div>Initializing real-time reasoning visualization</div>
+                </div>
+                <div class="reasoning-entry exploration">
+                    <div class="entry-header">
+                        <span class="entry-type">🟣 Explore</span>
+                        <span class="entry-time">12:34:58</span>
+                    </div>
+                    <div>Scanning for active AI bridges and context streams</div>
+                </div>
+            </div>
+        </div>
+        
+        <!-- AI context panel -->
+        <div class="ai-context">
+            <div class="context-header">🤖 AI Context Bridge</div>
+            <div class="context-summary" id="contextSummary">
+                <p><strong>Current Focus:</strong> System initialization and HUD activation</p>
+                <p><strong>Recent Activity:</strong> 3 reasoning entries in the last minute</p>
+                <p><strong>Patterns:</strong> High exploration activity (60%), moderate action sequences (30%)</p>
+                <p><strong>AI Suggestion:</strong> System is ready for enhanced interaction modes</p>
+            </div>
+        </div>
+        
+        <!-- Fog of war integration -->
+        <div class="fog-indicator" title="Fog of War Explorer">
+            🌫️
+        </div>
+        
+        <!-- Boss room integration -->
+        <div class="boss-indicator" title="Boss Room Cursor">
+            👑
+        </div>
+        
+        <!-- Arc reactor power indicator -->
+        <div class="arc-reactor">
+            ⚡
+        </div>
+        
+        <!-- Emergency notification overlay -->
+        <div class="hud-notification" id="emergencyNotification">
+            🚨 SYSTEM ALERT 🚨
+        </div>
+    </div>
+    
+    <script>
+        class JarvisHUDOverlay {
+            constructor() {
+                this.ws = null;
+                this.reasoningEntries = [];
+                this.startTime = Date.now();
+                this.maxEntries = 10;
+                
+                this.init();
+            }
+            
+            init() {
+                this.connectToReasoningStream();
+                this.startMetricsUpdater();
+                this.simulateSystemActivity();
+                
+                console.log('🦾🤖 Jarvis HUD Overlay initialized');
+            }
+            
+            connectToReasoningStream() {
+                // Try to connect to reasoning viz WebSocket
+                try {
+                    this.ws = new WebSocket('ws://localhost:3006');
+                    
+                    this.ws.onopen = () => {
+                        console.log('📡 Connected to reasoning stream');
+                        document.getElementById('reasoningStatus').classList.add('active');
+                    };
+                    
+                    this.ws.onmessage = (event) => {
+                        const data = JSON.parse(event.data);
+                        this.handleReasoningUpdate(data);
+                    };
+                    
+                    this.ws.onclose = () => {
+                        console.log('📡 Reasoning stream disconnected');
+                        document.getElementById('reasoningStatus').classList.remove('active');
+                        
+                        // Retry connection after 5 seconds
+                        setTimeout(() => this.connectToReasoningStream(), 5000);
+                    };
+                } catch (error) {
+                    console.warn('Could not connect to reasoning stream:', error);
+                }
+            }
+            
+            handleReasoningUpdate(data) {
+                if (data.type === 'new-entries' && data.data) {
+                    data.data.forEach(entry => {
+                        this.addReasoningEntry(entry);
+                    });
+                }
+            }
+            
+            addReasoningEntry(entry) {
+                this.reasoningEntries.push(entry);
+                
+                // Keep only last N entries
+                if (this.reasoningEntries.length > this.maxEntries) {
+                    this.reasoningEntries = this.reasoningEntries.slice(-this.maxEntries);
+                }
+                
+                this.renderReasoningEntries();
+            }
+            
+            renderReasoningEntries() {
+                const container = document.getElementById('reasoningEntries');
+                container.innerHTML = '';
+                
+                this.reasoningEntries.forEach(entry => {
+                    const entryElement = this.createReasoningElement(entry);
+                    container.appendChild(entryElement);
+                });
+                
+                // Auto-scroll to bottom
+                const streamContainer = container.closest('.reasoning-stream');
+                streamContainer.scrollTop = streamContainer.scrollHeight;
+            }
+            
+            createReasoningElement(entry) {
+                const div = document.createElement('div');
+                div.className = `reasoning-entry ${entry.type}`;
+                
+                const time = new Date(entry.timestamp).toLocaleTimeString();
+                const emoji = this.getTypeEmoji(entry.type);
+                
+                div.innerHTML = `
+                    <div class="entry-header">
+                        <span class="entry-type">${emoji} ${entry.type}</span>
+                        <span class="entry-time">${time}</span>
+                    </div>
+                    <div>${entry.text}</div>
+                `;
+                
+                return div;
+            }
+            
+            getTypeEmoji(type) {
+                const emojis = {
+                    thought: '💭',
+                    action: '🔴',
+                    exploration: '🟣',
+                    reasoning: '🔵',
+                    discovery: '🟢',
+                    emotion: '🟡',
+                    system: '⚙️'
+                };
+                return emojis[type] || '📝';
+            }
+            
+            startMetricsUpdater() {
+                setInterval(() => {
+                    this.updateMetrics();
+                    this.updateUptime();
+                    this.updateAIContext();
+                }, 2000);
+            }
+            
+            updateMetrics() {
+                // Simulate realistic metrics
+                const cpu = Math.floor(Math.random() * 30) + 40; // 40-70%
+                const memory = (Math.random() * 0.5 + 2.0).toFixed(1); // 2.0-2.5GB
+                
+                document.getElementById('cpuUsage').textContent = `${cpu}%`;
+                document.getElementById('memUsage').textContent = `${memory}GB`;
+                
+                // Network status
+                const networkStatuses = ['Online', 'Syncing', 'Connected'];
+                const randomStatus = networkStatuses[Math.floor(Math.random() * networkStatuses.length)];
+                document.getElementById('networkStatus').textContent = randomStatus;
+            }
+            
+            updateUptime() {
+                const uptime = Math.floor((Date.now() - this.startTime) / 1000);
+                const hours = Math.floor(uptime / 3600);
+                const minutes = Math.floor((uptime % 3600) / 60);
+                const seconds = uptime % 60;
+                
+                document.getElementById('uptime').textContent = 
+                    `${hours.toString().padStart(2, '0')}:${minutes.toString().padStart(2, '0')}:${seconds.toString().padStart(2, '0')}`;
+            }
+            
+            async updateAIContext() {
+                try {
+                    const response = await fetch('http://localhost:3007/api/ai/context?format=summary');
+                    const data = await response.json();
+                    
+                    if (data.success) {
+                        document.getElementById('contextSummary').innerHTML = `
+                            <p><strong>Current Focus:</strong> ${this.extractFocus(data.context)}</p>
+                            <p><strong>Recent Activity:</strong> ${this.reasoningEntries.length} entries tracked</p>
+                            <p><strong>Patterns:</strong> ${this.analyzePatterns()}</p>
+                            <p><strong>AI Status:</strong> Context bridge active and monitoring</p>
+                        `;
+                        
+                        document.getElementById('aiStatus').classList.add('active');
+                    }
+                } catch (error) {
+                    // Fallback context
+                    document.getElementById('contextSummary').innerHTML = `
+                        <p><strong>Current Focus:</strong> Jarvis HUD monitoring</p>
+                        <p><strong>Recent Activity:</strong> ${this.reasoningEntries.length} entries tracked</p>
+                        <p><strong>Patterns:</strong> System initialization phase</p>
+                        <p><strong>AI Status:</strong> Standalone mode</p>
+                    `;
+                }
+            }
+            
+            extractFocus(context) {
+                if (typeof context === 'string' && context.includes('Focus:')) {
+                    const match = context.match(/Focus:\*\*\s*([^(]+)/);
+                    return match ? match[1].trim() : 'General monitoring';
+                }
+                return 'System operations';
+            }
+            
+            analyzePatterns() {
+                if (this.reasoningEntries.length === 0) {
+                    return 'No patterns detected';
+                }
+                
+                const types = {};
+                this.reasoningEntries.forEach(entry => {
+                    types[entry.type] = (types[entry.type] || 0) + 1;
+                });
+                
+                const dominant = Object.entries(types)
+                    .sort((a, b) => b[1] - a[1])[0];
+                
+                if (dominant) {
+                    const percentage = Math.round((dominant[1] / this.reasoningEntries.length) * 100);
+                    return `${dominant[0]} activity (${percentage}%)`;
+                }
+                
+                return 'Mixed activity patterns';
+            }
+            
+            simulateSystemActivity() {
+                // Simulate occasional system events
+                setInterval(() => {
+                    if (Math.random() < 0.1) { // 10% chance every 5 seconds
+                        const systemEvents = [
+                            { type: 'system', text: 'HUD overlay optimizing display parameters' },
+                            { type: 'system', text: 'Cross-platform sync verification complete' },
+                            { type: 'system', text: 'AI context bridge performing health check' },
+                            { type: 'system', text: 'Reasoning stream buffer optimized' }
+                        ];
+                        
+                        const event = systemEvents[Math.floor(Math.random() * systemEvents.length)];
+                        event.timestamp = new Date().toISOString();
+                        event.id = Date.now();
+                        
+                        this.addReasoningEntry(event);
+                    }
+                }, 5000);
+            }
+            
+            showEmergencyNotification(message) {
+                const notification = document.getElementById('emergencyNotification');
+                notification.textContent = message;
+                notification.style.display = 'block';
+                
+                setTimeout(() => {
+                    notification.style.display = 'none';
+                }, 5000);
+            }
+        }
+        
+        // Initialize HUD overlay
+        const hudOverlay = new JarvisHUDOverlay();
+        
+        // Listen for Electron events if available
+        if (window.electronAPI) {
+            window.electronAPI.onServicesReady((services) => {
+                console.log('🔗 Services status:', services);
+                
+                if (services.reasoningViz) {
+                    document.getElementById('reasoningStatus').classList.add('active');
+                }
+                if (services.aiBridge) {
+                    document.getElementById('aiStatus').classList.add('active');
+                }
+            });
+            
+            window.electronAPI.onScreenshotTaken((data) => {
+                hudOverlay.showEmergencyNotification('📸 Screenshot captured with reasoning context');
+            });
+        }
+        
+        console.log('🦾🤖 JARVIS HUD OVERLAY');
+        console.log('========================');
+        console.log('👁️ Holographic display active');
+        console.log('🧠 Reasoning stream monitoring');
+        console.log('🤖 AI context bridge connected');
+        console.log('🌫️ Fog of war integration ready');
+        console.log('👑 Boss room cursor overlay ready');
+    </script>
+</body>
+</html>

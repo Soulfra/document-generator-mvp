@@ -1,0 +1,859 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Live Control Panel - Document Generator</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            background: #000;
+            color: #0f0;
+            font-family: 'Courier New', monospace;
+            overflow: hidden;
+            height: 100vh;
+        }
+        
+        .control-panel {
+            display: grid;
+            grid-template-areas: 
+                "header header header"
+                "agents workspace status"
+                "console console metrics";
+            grid-template-rows: 60px 1fr 200px;
+            grid-template-columns: 300px 1fr 300px;
+            height: 100vh;
+            gap: 2px;
+        }
+        
+        .header {
+            grid-area: header;
+            background: linear-gradient(90deg, #001100, #002200);
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: 0 20px;
+            border-bottom: 2px solid #0f0;
+        }
+        
+        .logo {
+            font-size: 24px;
+            font-weight: bold;
+            text-shadow: 0 0 10px #0f0;
+        }
+        
+        .system-status {
+            display: flex;
+            gap: 20px;
+        }
+        
+        .status-light {
+            width: 12px;
+            height: 12px;
+            border-radius: 50%;
+            background: #0f0;
+            box-shadow: 0 0 10px #0f0;
+            animation: pulse 2s infinite;
+        }
+        
+        .agents-panel {
+            grid-area: agents;
+            background: #111;
+            border: 1px solid #0f0;
+            padding: 10px;
+            overflow-y: auto;
+        }
+        
+        .workspace {
+            grid-area: workspace;
+            background: #000;
+            border: 1px solid #0f0;
+            position: relative;
+            overflow: hidden;
+        }
+        
+        .status-panel {
+            grid-area: status;
+            background: #111;
+            border: 1px solid #0f0;
+            padding: 10px;
+            overflow-y: auto;
+        }
+        
+        .console {
+            grid-area: console;
+            background: #000;
+            border: 1px solid #0f0;
+            padding: 10px;
+            overflow-y: auto;
+            font-size: 12px;
+        }
+        
+        .metrics {
+            grid-area: metrics;
+            background: #111;
+            border: 1px solid #0f0;
+            padding: 10px;
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+        }
+        
+        /* Character styles */
+        .character {
+            position: absolute;
+            width: 60px;
+            height: 80px;
+            cursor: pointer;
+            transition: all 0.3s ease;
+        }
+        
+        .character:hover {
+            transform: scale(1.1);
+            filter: brightness(1.2);
+        }
+        
+        .character-body {
+            width: 40px;
+            height: 60px;
+            background: linear-gradient(180deg, #0f0, #080);
+            border-radius: 10px;
+            margin: 0 auto;
+            position: relative;
+            border: 2px solid #0f0;
+        }
+        
+        .character-head {
+            width: 30px;
+            height: 30px;
+            background: #0f0;
+            border-radius: 50%;
+            margin: 0 auto;
+            position: relative;
+            border: 2px solid #0f0;
+            box-shadow: 0 0 10px #0f0;
+        }
+        
+        .character-eyes {
+            display: flex;
+            justify-content: space-around;
+            position: absolute;
+            top: 8px;
+            left: 50%;
+            transform: translateX(-50%);
+            width: 20px;
+        }
+        
+        .eye {
+            width: 4px;
+            height: 4px;
+            background: #000;
+            border-radius: 50%;
+        }
+        
+        .character-arms {
+            position: absolute;
+            top: 10px;
+            width: 100%;
+        }
+        
+        .arm {
+            position: absolute;
+            width: 15px;
+            height: 3px;
+            background: #0f0;
+            border-radius: 2px;
+        }
+        
+        .arm.left {
+            left: -8px;
+            transform: rotate(-30deg);
+        }
+        
+        .arm.right {
+            right: -8px;
+            transform: rotate(30deg);
+        }
+        
+        .character-legs {
+            position: absolute;
+            bottom: -15px;
+            width: 100%;
+        }
+        
+        .leg {
+            position: absolute;
+            width: 8px;
+            height: 15px;
+            background: #0f0;
+            border-radius: 4px;
+        }
+        
+        .leg.left {
+            left: 10px;
+        }
+        
+        .leg.right {
+            right: 10px;
+        }
+        
+        .character-label {
+            position: absolute;
+            bottom: -20px;
+            left: 50%;
+            transform: translateX(-50%);
+            font-size: 10px;
+            white-space: nowrap;
+            text-align: center;
+        }
+        
+        .character-speech {
+            position: absolute;
+            top: -40px;
+            left: 50%;
+            transform: translateX(-50%);
+            background: #222;
+            border: 1px solid #0f0;
+            padding: 5px;
+            border-radius: 5px;
+            font-size: 10px;
+            white-space: nowrap;
+            display: none;
+            z-index: 10;
+        }
+        
+        .character.speaking .character-speech {
+            display: block;
+            animation: fadeIn 0.3s ease;
+        }
+        
+        /* Activity indicators */
+        .activity-indicator {
+            position: absolute;
+            top: -10px;
+            right: -10px;
+            width: 20px;
+            height: 20px;
+            border-radius: 50%;
+            display: none;
+            align-items: center;
+            justify-content: center;
+            font-size: 12px;
+            animation: bounce 1s infinite;
+        }
+        
+        .character.investigating .activity-indicator {
+            display: flex;
+            background: #ff0;
+            color: #000;
+        }
+        
+        .character.broadcasting .activity-indicator {
+            display: flex;
+            background: #f0f;
+            color: #fff;
+        }
+        
+        .character.teaching .activity-indicator {
+            display: flex;
+            background: #0ff;
+            color: #000;
+        }
+        
+        /* Panel content */
+        .panel-title {
+            color: #0ff;
+            font-weight: bold;
+            margin-bottom: 10px;
+            padding-bottom: 5px;
+            border-bottom: 1px solid #333;
+        }
+        
+        .agent-item {
+            padding: 5px;
+            margin: 5px 0;
+            background: #222;
+            border: 1px solid #333;
+            border-radius: 3px;
+            cursor: pointer;
+        }
+        
+        .agent-item:hover {
+            border-color: #0f0;
+            background: #333;
+        }
+        
+        .agent-status {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+        
+        .status-dot {
+            width: 8px;
+            height: 8px;
+            border-radius: 50%;
+            background: #0f0;
+        }
+        
+        .status-dot.busy {
+            background: #ff0;
+            animation: pulse 1s infinite;
+        }
+        
+        .status-dot.error {
+            background: #f00;
+        }
+        
+        .metric {
+            display: flex;
+            justify-content: space-between;
+            margin: 5px 0;
+            padding: 5px;
+            background: #222;
+            border-radius: 3px;
+        }
+        
+        .metric-value {
+            color: #0f0;
+            font-weight: bold;
+        }
+        
+        .console-line {
+            margin: 2px 0;
+            opacity: 0.8;
+        }
+        
+        .console-line.info {
+            color: #0f0;
+        }
+        
+        .console-line.warn {
+            color: #ff0;
+        }
+        
+        .console-line.error {
+            color: #f00;
+        }
+        
+        .console-line.debug {
+            color: #888;
+        }
+        
+        /* Animations */
+        @keyframes pulse {
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0.5; }
+        }
+        
+        @keyframes bounce {
+            0%, 100% { transform: translateY(0); }
+            50% { transform: translateY(-5px); }
+        }
+        
+        @keyframes fadeIn {
+            from { opacity: 0; }
+            to { opacity: 1; }
+        }
+        
+        @keyframes moveAround {
+            0% { transform: translate(0, 0); }
+            25% { transform: translate(50px, 20px); }
+            50% { transform: translate(100px, 0); }
+            75% { transform: translate(50px, -20px); }
+            100% { transform: translate(0, 0); }
+        }
+        
+        .character.moving {
+            animation: moveAround 10s linear infinite;
+        }
+        
+        /* Input area */
+        .input-area {
+            position: absolute;
+            bottom: 20px;
+            left: 20px;
+            right: 20px;
+            display: flex;
+            gap: 10px;
+        }
+        
+        .input-field {
+            flex: 1;
+            background: #222;
+            color: #0f0;
+            border: 1px solid #0f0;
+            padding: 10px;
+            border-radius: 5px;
+            font-family: inherit;
+        }
+        
+        .send-btn {
+            background: #0f0;
+            color: #000;
+            border: none;
+            padding: 10px 20px;
+            border-radius: 5px;
+            cursor: pointer;
+            font-weight: bold;
+        }
+        
+        .send-btn:hover {
+            background: #0ff;
+        }
+    </style>
+</head>
+<body>
+    <div class="control-panel">
+        <div class="header">
+            <div class="logo">🎯 DOCUMENT GENERATOR CONTROL PANEL</div>
+            <div class="system-status">
+                <div class="status-light" title="Teacher System"></div>
+                <div class="status-light" title="Agent Broadcast"></div>
+                <div class="status-light" title="Database"></div>
+                <div class="status-light" title="Guardian"></div>
+            </div>
+        </div>
+        
+        <div class="agents-panel">
+            <div class="panel-title">🤖 Active Agents</div>
+            <div id="agents-list">
+                <!-- Agents will be populated here -->
+            </div>
+        </div>
+        
+        <div class="workspace">
+            <div id="characters-workspace">
+                <!-- Characters will appear here -->
+            </div>
+            
+            <div class="input-area">
+                <input type="text" class="input-field" id="user-input" placeholder="Ask a question or give guidance..." />
+                <button class="send-btn" onclick="sendMessage()">SEND</button>
+            </div>
+        </div>
+        
+        <div class="status-panel">
+            <div class="panel-title">📊 System Status</div>
+            <div id="status-list">
+                <!-- Status items will be populated here -->
+            </div>
+        </div>
+        
+        <div class="console">
+            <div class="panel-title">📜 Live Console</div>
+            <div id="console-output">
+                <!-- Console output will appear here -->
+            </div>
+        </div>
+        
+        <div class="metrics">
+            <div class="panel-title">📈 Live Metrics</div>
+            <div id="metrics-display">
+                <!-- Metrics will be populated here -->
+            </div>
+        </div>
+    </div>
+    
+    <script>
+        // Character types and their behaviors
+        const characterTypes = {
+            teacher: {
+                name: 'Teacher',
+                color: '#0ff',
+                role: 'Provides guidance and wisdom',
+                activities: ['teaching', 'evaluating', 'guiding']
+            },
+            researcher: {
+                name: 'Researcher',
+                color: '#0f0',
+                role: 'Investigates and gathers information',
+                activities: ['investigating', 'analyzing', 'reporting']
+            },
+            financial: {
+                name: 'Financial',
+                color: '#ff0',
+                role: 'Tracks money and incentives',
+                activities: ['investigating', 'calculating', 'warning']
+            },
+            technical: {
+                name: 'Technical',
+                color: '#f0f',
+                role: 'Analyzes technical aspects',
+                activities: ['investigating', 'testing', 'validating']
+            },
+            social: {
+                name: 'Social',
+                color: '#fa0',
+                role: 'Monitors social sentiment',
+                activities: ['investigating', 'monitoring', 'analyzing']
+            },
+            broadcaster: {
+                name: 'Broadcaster',
+                color: '#f00',
+                role: 'Broadcasts findings to public',
+                activities: ['broadcasting', 'publishing', 'announcing']
+            }
+        };
+        
+        let characters = [];
+        let agents = [];
+        let consoleLines = [];
+        let metrics = {};
+        
+        // Initialize the control panel
+        function initializeControlPanel() {
+            console.log('🎯 Initializing Live Control Panel...');
+            
+            // Create characters
+            createCharacters();
+            
+            // Populate agents list
+            populateAgents();
+            
+            // Start real-time updates
+            startRealTimeUpdates();
+            
+            // Initialize metrics
+            initializeMetrics();
+            
+            consoleLog('Control panel initialized', 'info');
+        }
+        
+        function createCharacters() {
+            const workspace = document.getElementById('characters-workspace');
+            const workspaceRect = workspace.getBoundingClientRect();
+            
+            Object.entries(characterTypes).forEach(([type, config], index) => {
+                const character = createCharacter(type, config, index);
+                characters.push(character);
+                workspace.appendChild(character.element);
+                
+                // Start character behavior
+                startCharacterBehavior(character);
+            });
+        }
+        
+        function createCharacter(type, config, index) {
+            const element = document.createElement('div');
+            element.className = 'character';
+            element.id = `character-${type}`;
+            
+            // Position characters around the workspace
+            const x = 100 + (index * 120);
+            const y = 100 + (index % 2) * 200;
+            element.style.left = x + 'px';
+            element.style.top = y + 'px';
+            
+            element.innerHTML = `
+                <div class="character-head" style="background: ${config.color}; border-color: ${config.color};">
+                    <div class="character-eyes">
+                        <div class="eye"></div>
+                        <div class="eye"></div>
+                    </div>
+                </div>
+                <div class="character-body" style="background: linear-gradient(180deg, ${config.color}, ${config.color}80); border-color: ${config.color};">
+                    <div class="character-arms">
+                        <div class="arm left"></div>
+                        <div class="arm right"></div>
+                    </div>
+                </div>
+                <div class="character-legs">
+                    <div class="leg left"></div>
+                    <div class="leg right"></div>
+                </div>
+                <div class="character-label">${config.name}</div>
+                <div class="character-speech"></div>
+                <div class="activity-indicator">🔍</div>
+            `;
+            
+            // Add click handler
+            element.addEventListener('click', () => {
+                showCharacterInfo(type, config);
+            });
+            
+            return {
+                element: element,
+                type: type,
+                config: config,
+                state: 'idle',
+                lastActivity: Date.now()
+            };
+        }
+        
+        function startCharacterBehavior(character) {
+            // Random activities
+            setInterval(() => {
+                if (Math.random() > 0.7) {
+                    const activity = character.config.activities[Math.floor(Math.random() * character.config.activities.length)];
+                    performActivity(character, activity);
+                }
+            }, 3000 + Math.random() * 7000);
+            
+            // Random movement
+            setInterval(() => {
+                if (Math.random() > 0.8) {
+                    moveCharacter(character);
+                }
+            }, 10000 + Math.random() * 20000);
+        }
+        
+        function performActivity(character, activity) {
+            const element = character.element;
+            const speechBubble = element.querySelector('.character-speech');
+            
+            // Set activity state
+            element.className = 'character ' + activity;
+            character.state = activity;
+            
+            // Show speech bubble
+            const messages = {
+                investigating: ['Investigating...', 'Gathering data...', 'Analyzing sources...'],
+                teaching: ['Here\'s what I know...', 'Let me explain...', 'Important lesson:'],
+                broadcasting: ['Broadcasting findings...', 'Sharing results...', 'Public announcement:'],
+                analyzing: ['Processing data...', 'Cross-referencing...', 'Pattern detected:'],
+                warning: ['⚠️ Red flag detected!', '⚠️ Suspicious activity!', '⚠️ Caution advised!'],
+                monitoring: ['Monitoring feeds...', 'Tracking sentiment...', 'Social analysis:']
+            };
+            
+            const messageList = messages[activity] || ['Working...'];
+            const message = messageList[Math.floor(Math.random() * messageList.length)];
+            
+            speechBubble.textContent = message;
+            element.classList.add('speaking');
+            
+            // Log activity
+            consoleLog(`${character.config.name}: ${message}`, 'info');
+            
+            // Remove activity after some time
+            setTimeout(() => {
+                element.className = 'character';
+                element.classList.remove('speaking');
+                character.state = 'idle';
+            }, 3000 + Math.random() * 5000);
+        }
+        
+        function moveCharacter(character) {
+            const workspace = document.getElementById('characters-workspace');
+            const workspaceRect = workspace.getBoundingClientRect();
+            
+            const newX = Math.random() * (workspaceRect.width - 100);
+            const newY = Math.random() * (workspaceRect.height - 150);
+            
+            character.element.style.left = newX + 'px';
+            character.element.style.top = newY + 'px';
+            character.element.classList.add('moving');
+            
+            setTimeout(() => {
+                character.element.classList.remove('moving');
+            }, 2000);
+        }
+        
+        function populateAgents() {
+            const agentsList = document.getElementById('agents-list');
+            
+            // Create agent list based on character types
+            Object.entries(characterTypes).forEach(([type, config]) => {
+                const agentItem = document.createElement('div');
+                agentItem.className = 'agent-item';
+                agentItem.innerHTML = `
+                    <div class="agent-status">
+                        <span>${config.name} Agent</span>
+                        <div class="status-dot" id="status-${type}"></div>
+                    </div>
+                    <div style="font-size: 10px; opacity: 0.7;">${config.role}</div>
+                `;
+                
+                agentItem.addEventListener('click', () => {
+                    const character = characters.find(c => c.type === type);
+                    if (character) {
+                        performActivity(character, 'investigating');
+                    }
+                });
+                
+                agentsList.appendChild(agentItem);
+                agents.push({ type, element: agentItem, status: 'idle' });
+            });
+        }
+        
+        function initializeMetrics() {
+            metrics = {
+                'Active Agents': characters.length,
+                'Investigations': 0,
+                'Broadcasts': 0,
+                'Cross-References': 0,
+                'Opinions Formed': 0,
+                'System Uptime': '0m'
+            };
+            
+            updateMetricsDisplay();
+        }
+        
+        function updateMetricsDisplay() {
+            const metricsDisplay = document.getElementById('metrics-display');
+            metricsDisplay.innerHTML = '';
+            
+            Object.entries(metrics).forEach(([key, value]) => {
+                const metric = document.createElement('div');
+                metric.className = 'metric';
+                metric.innerHTML = `
+                    <span>${key}:</span>
+                    <span class="metric-value">${value}</span>
+                `;
+                metricsDisplay.appendChild(metric);
+            });
+        }
+        
+        function startRealTimeUpdates() {
+            // Update metrics every 5 seconds
+            setInterval(() => {
+                // Simulate activity
+                if (Math.random() > 0.6) {
+                    metrics['Investigations']++;
+                }
+                if (Math.random() > 0.8) {
+                    metrics['Broadcasts']++;
+                }
+                if (Math.random() > 0.7) {
+                    metrics['Cross-References']++;
+                }
+                if (Math.random() > 0.9) {
+                    metrics['Opinions Formed']++;
+                }
+                
+                // Update uptime
+                const startTime = Date.now() - 300000; // Fake start time
+                const uptime = Math.floor((Date.now() - startTime) / (1000 * 60));
+                metrics['System Uptime'] = uptime + 'm';
+                
+                updateMetricsDisplay();
+            }, 5000);
+            
+            // Update status indicators
+            setInterval(() => {
+                agents.forEach(agent => {
+                    const statusDot = document.getElementById(`status-${agent.type}`);
+                    if (Math.random() > 0.9) {
+                        statusDot.className = 'status-dot busy';
+                        agent.status = 'busy';
+                        
+                        setTimeout(() => {
+                            statusDot.className = 'status-dot';
+                            agent.status = 'idle';
+                        }, 2000);
+                    }
+                });
+            }, 3000);
+            
+            // Add random console messages
+            setInterval(() => {
+                const messages = [
+                    'Agent investigation complete',
+                    'Cross-reference check passed',
+                    'Broadcasting findings to public layer',
+                    'Teacher guidance processed',
+                    'Pattern detected in data',
+                    'System health check: OK',
+                    'New query received',
+                    'Analysis in progress...'
+                ];
+                
+                if (Math.random() > 0.7) {
+                    const message = messages[Math.floor(Math.random() * messages.length)];
+                    consoleLog(message, 'info');
+                }
+            }, 4000);
+        }
+        
+        function sendMessage() {
+            const input = document.getElementById('user-input');
+            const message = input.value.trim();
+            
+            if (message) {
+                consoleLog(`User: ${message}`, 'info');
+                
+                // Trigger character activities
+                if (message.toLowerCase().includes('investigate')) {
+                    const researcher = characters.find(c => c.type === 'researcher');
+                    if (researcher) performActivity(researcher, 'investigating');
+                }
+                
+                if (message.toLowerCase().includes('teach') || message.toLowerCase().includes('learn')) {
+                    const teacher = characters.find(c => c.type === 'teacher');
+                    if (teacher) performActivity(teacher, 'teaching');
+                }
+                
+                // Send to actual systems (when available)
+                sendToTeacherSystem(message);
+                
+                input.value = '';
+            }
+        }
+        
+        async function sendToTeacherSystem(message) {
+            try {
+                const response = await fetch('http://localhost:9999/ask', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ question: message })
+                });
+                
+                if (response.ok) {
+                    const data = await response.json();
+                    consoleLog(`System: ${data.answer}`, 'info');
+                    
+                    // Trigger broadcaster
+                    const broadcaster = characters.find(c => c.type === 'broadcaster');
+                    if (broadcaster) performActivity(broadcaster, 'broadcasting');
+                }
+            } catch (error) {
+                consoleLog('Teacher system not responding', 'warn');
+            }
+        }
+        
+        function consoleLog(message, type = 'info') {
+            const console = document.getElementById('console-output');
+            const line = document.createElement('div');
+            line.className = `console-line ${type}`;
+            
+            const timestamp = new Date().toLocaleTimeString();
+            line.textContent = `[${timestamp}] ${message}`;
+            
+            console.appendChild(line);
+            console.scrollTop = console.scrollHeight;
+            
+            // Keep only last 100 lines
+            while (console.children.length > 100) {
+                console.removeChild(console.firstChild);
+            }
+        }
+        
+        function showCharacterInfo(type, config) {
+            const character = characters.find(c => c.type === type);
+            consoleLog(`${config.name} Agent - ${config.role} - Status: ${character.state}`, 'debug');
+        }
+        
+        // Handle Enter key in input
+        document.getElementById('user-input').addEventListener('keypress', (e) => {
+            if (e.key === 'Enter') {
+                sendMessage();
+            }
+        });
+        
+        // Initialize when page loads
+        document.addEventListener('DOMContentLoaded', initializeControlPanel);
+        
+        // Add some initial console messages
+        setTimeout(() => {
+            consoleLog('Live Control Panel initialized', 'info');
+            consoleLog('All agents standing by', 'info');
+            consoleLog('Ready for user input', 'info');
+        }, 1000);
+    </script>
+</body>
+</html>

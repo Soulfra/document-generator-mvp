@@ -1,0 +1,663 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>🎮 Working Game Integration Dashboard</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        
+        body {
+            font-family: 'Courier New', monospace;
+            background: linear-gradient(45deg, #0a0a0a, #1a1a2e, #16213e);
+            color: #00ff00;
+            min-height: 100vh;
+        }
+        
+        .header {
+            background: rgba(0, 255, 0, 0.1);
+            border-bottom: 2px solid #00ff00;
+            padding: 15px 20px;
+            text-align: center;
+        }
+        
+        .header h1 {
+            font-size: 2em;
+            text-shadow: 0 0 20px #00ff00;
+            margin-bottom: 10px;
+        }
+        
+        .controls {
+            display: flex;
+            justify-content: center;
+            gap: 15px;
+            margin: 20px 0;
+            flex-wrap: wrap;
+        }
+        
+        .btn {
+            background: rgba(0, 255, 0, 0.2);
+            border: 2px solid #00ff00;
+            color: #00ff00;
+            padding: 10px 20px;
+            border-radius: 5px;
+            cursor: pointer;
+            font-family: inherit;
+            transition: all 0.3s;
+        }
+        
+        .btn:hover {
+            background: rgba(0, 255, 0, 0.4);
+            box-shadow: 0 0 15px rgba(0, 255, 0, 0.5);
+        }
+        
+        .container {
+            padding: 20px;
+            max-width: 1400px;
+            margin: 0 auto;
+        }
+        
+        .tabs {
+            display: flex;
+            background: rgba(0, 255, 0, 0.05);
+            border-bottom: 2px solid #00ff00;
+            overflow-x: auto;
+        }
+        
+        .tab {
+            padding: 15px 25px;
+            cursor: pointer;
+            border-bottom: 3px solid transparent;
+            white-space: nowrap;
+            transition: all 0.3s;
+        }
+        
+        .tab:hover {
+            background: rgba(0, 255, 0, 0.1);
+        }
+        
+        .tab.active {
+            border-bottom-color: #00ff00;
+            background: rgba(0, 255, 0, 0.2);
+            color: #ffffff;
+        }
+        
+        .tab-content {
+            display: none;
+            padding: 20px 0;
+        }
+        
+        .tab-content.active {
+            display: block;
+        }
+        
+        .service-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(350px, 1fr));
+            gap: 20px;
+            margin-bottom: 30px;
+        }
+        
+        .service-card {
+            background: rgba(0, 0, 0, 0.5);
+            border: 2px solid #00ff00;
+            border-radius: 10px;
+            overflow: hidden;
+        }
+        
+        .service-header {
+            background: rgba(0, 255, 0, 0.2);
+            padding: 15px;
+            border-bottom: 1px solid #00ff00;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+        
+        .service-title {
+            font-weight: bold;
+            font-size: 1.2em;
+        }
+        
+        .status-indicator {
+            width: 12px;
+            height: 12px;
+            border-radius: 50%;
+            background: #ff3300;
+            animation: blink 1s infinite;
+        }
+        
+        .status-indicator.online {
+            background: #00ff00;
+        }
+        
+        .service-content {
+            padding: 15px;
+        }
+        
+        .data-table {
+            width: 100%;
+            background: rgba(0, 0, 0, 0.3);
+            border: 1px solid #00ff00;
+            border-radius: 5px;
+            overflow: hidden;
+            margin-bottom: 20px;
+        }
+        
+        .table-header {
+            background: rgba(0, 255, 0, 0.2);
+            padding: 10px 15px;
+            font-weight: bold;
+            border-bottom: 1px solid #00ff00;
+        }
+        
+        .table-body {
+            max-height: 300px;
+            overflow-y: auto;
+        }
+        
+        .table-row {
+            padding: 8px 15px;
+            border-bottom: 1px solid rgba(0, 255, 0, 0.2);
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+        
+        .table-row:nth-child(even) {
+            background: rgba(0, 255, 0, 0.05);
+        }
+        
+        .table-row:hover {
+            background: rgba(0, 255, 0, 0.1);
+        }
+        
+        .timestamp {
+            color: #666;
+            font-size: 0.8em;
+        }
+        
+        .status-online { color: #00ff00; }
+        .status-offline { color: #ff3300; }
+        .status-warning { color: #ffff00; }
+        
+        .log-entry {
+            margin-bottom: 5px;
+            padding: 5px;
+            border-left: 3px solid #00ff00;
+            background: rgba(0, 255, 0, 0.05);
+            font-size: 0.9em;
+        }
+        
+        .log-entry.new {
+            animation: fadeIn 0.5s;
+        }
+        
+        @keyframes blink {
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0.3; }
+        }
+        
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateX(-10px); }
+            to { opacity: 1; transform: translateX(0); }
+        }
+        
+        .metric-value {
+            font-size: 1.2em;
+            font-weight: bold;
+            color: #00ffff;
+        }
+        
+        .error-message {
+            background: rgba(255, 0, 0, 0.2);
+            border: 1px solid #ff3300;
+            color: #ff3300;
+            padding: 10px;
+            border-radius: 5px;
+            margin: 10px 0;
+        }
+        
+        .success-message {
+            background: rgba(0, 255, 0, 0.2);
+            border: 1px solid #00ff00;
+            color: #00ff00;
+            padding: 10px;
+            border-radius: 5px;
+            margin: 10px 0;
+        }
+    </style>
+</head>
+<body>
+    <div class="header">
+        <h1>🎮 Working Game Integration Dashboard</h1>
+        <p>Real-time connection to all running services</p>
+    </div>
+    
+    <div class="controls">
+        <button class="btn" onclick="triggerBassDrop()">🔊 BASS DROP</button>
+        <button class="btn" onclick="changeBPM()">🎼 CHANGE BPM</button>
+        <button class="btn" onclick="testAllConnections()">🔧 TEST CONNECTIONS</button>
+        <button class="btn" onclick="refreshAll()">🔄 REFRESH</button>
+    </div>
+    
+    <div class="container">
+        <div class="tabs">
+            <div class="tab active" onclick="switchTab('overview')">📊 System Overview</div>
+            <div class="tab" onclick="switchTab('games')">🎮 Game Integration</div>
+            <div class="tab" onclick="switchTab('classic')">🏛️ Classic Games</div>
+            <div class="tab" onclick="switchTab('trust')">🤝 Trust System</div>
+            <div class="tab" onclick="switchTab('logs')">📜 Live Logs</div>
+        </div>
+        
+        <!-- System Overview Tab -->
+        <div id="overview" class="tab-content active">
+            <div class="service-grid">
+                <div class="service-card">
+                    <div class="service-header">
+                        <div class="service-title">🎭 Orchestrator (3001)</div>
+                        <div class="status-indicator" id="orchestrator-status"></div>
+                    </div>
+                    <div class="service-content">
+                        <div class="metric-value" id="orchestrator-events">0 events</div>
+                        <div id="orchestrator-data">Checking connection...</div>
+                    </div>
+                </div>
+                
+                <div class="service-card">
+                    <div class="service-header">
+                        <div class="service-title">🐍 Flask API (5002)</div>
+                        <div class="status-indicator" id="flask-status"></div>
+                    </div>
+                    <div class="service-content">
+                        <div class="metric-value" id="flask-connections">0 connections</div>
+                        <div id="flask-data">Checking connection...</div>
+                    </div>
+                </div>
+                
+                <div class="service-card">
+                    <div class="service-header">
+                        <div class="service-title">🌌 Hyper-Dimensional (3005)</div>
+                        <div class="status-indicator" id="hyper-status"></div>
+                    </div>
+                    <div class="service-content">
+                        <div class="metric-value" id="hyper-signatures">0 signatures</div>
+                        <div id="hyper-data">Checking connection...</div>
+                    </div>
+                </div>
+                
+                <div class="service-card">
+                    <div class="service-header">
+                        <div class="service-title">🎵 Groove Layer (3006)</div>
+                        <div class="status-indicator" id="groove-status"></div>
+                    </div>
+                    <div class="service-content">
+                        <div class="metric-value" id="groove-bpm">128 BPM</div>
+                        <div id="groove-data">Checking connection...</div>
+                    </div>
+                </div>
+                
+                <div class="service-card">
+                    <div class="service-header">
+                        <div class="service-title">🤝 Trust System (3008)</div>
+                        <div class="status-indicator" id="trust-status"></div>
+                    </div>
+                    <div class="service-content">
+                        <div class="metric-value" id="trust-level">0% trust</div>
+                        <div id="trust-data">Checking connection...</div>
+                    </div>
+                </div>
+                
+                <div class="service-card">
+                    <div class="service-header">
+                        <div class="service-title">🎮 Game Engine (4009)</div>
+                        <div class="status-indicator" id="game-status"></div>
+                    </div>
+                    <div class="service-content">
+                        <div class="metric-value" id="game-count">0 games</div>
+                        <div id="game-data">Checking connection...</div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        
+        <!-- Game Integration Tab -->
+        <div id="games" class="tab-content">
+            <div class="data-table">
+                <div class="table-header">🎮 Active Game Events</div>
+                <div class="table-body" id="games-table">
+                    <div class="table-row">
+                        <span>No game events detected yet</span>
+                        <span class="timestamp">Waiting for games...</span>
+                    </div>
+                </div>
+            </div>
+        </div>
+        
+        <!-- Classic Games Tab -->
+        <div id="classic" class="tab-content">
+            <div class="data-table">
+                <div class="table-header">🏛️ Classic Battle.net Events</div>
+                <div class="table-body" id="classic-table">
+                    <div class="table-row">
+                        <span>No classic game events detected yet</span>
+                        <span class="timestamp">Monitoring Battle.net...</span>
+                    </div>
+                </div>
+            </div>
+        </div>
+        
+        <!-- Trust System Tab -->
+        <div id="trust" class="tab-content">
+            <div class="data-table">
+                <div class="table-header">🤝 Trust Logic Stream</div>
+                <div class="table-body" id="trust-table">
+                    <div class="table-row">
+                        <span>Loading trust data...</span>
+                        <span class="timestamp">Connecting...</span>
+                    </div>
+                </div>
+            </div>
+        </div>
+        
+        <!-- Live Logs Tab -->
+        <div id="logs" class="tab-content">
+            <div class="data-table">
+                <div class="table-header">📜 System Logs</div>
+                <div class="table-body" id="logs-container">
+                    <div class="log-entry">Dashboard initialized</div>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <script>
+        let updateInterval = null;
+        let logCounter = 0;
+        
+        // Service endpoints
+        const services = {
+            orchestrator: { url: 'http://localhost:3001/status', name: 'Orchestrator' },
+            flask: { url: 'http://localhost:5002/api/metrics', name: 'Flask API' },
+            hyper: { url: 'http://localhost:3005/hyper/status', name: 'Hyper-Dimensional' },
+            groove: { url: 'http://localhost:3006/groove/status', name: 'Groove Layer' },
+            trust: { url: 'http://localhost:3008/trust/status', name: 'Trust System' },
+            games: { url: 'http://localhost:4009/games/status', name: 'Game Engine' },
+            classic: { url: 'http://localhost:4200/classic/status', name: 'Classic Battle.net' }
+        };
+        
+        function switchTab(tabName) {
+            // Remove active from all tabs and content
+            document.querySelectorAll('.tab').forEach(tab => tab.classList.remove('active'));
+            document.querySelectorAll('.tab-content').forEach(content => content.classList.remove('active'));
+            
+            // Add active to selected
+            event.target.classList.add('active');
+            document.getElementById(tabName).classList.add('active');
+        }
+        
+        async function checkServiceStatus(serviceKey, config) {
+            try {
+                const response = await fetch(config.url, { 
+                    method: 'GET',
+                    mode: 'cors',
+                    timeout: 5000
+                });
+                
+                const data = await response.json();
+                updateServiceStatus(serviceKey, true, data);
+                return { success: true, data };
+                
+            } catch (error) {
+                updateServiceStatus(serviceKey, false, { error: error.message });
+                return { success: false, error: error.message };
+            }
+        }
+        
+        function updateServiceStatus(serviceKey, online, data) {
+            const statusEl = document.getElementById(`${serviceKey}-status`);
+            const dataEl = document.getElementById(`${serviceKey}-data`);
+            
+            if (statusEl) {
+                if (online) {
+                    statusEl.classList.add('online');
+                    statusEl.style.background = '#00ff00';
+                } else {
+                    statusEl.classList.remove('online');
+                    statusEl.style.background = '#ff3300';
+                }
+            }
+            
+            if (dataEl) {
+                if (online) {
+                    dataEl.innerHTML = `<span class="status-online">Connected</span>`;
+                    dataEl.innerHTML += `<br><small>Last check: ${new Date().toLocaleTimeString()}</small>`;
+                } else {
+                    dataEl.innerHTML = `<span class="status-offline">Offline</span>`;
+                    dataEl.innerHTML += `<br><small>Error: ${data.error}</small>`;
+                }
+            }
+            
+            // Update specific metrics
+            updateServiceMetrics(serviceKey, online, data);
+        }
+        
+        function updateServiceMetrics(serviceKey, online, data) {
+            if (!online) return;
+            
+            switch (serviceKey) {
+                case 'orchestrator':
+                    if (data.metrics) {
+                        const eventsEl = document.getElementById('orchestrator-events');
+                        if (eventsEl) eventsEl.textContent = `${data.metrics.totalEvents || 0} events`;
+                    }
+                    break;
+                    
+                case 'flask':
+                    if (data.connections !== undefined) {
+                        const connEl = document.getElementById('flask-connections');
+                        if (connEl) connEl.textContent = `${data.connections} connections`;
+                    }
+                    break;
+                    
+                case 'hyper':
+                    if (data.signatures) {
+                        const sigEl = document.getElementById('hyper-signatures');
+                        if (sigEl) sigEl.textContent = `${data.signatures.chainLength || 0} signatures`;
+                    }
+                    break;
+                    
+                case 'groove':
+                    if (data.timing) {
+                        const bpmEl = document.getElementById('groove-bpm');
+                        if (bpmEl) bpmEl.textContent = `${data.timing.bpm || 128} BPM`;
+                    }
+                    break;
+                    
+                case 'trust':
+                    if (data.logic && data.logic.recentDecisions) {
+                        const trustEl = document.getElementById('trust-level');
+                        const recentDecisions = data.logic.recentDecisions;
+                        if (recentDecisions.length > 0) {
+                            const trustDecision = recentDecisions.find(d => d.category === 'trust');
+                            if (trustDecision && trustDecision.data.trustLevel) {
+                                const trustLevel = Math.round(trustDecision.data.trustLevel * 100);
+                                if (trustEl) trustEl.textContent = `${trustLevel}% trust`;
+                            }
+                        }
+                        updateTrustTable(recentDecisions);
+                    }
+                    break;
+                    
+                case 'games':
+                    if (data.activeGames) {
+                        const gameEl = document.getElementById('game-count');
+                        if (gameEl) gameEl.textContent = `${data.activeGames.length} games`;
+                        updateGamesTable(data.activeGames);
+                    }
+                    break;
+            }
+        }
+        
+        function updateGamesTable(games) {
+            const tableBody = document.getElementById('games-table');
+            if (!tableBody) return;
+            
+            if (games.length === 0) {
+                tableBody.innerHTML = '<div class="table-row"><span>No active games detected</span><span class="timestamp">Monitoring...</span></div>';
+                return;
+            }
+            
+            tableBody.innerHTML = '';
+            games.forEach(game => {
+                const row = document.createElement('div');
+                row.className = 'table-row';
+                row.innerHTML = `
+                    <span><strong>${game.name}</strong> - ${game.events} events</span>
+                    <span class="timestamp">${new Date(game.connected).toLocaleTimeString()}</span>
+                `;
+                tableBody.appendChild(row);
+            });
+        }
+        
+        function updateTrustTable(decisions) {
+            const tableBody = document.getElementById('trust-table');
+            if (!tableBody) return;
+            
+            if (decisions.length === 0) {
+                tableBody.innerHTML = '<div class="table-row"><span>No trust decisions yet</span><span class="timestamp">Waiting...</span></div>';
+                return;
+            }
+            
+            tableBody.innerHTML = '';
+            decisions.slice(0, 10).forEach(decision => {
+                const row = document.createElement('div');
+                row.className = 'table-row';
+                row.innerHTML = `
+                    <span><strong>[${decision.component}]</strong> ${decision.decision}</span>
+                    <span class="timestamp">${new Date(decision.timestamp).toLocaleTimeString()}</span>
+                `;
+                tableBody.appendChild(row);
+            });
+        }
+        
+        function addLog(message, type = 'info') {
+            const logsContainer = document.getElementById('logs-container');
+            if (!logsContainer) return;
+            
+            const logEntry = document.createElement('div');
+            logEntry.className = 'log-entry new';
+            logEntry.innerHTML = `<span class="timestamp">${new Date().toLocaleTimeString()}</span> ${message}`;
+            
+            logsContainer.appendChild(logEntry);
+            
+            // Keep only last 50 logs
+            const logs = logsContainer.children;
+            if (logs.length > 50) {
+                logsContainer.removeChild(logs[0]);
+            }
+            
+            // Scroll to bottom
+            logsContainer.scrollTop = logsContainer.scrollHeight;
+        }
+        
+        async function testAllConnections() {
+            addLog('🔧 Testing all service connections...');
+            
+            let connectedCount = 0;
+            for (const [key, config] of Object.entries(services)) {
+                addLog(`Testing ${config.name}...`);
+                const result = await checkServiceStatus(key, config);
+                
+                if (result.success) {
+                    connectedCount++;
+                    addLog(`✅ ${config.name} connected successfully`);
+                } else {
+                    addLog(`❌ ${config.name} connection failed: ${result.error}`);
+                }
+            }
+            
+            addLog(`🔧 Connection test complete: ${connectedCount}/${Object.keys(services).length} services online`);
+        }
+        
+        async function triggerBassDrop() {
+            addLog('🔊 Triggering bass drop across all systems...');
+            
+            const endpoints = [
+                'http://localhost:4009/games/bass-drop',
+                'http://localhost:3006/groove/drop',
+                'http://localhost:3005/hyper/bass-blast'
+            ];
+            
+            for (const endpoint of endpoints) {
+                try {
+                    const response = await fetch(endpoint, { method: 'POST' });
+                    if (response.ok) {
+                        addLog(`✅ Bass drop triggered on ${endpoint}`);
+                    }
+                } catch (error) {
+                    addLog(`❌ Bass drop failed on ${endpoint}`);
+                }
+            }
+            
+            addLog('🔊 BASS DROP SEQUENCE COMPLETE!');
+        }
+        
+        async function changeBPM() {
+            const newBPM = prompt('Enter new BPM (60-200):', '140');
+            if (!newBPM || newBPM < 60 || newBPM > 200) return;
+            
+            addLog(`🎼 Changing BPM to ${newBPM}...`);
+            
+            const endpoints = [
+                'http://localhost:4009/games/sync-bpm',
+                'http://localhost:3006/groove/bpm'
+            ];
+            
+            for (const endpoint of endpoints) {
+                try {
+                    const response = await fetch(endpoint, {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({ bpm: parseInt(newBPM) })
+                    });
+                    if (response.ok) {
+                        addLog(`✅ BPM changed on ${endpoint}`);
+                    }
+                } catch (error) {
+                    addLog(`❌ BPM change failed on ${endpoint}`);
+                }
+            }
+            
+            addLog(`🎼 BPM sync complete: ${newBPM} BPM`);
+        }
+        
+        function refreshAll() {
+            addLog('🔄 Refreshing all service data...');
+            testAllConnections();
+        }
+        
+        async function updateAllServices() {
+            for (const [key, config] of Object.entries(services)) {
+                await checkServiceStatus(key, config);
+            }
+        }
+        
+        // Initialize dashboard
+        document.addEventListener('DOMContentLoaded', () => {
+            addLog('🎮 Dashboard initialized - Starting service monitoring...');
+            testAllConnections();
+            
+            // Update every 5 seconds
+            updateInterval = setInterval(updateAllServices, 5000);
+        });
+        
+        // Cleanup on page unload
+        window.addEventListener('beforeunload', () => {
+            if (updateInterval) {
+                clearInterval(updateInterval);
+            }
+        });
+    </script>
+</body>
+</html>

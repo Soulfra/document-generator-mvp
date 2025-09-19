@@ -1,0 +1,853 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>🤖💭 AI CONVERSATION VISUALIZER - Live Thought Stream</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            font-family: 'Courier New', monospace;
+            background: #000;
+            color: #00ff00;
+            overflow: hidden;
+            height: 100vh;
+        }
+        
+        .visualizer-container {
+            position: relative;
+            width: 100vw;
+            height: 100vh;
+        }
+        
+        /* Floating thought bubbles overlay */
+        .thought-overlay {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            pointer-events: none;
+            z-index: 100;
+        }
+        
+        .ai-thought {
+            position: absolute;
+            background: rgba(0, 0, 0, 0.8);
+            border: 2px solid;
+            border-radius: 20px;
+            padding: 10px 20px;
+            max-width: 350px;
+            backdrop-filter: blur(10px);
+            animation: float-and-fade 8s ease-out forwards;
+            font-size: 14px;
+            box-shadow: 0 0 30px currentColor;
+        }
+        
+        @keyframes float-and-fade {
+            0% {
+                opacity: 0;
+                transform: translateY(0) scale(0.8) rotate(-5deg);
+            }
+            10% {
+                opacity: 1;
+                transform: translateY(-30px) scale(1) rotate(0deg);
+            }
+            90% {
+                opacity: 1;
+                transform: translateY(-300px) scale(1) rotate(5deg);
+            }
+            100% {
+                opacity: 0;
+                transform: translateY(-400px) scale(0.9) rotate(10deg);
+            }
+        }
+        
+        .ai-thought.user {
+            color: #00ff00;
+            border-color: #00ff00;
+            animation-name: float-right;
+        }
+        
+        .ai-thought.assistant {
+            color: #00ffff;
+            border-color: #00ffff;
+            animation-name: float-left;
+        }
+        
+        .ai-thought.exploration {
+            color: #ff00ff;
+            border-color: #ff00ff;
+        }
+        
+        .ai-thought.action {
+            color: #ff0000;
+            border-color: #ff0000;
+        }
+        
+        .ai-thought.reasoning {
+            color: #00ffff;
+            border-color: #00ffff;
+        }
+        
+        @keyframes float-right {
+            0% {
+                opacity: 0;
+                transform: translateY(0) translateX(0) scale(0.8);
+            }
+            10% {
+                opacity: 1;
+                transform: translateY(-30px) translateX(30px) scale(1);
+            }
+            90% {
+                opacity: 1;
+                transform: translateY(-300px) translateX(60px) scale(1);
+            }
+            100% {
+                opacity: 0;
+                transform: translateY(-400px) translateX(80px) scale(0.9);
+            }
+        }
+        
+        @keyframes float-left {
+            0% {
+                opacity: 0;
+                transform: translateY(0) translateX(0) scale(0.8);
+            }
+            10% {
+                opacity: 1;
+                transform: translateY(-30px) translateX(-30px) scale(1);
+            }
+            90% {
+                opacity: 1;
+                transform: translateY(-300px) translateX(-60px) scale(1);
+            }
+            100% {
+                opacity: 0;
+                transform: translateY(-400px) translateX(-80px) scale(0.9);
+            }
+        }
+        
+        /* Control panel */
+        .control-panel {
+            position: fixed;
+            top: 20px;
+            left: 20px;
+            background: rgba(0, 0, 0, 0.9);
+            border: 2px solid #00ff00;
+            border-radius: 15px;
+            padding: 20px;
+            z-index: 200;
+            max-width: 400px;
+        }
+        
+        .ai-selector {
+            display: flex;
+            gap: 10px;
+            margin-bottom: 15px;
+        }
+        
+        .ai-button {
+            background: rgba(0, 255, 0, 0.1);
+            border: 1px solid #00ff00;
+            color: #00ff00;
+            padding: 8px 15px;
+            border-radius: 5px;
+            cursor: pointer;
+            transition: all 0.3s;
+            font-family: inherit;
+        }
+        
+        .ai-button:hover {
+            background: rgba(0, 255, 0, 0.3);
+            transform: scale(1.05);
+        }
+        
+        .ai-button.active {
+            background: #00ff00;
+            color: #000;
+        }
+        
+        .capture-status {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            margin-bottom: 15px;
+        }
+        
+        .status-indicator {
+            width: 10px;
+            height: 10px;
+            border-radius: 50%;
+            background: #ff0000;
+            transition: all 0.3s;
+        }
+        
+        .status-indicator.active {
+            background: #00ff00;
+            animation: pulse 1s infinite;
+        }
+        
+        @keyframes pulse {
+            0%, 100% { opacity: 1; transform: scale(1); }
+            50% { opacity: 0.8; transform: scale(1.2); }
+        }
+        
+        /* Conversation flow visualization */
+        .flow-container {
+            position: fixed;
+            bottom: 20px;
+            left: 20px;
+            right: 20px;
+            height: 150px;
+            background: rgba(0, 0, 0, 0.8);
+            border: 2px solid #00ffff;
+            border-radius: 10px;
+            padding: 10px;
+            overflow-x: auto;
+            z-index: 150;
+        }
+        
+        .flow-timeline {
+            display: flex;
+            align-items: center;
+            gap: 20px;
+            height: 100%;
+            min-width: fit-content;
+        }
+        
+        .flow-node {
+            min-width: 80px;
+            height: 80px;
+            border-radius: 10px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 12px;
+            text-align: center;
+            padding: 5px;
+            cursor: pointer;
+            transition: all 0.3s;
+            position: relative;
+        }
+        
+        .flow-node.user {
+            background: rgba(0, 255, 0, 0.2);
+            border: 2px solid #00ff00;
+        }
+        
+        .flow-node.assistant {
+            background: rgba(0, 255, 255, 0.2);
+            border: 2px solid #00ffff;
+        }
+        
+        .flow-node:hover {
+            transform: scale(1.1);
+            z-index: 10;
+        }
+        
+        .flow-connector {
+            position: absolute;
+            right: -20px;
+            width: 20px;
+            height: 2px;
+            background: #666;
+        }
+        
+        /* Visualization stats */
+        .viz-stats {
+            position: fixed;
+            top: 20px;
+            right: 20px;
+            background: rgba(0, 0, 0, 0.9);
+            border: 2px solid #ffff00;
+            border-radius: 10px;
+            padding: 15px;
+            z-index: 150;
+            font-size: 12px;
+        }
+        
+        .stat-row {
+            display: flex;
+            justify-content: space-between;
+            margin-bottom: 5px;
+        }
+        
+        .stat-label {
+            color: #ffff00;
+        }
+        
+        .stat-value {
+            color: #00ff00;
+            font-weight: bold;
+        }
+        
+        /* Capture methods */
+        .capture-methods {
+            background: rgba(0, 255, 0, 0.05);
+            border: 1px solid #00ff00;
+            border-radius: 10px;
+            padding: 15px;
+            margin-top: 15px;
+        }
+        
+        .method-option {
+            display: flex;
+            align-items: center;
+            margin-bottom: 10px;
+        }
+        
+        .method-option input {
+            margin-right: 10px;
+        }
+        
+        .clipboard-input {
+            width: 100%;
+            background: rgba(0, 0, 0, 0.5);
+            border: 1px solid #00ff00;
+            color: #00ff00;
+            padding: 5px;
+            border-radius: 3px;
+            font-family: inherit;
+            margin-top: 10px;
+        }
+        
+        /* AI avatars */
+        .ai-avatars {
+            position: fixed;
+            bottom: 200px;
+            right: 20px;
+            display: flex;
+            gap: 20px;
+            z-index: 100;
+        }
+        
+        .ai-avatar {
+            width: 80px;
+            height: 80px;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 40px;
+            cursor: pointer;
+            transition: all 0.3s;
+            position: relative;
+        }
+        
+        .ai-avatar.cal {
+            background: linear-gradient(135deg, #ff6b6b, #ff8e53);
+            box-shadow: 0 0 30px rgba(255, 107, 107, 0.5);
+        }
+        
+        .ai-avatar.ralph {
+            background: linear-gradient(135deg, #667eea, #764ba2);
+            box-shadow: 0 0 30px rgba(102, 126, 234, 0.5);
+        }
+        
+        .ai-avatar.assistant {
+            background: linear-gradient(135deg, #00d2ff, #3a7bd5);
+            box-shadow: 0 0 30px rgba(0, 210, 255, 0.5);
+        }
+        
+        .ai-avatar.thinking {
+            animation: avatar-thinking 1s infinite;
+        }
+        
+        @keyframes avatar-thinking {
+            0%, 100% { transform: scale(1); }
+            50% { transform: scale(1.1); }
+        }
+        
+        .ai-name {
+            position: absolute;
+            bottom: -20px;
+            font-size: 12px;
+            color: #fff;
+            text-shadow: 0 0 5px rgba(0, 0, 0, 0.8);
+        }
+        
+        /* Screen capture overlay */
+        .screen-capture-overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            pointer-events: none;
+            z-index: 50;
+            border: 3px solid #00ff00;
+            display: none;
+        }
+        
+        .screen-capture-overlay.active {
+            display: block;
+            animation: capture-flash 0.5s;
+        }
+        
+        @keyframes capture-flash {
+            0%, 100% { opacity: 0; }
+            50% { opacity: 1; }
+        }
+        
+        /* Help tooltip */
+        .help-tooltip {
+            position: fixed;
+            bottom: 20px;
+            right: 20px;
+            background: rgba(0, 0, 0, 0.9);
+            border: 1px solid #00ff00;
+            padding: 10px;
+            border-radius: 5px;
+            font-size: 11px;
+            max-width: 300px;
+            z-index: 300;
+        }
+    </style>
+</head>
+<body>
+    <div class="visualizer-container">
+        <div class="thought-overlay" id="thoughtOverlay"></div>
+        
+        <div class="control-panel">
+            <h3 style="color: #00ff00; margin-bottom: 15px;">🤖 AI Conversation Visualizer</h3>
+            
+            <div class="ai-selector">
+                <button class="ai-button" onclick="selectAI('cal')">🔥 Cal</button>
+                <button class="ai-button" onclick="selectAI('ralph')">🎨 Ralph</button>
+                <button class="ai-button active" onclick="selectAI('assistant')">🤖 Assistant</button>
+                <button class="ai-button" onclick="selectAI('custom')">✨ Custom</button>
+            </div>
+            
+            <div class="capture-status">
+                <div class="status-indicator" id="statusIndicator"></div>
+                <span id="statusText">Not capturing</span>
+            </div>
+            
+            <div class="capture-methods">
+                <h4 style="color: #00ff00; margin-bottom: 10px;">Capture Methods:</h4>
+                
+                <div class="method-option">
+                    <input type="radio" name="capture" id="clipboardCapture" checked>
+                    <label for="clipboardCapture">📋 Clipboard Monitor (Copy/Paste)</label>
+                </div>
+                
+                <div class="method-option">
+                    <input type="radio" name="capture" id="screenCapture">
+                    <label for="screenCapture">🖥️ Screen Region Capture</label>
+                </div>
+                
+                <div class="method-option">
+                    <input type="radio" name="capture" id="manualCapture">
+                    <label for="manualCapture">⌨️ Manual Input</label>
+                </div>
+                
+                <button class="ai-button" onclick="toggleCapture()" style="width: 100%; margin-top: 10px;">
+                    🎬 Start Capture
+                </button>
+                
+                <textarea class="clipboard-input" id="manualInput" placeholder="Paste conversation here..." style="display: none;"></textarea>
+            </div>
+        </div>
+        
+        <div class="viz-stats">
+            <h4 style="color: #ffff00; margin-bottom: 10px;">📊 Stats</h4>
+            <div class="stat-row">
+                <span class="stat-label">Messages:</span>
+                <span class="stat-value" id="messageCount">0</span>
+            </div>
+            <div class="stat-row">
+                <span class="stat-label">User Thoughts:</span>
+                <span class="stat-value" id="userThoughts">0</span>
+            </div>
+            <div class="stat-row">
+                <span class="stat-label">AI Thoughts:</span>
+                <span class="stat-value" id="aiThoughts">0</span>
+            </div>
+            <div class="stat-row">
+                <span class="stat-label">Flow Speed:</span>
+                <span class="stat-value" id="flowSpeed">Normal</span>
+            </div>
+        </div>
+        
+        <div class="flow-container">
+            <div class="flow-timeline" id="flowTimeline">
+                <!-- Conversation flow nodes will appear here -->
+            </div>
+        </div>
+        
+        <div class="ai-avatars">
+            <div class="ai-avatar cal" id="calAvatar" style="display: none;">
+                <span>🔥</span>
+                <span class="ai-name">Cal</span>
+            </div>
+            <div class="ai-avatar ralph" id="ralphAvatar" style="display: none;">
+                <span>🎨</span>
+                <span class="ai-name">Ralph</span>
+            </div>
+            <div class="ai-avatar assistant" id="assistantAvatar">
+                <span>🤖</span>
+                <span class="ai-name">Assistant</span>
+            </div>
+        </div>
+        
+        <div class="screen-capture-overlay" id="captureOverlay"></div>
+        
+        <div class="help-tooltip">
+            💡 <strong>Tips:</strong><br>
+            • Copy AI messages to visualize them<br>
+            • Different colors = different intents<br>
+            • Watch thoughts float in real-time<br>
+            • Timeline shows conversation flow
+        </div>
+    </div>
+    
+    <script>
+        class AIConversationVisualizer {
+            constructor() {
+                this.capturing = false;
+                this.selectedAI = 'assistant';
+                this.captureMethod = 'clipboard';
+                this.messages = [];
+                this.stats = {
+                    total: 0,
+                    user: 0,
+                    ai: 0
+                };
+                
+                this.thoughtPatterns = {
+                    action: /click|press|tap|select|choose|decide|execute|run|submit|confirm/i,
+                    exploration: /explore|look|search|find|browse|navigate|hover|check|inspect|let me|I'll check/i,
+                    reasoning: /think|reason|why|how|what|because|therefore|thus|maybe|seems|appears/i,
+                    emotion: /feel|love|hate|happy|sad|excited|worried|frustrated|wow|amazing/i,
+                    planning: /plan|todo|will|should|might|next|then|going to|we can/i,
+                    discovery: /found|discovered|see|notice|realize|understand|aha|eureka|I see/i
+                };
+                
+                this.init();
+            }
+            
+            init() {
+                this.setupClipboardMonitor();
+                this.setupEventListeners();
+                this.startAnimationLoop();
+                
+                console.log('🤖 AI Conversation Visualizer initialized');
+            }
+            
+            setupClipboardMonitor() {
+                // Listen for paste events
+                document.addEventListener('paste', (e) => {
+                    if (this.capturing && this.captureMethod === 'clipboard') {
+                        const text = e.clipboardData.getData('text');
+                        if (text) {
+                            this.processConversationText(text);
+                        }
+                    }
+                });
+                
+                // Also monitor clipboard changes (requires permissions)
+                if (navigator.clipboard && navigator.clipboard.readText) {
+                    this.clipboardInterval = setInterval(async () => {
+                        if (this.capturing && this.captureMethod === 'clipboard') {
+                            try {
+                                const text = await navigator.clipboard.readText();
+                                if (text && text !== this.lastClipboard) {
+                                    this.lastClipboard = text;
+                                    this.processConversationText(text);
+                                }
+                            } catch (err) {
+                                // Clipboard access denied
+                            }
+                        }
+                    }, 1000);
+                }
+            }
+            
+            processConversationText(text) {
+                // Detect if it's user or AI message
+                const isUser = text.match(/^(You:|User:|Human:|Me:)/i) || 
+                              !text.match(/^(Assistant:|AI:|Claude:|GPT:|Cal:|Ralph:)/i);
+                
+                const role = isUser ? 'user' : 'assistant';
+                
+                // Clean the text
+                const cleanText = text.replace(/^(You:|User:|Human:|Me:|Assistant:|AI:|Claude:|GPT:|Cal:|Ralph:)\s*/i, '');
+                
+                // Create message object
+                const message = {
+                    id: Date.now(),
+                    role,
+                    text: cleanText,
+                    timestamp: new Date(),
+                    ai: this.selectedAI
+                };
+                
+                this.messages.push(message);
+                this.updateStats(role);
+                
+                // Visualize the message
+                this.visualizeMessage(message);
+                
+                // Add to flow timeline
+                this.addToTimeline(message);
+                
+                // Animate AI avatar
+                this.animateAvatar(role);
+            }
+            
+            visualizeMessage(message) {
+                // Split message into chunks for visualization
+                const chunks = this.splitIntoThoughts(message.text);
+                
+                chunks.forEach((chunk, index) => {
+                    setTimeout(() => {
+                        this.createFloatingThought(chunk, message.role);
+                    }, index * 300);
+                });
+            }
+            
+            splitIntoThoughts(text) {
+                // Split by sentences or meaningful chunks
+                const sentences = text.match(/[^.!?]+[.!?]+/g) || [text];
+                const thoughts = [];
+                
+                sentences.forEach(sentence => {
+                    // Further split long sentences
+                    const words = sentence.trim().split(/\s+/);
+                    if (words.length > 15) {
+                        for (let i = 0; i < words.length; i += 10) {
+                            thoughts.push(words.slice(i, i + 10).join(' '));
+                        }
+                    } else {
+                        thoughts.push(sentence.trim());
+                    }
+                });
+                
+                return thoughts;
+            }
+            
+            createFloatingThought(text, role) {
+                const bubble = document.createElement('div');
+                bubble.className = `ai-thought ${role}`;
+                
+                // Categorize the thought
+                const category = this.categorizeThought(text);
+                if (category !== 'general') {
+                    bubble.classList.add(category);
+                }
+                
+                bubble.textContent = text;
+                
+                // Random position
+                const side = role === 'user' ? 'left' : 'right';
+                const x = side === 'left' ? 
+                    Math.random() * 30 + 10 : 
+                    Math.random() * 30 + 60;
+                const y = Math.random() * 60 + 20;
+                
+                bubble.style.left = x + '%';
+                bubble.style.top = y + '%';
+                
+                document.getElementById('thoughtOverlay').appendChild(bubble);
+                
+                // Remove after animation
+                setTimeout(() => bubble.remove(), 8000);
+            }
+            
+            categorizeThought(text) {
+                for (const [category, pattern] of Object.entries(this.thoughtPatterns)) {
+                    if (pattern.test(text)) {
+                        return category;
+                    }
+                }
+                return 'general';
+            }
+            
+            addToTimeline(message) {
+                const timeline = document.getElementById('flowTimeline');
+                
+                const node = document.createElement('div');
+                node.className = `flow-node ${message.role}`;
+                node.innerHTML = `
+                    <div>${message.role === 'user' ? '👤' : '🤖'}</div>
+                    <div style="font-size: 10px;">${message.text.slice(0, 50)}...</div>
+                `;
+                
+                if (timeline.children.length > 0) {
+                    const connector = document.createElement('div');
+                    connector.className = 'flow-connector';
+                    timeline.lastChild.appendChild(connector);
+                }
+                
+                timeline.appendChild(node);
+                
+                // Scroll to latest
+                timeline.scrollLeft = timeline.scrollWidth;
+                
+                // Show full message on hover
+                node.title = message.text;
+                node.onclick = () => this.replayThought(message);
+            }
+            
+            replayThought(message) {
+                this.visualizeMessage(message);
+            }
+            
+            updateStats(role) {
+                this.stats.total++;
+                this.stats[role]++;
+                
+                document.getElementById('messageCount').textContent = this.stats.total;
+                document.getElementById('userThoughts').textContent = this.stats.user;
+                document.getElementById('aiThoughts').textContent = this.stats.ai;
+                
+                // Update flow speed based on message rate
+                const recentMessages = this.messages.filter(m => 
+                    Date.now() - m.timestamp < 60000
+                ).length;
+                
+                let speed = 'Normal';
+                if (recentMessages > 20) speed = 'Fast';
+                if (recentMessages > 40) speed = 'Intense';
+                
+                document.getElementById('flowSpeed').textContent = speed;
+            }
+            
+            animateAvatar(role) {
+                const avatarId = this.selectedAI + 'Avatar';
+                const avatar = document.getElementById(avatarId);
+                
+                if (avatar && role === 'assistant') {
+                    avatar.classList.add('thinking');
+                    setTimeout(() => avatar.classList.remove('thinking'), 1000);
+                }
+            }
+            
+            setupEventListeners() {
+                // Manual input handling
+                document.getElementById('manualInput').addEventListener('input', (e) => {
+                    if (this.capturing && this.captureMethod === 'manual') {
+                        const text = e.target.value;
+                        if (text.includes('\n\n')) {
+                            // Process on double newline
+                            this.processConversationText(text);
+                            e.target.value = '';
+                        }
+                    }
+                });
+                
+                // Capture method changes
+                document.querySelectorAll('input[name="capture"]').forEach(radio => {
+                    radio.addEventListener('change', (e) => {
+                        this.captureMethod = e.target.id.replace('Capture', '');
+                        document.getElementById('manualInput').style.display = 
+                            this.captureMethod === 'manual' ? 'block' : 'none';
+                    });
+                });
+            }
+            
+            toggleCapture() {
+                this.capturing = !this.capturing;
+                
+                const indicator = document.getElementById('statusIndicator');
+                const statusText = document.getElementById('statusText');
+                const button = event.target;
+                
+                if (this.capturing) {
+                    indicator.classList.add('active');
+                    statusText.textContent = 'Capturing...';
+                    button.textContent = '⏹️ Stop Capture';
+                    
+                    if (this.captureMethod === 'screen') {
+                        this.startScreenCapture();
+                    }
+                } else {
+                    indicator.classList.remove('active');
+                    statusText.textContent = 'Not capturing';
+                    button.textContent = '🎬 Start Capture';
+                }
+            }
+            
+            async startScreenCapture() {
+                try {
+                    const stream = await navigator.mediaDevices.getDisplayMedia({
+                        video: { mediaSource: 'screen' }
+                    });
+                    
+                    // Process screen capture
+                    // In real implementation, would use OCR or screen reading
+                    
+                    stream.getTracks().forEach(track => track.stop());
+                } catch (err) {
+                    console.error('Screen capture failed:', err);
+                    this.capturing = false;
+                }
+            }
+            
+            selectAI(ai) {
+                this.selectedAI = ai;
+                
+                // Update UI
+                document.querySelectorAll('.ai-button').forEach(btn => {
+                    btn.classList.remove('active');
+                });
+                event.target.classList.add('active');
+                
+                // Update avatars
+                ['cal', 'ralph', 'assistant'].forEach(name => {
+                    const avatar = document.getElementById(name + 'Avatar');
+                    if (avatar) {
+                        avatar.style.display = name === ai || ai === 'custom' ? 'flex' : 'none';
+                    }
+                });
+            }
+            
+            startAnimationLoop() {
+                // Periodic updates and effects
+                setInterval(() => {
+                    // Clean old thoughts
+                    const overlay = document.getElementById('thoughtOverlay');
+                    while (overlay.children.length > 20) {
+                        overlay.removeChild(overlay.firstChild);
+                    }
+                }, 1000);
+            }
+        }
+        
+        // Initialize visualizer
+        const visualizer = new AIConversationVisualizer();
+        
+        // Global functions
+        function toggleCapture() {
+            visualizer.toggleCapture();
+        }
+        
+        function selectAI(ai) {
+            visualizer.selectAI(ai);
+        }
+        
+        // Keyboard shortcuts
+        document.addEventListener('keydown', (e) => {
+            if (e.ctrlKey || e.metaKey) {
+                if (e.key === 'v' && visualizer.capturing) {
+                    // Paste captured
+                    console.log('Paste detected');
+                }
+            }
+        });
+        
+        console.log('🤖💭 AI CONVERSATION VISUALIZER');
+        console.log('================================');
+        console.log('📋 Copy AI messages to visualize');
+        console.log('🎨 Watch thoughts float in space');
+        console.log('📊 Track conversation flow');
+        console.log('🤖 Support for multiple AI personalities');
+    </script>
+</body>
+</html>

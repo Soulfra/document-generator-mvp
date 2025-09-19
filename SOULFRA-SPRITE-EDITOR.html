@@ -1,0 +1,1229 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>SoulFra Sprite Editor - OSS Pixel Art Tool</title>
+    <style>
+        :root {
+            --bg-dark: #1a1a1a;
+            --bg-medium: #2a2a2a;
+            --bg-light: #3a3a3a;
+            --text-primary: #ffffff;
+            --text-secondary: #cccccc;
+            --accent: #00ff41;
+            --tool-size: 40px;
+        }
+        
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            font-family: 'Courier New', monospace;
+            background: var(--bg-dark);
+            color: var(--text-primary);
+            overflow: hidden;
+            display: flex;
+            height: 100vh;
+        }
+        
+        /* Tool Panel */
+        .tool-panel {
+            width: 60px;
+            background: var(--bg-medium);
+            border-right: 1px solid var(--bg-light);
+            padding: 10px;
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+        }
+        
+        .tool {
+            width: var(--tool-size);
+            height: var(--tool-size);
+            background: var(--bg-light);
+            border: 2px solid transparent;
+            border-radius: 4px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            font-size: 20px;
+        }
+        
+        .tool:hover {
+            background: #4a4a4a;
+            transform: scale(1.1);
+        }
+        
+        .tool.active {
+            border-color: var(--accent);
+            background: #2a5a2a;
+        }
+        
+        /* Main Editor Area */
+        .editor-container {
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            position: relative;
+        }
+        
+        /* Top Bar */
+        .top-bar {
+            height: 50px;
+            background: var(--bg-medium);
+            border-bottom: 1px solid var(--bg-light);
+            display: flex;
+            align-items: center;
+            padding: 0 20px;
+            gap: 20px;
+        }
+        
+        .top-bar button {
+            background: var(--bg-light);
+            color: var(--text-primary);
+            border: none;
+            padding: 8px 16px;
+            border-radius: 4px;
+            cursor: pointer;
+            font-family: inherit;
+        }
+        
+        .top-bar button:hover {
+            background: #4a4a4a;
+        }
+        
+        /* Canvas Area */
+        .canvas-container {
+            flex: 1;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            position: relative;
+            background-image: 
+                repeating-linear-gradient(45deg, transparent, transparent 10px, rgba(255,255,255,.05) 10px, rgba(255,255,255,.05) 20px),
+                repeating-linear-gradient(-45deg, transparent, transparent 10px, rgba(255,255,255,.05) 10px, rgba(255,255,255,.05) 20px);
+        }
+        
+        #pixelCanvas {
+            border: 2px solid var(--accent);
+            image-rendering: pixelated;
+            cursor: crosshair;
+            background: white;
+            box-shadow: 0 0 20px rgba(0, 255, 65, 0.3);
+        }
+        
+        /* Right Panel */
+        .right-panel {
+            width: 300px;
+            background: var(--bg-medium);
+            border-left: 1px solid var(--bg-light);
+            display: flex;
+            flex-direction: column;
+        }
+        
+        /* Color Palette */
+        .palette-section {
+            padding: 20px;
+            border-bottom: 1px solid var(--bg-light);
+        }
+        
+        .palette-section h3 {
+            margin-bottom: 10px;
+            color: var(--accent);
+        }
+        
+        .color-palette {
+            display: grid;
+            grid-template-columns: repeat(8, 1fr);
+            gap: 4px;
+        }
+        
+        .color-swatch {
+            width: 30px;
+            height: 30px;
+            border: 2px solid transparent;
+            cursor: pointer;
+            transition: all 0.2s ease;
+        }
+        
+        .color-swatch:hover {
+            transform: scale(1.2);
+        }
+        
+        .color-swatch.active {
+            border-color: var(--accent);
+            box-shadow: 0 0 10px currentColor;
+        }
+        
+        .current-color {
+            width: 100%;
+            height: 60px;
+            margin-bottom: 10px;
+            border: 2px solid var(--bg-light);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-weight: bold;
+            text-shadow: 0 0 3px rgba(0,0,0,0.5);
+        }
+        
+        /* Layer Panel */
+        .layer-section {
+            flex: 1;
+            padding: 20px;
+            display: flex;
+            flex-direction: column;
+        }
+        
+        .layer-list {
+            flex: 1;
+            overflow-y: auto;
+            margin-top: 10px;
+        }
+        
+        .layer-item {
+            background: var(--bg-light);
+            padding: 10px;
+            margin-bottom: 5px;
+            border-radius: 4px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            cursor: pointer;
+        }
+        
+        .layer-item:hover {
+            background: #4a4a4a;
+        }
+        
+        .layer-item.active {
+            border: 1px solid var(--accent);
+        }
+        
+        /* Animation Controls */
+        .animation-section {
+            padding: 20px;
+            border-top: 1px solid var(--bg-light);
+        }
+        
+        .frame-controls {
+            display: flex;
+            gap: 10px;
+            margin-top: 10px;
+        }
+        
+        .frame-controls button {
+            flex: 1;
+            padding: 8px;
+            background: var(--bg-light);
+            border: none;
+            color: var(--text-primary);
+            border-radius: 4px;
+            cursor: pointer;
+            font-family: inherit;
+        }
+        
+        .frame-controls button:hover {
+            background: #4a4a4a;
+        }
+        
+        /* Status Bar */
+        .status-bar {
+            height: 30px;
+            background: var(--bg-medium);
+            border-top: 1px solid var(--bg-light);
+            display: flex;
+            align-items: center;
+            padding: 0 20px;
+            font-size: 12px;
+            color: var(--text-secondary);
+        }
+        
+        /* Domain Info Panel */
+        .domain-info {
+            position: absolute;
+            top: 10px;
+            right: 10px;
+            background: rgba(42, 42, 42, 0.9);
+            padding: 10px;
+            border-radius: 4px;
+            border: 1px solid var(--accent);
+            font-size: 12px;
+        }
+        
+        .domain-info .bit-level {
+            color: var(--accent);
+            font-weight: bold;
+        }
+        
+        /* Grid Overlay */
+        .grid-overlay {
+            position: absolute;
+            pointer-events: none;
+            opacity: 0.2;
+        }
+        
+        /* Export Modal */
+        .export-modal {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: rgba(0, 0, 0, 0.8);
+            z-index: 1000;
+            align-items: center;
+            justify-content: center;
+        }
+        
+        .export-modal.active {
+            display: flex;
+        }
+        
+        .export-content {
+            background: var(--bg-medium);
+            padding: 30px;
+            border-radius: 8px;
+            border: 2px solid var(--accent);
+            max-width: 500px;
+            width: 90%;
+        }
+        
+        .export-content h2 {
+            color: var(--accent);
+            margin-bottom: 20px;
+        }
+        
+        .export-options {
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+            margin-bottom: 20px;
+        }
+        
+        .export-option {
+            background: var(--bg-light);
+            padding: 15px;
+            border-radius: 4px;
+            cursor: pointer;
+            transition: all 0.3s ease;
+        }
+        
+        .export-option:hover {
+            background: #4a4a4a;
+            transform: translateX(5px);
+        }
+        
+        .export-option h3 {
+            color: var(--text-primary);
+            margin-bottom: 5px;
+        }
+        
+        .export-option p {
+            color: var(--text-secondary);
+            font-size: 12px;
+        }
+        
+        /* Onion Skin */
+        .onion-skin-previous {
+            position: absolute;
+            opacity: 0.2;
+            filter: sepia(100%) hue-rotate(180deg);
+        }
+        
+        .onion-skin-next {
+            position: absolute;
+            opacity: 0.2;
+            filter: sepia(100%) hue-rotate(90deg);
+        }
+    </style>
+</head>
+<body>
+    <!-- Tool Panel -->
+    <div class="tool-panel">
+        <div class="tool active" data-tool="pencil" title="Pencil">✏️</div>
+        <div class="tool" data-tool="eraser" title="Eraser">🧹</div>
+        <div class="tool" data-tool="fill" title="Fill">🪣</div>
+        <div class="tool" data-tool="line" title="Line">📏</div>
+        <div class="tool" data-tool="rectangle" title="Rectangle">⬜</div>
+        <div class="tool" data-tool="circle" title="Circle">⭕</div>
+        <div class="tool" data-tool="eyedropper" title="Eyedropper">💉</div>
+        <div class="tool" data-tool="move" title="Move">🤚</div>
+    </div>
+    
+    <!-- Main Editor -->
+    <div class="editor-container">
+        <!-- Top Bar -->
+        <div class="top-bar">
+            <button onclick="spriteEditor.newSprite()">New</button>
+            <button onclick="spriteEditor.loadSprite()">Load</button>
+            <button onclick="spriteEditor.saveSprite()">Save .sfr</button>
+            <button onclick="spriteEditor.showExportModal()">Export</button>
+            <button onclick="spriteEditor.toggleGrid()">Grid</button>
+            <button onclick="spriteEditor.toggleOnionSkin()">Onion Skin</button>
+            <input type="number" id="canvasWidth" value="64" min="8" max="256" style="width: 60px; background: var(--bg-light); color: white; border: none; padding: 5px;">
+            <span>×</span>
+            <input type="number" id="canvasHeight" value="64" min="8" max="256" style="width: 60px; background: var(--bg-light); color: white; border: none; padding: 5px;">
+            <button onclick="spriteEditor.resizeCanvas()">Resize</button>
+        </div>
+        
+        <!-- Canvas Container -->
+        <div class="canvas-container">
+            <canvas id="pixelCanvas"></canvas>
+            <canvas class="grid-overlay" id="gridCanvas"></canvas>
+            
+            <!-- Domain Info -->
+            <div class="domain-info">
+                <div>Domain: <span class="bit-level">256-bit</span></div>
+                <div>Layer: <span id="currentBitLevel">8-bit</span></div>
+                <div>Format: .sfr (SoulFra Resource)</div>
+            </div>
+        </div>
+        
+        <!-- Status Bar -->
+        <div class="status-bar">
+            <span id="mousePos">X: 0, Y: 0</span>
+            <span style="margin-left: 20px;">Zoom: <span id="zoomLevel">100%</span></span>
+            <span style="margin-left: 20px;">Tool: <span id="currentTool">Pencil</span></span>
+        </div>
+    </div>
+    
+    <!-- Right Panel -->
+    <div class="right-panel">
+        <!-- Color Palette -->
+        <div class="palette-section">
+            <h3>🎨 Color Palette</h3>
+            <div class="current-color" id="currentColor" style="background: #000000">#000000</div>
+            <div class="color-palette" id="colorPalette"></div>
+        </div>
+        
+        <!-- Layers -->
+        <div class="layer-section">
+            <h3>📚 Layers</h3>
+            <button onclick="spriteEditor.addLayer()" style="width: 100%; padding: 8px; background: var(--bg-light); border: none; color: white; cursor: pointer; margin-bottom: 10px;">+ Add Layer</button>
+            <div class="layer-list" id="layerList"></div>
+        </div>
+        
+        <!-- Animation -->
+        <div class="animation-section">
+            <h3>🎬 Animation</h3>
+            <div>Frame: <span id="currentFrame">1</span> / <span id="totalFrames">1</span></div>
+            <div class="frame-controls">
+                <button onclick="spriteEditor.previousFrame()">◀</button>
+                <button onclick="spriteEditor.playAnimation()">▶️</button>
+                <button onclick="spriteEditor.nextFrame()">▶</button>
+                <button onclick="spriteEditor.addFrame()">+ Frame</button>
+            </div>
+            <div style="margin-top: 10px;">
+                FPS: <input type="number" id="fps" value="12" min="1" max="60" style="width: 50px; background: var(--bg-light); color: white; border: none; padding: 5px;">
+            </div>
+        </div>
+    </div>
+    
+    <!-- Export Modal -->
+    <div class="export-modal" id="exportModal">
+        <div class="export-content">
+            <h2>🚀 Export Sprite</h2>
+            <div class="export-options">
+                <div class="export-option" onclick="spriteEditor.exportAsPNG()">
+                    <h3>PNG Image</h3>
+                    <p>Standard image format, single frame or sprite sheet</p>
+                </div>
+                <div class="export-option" onclick="spriteEditor.exportAsGIF()">
+                    <h3>Animated GIF</h3>
+                    <p>Animated format for web use</p>
+                </div>
+                <div class="export-option" onclick="spriteEditor.exportAsSFR()">
+                    <h3>SoulFra Resource (.sfr)</h3>
+                    <p>Custom format with domain metadata and game logic</p>
+                </div>
+                <div class="export-option" onclick="spriteEditor.exportAsExcel()">
+                    <h3>Excel Data Table</h3>
+                    <p>Sprite data as Excel table for game multiplication</p>
+                </div>
+            </div>
+            <button onclick="spriteEditor.hideExportModal()" style="width: 100%; padding: 10px; background: var(--bg-light); border: none; color: white; cursor: pointer;">Cancel</button>
+        </div>
+    </div>
+    
+    <script>
+        /**
+         * 🎨 SOULFRA SPRITE EDITOR
+         * OSS pixel art editor with domain-aware save formats
+         */
+        class SoulFraSpriteEditor {
+            constructor() {
+                this.canvas = document.getElementById('pixelCanvas');
+                this.ctx = this.canvas.getContext('2d', { willReadFrequently: true });
+                this.gridCanvas = document.getElementById('gridCanvas');
+                this.gridCtx = this.gridCanvas.getContext('2d');
+                
+                // Default settings
+                this.pixelSize = 8;
+                this.canvasWidth = 64;
+                this.canvasHeight = 64;
+                this.currentColor = '#000000';
+                this.currentTool = 'pencil';
+                this.isDrawing = false;
+                this.showGrid = false;
+                this.showOnionSkin = false;
+                
+                // Layers and frames
+                this.layers = [];
+                this.currentLayer = 0;
+                this.frames = [];
+                this.currentFrame = 0;
+                this.isPlaying = false;
+                this.fps = 12;
+                
+                // Domain metadata
+                this.domainMetadata = {
+                    bitLevel: 256,
+                    domainPath: 'sprite.editor.soulfra.io',
+                    gameLogic: {},
+                    excelReferences: [],
+                    timestamp: Date.now()
+                };
+                
+                // Initialize
+                this.init();
+                this.setupEventListeners();
+                this.createDefaultPalette();
+                this.resizeCanvas();
+                this.addLayer();
+                this.updateLayerList();
+            }
+            
+            init() {
+                // Set canvas size
+                this.updateCanvasSize();
+                
+                // Enable image smoothing off for pixel art
+                this.ctx.imageSmoothingEnabled = false;
+                this.gridCtx.imageSmoothingEnabled = false;
+            }
+            
+            setupEventListeners() {
+                // Tool selection
+                document.querySelectorAll('.tool').forEach(tool => {
+                    tool.addEventListener('click', (e) => {
+                        document.querySelectorAll('.tool').forEach(t => t.classList.remove('active'));
+                        e.target.classList.add('active');
+                        this.currentTool = e.target.dataset.tool;
+                        document.getElementById('currentTool').textContent = e.target.title;
+                    });
+                });
+                
+                // Canvas drawing
+                this.canvas.addEventListener('mousedown', (e) => this.startDrawing(e));
+                this.canvas.addEventListener('mousemove', (e) => this.draw(e));
+                this.canvas.addEventListener('mouseup', () => this.stopDrawing());
+                this.canvas.addEventListener('mouseleave', () => this.stopDrawing());
+                
+                // Touch support
+                this.canvas.addEventListener('touchstart', (e) => {
+                    e.preventDefault();
+                    const touch = e.touches[0];
+                    const mouseEvent = new MouseEvent('mousedown', {
+                        clientX: touch.clientX,
+                        clientY: touch.clientY
+                    });
+                    this.canvas.dispatchEvent(mouseEvent);
+                });
+                
+                this.canvas.addEventListener('touchmove', (e) => {
+                    e.preventDefault();
+                    const touch = e.touches[0];
+                    const mouseEvent = new MouseEvent('mousemove', {
+                        clientX: touch.clientX,
+                        clientY: touch.clientY
+                    });
+                    this.canvas.dispatchEvent(mouseEvent);
+                });
+                
+                this.canvas.addEventListener('touchend', (e) => {
+                    e.preventDefault();
+                    const mouseEvent = new MouseEvent('mouseup', {});
+                    this.canvas.dispatchEvent(mouseEvent);
+                });
+                
+                // Keyboard shortcuts
+                document.addEventListener('keydown', (e) => {
+                    if (e.ctrlKey || e.metaKey) {
+                        switch(e.key) {
+                            case 'z': this.undo(); break;
+                            case 'y': this.redo(); break;
+                            case 's': e.preventDefault(); this.saveSprite(); break;
+                            case 'n': this.newSprite(); break;
+                        }
+                    }
+                });
+                
+                // Canvas resize inputs
+                document.getElementById('canvasWidth').addEventListener('change', () => this.resizeCanvas());
+                document.getElementById('canvasHeight').addEventListener('change', () => this.resizeCanvas());
+            }
+            
+            createDefaultPalette() {
+                const palette = document.getElementById('colorPalette');
+                const colors = [
+                    '#000000', '#FFFFFF', '#FF0000', '#00FF00', '#0000FF', '#FFFF00', '#FF00FF', '#00FFFF',
+                    '#800000', '#008000', '#000080', '#808000', '#800080', '#008080', '#C0C0C0', '#808080',
+                    '#FF6B6B', '#4ECDC4', '#45B7D1', '#F7DC6F', '#BB8FCE', '#85C1E2', '#F8C471', '#82E0AA',
+                    '#F39C12', '#E74C3C', '#8E44AD', '#3498DB', '#16A085', '#27AE60', '#2C3E50', '#34495E'
+                ];
+                
+                colors.forEach(color => {
+                    const swatch = document.createElement('div');
+                    swatch.className = 'color-swatch';
+                    swatch.style.backgroundColor = color;
+                    swatch.addEventListener('click', () => this.selectColor(color));
+                    palette.appendChild(swatch);
+                });
+                
+                // Set first color as active
+                palette.firstChild.classList.add('active');
+            }
+            
+            selectColor(color) {
+                this.currentColor = color;
+                document.getElementById('currentColor').style.backgroundColor = color;
+                document.getElementById('currentColor').textContent = color.toUpperCase();
+                
+                // Update active swatch
+                document.querySelectorAll('.color-swatch').forEach(swatch => {
+                    swatch.classList.toggle('active', 
+                        swatch.style.backgroundColor === color ||
+                        this.rgbToHex(swatch.style.backgroundColor) === color.toUpperCase()
+                    );
+                });
+            }
+            
+            rgbToHex(rgb) {
+                if (rgb.startsWith('#')) return rgb.toUpperCase();
+                const result = rgb.match(/\d+/g);
+                if (!result) return '#000000';
+                return '#' + result.map(x => {
+                    const hex = parseInt(x).toString(16);
+                    return hex.length === 1 ? '0' + hex : hex;
+                }).join('').toUpperCase();
+            }
+            
+            updateCanvasSize() {
+                this.canvas.width = this.canvasWidth;
+                this.canvas.height = this.canvasHeight;
+                this.canvas.style.width = this.canvasWidth * this.pixelSize + 'px';
+                this.canvas.style.height = this.canvasHeight * this.pixelSize + 'px';
+                
+                this.gridCanvas.width = this.canvasWidth * this.pixelSize;
+                this.gridCanvas.height = this.canvasHeight * this.pixelSize;
+                this.gridCanvas.style.width = this.canvasWidth * this.pixelSize + 'px';
+                this.gridCanvas.style.height = this.canvasHeight * this.pixelSize + 'px';
+                
+                if (this.showGrid) this.drawGrid();
+            }
+            
+            resizeCanvas() {
+                const newWidth = parseInt(document.getElementById('canvasWidth').value);
+                const newHeight = parseInt(document.getElementById('canvasHeight').value);
+                
+                if (newWidth >= 8 && newWidth <= 256 && newHeight >= 8 && newHeight <= 256) {
+                    // Save current canvas data
+                    const imageData = this.ctx.getImageData(0, 0, this.canvasWidth, this.canvasHeight);
+                    
+                    this.canvasWidth = newWidth;
+                    this.canvasHeight = newHeight;
+                    this.updateCanvasSize();
+                    
+                    // Restore canvas data
+                    this.ctx.putImageData(imageData, 0, 0);
+                    
+                    // Update all layers and frames
+                    this.layers.forEach(layer => {
+                        layer.width = newWidth;
+                        layer.height = newHeight;
+                    });
+                    
+                    // Update domain bit level based on size
+                    const totalPixels = newWidth * newHeight;
+                    if (totalPixels <= 64) this.domainMetadata.bitLevel = 8;
+                    else if (totalPixels <= 256) this.domainMetadata.bitLevel = 16;
+                    else if (totalPixels <= 1024) this.domainMetadata.bitLevel = 32;
+                    else if (totalPixels <= 4096) this.domainMetadata.bitLevel = 64;
+                    else if (totalPixels <= 16384) this.domainMetadata.bitLevel = 128;
+                    else this.domainMetadata.bitLevel = 256;
+                    
+                    document.getElementById('currentBitLevel').textContent = this.domainMetadata.bitLevel + '-bit';
+                }
+            }
+            
+            getMousePos(e) {
+                const rect = this.canvas.getBoundingClientRect();
+                return {
+                    x: Math.floor((e.clientX - rect.left) / this.pixelSize),
+                    y: Math.floor((e.clientY - rect.top) / this.pixelSize)
+                };
+            }
+            
+            startDrawing(e) {
+                this.isDrawing = true;
+                const pos = this.getMousePos(e);
+                this.lastPos = pos;
+                
+                switch(this.currentTool) {
+                    case 'pencil':
+                    case 'eraser':
+                        this.drawPixel(pos.x, pos.y);
+                        break;
+                    case 'fill':
+                        this.floodFill(pos.x, pos.y);
+                        break;
+                    case 'eyedropper':
+                        this.pickColor(pos.x, pos.y);
+                        break;
+                }
+                
+                this.saveToLayer();
+            }
+            
+            draw(e) {
+                const pos = this.getMousePos(e);
+                document.getElementById('mousePos').textContent = `X: ${pos.x}, Y: ${pos.y}`;
+                
+                if (!this.isDrawing) return;
+                
+                switch(this.currentTool) {
+                    case 'pencil':
+                    case 'eraser':
+                        this.drawLine(this.lastPos.x, this.lastPos.y, pos.x, pos.y);
+                        break;
+                    case 'rectangle':
+                        this.redrawCanvas();
+                        this.drawRectangle(this.lastPos.x, this.lastPos.y, pos.x, pos.y);
+                        break;
+                    case 'circle':
+                        this.redrawCanvas();
+                        this.drawCircle(this.lastPos.x, this.lastPos.y, pos.x, pos.y);
+                        break;
+                    case 'line':
+                        this.redrawCanvas();
+                        this.drawLine(this.lastPos.x, this.lastPos.y, pos.x, pos.y);
+                        break;
+                }
+                
+                if (this.currentTool === 'pencil' || this.currentTool === 'eraser') {
+                    this.lastPos = pos;
+                }
+            }
+            
+            stopDrawing() {
+                if (this.isDrawing) {
+                    this.isDrawing = false;
+                    this.saveToLayer();
+                }
+            }
+            
+            drawPixel(x, y) {
+                if (x < 0 || x >= this.canvasWidth || y < 0 || y >= this.canvasHeight) return;
+                
+                this.ctx.fillStyle = this.currentTool === 'eraser' ? '#FFFFFF' : this.currentColor;
+                this.ctx.fillRect(x, y, 1, 1);
+            }
+            
+            drawLine(x0, y0, x1, y1) {
+                // Bresenham's line algorithm
+                const dx = Math.abs(x1 - x0);
+                const dy = Math.abs(y1 - y0);
+                const sx = x0 < x1 ? 1 : -1;
+                const sy = y0 < y1 ? 1 : -1;
+                let err = dx - dy;
+                
+                while (true) {
+                    this.drawPixel(x0, y0);
+                    
+                    if (x0 === x1 && y0 === y1) break;
+                    
+                    const e2 = 2 * err;
+                    if (e2 > -dy) {
+                        err -= dy;
+                        x0 += sx;
+                    }
+                    if (e2 < dx) {
+                        err += dx;
+                        y0 += sy;
+                    }
+                }
+            }
+            
+            drawRectangle(x0, y0, x1, y1) {
+                const minX = Math.min(x0, x1);
+                const minY = Math.min(y0, y1);
+                const maxX = Math.max(x0, x1);
+                const maxY = Math.max(y0, y1);
+                
+                this.ctx.strokeStyle = this.currentColor;
+                this.ctx.strokeRect(minX, minY, maxX - minX, maxY - minY);
+            }
+            
+            drawCircle(x0, y0, x1, y1) {
+                const radius = Math.sqrt(Math.pow(x1 - x0, 2) + Math.pow(y1 - y0, 2));
+                
+                // Midpoint circle algorithm
+                let x = radius;
+                let y = 0;
+                let err = 0;
+                
+                while (x >= y) {
+                    this.drawPixel(x0 + x, y0 + y);
+                    this.drawPixel(x0 + y, y0 + x);
+                    this.drawPixel(x0 - y, y0 + x);
+                    this.drawPixel(x0 - x, y0 + y);
+                    this.drawPixel(x0 - x, y0 - y);
+                    this.drawPixel(x0 - y, y0 - x);
+                    this.drawPixel(x0 + y, y0 - x);
+                    this.drawPixel(x0 + x, y0 - y);
+                    
+                    if (err <= 0) {
+                        y += 1;
+                        err += 2*y + 1;
+                    }
+                    if (err > 0) {
+                        x -= 1;
+                        err -= 2*x + 1;
+                    }
+                }
+            }
+            
+            floodFill(x, y) {
+                if (x < 0 || x >= this.canvasWidth || y < 0 || y >= this.canvasHeight) return;
+                
+                const imageData = this.ctx.getImageData(0, 0, this.canvasWidth, this.canvasHeight);
+                const targetColor = this.getPixelColor(imageData, x, y);
+                const fillColor = this.hexToRgb(this.currentColor);
+                
+                if (this.colorsMatch(targetColor, fillColor)) return;
+                
+                const stack = [[x, y]];
+                
+                while (stack.length > 0) {
+                    const [cx, cy] = stack.pop();
+                    
+                    if (cx < 0 || cx >= this.canvasWidth || cy < 0 || cy >= this.canvasHeight) continue;
+                    
+                    const currentColor = this.getPixelColor(imageData, cx, cy);
+                    if (!this.colorsMatch(currentColor, targetColor)) continue;
+                    
+                    this.setPixelColor(imageData, cx, cy, fillColor);
+                    
+                    stack.push([cx + 1, cy]);
+                    stack.push([cx - 1, cy]);
+                    stack.push([cx, cy + 1]);
+                    stack.push([cx, cy - 1]);
+                }
+                
+                this.ctx.putImageData(imageData, 0, 0);
+            }
+            
+            getPixelColor(imageData, x, y) {
+                const index = (y * imageData.width + x) * 4;
+                return {
+                    r: imageData.data[index],
+                    g: imageData.data[index + 1],
+                    b: imageData.data[index + 2],
+                    a: imageData.data[index + 3]
+                };
+            }
+            
+            setPixelColor(imageData, x, y, color) {
+                const index = (y * imageData.width + x) * 4;
+                imageData.data[index] = color.r;
+                imageData.data[index + 1] = color.g;
+                imageData.data[index + 2] = color.b;
+                imageData.data[index + 3] = 255;
+            }
+            
+            colorsMatch(c1, c2) {
+                return c1.r === c2.r && c1.g === c2.g && c1.b === c2.b;
+            }
+            
+            hexToRgb(hex) {
+                const result = /^#?([a-f\d]{2})([a-f\d]{2})([a-f\d]{2})$/i.exec(hex);
+                return result ? {
+                    r: parseInt(result[1], 16),
+                    g: parseInt(result[2], 16),
+                    b: parseInt(result[3], 16)
+                } : { r: 0, g: 0, b: 0 };
+            }
+            
+            pickColor(x, y) {
+                const imageData = this.ctx.getImageData(x, y, 1, 1);
+                const data = imageData.data;
+                const hex = '#' + ('000000' + ((data[0] << 16) | (data[1] << 8) | data[2]).toString(16)).slice(-6);
+                this.selectColor(hex);
+            }
+            
+            // Layer Management
+            addLayer() {
+                const layer = {
+                    id: Date.now(),
+                    name: `Layer ${this.layers.length + 1}`,
+                    visible: true,
+                    opacity: 1,
+                    data: this.ctx.createImageData(this.canvasWidth, this.canvasHeight),
+                    frames: [this.ctx.createImageData(this.canvasWidth, this.canvasHeight)]
+                };
+                
+                this.layers.push(layer);
+                this.currentLayer = this.layers.length - 1;
+                this.updateLayerList();
+            }
+            
+            updateLayerList() {
+                const layerList = document.getElementById('layerList');
+                layerList.innerHTML = '';
+                
+                this.layers.slice().reverse().forEach((layer, index) => {
+                    const actualIndex = this.layers.length - 1 - index;
+                    const layerItem = document.createElement('div');
+                    layerItem.className = 'layer-item' + (actualIndex === this.currentLayer ? ' active' : '');
+                    layerItem.innerHTML = `
+                        <span>${layer.name}</span>
+                        <span>
+                            <button onclick="spriteEditor.toggleLayerVisibility(${actualIndex})" style="background: none; border: none; color: white; cursor: pointer;">${layer.visible ? '👁️' : '🙈'}</button>
+                            <button onclick="spriteEditor.deleteLayer(${actualIndex})" style="background: none; border: none; color: white; cursor: pointer;">🗑️</button>
+                        </span>
+                    `;
+                    layerItem.addEventListener('click', () => this.selectLayer(actualIndex));
+                    layerList.appendChild(layerItem);
+                });
+            }
+            
+            selectLayer(index) {
+                this.currentLayer = index;
+                this.updateLayerList();
+                this.redrawCanvas();
+            }
+            
+            toggleLayerVisibility(index) {
+                this.layers[index].visible = !this.layers[index].visible;
+                this.updateLayerList();
+                this.redrawCanvas();
+                event.stopPropagation();
+            }
+            
+            deleteLayer(index) {
+                if (this.layers.length === 1) {
+                    alert('Cannot delete the last layer');
+                    return;
+                }
+                
+                this.layers.splice(index, 1);
+                if (this.currentLayer >= this.layers.length) {
+                    this.currentLayer = this.layers.length - 1;
+                }
+                this.updateLayerList();
+                this.redrawCanvas();
+                event.stopPropagation();
+            }
+            
+            saveToLayer() {
+                if (this.layers.length === 0) return;
+                const layer = this.layers[this.currentLayer];
+                layer.frames[this.currentFrame] = this.ctx.getImageData(0, 0, this.canvasWidth, this.canvasHeight);
+            }
+            
+            redrawCanvas() {
+                this.ctx.fillStyle = '#FFFFFF';
+                this.ctx.fillRect(0, 0, this.canvasWidth, this.canvasHeight);
+                
+                // Draw all visible layers
+                this.layers.forEach((layer, index) => {
+                    if (layer.visible && layer.frames[this.currentFrame]) {
+                        this.ctx.globalAlpha = layer.opacity;
+                        this.ctx.putImageData(layer.frames[this.currentFrame], 0, 0);
+                    }
+                });
+                
+                this.ctx.globalAlpha = 1;
+            }
+            
+            // Animation
+            addFrame() {
+                this.frames.push(this.currentFrame);
+                this.layers.forEach(layer => {
+                    layer.frames.push(this.ctx.createImageData(this.canvasWidth, this.canvasHeight));
+                });
+                
+                document.getElementById('totalFrames').textContent = this.layers[0].frames.length;
+            }
+            
+            nextFrame() {
+                if (this.currentFrame < this.layers[0].frames.length - 1) {
+                    this.currentFrame++;
+                    document.getElementById('currentFrame').textContent = this.currentFrame + 1;
+                    this.redrawCanvas();
+                }
+            }
+            
+            previousFrame() {
+                if (this.currentFrame > 0) {
+                    this.currentFrame--;
+                    document.getElementById('currentFrame').textContent = this.currentFrame + 1;
+                    this.redrawCanvas();
+                }
+            }
+            
+            playAnimation() {
+                if (this.isPlaying) {
+                    this.isPlaying = false;
+                    return;
+                }
+                
+                this.isPlaying = true;
+                const fps = parseInt(document.getElementById('fps').value);
+                const interval = 1000 / fps;
+                
+                const animate = () => {
+                    if (!this.isPlaying) return;
+                    
+                    this.nextFrame();
+                    if (this.currentFrame === this.layers[0].frames.length - 1) {
+                        this.currentFrame = -1;
+                    }
+                    
+                    setTimeout(animate, interval);
+                };
+                
+                animate();
+            }
+            
+            // Grid
+            toggleGrid() {
+                this.showGrid = !this.showGrid;
+                if (this.showGrid) {
+                    this.drawGrid();
+                } else {
+                    this.gridCtx.clearRect(0, 0, this.gridCanvas.width, this.gridCanvas.height);
+                }
+            }
+            
+            drawGrid() {
+                this.gridCtx.clearRect(0, 0, this.gridCanvas.width, this.gridCanvas.height);
+                this.gridCtx.strokeStyle = 'rgba(128, 128, 128, 0.3)';
+                this.gridCtx.lineWidth = 1;
+                
+                for (let x = 0; x <= this.canvasWidth; x++) {
+                    this.gridCtx.beginPath();
+                    this.gridCtx.moveTo(x * this.pixelSize, 0);
+                    this.gridCtx.lineTo(x * this.pixelSize, this.canvasHeight * this.pixelSize);
+                    this.gridCtx.stroke();
+                }
+                
+                for (let y = 0; y <= this.canvasHeight; y++) {
+                    this.gridCtx.beginPath();
+                    this.gridCtx.moveTo(0, y * this.pixelSize);
+                    this.gridCtx.lineTo(this.canvasWidth * this.pixelSize, y * this.pixelSize);
+                    this.gridCtx.stroke();
+                }
+            }
+            
+            // File Operations
+            newSprite() {
+                if (confirm('Create new sprite? Current work will be lost.')) {
+                    this.layers = [];
+                    this.currentLayer = 0;
+                    this.currentFrame = 0;
+                    this.ctx.fillStyle = '#FFFFFF';
+                    this.ctx.fillRect(0, 0, this.canvasWidth, this.canvasHeight);
+                    this.addLayer();
+                    this.updateLayerList();
+                }
+            }
+            
+            saveSprite() {
+                this.exportAsSFR();
+            }
+            
+            loadSprite() {
+                const input = document.createElement('input');
+                input.type = 'file';
+                input.accept = '.sfr,.json';
+                input.onchange = (e) => {
+                    const file = e.target.files[0];
+                    const reader = new FileReader();
+                    reader.onload = (e) => {
+                        try {
+                            const data = JSON.parse(e.target.result);
+                            this.loadFromSFR(data);
+                        } catch (error) {
+                            alert('Failed to load file: ' + error.message);
+                        }
+                    };
+                    reader.readAsText(file);
+                };
+                input.click();
+            }
+            
+            loadFromSFR(data) {
+                if (data.format !== 'SoulFra Resource 1.0') {
+                    alert('Invalid file format');
+                    return;
+                }
+                
+                this.canvasWidth = data.width;
+                this.canvasHeight = data.height;
+                document.getElementById('canvasWidth').value = data.width;
+                document.getElementById('canvasHeight').value = data.height;
+                this.updateCanvasSize();
+                
+                this.layers = [];
+                data.layers.forEach(layerData => {
+                    const layer = {
+                        id: layerData.id,
+                        name: layerData.name,
+                        visible: layerData.visible,
+                        opacity: layerData.opacity,
+                        frames: []
+                    };
+                    
+                    layerData.frames.forEach(frameData => {
+                        const imageData = this.ctx.createImageData(this.canvasWidth, this.canvasHeight);
+                        const pixels = Uint8ClampedArray.from(atob(frameData), c => c.charCodeAt(0));
+                        imageData.data.set(pixels);
+                        layer.frames.push(imageData);
+                    });
+                    
+                    this.layers.push(layer);
+                });
+                
+                this.domainMetadata = data.domainMetadata || this.domainMetadata;
+                this.currentLayer = 0;
+                this.currentFrame = 0;
+                this.updateLayerList();
+                this.redrawCanvas();
+                
+                document.getElementById('currentBitLevel').textContent = this.domainMetadata.bitLevel + '-bit';
+                document.getElementById('totalFrames').textContent = this.layers[0].frames.length;
+            }
+            
+            // Export Functions
+            showExportModal() {
+                document.getElementById('exportModal').classList.add('active');
+            }
+            
+            hideExportModal() {
+                document.getElementById('exportModal').classList.remove('active');
+            }
+            
+            exportAsPNG() {
+                const link = document.createElement('a');
+                link.download = 'sprite.png';
+                link.href = this.canvas.toDataURL();
+                link.click();
+                this.hideExportModal();
+            }
+            
+            exportAsGIF() {
+                alert('GIF export coming soon! For now, use PNG export.');
+                this.hideExportModal();
+            }
+            
+            exportAsSFR() {
+                const data = {
+                    format: 'SoulFra Resource 1.0',
+                    width: this.canvasWidth,
+                    height: this.canvasHeight,
+                    layers: this.layers.map(layer => ({
+                        id: layer.id,
+                        name: layer.name,
+                        visible: layer.visible,
+                        opacity: layer.opacity,
+                        frames: layer.frames.map(frame => btoa(String.fromCharCode(...frame.data)))
+                    })),
+                    domainMetadata: this.domainMetadata,
+                    palette: this.getCurrentPalette(),
+                    animation: {
+                        fps: parseInt(document.getElementById('fps').value),
+                        frameCount: this.layers[0].frames.length
+                    }
+                };
+                
+                const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
+                const url = URL.createObjectURL(blob);
+                const link = document.createElement('a');
+                link.download = 'sprite.sfr';
+                link.href = url;
+                link.click();
+                URL.revokeObjectURL(url);
+                
+                this.hideExportModal();
+            }
+            
+            exportAsExcel() {
+                // Generate CSV data for Excel
+                const rows = [
+                    ['SoulFra Sprite Data'],
+                    ['Width', this.canvasWidth],
+                    ['Height', this.canvasHeight],
+                    ['Frames', this.layers[0].frames.length],
+                    ['Bit Level', this.domainMetadata.bitLevel],
+                    ['Domain Path', this.domainMetadata.domainPath],
+                    [],
+                    ['Frame', 'Layer', 'Pixel Data (Base64)']
+                ];
+                
+                this.layers.forEach((layer, layerIndex) => {
+                    layer.frames.forEach((frame, frameIndex) => {
+                        rows.push([
+                            frameIndex + 1,
+                            layer.name,
+                            btoa(String.fromCharCode(...frame.data)).substring(0, 100) + '...'
+                        ]);
+                    });
+                });
+                
+                const csv = rows.map(row => row.join(',')).join('\n');
+                const blob = new Blob([csv], { type: 'text/csv' });
+                const url = URL.createObjectURL(blob);
+                const link = document.createElement('a');
+                link.download = 'sprite-data.csv';
+                link.href = url;
+                link.click();
+                URL.revokeObjectURL(url);
+                
+                this.hideExportModal();
+            }
+            
+            getCurrentPalette() {
+                const colors = new Set();
+                const imageData = this.ctx.getImageData(0, 0, this.canvasWidth, this.canvasHeight);
+                
+                for (let i = 0; i < imageData.data.length; i += 4) {
+                    const r = imageData.data[i];
+                    const g = imageData.data[i + 1];
+                    const b = imageData.data[i + 2];
+                    const hex = '#' + ((1 << 24) + (r << 16) + (g << 8) + b).toString(16).slice(1);
+                    colors.add(hex);
+                }
+                
+                return Array.from(colors);
+            }
+            
+            toggleOnionSkin() {
+                this.showOnionSkin = !this.showOnionSkin;
+                this.redrawCanvas();
+            }
+        }
+        
+        // Initialize the editor
+        const spriteEditor = new SoulFraSpriteEditor();
+    </script>
+</body>
+</html>

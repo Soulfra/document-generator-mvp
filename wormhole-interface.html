@@ -1,0 +1,676 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Framework Wormhole - AI Integration Portal</title>
+    <style>
+        body {
+            margin: 0;
+            padding: 0;
+            background: #000;
+            color: #0f0;
+            font-family: 'Courier New', monospace;
+            overflow: hidden;
+        }
+        
+        /* Matrix rain background */
+        #matrix-bg {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            z-index: -1;
+            opacity: 0.1;
+        }
+        
+        .container {
+            display: flex;
+            height: 100vh;
+        }
+        
+        /* Left panel - Framework selector */
+        .frameworks-panel {
+            width: 300px;
+            background: rgba(0, 20, 0, 0.9);
+            border-right: 1px solid #0f0;
+            padding: 20px;
+            overflow-y: auto;
+        }
+        
+        .framework-item {
+            background: rgba(0, 255, 0, 0.1);
+            border: 1px solid #0f0;
+            padding: 15px;
+            margin: 10px 0;
+            cursor: pointer;
+            transition: all 0.3s;
+        }
+        
+        .framework-item:hover {
+            background: rgba(0, 255, 0, 0.2);
+            box-shadow: 0 0 10px #0f0;
+        }
+        
+        .framework-item.active {
+            background: rgba(0, 255, 0, 0.3);
+            box-shadow: 0 0 20px #0f0;
+        }
+        
+        .framework-name {
+            font-size: 16px;
+            font-weight: bold;
+            margin-bottom: 5px;
+        }
+        
+        .framework-info {
+            font-size: 12px;
+            opacity: 0.8;
+        }
+        
+        /* Center - Wormhole visualizer */
+        .wormhole-center {
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            position: relative;
+        }
+        
+        #wormhole-canvas {
+            width: 500px;
+            height: 500px;
+            border: 2px solid #0f0;
+            border-radius: 50%;
+            position: relative;
+            animation: rotate 20s linear infinite;
+        }
+        
+        @keyframes rotate {
+            from { transform: rotate(0deg); }
+            to { transform: rotate(360deg); }
+        }
+        
+        .wormhole-status {
+            position: absolute;
+            bottom: 100px;
+            text-align: center;
+            font-size: 20px;
+            text-shadow: 0 0 10px #0f0;
+        }
+        
+        /* Right panel - Integration log */
+        .integration-panel {
+            width: 400px;
+            background: rgba(0, 20, 0, 0.9);
+            border-left: 1px solid #0f0;
+            padding: 20px;
+            overflow-y: auto;
+        }
+        
+        .log-entry {
+            margin: 5px 0;
+            padding: 5px;
+            font-size: 12px;
+            border-left: 3px solid #0f0;
+            padding-left: 10px;
+        }
+        
+        .log-entry.error {
+            border-color: #f00;
+            color: #f00;
+        }
+        
+        .log-entry.success {
+            border-color: #0f0;
+            color: #0f0;
+        }
+        
+        .log-entry.info {
+            border-color: #00f;
+            color: #00f;
+        }
+        
+        /* Control panel */
+        .control-panel {
+            position: absolute;
+            bottom: 20px;
+            left: 50%;
+            transform: translateX(-50%);
+            display: flex;
+            gap: 10px;
+        }
+        
+        .control-btn {
+            background: rgba(0, 255, 0, 0.2);
+            border: 1px solid #0f0;
+            color: #0f0;
+            padding: 10px 20px;
+            cursor: pointer;
+            font-family: 'Courier New', monospace;
+            transition: all 0.3s;
+        }
+        
+        .control-btn:hover {
+            background: rgba(0, 255, 0, 0.4);
+            box-shadow: 0 0 10px #0f0;
+        }
+        
+        /* Crawl progress */
+        .crawl-progress {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            text-align: center;
+        }
+        
+        .progress-ring {
+            width: 200px;
+            height: 200px;
+        }
+        
+        .progress-ring-circle {
+            stroke: #0f0;
+            stroke-width: 4;
+            fill: transparent;
+            stroke-dasharray: 628;
+            stroke-dashoffset: 628;
+            transform: rotate(-90deg);
+            transform-origin: center;
+            transition: stroke-dashoffset 0.5s;
+        }
+        
+        .progress-text {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            font-size: 36px;
+            font-weight: bold;
+        }
+        
+        /* Framework templates */
+        .template-preview {
+            position: absolute;
+            top: 20px;
+            right: 20px;
+            background: rgba(0, 0, 0, 0.9);
+            border: 1px solid #0f0;
+            padding: 10px;
+            max-width: 300px;
+            display: none;
+        }
+        
+        .template-preview.show {
+            display: block;
+        }
+    </style>
+</head>
+<body>
+    <!-- Matrix background -->
+    <canvas id="matrix-bg"></canvas>
+    
+    <div class="container">
+        <!-- Framework selector -->
+        <div class="frameworks-panel">
+            <h2 style="text-align: center; margin-bottom: 20px;">🌀 FRAMEWORK WORMHOLE</h2>
+            
+            <div class="framework-item" data-framework="smf">
+                <div class="framework-name">SimpleMachines Forum</div>
+                <div class="framework-info">
+                    PHP Forum • MySQL • Templates<br>
+                    ~2.5M lines • High AI compatibility
+                </div>
+            </div>
+            
+            <div class="framework-item" data-framework="phpbb">
+                <div class="framework-name">phpBB</div>
+                <div class="framework-info">
+                    PHP Forum • Multiple DBs • Modular<br>
+                    ~1.8M lines • Extension system
+                </div>
+            </div>
+            
+            <div class="framework-item" data-framework="wordpress">
+                <div class="framework-name">WordPress</div>
+                <div class="framework-info">
+                    PHP CMS • MySQL • Plugin arch<br>
+                    ~500K core • Massive ecosystem
+                </div>
+            </div>
+            
+            <div class="framework-item" data-framework="discourse">
+                <div class="framework-name">Discourse</div>
+                <div class="framework-info">
+                    Ruby on Rails • PostgreSQL • Modern<br>
+                    ~400K lines • API-first
+                </div>
+            </div>
+            
+            <div class="framework-item" data-framework="mediawiki">
+                <div class="framework-name">MediaWiki</div>
+                <div class="framework-info">
+                    PHP Wiki • MySQL • Wikipedia base<br>
+                    ~1M lines • Extensible
+                </div>
+            </div>
+            
+            <div class="framework-item" data-framework="drupal">
+                <div class="framework-name">Drupal</div>
+                <div class="framework-info">
+                    PHP CMS • Symfony • Enterprise<br>
+                    ~1.5M lines • Module system
+                </div>
+            </div>
+            
+            <div class="framework-item" data-framework="ghost">
+                <div class="framework-name">Ghost</div>
+                <div class="framework-info">
+                    Node.js • MySQL/SQLite • Modern<br>
+                    ~200K lines • Clean architecture
+                </div>
+            </div>
+            
+            <div class="framework-item" data-framework="custom">
+                <div class="framework-name">+ Custom URL</div>
+                <div class="framework-info">
+                    Add any framework URL<br>
+                    AI will analyze structure
+                </div>
+            </div>
+        </div>
+        
+        <!-- Wormhole visualizer -->
+        <div class="wormhole-center">
+            <canvas id="wormhole-canvas"></canvas>
+            
+            <div class="crawl-progress" style="display: none;">
+                <svg class="progress-ring" viewBox="0 0 200 200">
+                    <circle class="progress-ring-circle" cx="100" cy="100" r="90"/>
+                </svg>
+                <div class="progress-text">0%</div>
+            </div>
+            
+            <div class="wormhole-status">
+                WORMHOLE READY
+            </div>
+            
+            <div class="control-panel">
+                <button class="control-btn" onclick="startCrawl()">INITIATE CRAWL</button>
+                <button class="control-btn" onclick="analyzeStructure()">ANALYZE</button>
+                <button class="control-btn" onclick="generateIntegration()">INTEGRATE</button>
+                <button class="control-btn" onclick="deployWormhole()">DEPLOY</button>
+            </div>
+        </div>
+        
+        <!-- Integration log -->
+        <div class="integration-panel">
+            <h3>INTEGRATION LOG</h3>
+            <div id="integration-log">
+                <div class="log-entry info">[SYSTEM] Wormhole interface initialized</div>
+                <div class="log-entry info">[SYSTEM] Select framework to begin</div>
+            </div>
+        </div>
+    </div>
+    
+    <!-- Template preview -->
+    <div class="template-preview" id="template-preview">
+        <h4>Template Structure</h4>
+        <pre id="template-content"></pre>
+    </div>
+    
+    <script>
+        let selectedFramework = null;
+        let crawlActive = false;
+        let ws = null;
+        
+        // Matrix rain effect
+        const canvas = document.getElementById('matrix-bg');
+        const ctx = canvas.getContext('2d');
+        
+        canvas.width = window.innerWidth;
+        canvas.height = window.innerHeight;
+        
+        const matrix = "ABCDEFGHIJKLMNOPQRSTUVWXYZ123456789@#$%^&*()*&^%+-/~{[|`]}";
+        const matrixArray = matrix.split("");
+        
+        const fontSize = 10;
+        const columns = canvas.width / fontSize;
+        
+        const drops = [];
+        for(let x = 0; x < columns; x++) {
+            drops[x] = 1;
+        }
+        
+        function drawMatrix() {
+            ctx.fillStyle = 'rgba(0, 0, 0, 0.04)';
+            ctx.fillRect(0, 0, canvas.width, canvas.height);
+            
+            ctx.fillStyle = '#0f0';
+            ctx.font = fontSize + 'px monospace';
+            
+            for(let i = 0; i < drops.length; i++) {
+                const text = matrixArray[Math.floor(Math.random() * matrixArray.length)];
+                ctx.fillText(text, i * fontSize, drops[i] * fontSize);
+                
+                if(drops[i] * fontSize > canvas.height && Math.random() > 0.975) {
+                    drops[i] = 0;
+                }
+                drops[i]++;
+            }
+        }
+        
+        setInterval(drawMatrix, 35);
+        
+        // Wormhole visualization
+        const wormholeCanvas = document.getElementById('wormhole-canvas');
+        const wctx = wormholeCanvas.getContext('2d');
+        
+        wormholeCanvas.width = 500;
+        wormholeCanvas.height = 500;
+        
+        function drawWormhole() {
+            wctx.clearRect(0, 0, 500, 500);
+            
+            const centerX = 250;
+            const centerY = 250;
+            const time = Date.now() * 0.001;
+            
+            // Draw spiraling wormhole
+            for(let i = 0; i < 50; i++) {
+                const radius = i * 5;
+                const alpha = 1 - (i / 50);
+                
+                wctx.beginPath();
+                wctx.strokeStyle = `rgba(0, 255, 0, ${alpha * 0.5})`;
+                wctx.lineWidth = 2;
+                
+                for(let angle = 0; angle < Math.PI * 2; angle += 0.1) {
+                    const x = centerX + Math.cos(angle + time + i * 0.1) * radius;
+                    const y = centerY + Math.sin(angle + time + i * 0.1) * radius;
+                    
+                    if(angle === 0) {
+                        wctx.moveTo(x, y);
+                    } else {
+                        wctx.lineTo(x, y);
+                    }
+                }
+                
+                wctx.stroke();
+            }
+            
+            requestAnimationFrame(drawWormhole);
+        }
+        
+        drawWormhole();
+        
+        // Framework selection
+        document.querySelectorAll('.framework-item').forEach(item => {
+            item.addEventListener('click', function() {
+                document.querySelectorAll('.framework-item').forEach(f => f.classList.remove('active'));
+                this.classList.add('active');
+                
+                selectedFramework = this.dataset.framework;
+                log(`Selected framework: ${this.querySelector('.framework-name').textContent}`, 'info');
+                
+                if(selectedFramework === 'custom') {
+                    promptCustomURL();
+                }
+            });
+        });
+        
+        // Control functions
+        function startCrawl() {
+            if(!selectedFramework) {
+                log('ERROR: No framework selected', 'error');
+                return;
+            }
+            
+            if(crawlActive) {
+                log('Crawl already in progress', 'error');
+                return;
+            }
+            
+            crawlActive = true;
+            log(`Starting crawl for ${selectedFramework}...`, 'success');
+            updateStatus('CRAWLING IN PROGRESS');
+            
+            // Show progress
+            document.querySelector('.crawl-progress').style.display = 'block';
+            
+            // Simulate crawl progress
+            let progress = 0;
+            const interval = setInterval(() => {
+                progress += Math.random() * 10;
+                if(progress > 100) progress = 100;
+                
+                updateProgress(progress);
+                
+                if(progress >= 100) {
+                    clearInterval(interval);
+                    crawlComplete();
+                }
+            }, 500);
+            
+            // Send to backend
+            if(window.electronAPI) {
+                window.electronAPI.wormholeCrawl({
+                    framework: selectedFramework,
+                    action: 'crawl'
+                });
+            }
+        }
+        
+        function updateProgress(percent) {
+            const circle = document.querySelector('.progress-ring-circle');
+            const text = document.querySelector('.progress-text');
+            
+            const circumference = 2 * Math.PI * 90;
+            const offset = circumference - (percent / 100) * circumference;
+            
+            circle.style.strokeDashoffset = offset;
+            text.textContent = Math.floor(percent) + '%';
+        }
+        
+        function crawlComplete() {
+            crawlActive = false;
+            document.querySelector('.crawl-progress').style.display = 'none';
+            updateStatus('CRAWL COMPLETE');
+            log('Crawl completed successfully', 'success');
+            
+            // Show analysis data
+            const frameworks = {
+                smf: { files: 2847, functions: 18293, tables: 63, hooks: 847 },
+                phpbb: { files: 1893, functions: 14738, tables: 87, hooks: 1249 },
+                wordpress: { files: 638, functions: 5829, tables: 12, hooks: 2847 },
+                discourse: { files: 2184, functions: 9284, tables: 124, hooks: 0 },
+                mediawiki: { files: 3928, functions: 28394, tables: 48, hooks: 394 },
+                drupal: { files: 4829, functions: 38294, tables: 78, hooks: 2984 },
+                ghost: { files: 823, functions: 4829, tables: 23, hooks: 482 }
+            };
+            
+            const data = frameworks[selectedFramework] || { files: 0, functions: 0, tables: 0, hooks: 0 };
+            
+            log(`Discovered: ${data.files} files`, 'info');
+            log(`Found: ${data.functions} functions`, 'info');
+            log(`Database: ${data.tables} tables`, 'info');
+            log(`Integration points: ${data.hooks} hooks`, 'info');
+        }
+        
+        function analyzeStructure() {
+            if(!selectedFramework) {
+                log('ERROR: No framework selected', 'error');
+                return;
+            }
+            
+            log('Analyzing framework structure...', 'info');
+            updateStatus('ANALYZING STRUCTURE');
+            
+            // Simulate analysis
+            setTimeout(() => {
+                log('Structure analysis complete', 'success');
+                log('- MVC pattern detected', 'info');
+                log('- Plugin/module system found', 'info');
+                log('- Database abstraction layer identified', 'info');
+                log('- Template engine discovered', 'info');
+                log('- API endpoints mapped', 'info');
+                
+                updateStatus('ANALYSIS COMPLETE');
+            }, 2000);
+        }
+        
+        function generateIntegration() {
+            if(!selectedFramework) {
+                log('ERROR: No framework selected', 'error');
+                return;
+            }
+            
+            log('Generating integration code...', 'info');
+            updateStatus('GENERATING INTEGRATION');
+            
+            // Show template preview
+            const template = `// ${selectedFramework.toUpperCase()} Wormhole Integration
+class ${selectedFramework}Wormhole {
+    constructor() {
+        this.framework = '${selectedFramework}';
+        this.endpoints = [];
+        this.hooks = new Map();
+    }
+    
+    async connect() {
+        // Connect to framework database
+        await this.connectDB();
+        
+        // Hook into framework events
+        await this.registerHooks();
+        
+        // Map API endpoints
+        await this.mapEndpoints();
+    }
+    
+    async ingest(data) {
+        // Process and transform data
+        const transformed = await this.transform(data);
+        
+        // Insert into Document Generator
+        return await this.store(transformed);
+    }
+}`;
+            
+            document.getElementById('template-content').textContent = template;
+            document.getElementById('template-preview').classList.add('show');
+            
+            setTimeout(() => {
+                log('Integration code generated', 'success');
+                log('Ready for deployment', 'info');
+                updateStatus('READY TO DEPLOY');
+            }, 3000);
+        }
+        
+        function deployWormhole() {
+            if(!selectedFramework) {
+                log('ERROR: No framework selected', 'error');
+                return;
+            }
+            
+            log('Deploying wormhole integration...', 'info');
+            updateStatus('DEPLOYING WORMHOLE');
+            
+            // Simulate deployment steps
+            const steps = [
+                'Creating integration container...',
+                'Setting up proxy routes...',
+                'Configuring database connections...',
+                'Installing framework adapters...',
+                'Starting synchronization service...',
+                'Wormhole deployed successfully!'
+            ];
+            
+            steps.forEach((step, i) => {
+                setTimeout(() => {
+                    log(step, i === steps.length - 1 ? 'success' : 'info');
+                    
+                    if(i === steps.length - 1) {
+                        updateStatus('WORMHOLE ACTIVE');
+                        
+                        // Add to blamechain
+                        if(window.electronAPI) {
+                            window.electronAPI.addToBlamechain({
+                                action: 'WORMHOLE_DEPLOYED',
+                                description: `${selectedFramework} integration active`,
+                                data: { framework: selectedFramework }
+                            });
+                        }
+                    }
+                }, i * 1000);
+            });
+        }
+        
+        function promptCustomURL() {
+            const url = prompt('Enter framework URL to wormhole:');
+            if(url) {
+                log(`Custom URL: ${url}`, 'info');
+                selectedFramework = url;
+            }
+        }
+        
+        function updateStatus(status) {
+            document.querySelector('.wormhole-status').textContent = status;
+        }
+        
+        function log(message, type = 'info') {
+            const logEntry = document.createElement('div');
+            logEntry.className = `log-entry ${type}`;
+            logEntry.textContent = `[${new Date().toLocaleTimeString()}] ${message}`;
+            
+            const logContainer = document.getElementById('integration-log');
+            logContainer.appendChild(logEntry);
+            logContainer.scrollTop = logContainer.scrollHeight;
+        }
+        
+        // WebSocket connection
+        function connectWebSocket() {
+            ws = new WebSocket('ws://localhost:47001');
+            
+            ws.onopen = () => {
+                log('Connected to wormhole service', 'success');
+            };
+            
+            ws.onmessage = (event) => {
+                const data = JSON.parse(event.data);
+                
+                if(data.type === 'crawl_update') {
+                    log(data.message, data.level || 'info');
+                }
+            };
+            
+            ws.onerror = () => {
+                log('WebSocket connection error', 'error');
+            };
+        }
+        
+        // Listen for Electron messages
+        if(window.electronAPI) {
+            window.addEventListener('wormhole-framework', (event) => {
+                const framework = event.detail;
+                
+                // Find and click the framework
+                document.querySelectorAll('.framework-item').forEach(item => {
+                    if(item.dataset.framework === framework) {
+                        item.click();
+                    }
+                });
+            });
+            
+            window.addEventListener('wormhole-custom', (event) => {
+                selectedFramework = event.detail;
+                log(`Custom URL selected: ${selectedFramework}`, 'info');
+            });
+        }
+        
+        // Connect on load
+        connectWebSocket();
+    </script>
+</body>
+</html>

@@ -1,0 +1,718 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>🎬 HTML5 Presentation Engine - Document Generator Demo</title>
+    <style>
+        /* Embedded CSS for single-file distribution */
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #0a0a0a 0%, #1a1a1a 100%);
+            color: #fff;
+            overflow: hidden;
+            height: 100vh;
+        }
+        
+        .presentation-container {
+            width: 100vw;
+            height: 100vh;
+            position: relative;
+            display: flex;
+            flex-direction: column;
+        }
+        
+        .header {
+            background: rgba(0,0,0,0.9);
+            padding: 15px 20px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            border-bottom: 2px solid #4ecca3;
+            z-index: 1000;
+        }
+        
+        .logo {
+            font-size: 24px;
+            font-weight: bold;
+            color: #4ecca3;
+            text-shadow: 0 0 10px #4ecca3;
+        }
+        
+        .controls {
+            display: flex;
+            gap: 10px;
+            align-items: center;
+        }
+        
+        .btn {
+            background: #4ecca3;
+            color: #000;
+            border: none;
+            padding: 8px 16px;
+            border-radius: 4px;
+            cursor: pointer;
+            font-weight: bold;
+            transition: all 0.3s;
+        }
+        
+        .btn:hover {
+            background: #3eb393;
+            transform: scale(1.05);
+        }
+        
+        .btn:disabled {
+            background: #666;
+            cursor: not-allowed;
+            transform: none;
+        }
+        
+        .timer-display {
+            background: #000;
+            padding: 8px 12px;
+            border-radius: 4px;
+            font-family: 'Courier New', monospace;
+            font-size: 18px;
+            color: #4ecca3;
+            border: 1px solid #4ecca3;
+        }
+        
+        .main-content {
+            flex: 1;
+            position: relative;
+            overflow: hidden;
+        }
+        
+        .slide {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            text-align: center;
+            opacity: 0;
+            transform: translateX(100%);
+            transition: all 0.8s cubic-bezier(0.4, 0, 0.2, 1);
+            padding: 40px;
+        }
+        
+        .slide.active {
+            opacity: 1;
+            transform: translateX(0);
+        }
+        
+        .slide.prev {
+            transform: translateX(-100%);
+        }
+        
+        .slide h1 {
+            font-size: 4rem;
+            margin-bottom: 30px;
+            background: linear-gradient(45deg, #4ecca3, #45b393);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+            text-shadow: 0 0 30px rgba(78, 204, 163, 0.5);
+        }
+        
+        .slide h2 {
+            font-size: 3rem;
+            margin-bottom: 20px;
+            color: #4ecca3;
+        }
+        
+        .slide p {
+            font-size: 1.8rem;
+            line-height: 1.6;
+            max-width: 80%;
+            margin-bottom: 30px;
+            color: #ccc;
+        }
+        
+        .demo-window {
+            background: #000;
+            border: 2px solid #4ecca3;
+            border-radius: 8px;
+            width: 80%;
+            height: 60%;
+            position: relative;
+            overflow: hidden;
+            box-shadow: 0 0 30px rgba(78, 204, 163, 0.3);
+        }
+        
+        .demo-window iframe {
+            width: 100%;
+            height: 100%;
+            border: none;
+            background: #000;
+        }
+        
+        .demo-placeholder {
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            height: 100%;
+            color: #666;
+            font-size: 1.5rem;
+        }
+        
+        .features-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+            gap: 30px;
+            width: 100%;
+            max-width: 1000px;
+        }
+        
+        .feature-card {
+            background: rgba(78, 204, 163, 0.1);
+            border: 1px solid #4ecca3;
+            border-radius: 8px;
+            padding: 30px;
+            text-align: center;
+            transition: all 0.3s;
+        }
+        
+        .feature-card:hover {
+            background: rgba(78, 204, 163, 0.2);
+            transform: translateY(-5px);
+        }
+        
+        .feature-icon {
+            font-size: 3rem;
+            margin-bottom: 15px;
+        }
+        
+        .feature-title {
+            font-size: 1.5rem;
+            color: #4ecca3;
+            margin-bottom: 10px;
+        }
+        
+        .feature-desc {
+            color: #ccc;
+            font-size: 1rem;
+        }
+        
+        .progress-bar {
+            position: fixed;
+            bottom: 0;
+            left: 0;
+            height: 4px;
+            background: #4ecca3;
+            transition: width 0.3s;
+            z-index: 1000;
+        }
+        
+        .slide-counter {
+            position: fixed;
+            bottom: 20px;
+            right: 20px;
+            background: rgba(0,0,0,0.8);
+            padding: 10px 15px;
+            border-radius: 4px;
+            font-family: 'Courier New', monospace;
+            border: 1px solid #4ecca3;
+        }
+        
+        .auto-play-indicator {
+            position: fixed;
+            top: 50%;
+            right: 20px;
+            transform: translateY(-50%);
+            background: rgba(0,0,0,0.8);
+            padding: 15px;
+            border-radius: 50%;
+            border: 2px solid #4ecca3;
+            font-size: 1.5rem;
+            animation: pulse 2s infinite;
+        }
+        
+        @keyframes pulse {
+            0%, 100% { opacity: 0.6; }
+            50% { opacity: 1; }
+        }
+        
+        .math-demo {
+            font-family: 'Courier New', monospace;
+            background: #000;
+            padding: 20px;
+            border-radius: 8px;
+            border: 1px solid #4ecca3;
+            margin: 20px 0;
+            text-align: left;
+            width: 80%;
+        }
+        
+        .terminal-output {
+            color: #0f0;
+            background: #000;
+            padding: 20px;
+            border-radius: 4px;
+            font-family: 'Courier New', monospace;
+            margin: 20px 0;
+            width: 80%;
+            text-align: left;
+            overflow-x: auto;
+        }
+        
+        .typing-effect {
+            border-right: 2px solid #4ecca3;
+            animation: typing 3s steps(40, end), blink-caret 0.75s step-end infinite;
+        }
+        
+        @keyframes typing {
+            from { width: 0; }
+            to { width: 100%; }
+        }
+        
+        @keyframes blink-caret {
+            from, to { border-color: transparent; }
+            50% { border-color: #4ecca3; }
+        }
+        
+        /* Responsive design */
+        @media (max-width: 768px) {
+            .slide h1 { font-size: 2.5rem; }
+            .slide h2 { font-size: 2rem; }
+            .slide p { font-size: 1.2rem; }
+            .demo-window { width: 95%; height: 50%; }
+            .features-grid { grid-template-columns: 1fr; }
+        }
+    </style>
+</head>
+<body>
+    <div class="presentation-container">
+        <div class="header">
+            <div class="logo">🎬 Document Generator - System Demo</div>
+            <div class="controls">
+                <button class="btn" onclick="prevSlide()">⬅️ Previous</button>
+                <button class="btn" onclick="toggleAutoPlay()" id="autoPlayBtn">▶️ Auto Play</button>
+                <button class="btn" onclick="nextSlide()">➡️ Next</button>
+                <div class="timer-display" id="timerDisplay">00:00</div>
+            </div>
+        </div>
+        
+        <div class="main-content">
+            <!-- Slide 1: Welcome -->
+            <div class="slide active" data-duration="10">
+                <h1>🚀 Document Generator</h1>
+                <p>Transform any document into a working MVP in under 30 minutes</p>
+                <p>Experience our complete ecosystem of AI-powered tools</p>
+                <div class="features-grid" style="margin-top: 40px;">
+                    <div class="feature-card">
+                        <div class="feature-icon">⚡</div>
+                        <div class="feature-title">20x Performance</div>
+                        <div class="feature-desc">Real-time monitoring and optimization</div>
+                    </div>
+                    <div class="feature-card">
+                        <div class="feature-icon">🎮</div>
+                        <div class="feature-title">Math Meme Time</div>
+                        <div class="feature-desc">24:1 time compression system</div>
+                    </div>
+                    <div class="feature-card">
+                        <div class="feature-icon">🌉</div>
+                        <div class="feature-title">Integration Bridge</div>
+                        <div class="feature-desc">Seamless data synchronization</div>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- Slide 2: Performance Monitor -->
+            <div class="slide" data-duration="15">
+                <h2>📊 Performance Monitor</h2>
+                <p>Real-time detection of system issues and 20x slowdown diagnosis</p>
+                <div class="demo-window">
+                    <div class="demo-placeholder">
+                        <div>🔍 Performance Dashboard</div>
+                        <div style="margin-top: 20px; color: #4ecca3;">http://localhost:3010</div>
+                        <div style="margin-top: 20px; font-size: 1rem;">
+                            ✅ System Health Monitoring<br>
+                            ✅ 20x Slowdown Detection<br>
+                            ✅ Docker Resource Analysis<br>
+                            ✅ Real-time Alerts
+                        </div>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- Slide 3: Math Meme Time Engine -->
+            <div class="slide" data-duration="20">
+                <h2>🎮 Math Meme Time Engine</h2>
+                <p>24:1 time compression where 20 real minutes = 8 simulated hours</p>
+                <div class="math-demo">
+                    <div style="color: #4ecca3; margin-bottom: 15px;">📐 Time Compression Formula:</div>
+                    <div style="font-size: 1.5rem; margin-bottom: 20px;">
+                        Real Time × 24 = Simulated Time
+                    </div>
+                    <div style="color: #ffd700;">💡 Examples:</div>
+                    <div>• 1 minute real = 24 minutes simulated</div>
+                    <div>• 20 minutes real = 8 hours simulated</div>
+                    <div>• 1 hour real = 1 day simulated</div>
+                </div>
+                <div class="terminal-output">
+                    <div id="mathMemeOutput">Ready to demonstrate...</div>
+                </div>
+            </div>
+            
+            <!-- Slide 4: Integration Bridge -->
+            <div class="slide" data-duration="15">
+                <h2>🌉 Integration Bridge</h2>
+                <p>Connects JavaScript Time Engine with Python Flask Service</p>
+                <div class="demo-window">
+                    <div class="demo-placeholder">
+                        <div>🔄 Real-time Synchronization</div>
+                        <div style="margin-top: 20px; color: #4ecca3;">
+                            JavaScript ↔ Python Integration
+                        </div>
+                        <div style="margin-top: 20px; font-size: 1rem;">
+                            ✅ Automatic bi-directional sync<br>
+                            ✅ WebSocket real-time updates<br>
+                            ✅ CSV/Excel export<br>
+                            ✅ Error handling & retry logic
+                        </div>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- Slide 5: System Architecture -->
+            <div class="slide" data-duration="18">
+                <h2>🏗️ System Architecture</h2>
+                <p>Complete ecosystem with unified monitoring and management</p>
+                <div style="font-family: 'Courier New', monospace; font-size: 1.2rem; text-align: left; width: 80%;">
+                    <div style="color: #4ecca3; margin-bottom: 15px;">🎯 Core Services:</div>
+                    <div>📊 Performance Monitor    → Port 3010</div>
+                    <div>🎮 Math Meme Engine      → Port 3017</div>
+                    <div>🐍 Flask Time Service   → Port 5000</div>
+                    <div>🌉 Integration Bridge   → Port 3018</div>
+                    <div>🎬 Demo Capture Studio  → Port 3020</div>
+                    <br>
+                    <div style="color: #ffd700;">⚡ Key Features:</div>
+                    <div>• Real-time monitoring & alerts</div>
+                    <div>• Automated demo generation</div>
+                    <div>• Professional data export</div>
+                    <div>• Cross-platform compatibility</div>
+                </div>
+            </div>
+            
+            <!-- Slide 6: Demo Capabilities -->
+            <div class="slide" data-duration="12">
+                <h2>🎬 Demo Capabilities</h2>
+                <p>Professional presentation tools and automated showcases</p>
+                <div class="features-grid">
+                    <div class="feature-card">
+                        <div class="feature-icon">📹</div>
+                        <div class="feature-title">Screen Capture</div>
+                        <div class="feature-desc">Automatic GIF/video generation</div>
+                    </div>
+                    <div class="feature-card">
+                        <div class="feature-icon">⏰</div>
+                        <div class="feature-title">Stage Timer</div>
+                        <div class="feature-desc">Presentation timing & phases</div>
+                    </div>
+                    <div class="feature-card">
+                        <div class="feature-icon">🎭</div>
+                        <div class="feature-title">Templates</div>
+                        <div class="feature-desc">Pre-built demo scenarios</div>
+                    </div>
+                    <div class="feature-card">
+                        <div class="feature-icon">🚀</div>
+                        <div class="feature-title">One-Click</div>
+                        <div class="feature-desc">Automated demonstrations</div>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- Slide 7: Getting Started -->
+            <div class="slide" data-duration="15">
+                <h2>🚀 Getting Started</h2>
+                <p>Launch the complete system in one command</p>
+                <div class="terminal-output" style="font-size: 1.4rem;">
+                    <div style="color: #4ecca3;"># Quick Start</div>
+                    <div>./launch-math-meme-system.sh</div>
+                    <br>
+                    <div style="color: #4ecca3;"># Or start Demo Studio</div>
+                    <div>node demo-capture-studio.js</div>
+                    <br>
+                    <div style="color: #ffd700;"># Access Dashboards:</div>
+                    <div>• Performance: http://localhost:3010</div>
+                    <div>• Math Meme: http://localhost:3017</div>
+                    <div>• Flask Service: http://localhost:5000</div>
+                    <div>• Demo Studio: http://localhost:3020</div>
+                </div>
+            </div>
+            
+            <!-- Slide 8: Thank You -->
+            <div class="slide" data-duration="8">
+                <h1>🎉 Thank You!</h1>
+                <p>Ready to transform documents into MVPs?</p>
+                <div style="margin-top: 40px; font-size: 1.5rem;">
+                    <div style="color: #4ecca3; margin-bottom: 20px;">🌐 Try it now:</div>
+                    <div>Demo Studio: http://localhost:3020</div>
+                    <div>System Coordinator: http://localhost:3000</div>
+                </div>
+                <div style="margin-top: 40px; color: #666;">
+                    This presentation will loop automatically
+                </div>
+            </div>
+        </div>
+        
+        <div class="progress-bar" id="progressBar"></div>
+        <div class="slide-counter" id="slideCounter">1 / 8</div>
+        <div class="auto-play-indicator" id="autoPlayIndicator" style="display: none;">▶️</div>
+    </div>
+
+    <script>
+        // Embedded JavaScript for single-file distribution
+        class PresentationEngine {
+            constructor() {
+                this.currentSlide = 0;
+                this.totalSlides = document.querySelectorAll('.slide').length;
+                this.autoPlay = false;
+                this.autoPlayTimer = null;
+                this.slideTimer = null;
+                this.startTime = Date.now();
+                
+                this.init();
+            }
+            
+            init() {
+                this.updateSlideCounter();
+                this.updateProgress();
+                this.startTimer();
+                
+                // Keyboard navigation
+                document.addEventListener('keydown', (e) => {
+                    switch(e.key) {
+                        case 'ArrowLeft':
+                        case 'ArrowUp':
+                            this.prevSlide();
+                            break;
+                        case 'ArrowRight':
+                        case 'ArrowDown':
+                        case ' ':
+                            this.nextSlide();
+                            break;
+                        case 'Home':
+                            this.goToSlide(0);
+                            break;
+                        case 'End':
+                            this.goToSlide(this.totalSlides - 1);
+                            break;
+                        case 'p':
+                        case 'P':
+                            this.toggleAutoPlay();
+                            break;
+                        case 'Escape':
+                            this.autoPlay = false;
+                            this.updateAutoPlayUI();
+                            break;
+                    }
+                });
+                
+                // Initialize math meme demo
+                this.initMathMemeDemo();
+            }
+            
+            nextSlide() {
+                this.goToSlide((this.currentSlide + 1) % this.totalSlides);
+            }
+            
+            prevSlide() {
+                this.goToSlide((this.currentSlide - 1 + this.totalSlides) % this.totalSlides);
+            }
+            
+            goToSlide(index) {
+                const slides = document.querySelectorAll('.slide');
+                
+                // Remove active class from current slide
+                slides[this.currentSlide].classList.remove('active');
+                slides[this.currentSlide].classList.add('prev');
+                
+                // Add active class to new slide
+                setTimeout(() => {
+                    slides[this.currentSlide].classList.remove('prev');
+                    this.currentSlide = index;
+                    slides[this.currentSlide].classList.add('active');
+                    
+                    this.updateSlideCounter();
+                    this.updateProgress();
+                    
+                    if (this.autoPlay) {
+                        this.scheduleNextSlide();
+                    }
+                }, 50);
+            }
+            
+            toggleAutoPlay() {
+                this.autoPlay = !this.autoPlay;
+                this.updateAutoPlayUI();
+                
+                if (this.autoPlay) {
+                    this.scheduleNextSlide();
+                } else {
+                    clearTimeout(this.autoPlayTimer);
+                }
+            }
+            
+            updateAutoPlayUI() {
+                const btn = document.getElementById('autoPlayBtn');
+                const indicator = document.getElementById('autoPlayIndicator');
+                
+                if (this.autoPlay) {
+                    btn.textContent = '⏸️ Pause';
+                    indicator.style.display = 'block';
+                } else {
+                    btn.textContent = '▶️ Auto Play';
+                    indicator.style.display = 'none';
+                }
+            }
+            
+            scheduleNextSlide() {
+                clearTimeout(this.autoPlayTimer);
+                
+                const currentSlideElement = document.querySelectorAll('.slide')[this.currentSlide];
+                const duration = parseInt(currentSlideElement.dataset.duration) * 1000;
+                
+                this.autoPlayTimer = setTimeout(() => {
+                    if (this.autoPlay) {
+                        this.nextSlide();
+                    }
+                }, duration);
+            }
+            
+            updateSlideCounter() {
+                document.getElementById('slideCounter').textContent = 
+                    `${this.currentSlide + 1} / ${this.totalSlides}`;
+            }
+            
+            updateProgress() {
+                const progress = ((this.currentSlide + 1) / this.totalSlides) * 100;
+                document.getElementById('progressBar').style.width = progress + '%';
+            }
+            
+            startTimer() {
+                setInterval(() => {
+                    const elapsed = Date.now() - this.startTime;
+                    const minutes = Math.floor(elapsed / 60000);
+                    const seconds = Math.floor((elapsed % 60000) / 1000);
+                    
+                    document.getElementById('timerDisplay').textContent = 
+                        minutes.toString().padStart(2, '0') + ':' + 
+                        seconds.toString().padStart(2, '0');
+                }, 1000);
+            }
+            
+            initMathMemeDemo() {
+                // Simulate Math Meme Time Engine output when on that slide
+                let mathMemeInterval;
+                
+                const startMathMemeDemo = () => {
+                    const output = document.getElementById('mathMemeOutput');
+                    if (!output) return;
+                    
+                    const demos = [
+                        '🎮 Math Meme Time Engine initialized',
+                        '⏱️ Time Compression: 24:1',
+                        '📦 Message Bottle every 20 minutes',
+                        '🌐 Dashboard: http://localhost:3017',
+                        '',
+                        'math_meme> !math_meme status',
+                        '========================',
+                        'Real Time: ' + new Date().toISOString(),
+                        'Simulated Time: ' + new Date(Date.now() * 24).toISOString(),
+                        'Compression Ratio: 24:1',
+                        'Next Bottle: in 15 minutes',
+                        '',
+                        'math_meme> !math_meme bottle',
+                        '📦 Message bottle created: meme_' + Date.now() + '_abc123',
+                        '✅ Synchronized to Flask service',
+                        '📊 CSV export ready'
+                    ];
+                    
+                    let lineIndex = 0;
+                    mathMemeInterval = setInterval(() => {
+                        if (lineIndex < demos.length) {
+                            const currentContent = output.innerHTML;
+                            const newLine = demos[lineIndex];
+                            output.innerHTML = currentContent + '<br>' + newLine;
+                            lineIndex++;
+                        } else {
+                            clearInterval(mathMemeInterval);
+                        }
+                    }, 500);
+                };
+                
+                // Start demo when Math Meme slide is active
+                const observer = new MutationObserver(() => {
+                    const mathSlide = document.querySelectorAll('.slide')[2];
+                    if (mathSlide.classList.contains('active')) {
+                        startMathMemeDemo();
+                    } else {
+                        clearInterval(mathMemeInterval);
+                    }
+                });
+                
+                observer.observe(document.querySelector('.main-content'), {
+                    childList: true,
+                    subtree: true,
+                    attributes: true,
+                    attributeFilter: ['class']
+                });
+            }
+        }
+        
+        // Global functions for buttons
+        let presentation;
+        
+        function nextSlide() {
+            presentation.nextSlide();
+        }
+        
+        function prevSlide() {
+            presentation.prevSlide();
+        }
+        
+        function toggleAutoPlay() {
+            presentation.toggleAutoPlay();
+        }
+        
+        // Initialize presentation when page loads
+        document.addEventListener('DOMContentLoaded', () => {
+            presentation = new PresentationEngine();
+            
+            // Add click handlers for feature cards
+            document.querySelectorAll('.feature-card').forEach(card => {
+                card.addEventListener('click', () => {
+                    card.style.transform = 'scale(1.05)';
+                    setTimeout(() => {
+                        card.style.transform = 'translateY(-5px)';
+                    }, 200);
+                });
+            });
+        });
+        
+        // Add some visual flair
+        document.addEventListener('mousemove', (e) => {
+            const x = e.clientX / window.innerWidth;
+            const y = e.clientY / window.innerHeight;
+            
+            document.body.style.background = 
+                `linear-gradient(135deg, 
+                    hsl(${x * 60}, 20%, ${5 + y * 5}%) 0%, 
+                    hsl(${(x + 0.3) * 60}, 15%, ${10 + y * 5}%) 100%)`;
+        });
+    </script>
+</body>
+</html>

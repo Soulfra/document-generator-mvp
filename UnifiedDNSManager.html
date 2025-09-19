@@ -1,0 +1,1197 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Unified DNS Manager - SoulFra Multi-Domain Control</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Monaco', 'Courier New', monospace;
+            background: linear-gradient(135deg, #0f1419, #1a1a2e, #16213e);
+            color: #00ff41;
+            min-height: 100vh;
+            overflow-x: hidden;
+        }
+
+        .dns-manager {
+            display: grid;
+            grid-template-columns: 300px 1fr 350px;
+            grid-template-rows: 70px 1fr;
+            height: 100vh;
+            gap: 15px;
+            padding: 15px;
+        }
+
+        .header {
+            grid-column: 1 / -1;
+            background: rgba(0, 255, 65, 0.1);
+            border: 1px solid #00ff41;
+            border-radius: 12px;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: 0 25px;
+            backdrop-filter: blur(10px);
+            box-shadow: 0 4px 20px rgba(0, 255, 65, 0.1);
+        }
+
+        .header h1 {
+            font-size: 28px;
+            text-shadow: 0 0 15px #00ff41;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .domain-selector {
+            display: flex;
+            align-items: center;
+            gap: 15px;
+        }
+
+        .domain-dropdown {
+            padding: 8px 15px;
+            background: rgba(0, 0, 0, 0.3);
+            border: 1px solid #00ff41;
+            border-radius: 6px;
+            color: #00ff41;
+            font-family: inherit;
+            cursor: pointer;
+        }
+
+        .domain-dropdown:focus {
+            outline: none;
+            box-shadow: 0 0 10px rgba(0, 255, 65, 0.5);
+        }
+
+        .status-lights {
+            display: flex;
+            gap: 8px;
+        }
+
+        .status-light {
+            width: 12px;
+            height: 12px;
+            border-radius: 50%;
+            box-shadow: 0 0 8px currentColor;
+            animation: pulse 2s infinite;
+        }
+
+        .status-light.cloudflare { color: #f48120; }
+        .status-light.soulfra { color: #00ff41; }
+        .status-light.api { color: #4ecdc4; }
+
+        @keyframes pulse {
+            0%, 100% { opacity: 1; transform: scale(1); }
+            50% { opacity: 0.6; transform: scale(1.1); }
+        }
+
+        .sidebar {
+            background: rgba(0, 255, 65, 0.05);
+            border: 1px solid #00ff41;
+            border-radius: 12px;
+            padding: 20px;
+            overflow-y: auto;
+        }
+
+        .main-content {
+            background: rgba(0, 255, 65, 0.03);
+            border: 1px solid #00ff41;
+            border-radius: 12px;
+            display: flex;
+            flex-direction: column;
+            overflow: hidden;
+        }
+
+        .controls-panel {
+            background: rgba(0, 255, 65, 0.05);
+            border: 1px solid #00ff41;
+            border-radius: 12px;
+            padding: 20px;
+            overflow-y: auto;
+        }
+
+        .section-title {
+            font-size: 18px;
+            margin-bottom: 15px;
+            color: #00ff41;
+            text-shadow: 0 0 5px #00ff41;
+            border-bottom: 1px solid rgba(0, 255, 65, 0.3);
+            padding-bottom: 8px;
+        }
+
+        .domain-list {
+            margin-bottom: 25px;
+        }
+
+        .domain-item {
+            padding: 12px;
+            margin-bottom: 8px;
+            background: rgba(0, 255, 65, 0.1);
+            border: 1px solid transparent;
+            border-radius: 8px;
+            cursor: pointer;
+            transition: all 0.3s;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .domain-item:hover, .domain-item.selected {
+            border-color: #00ff41;
+            background: rgba(0, 255, 65, 0.15);
+            transform: translateX(5px);
+            box-shadow: 0 0 10px rgba(0, 255, 65, 0.2);
+        }
+
+        .domain-name {
+            font-weight: bold;
+        }
+
+        .domain-status {
+            font-size: 12px;
+            padding: 3px 8px;
+            border-radius: 12px;
+            background: rgba(0, 255, 65, 0.2);
+        }
+
+        .record-type-filter {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(60px, 1fr));
+            gap: 8px;
+            margin-bottom: 20px;
+        }
+
+        .filter-btn {
+            padding: 8px 12px;
+            background: rgba(0, 255, 65, 0.1);
+            border: 1px solid #00ff41;
+            border-radius: 6px;
+            color: #00ff41;
+            cursor: pointer;
+            transition: all 0.3s;
+            font-family: inherit;
+            font-size: 12px;
+        }
+
+        .filter-btn:hover, .filter-btn.active {
+            background: rgba(0, 255, 65, 0.25);
+            transform: scale(1.05);
+            box-shadow: 0 0 8px rgba(0, 255, 65, 0.3);
+        }
+
+        .content-tabs {
+            display: flex;
+            border-bottom: 1px solid #00ff41;
+            background: rgba(0, 0, 0, 0.2);
+        }
+
+        .tab {
+            padding: 15px 25px;
+            cursor: pointer;
+            border-bottom: 3px solid transparent;
+            transition: all 0.3s;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .tab.active {
+            border-bottom-color: #00ff41;
+            background: rgba(0, 255, 65, 0.1);
+            text-shadow: 0 0 5px #00ff41;
+        }
+
+        .tab:hover {
+            background: rgba(0, 255, 65, 0.05);
+        }
+
+        .content-area {
+            flex: 1;
+            padding: 20px;
+            overflow-y: auto;
+        }
+
+        .dns-table {
+            width: 100%;
+            border-collapse: collapse;
+            background: rgba(0, 0, 0, 0.2);
+            border-radius: 8px;
+            overflow: hidden;
+        }
+
+        .dns-table th,
+        .dns-table td {
+            padding: 12px 15px;
+            text-align: left;
+            border-bottom: 1px solid rgba(0, 255, 65, 0.2);
+        }
+
+        .dns-table th {
+            background: rgba(0, 255, 65, 0.15);
+            font-weight: bold;
+            color: #00ff41;
+            text-shadow: 0 0 5px #00ff41;
+        }
+
+        .dns-table tr:hover {
+            background: rgba(0, 255, 65, 0.05);
+        }
+
+        .record-type {
+            display: inline-block;
+            padding: 4px 8px;
+            border-radius: 4px;
+            font-size: 11px;
+            font-weight: bold;
+            text-transform: uppercase;
+        }
+
+        .record-type.A { background: #e74c3c; color: white; }
+        .record-type.AAAA { background: #9b59b6; color: white; }
+        .record-type.CNAME { background: #3498db; color: white; }
+        .record-type.MX { background: #f39c12; color: white; }
+        .record-type.TXT { background: #2ecc71; color: white; }
+        .record-type.NS { background: #95a5a6; color: white; }
+
+        .action-buttons {
+            display: flex;
+            gap: 8px;
+        }
+
+        .btn {
+            padding: 6px 12px;
+            border: 1px solid #00ff41;
+            border-radius: 4px;
+            background: rgba(0, 255, 65, 0.1);
+            color: #00ff41;
+            cursor: pointer;
+            font-size: 12px;
+            transition: all 0.3s;
+        }
+
+        .btn:hover {
+            background: rgba(0, 255, 65, 0.2);
+            transform: translateY(-1px);
+            box-shadow: 0 2px 8px rgba(0, 255, 65, 0.2);
+        }
+
+        .btn.danger {
+            border-color: #e74c3c;
+            color: #e74c3c;
+            background: rgba(231, 76, 60, 0.1);
+        }
+
+        .btn.danger:hover {
+            background: rgba(231, 76, 60, 0.2);
+        }
+
+        .form-group {
+            margin-bottom: 15px;
+        }
+
+        .form-label {
+            display: block;
+            margin-bottom: 5px;
+            color: #00ff41;
+            font-weight: bold;
+        }
+
+        .form-input {
+            width: 100%;
+            padding: 10px;
+            background: rgba(0, 0, 0, 0.3);
+            border: 1px solid #00ff41;
+            border-radius: 6px;
+            color: #00ff41;
+            font-family: inherit;
+        }
+
+        .form-input:focus {
+            outline: none;
+            box-shadow: 0 0 10px rgba(0, 255, 65, 0.5);
+            background: rgba(0, 0, 0, 0.5);
+        }
+
+        .form-select {
+            width: 100%;
+            padding: 10px;
+            background: rgba(0, 0, 0, 0.3);
+            border: 1px solid #00ff41;
+            border-radius: 6px;
+            color: #00ff41;
+            font-family: inherit;
+            cursor: pointer;
+        }
+
+        .analytics-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 15px;
+            margin-bottom: 20px;
+        }
+
+        .metric-card {
+            background: rgba(0, 255, 65, 0.1);
+            border: 1px solid #00ff41;
+            border-radius: 8px;
+            padding: 15px;
+            text-align: center;
+        }
+
+        .metric-value {
+            font-size: 24px;
+            font-weight: bold;
+            color: #00ff41;
+            text-shadow: 0 0 10px #00ff41;
+        }
+
+        .metric-label {
+            font-size: 12px;
+            opacity: 0.8;
+            margin-top: 5px;
+        }
+
+        .bulk-actions {
+            background: rgba(0, 0, 0, 0.3);
+            border: 1px solid #00ff41;
+            border-radius: 8px;
+            padding: 15px;
+            margin-bottom: 20px;
+        }
+
+        .checkbox {
+            margin-right: 8px;
+        }
+
+        .loading {
+            display: inline-block;
+            width: 16px;
+            height: 16px;
+            border: 2px solid rgba(0, 255, 65, 0.3);
+            border-radius: 50%;
+            border-top-color: #00ff41;
+            animation: spin 1s ease-in-out infinite;
+        }
+
+        @keyframes spin {
+            to { transform: rotate(360deg); }
+        }
+
+        .notification {
+            position: fixed;
+            top: 20px;
+            right: 20px;
+            padding: 15px 20px;
+            border-radius: 8px;
+            color: white;
+            font-weight: bold;
+            z-index: 1000;
+            transform: translateX(400px);
+            transition: transform 0.3s;
+        }
+
+        .notification.show {
+            transform: translateX(0);
+        }
+
+        .notification.success {
+            background: rgba(46, 204, 113, 0.9);
+            border: 1px solid #2ecc71;
+        }
+
+        .notification.error {
+            background: rgba(231, 76, 60, 0.9);
+            border: 1px solid #e74c3c;
+        }
+
+        .api-key-section {
+            background: rgba(0, 0, 0, 0.3);
+            border: 1px solid #00ff41;
+            border-radius: 8px;
+            padding: 15px;
+            margin-bottom: 20px;
+        }
+
+        .api-key-input {
+            display: flex;
+            gap: 10px;
+            margin-bottom: 10px;
+        }
+
+        .api-key-status {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            font-size: 12px;
+        }
+
+        .captcha-widget {
+            background: rgba(0, 255, 65, 0.05);
+            border: 1px dashed #00ff41;
+            border-radius: 8px;
+            padding: 20px;
+            text-align: center;
+            margin: 15px 0;
+            cursor: pointer;
+            transition: all 0.3s;
+        }
+
+        .captcha-widget:hover {
+            background: rgba(0, 255, 65, 0.1);
+            border-style: solid;
+        }
+
+        @media (max-width: 1200px) {
+            .dns-manager {
+                grid-template-columns: 1fr;
+                grid-template-rows: auto auto 1fr auto;
+            }
+            
+            .sidebar {
+                order: 2;
+            }
+            
+            .main-content {
+                order: 1;
+            }
+            
+            .controls-panel {
+                order: 3;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="dns-manager">
+        <div class="header">
+            <h1>
+                🌐 Unified DNS Manager
+            </h1>
+            <div class="domain-selector">
+                <select class="domain-dropdown" id="domainSelector">
+                    <option value="">Select Domain</option>
+                    <option value="example.com">example.com</option>
+                    <option value="soulfra.dev">soulfra.dev</option>
+                    <option value="mydomain.net">mydomain.net</option>
+                </select>
+                <div class="status-lights">
+                    <div class="status-light cloudflare" title="Cloudflare Status"></div>
+                    <div class="status-light soulfra" title="SoulFra Auth"></div>
+                    <div class="status-light api" title="API Connection"></div>
+                </div>
+            </div>
+        </div>
+
+        <div class="sidebar">
+            <div class="section-title">📋 Domains</div>
+            <div class="domain-list" id="domainList">
+                <div class="domain-item selected" data-domain="example.com">
+                    <div>
+                        <div class="domain-name">example.com</div>
+                        <div style="font-size: 12px; opacity: 0.7;">Zone: abc123def</div>
+                    </div>
+                    <div class="domain-status">Active</div>
+                </div>
+                <div class="domain-item" data-domain="soulfra.dev">
+                    <div>
+                        <div class="domain-name">soulfra.dev</div>
+                        <div style="font-size: 12px; opacity: 0.7;">Zone: def456ghi</div>
+                    </div>
+                    <div class="domain-status">Active</div>
+                </div>
+                <div class="domain-item" data-domain="mydomain.net">
+                    <div>
+                        <div class="domain-name">mydomain.net</div>
+                        <div style="font-size: 12px; opacity: 0.7;">Zone: ghi789jkl</div>
+                    </div>
+                    <div class="domain-status">Pending</div>
+                </div>
+            </div>
+
+            <div class="section-title">🔍 Record Filters</div>
+            <div class="record-type-filter">
+                <button class="filter-btn active" data-type="all">All</button>
+                <button class="filter-btn" data-type="A">A</button>
+                <button class="filter-btn" data-type="AAAA">AAAA</button>
+                <button class="filter-btn" data-type="CNAME">CNAME</button>
+                <button class="filter-btn" data-type="MX">MX</button>
+                <button class="filter-btn" data-type="TXT">TXT</button>
+                <button class="filter-btn" data-type="NS">NS</button>
+            </div>
+
+            <div class="section-title">📊 Quick Stats</div>
+            <div class="analytics-grid">
+                <div class="metric-card">
+                    <div class="metric-value" id="totalRecords">24</div>
+                    <div class="metric-label">DNS Records</div>
+                </div>
+                <div class="metric-card">
+                    <div class="metric-value" id="totalDomains">3</div>
+                    <div class="metric-label">Domains</div>
+                </div>
+            </div>
+        </div>
+
+        <div class="main-content">
+            <div class="content-tabs">
+                <div class="tab active" data-tab="records">
+                    📝 DNS Records
+                </div>
+                <div class="tab" data-tab="analytics">
+                    📊 Analytics
+                </div>
+                <div class="tab" data-tab="security">
+                    🔒 Security
+                </div>
+                <div class="tab" data-tab="bulk">
+                    ⚡ Bulk Operations
+                </div>
+            </div>
+
+            <div class="content-area">
+                <div id="records-content">
+                    <div class="bulk-actions">
+                        <label>
+                            <input type="checkbox" class="checkbox" id="selectAll"> Select All
+                        </label>
+                        <button class="btn" onclick="bulkEdit()">Bulk Edit</button>
+                        <button class="btn danger" onclick="bulkDelete()">Bulk Delete</button>
+                        <button class="btn" onclick="exportRecords()">Export</button>
+                    </div>
+
+                    <table class="dns-table" id="dnsTable">
+                        <thead>
+                            <tr>
+                                <th></th>
+                                <th>Name</th>
+                                <th>Type</th>
+                                <th>Content</th>
+                                <th>TTL</th>
+                                <th>Proxy</th>
+                                <th>Actions</th>
+                            </tr>
+                        </thead>
+                        <tbody id="dnsTableBody">
+                            <tr>
+                                <td><input type="checkbox" class="checkbox"></td>
+                                <td>@</td>
+                                <td><span class="record-type A">A</span></td>
+                                <td>192.168.1.100</td>
+                                <td>300</td>
+                                <td>✅</td>
+                                <td>
+                                    <div class="action-buttons">
+                                        <button class="btn" onclick="editRecord(this)">Edit</button>
+                                        <button class="btn danger" onclick="deleteRecord(this)">Delete</button>
+                                    </div>
+                                </td>
+                            </tr>
+                            <tr>
+                                <td><input type="checkbox" class="checkbox"></td>
+                                <td>www</td>
+                                <td><span class="record-type CNAME">CNAME</span></td>
+                                <td>example.com</td>
+                                <td>300</td>
+                                <td>✅</td>
+                                <td>
+                                    <div class="action-buttons">
+                                        <button class="btn" onclick="editRecord(this)">Edit</button>
+                                        <button class="btn danger" onclick="deleteRecord(this)">Delete</button>
+                                    </div>
+                                </td>
+                            </tr>
+                            <tr>
+                                <td><input type="checkbox" class="checkbox"></td>
+                                <td>mail</td>
+                                <td><span class="record-type MX">MX</span></td>
+                                <td>10 mail.example.com</td>
+                                <td>300</td>
+                                <td>❌</td>
+                                <td>
+                                    <div class="action-buttons">
+                                        <button class="btn" onclick="editRecord(this)">Edit</button>
+                                        <button class="btn danger" onclick="deleteRecord(this)">Delete</button>
+                                    </div>
+                                </td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+
+                <div id="analytics-content" style="display: none;">
+                    <div class="analytics-grid">
+                        <div class="metric-card">
+                            <div class="metric-value">1.2M</div>
+                            <div class="metric-label">DNS Queries (24h)</div>
+                        </div>
+                        <div class="metric-card">
+                            <div class="metric-value">99.9%</div>
+                            <div class="metric-label">Uptime</div>
+                        </div>
+                        <div class="metric-card">
+                            <div class="metric-value">45ms</div>
+                            <div class="metric-label">Avg Response Time</div>
+                        </div>
+                        <div class="metric-card">
+                            <div class="metric-value">156</div>
+                            <div class="metric-label">Cache Hit Rate %</div>
+                        </div>
+                    </div>
+                    
+                    <div style="margin: 20px 0; font-size: 18px; color: #00ff41;">
+                        📈 DNS Query Analytics
+                    </div>
+                    <div style="background: rgba(0,255,65,0.05); padding: 20px; border-radius: 8px;">
+                        Real-time DNS analytics and performance monitoring would be displayed here.
+                        Integration with Cloudflare Analytics API provides detailed insights into
+                        DNS query patterns, geographic distribution, and performance metrics.
+                    </div>
+                </div>
+
+                <div id="security-content" style="display: none;">
+                    <div style="margin-bottom: 20px;">
+                        <div class="section-title">🛡️ Security Settings</div>
+                        
+                        <div class="form-group">
+                            <label class="form-label">Security Level</label>
+                            <select class="form-select">
+                                <option>High</option>
+                                <option>Medium</option>
+                                <option>Low</option>
+                            </select>
+                        </div>
+
+                        <div class="form-group">
+                            <label class="form-label">CAPTCHA Challenge</label>
+                            <div class="captcha-widget" onclick="solveCaptcha()">
+                                🔒 Click to verify you're human
+                            </div>
+                        </div>
+
+                        <div class="form-group">
+                            <label class="form-label">Bot Fight Mode</label>
+                            <label>
+                                <input type="checkbox" checked> Enable bot detection
+                            </label>
+                        </div>
+                    </div>
+                </div>
+
+                <div id="bulk-content" style="display: none;">
+                    <div class="section-title">⚡ Bulk Operations</div>
+                    
+                    <div class="form-group">
+                        <label class="form-label">Import DNS Records (CSV/JSON)</label>
+                        <input type="file" class="form-input" accept=".csv,.json">
+                    </div>
+
+                    <div class="form-group">
+                        <button class="btn" onclick="importRecords()">Import Records</button>
+                        <button class="btn" onclick="validateRecords()">Validate All</button>
+                        <button class="btn" onclick="syncWithCloudflare()">Sync with Cloudflare</button>
+                    </div>
+
+                    <div style="background: rgba(0,255,65,0.05); padding: 15px; border-radius: 8px; margin-top: 20px;">
+                        💡 <strong>Pro Tip:</strong> Use CSV format for bulk imports with columns: name,type,content,ttl,proxy
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="controls-panel">
+            <div class="section-title">🔑 API Configuration</div>
+            <div class="api-key-section">
+                <div class="form-group">
+                    <label class="form-label">Cloudflare API Key</label>
+                    <div class="api-key-input">
+                        <input type="password" class="form-input" placeholder="Enter API key" id="cfApiKey">
+                        <button class="btn" onclick="validateApiKey()">Test</button>
+                    </div>
+                    <div class="api-key-status" id="apiKeyStatus">
+                        <span>🔴</span> Not configured
+                    </div>
+                </div>
+
+                <div class="form-group">
+                    <label class="form-label">SoulFra Authentication</label>
+                    <div class="api-key-input">
+                        <input type="password" class="form-input" placeholder="SoulFra token" id="soulfraToken">
+                        <button class="btn" onclick="validateSoulFraAuth()">Verify</button>
+                    </div>
+                </div>
+            </div>
+
+            <div class="section-title">➕ Add DNS Record</div>
+            <div class="form-group">
+                <label class="form-label">Record Type</label>
+                <select class="form-select" id="recordType">
+                    <option value="A">A Record</option>
+                    <option value="AAAA">AAAA Record</option>
+                    <option value="CNAME">CNAME Record</option>
+                    <option value="MX">MX Record</option>
+                    <option value="TXT">TXT Record</option>
+                    <option value="NS">NS Record</option>
+                </select>
+            </div>
+
+            <div class="form-group">
+                <label class="form-label">Name</label>
+                <input type="text" class="form-input" placeholder="subdomain or @" id="recordName">
+            </div>
+
+            <div class="form-group">
+                <label class="form-label">Content</label>
+                <input type="text" class="form-input" placeholder="IP address or target" id="recordContent">
+            </div>
+
+            <div class="form-group">
+                <label class="form-label">TTL (seconds)</label>
+                <select class="form-select" id="recordTtl">
+                    <option value="300">5 minutes</option>
+                    <option value="3600">1 hour</option>
+                    <option value="43200">12 hours</option>
+                    <option value="86400">1 day</option>
+                </select>
+            </div>
+
+            <div class="form-group">
+                <label>
+                    <input type="checkbox" id="recordProxy"> Proxy through Cloudflare
+                </label>
+            </div>
+
+            <div class="form-group">
+                <button class="btn" onclick="addDnsRecord()" style="width: 100%; padding: 12px;">
+                    ➕ Add Record
+                </button>
+            </div>
+
+            <div class="section-title">🔄 Quick Actions</div>
+            <div style="display: flex; flex-direction: column; gap: 10px;">
+                <button class="btn" onclick="refreshRecords()">🔄 Refresh Records</button>
+                <button class="btn" onclick="clearDnsCache()">🧹 Clear DNS Cache</button>
+                <button class="btn" onclick="exportConfiguration()">📥 Export Config</button>
+                <button class="btn" onclick="importConfiguration()">📤 Import Config</button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // DNS Manager JavaScript
+        let currentDomain = 'example.com';
+        let dnsRecords = [];
+        let selectedRecords = new Set();
+
+        // Tab switching
+        document.querySelectorAll('.tab').forEach(tab => {
+            tab.addEventListener('click', () => {
+                document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
+                tab.classList.add('active');
+                
+                const tabName = tab.dataset.tab;
+                
+                // Hide all content areas
+                document.querySelectorAll('[id$="-content"]').forEach(content => {
+                    content.style.display = 'none';
+                });
+                
+                // Show selected content
+                document.getElementById(`${tabName}-content`).style.display = 'block';
+            });
+        });
+
+        // Domain selection
+        document.getElementById('domainSelector').addEventListener('change', (e) => {
+            currentDomain = e.target.value;
+            selectDomain(currentDomain);
+        });
+
+        // Domain list selection
+        document.querySelectorAll('.domain-item').forEach(item => {
+            item.addEventListener('click', () => {
+                document.querySelectorAll('.domain-item').forEach(i => i.classList.remove('selected'));
+                item.classList.add('selected');
+                
+                currentDomain = item.dataset.domain;
+                document.getElementById('domainSelector').value = currentDomain;
+                loadDomainRecords(currentDomain);
+            });
+        });
+
+        // Record type filtering
+        document.querySelectorAll('.filter-btn').forEach(btn => {
+            btn.addEventListener('click', () => {
+                document.querySelectorAll('.filter-btn').forEach(b => b.classList.remove('active'));
+                btn.classList.add('active');
+                
+                const filterType = btn.dataset.type;
+                filterRecords(filterType);
+            });
+        });
+
+        // Select all functionality
+        document.getElementById('selectAll').addEventListener('change', (e) => {
+            const checkboxes = document.querySelectorAll('#dnsTableBody input[type="checkbox"]');
+            checkboxes.forEach(cb => {
+                cb.checked = e.target.checked;
+                const row = cb.closest('tr');
+                if (e.target.checked) {
+                    selectedRecords.add(row);
+                } else {
+                    selectedRecords.delete(row);
+                }
+            });
+        });
+
+        // DNS Management Functions
+        function selectDomain(domain) {
+            currentDomain = domain;
+            loadDomainRecords(domain);
+            showNotification(`Switched to domain: ${domain}`, 'success');
+        }
+
+        function loadDomainRecords(domain) {
+            console.log(`Loading DNS records for ${domain}`);
+            
+            // Mock data - in production this would call the Cloudflare API
+            const mockRecords = [
+                { name: '@', type: 'A', content: '192.168.1.100', ttl: 300, proxy: true },
+                { name: 'www', type: 'CNAME', content: domain, ttl: 300, proxy: true },
+                { name: 'mail', type: 'MX', content: `10 mail.${domain}`, ttl: 300, proxy: false },
+                { name: '_dmarc', type: 'TXT', content: 'v=DMARC1; p=quarantine', ttl: 300, proxy: false }
+            ];
+
+            updateDnsTable(mockRecords);
+            updateStats(mockRecords.length);
+        }
+
+        function updateDnsTable(records) {
+            const tbody = document.getElementById('dnsTableBody');
+            tbody.innerHTML = '';
+
+            records.forEach((record, index) => {
+                const row = document.createElement('tr');
+                row.innerHTML = `
+                    <td><input type="checkbox" class="checkbox" data-record-id="${index}"></td>
+                    <td>${record.name}</td>
+                    <td><span class="record-type ${record.type}">${record.type}</span></td>
+                    <td>${record.content}</td>
+                    <td>${record.ttl}</td>
+                    <td>${record.proxy ? '✅' : '❌'}</td>
+                    <td>
+                        <div class="action-buttons">
+                            <button class="btn" onclick="editRecord(this)">Edit</button>
+                            <button class="btn danger" onclick="deleteRecord(this)">Delete</button>
+                        </div>
+                    </td>
+                `;
+                tbody.appendChild(row);
+            });
+
+            dnsRecords = records;
+        }
+
+        function updateStats(recordCount) {
+            document.getElementById('totalRecords').textContent = recordCount;
+        }
+
+        function filterRecords(type) {
+            const rows = document.querySelectorAll('#dnsTableBody tr');
+            
+            rows.forEach(row => {
+                const recordType = row.querySelector('.record-type').textContent;
+                
+                if (type === 'all' || recordType === type) {
+                    row.style.display = '';
+                } else {
+                    row.style.display = 'none';
+                }
+            });
+        }
+
+        // CRUD Operations
+        function addDnsRecord() {
+            const recordData = {
+                name: document.getElementById('recordName').value,
+                type: document.getElementById('recordType').value,
+                content: document.getElementById('recordContent').value,
+                ttl: parseInt(document.getElementById('recordTtl').value),
+                proxy: document.getElementById('recordProxy').checked
+            };
+
+            if (!recordData.name || !recordData.content) {
+                showNotification('Please fill in all required fields', 'error');
+                return;
+            }
+
+            // Validate record based on type
+            if (!validateRecord(recordData)) {
+                return;
+            }
+
+            console.log('Adding DNS record:', recordData);
+            
+            // In production, this would call the Cloudflare API
+            showNotification(`Adding ${recordData.type} record for ${recordData.name}...`, 'success');
+            
+            // Mock success - add to current records and refresh table
+            dnsRecords.push(recordData);
+            updateDnsTable(dnsRecords);
+            
+            // Clear form
+            document.getElementById('recordName').value = '';
+            document.getElementById('recordContent').value = '';
+            
+            showNotification(`${recordData.type} record added successfully!`, 'success');
+        }
+
+        function validateRecord(record) {
+            switch (record.type) {
+                case 'A':
+                    if (!/^(\d{1,3}\.){3}\d{1,3}$/.test(record.content)) {
+                        showNotification('Invalid IPv4 address format', 'error');
+                        return false;
+                    }
+                    break;
+                case 'AAAA':
+                    // Basic IPv6 validation
+                    if (!/^([0-9a-fA-F]{0,4}:){1,7}[0-9a-fA-F]{0,4}$/.test(record.content)) {
+                        showNotification('Invalid IPv6 address format', 'error');
+                        return false;
+                    }
+                    break;
+                case 'CNAME':
+                    if (record.name === '@') {
+                        showNotification('CNAME records cannot be created for root domain', 'error');
+                        return false;
+                    }
+                    break;
+            }
+            return true;
+        }
+
+        function editRecord(button) {
+            const row = button.closest('tr');
+            const cells = row.querySelectorAll('td');
+            
+            // Extract current values
+            const name = cells[1].textContent;
+            const type = cells[2].querySelector('.record-type').textContent;
+            const content = cells[3].textContent;
+            const ttl = cells[4].textContent;
+            
+            // Pre-fill form with current values
+            document.getElementById('recordName').value = name;
+            document.getElementById('recordType').value = type;
+            document.getElementById('recordContent').value = content;
+            document.getElementById('recordTtl').value = ttl;
+            
+            showNotification(`Editing ${type} record for ${name}`, 'success');
+        }
+
+        function deleteRecord(button) {
+            const row = button.closest('tr');
+            const name = row.querySelector('td:nth-child(2)').textContent;
+            const type = row.querySelector('.record-type').textContent;
+            
+            if (confirm(`Are you sure you want to delete the ${type} record for ${name}?`)) {
+                console.log(`Deleting ${type} record for ${name}`);
+                
+                // In production, this would call the Cloudflare API
+                row.remove();
+                showNotification(`${type} record for ${name} deleted successfully`, 'success');
+            }
+        }
+
+        // Bulk Operations
+        function bulkEdit() {
+            const selected = getSelectedRecords();
+            if (selected.length === 0) {
+                showNotification('Please select records to edit', 'error');
+                return;
+            }
+            
+            showNotification(`Bulk editing ${selected.length} records...`, 'success');
+        }
+
+        function bulkDelete() {
+            const selected = getSelectedRecords();
+            if (selected.length === 0) {
+                showNotification('Please select records to delete', 'error');
+                return;
+            }
+            
+            if (confirm(`Are you sure you want to delete ${selected.length} records?`)) {
+                selected.forEach(row => row.remove());
+                showNotification(`${selected.length} records deleted successfully`, 'success');
+            }
+        }
+
+        function getSelectedRecords() {
+            const checkboxes = document.querySelectorAll('#dnsTableBody input[type="checkbox"]:checked');
+            return Array.from(checkboxes).map(cb => cb.closest('tr'));
+        }
+
+        function exportRecords() {
+            const records = dnsRecords.map(record => ({
+                domain: currentDomain,
+                ...record
+            }));
+            
+            const dataStr = JSON.stringify(records, null, 2);
+            const dataBlob = new Blob([dataStr], { type: 'application/json' });
+            
+            const link = document.createElement('a');
+            link.href = URL.createObjectURL(dataBlob);
+            link.download = `dns-records-${currentDomain}-${Date.now()}.json`;
+            link.click();
+            
+            showNotification('DNS records exported successfully', 'success');
+        }
+
+        // API Configuration
+        function validateApiKey() {
+            const apiKey = document.getElementById('cfApiKey').value;
+            
+            if (!apiKey) {
+                showNotification('Please enter an API key', 'error');
+                return;
+            }
+            
+            // Mock validation - in production would test against Cloudflare API
+            setTimeout(() => {
+                document.getElementById('apiKeyStatus').innerHTML = '<span>🟢</span> API key valid';
+                showNotification('Cloudflare API key validated successfully', 'success');
+            }, 1000);
+        }
+
+        function validateSoulFraAuth() {
+            const token = document.getElementById('soulfraToken').value;
+            
+            if (!token) {
+                showNotification('Please enter SoulFra token', 'error');
+                return;
+            }
+            
+            // Mock validation
+            setTimeout(() => {
+                showNotification('SoulFra authentication verified', 'success');
+            }, 1000);
+        }
+
+        // Security & CAPTCHA
+        function solveCaptcha() {
+            const widget = document.querySelector('.captcha-widget');
+            widget.innerHTML = '<div class="loading"></div> Verifying...';
+            
+            setTimeout(() => {
+                widget.innerHTML = '✅ Verification complete';
+                widget.style.background = 'rgba(46, 204, 113, 0.1)';
+                widget.style.borderColor = '#2ecc71';
+            }, 2000);
+        }
+
+        // Utility Functions
+        function showNotification(message, type = 'success') {
+            const notification = document.createElement('div');
+            notification.className = `notification ${type}`;
+            notification.textContent = message;
+            
+            document.body.appendChild(notification);
+            
+            setTimeout(() => notification.classList.add('show'), 100);
+            
+            setTimeout(() => {
+                notification.classList.remove('show');
+                setTimeout(() => document.body.removeChild(notification), 300);
+            }, 3000);
+        }
+
+        function refreshRecords() {
+            showNotification('Refreshing DNS records...', 'success');
+            loadDomainRecords(currentDomain);
+        }
+
+        function clearDnsCache() {
+            showNotification('Clearing DNS cache...', 'success');
+            // Implementation would call Cloudflare cache purge API
+        }
+
+        function exportConfiguration() {
+            const config = {
+                domains: Array.from(document.querySelectorAll('.domain-item')).map(item => ({
+                    domain: item.dataset.domain,
+                    status: item.querySelector('.domain-status').textContent
+                })),
+                apiConfiguration: {
+                    cloudflareConfigured: document.getElementById('apiKeyStatus').textContent.includes('valid'),
+                    soulfraConfigured: true
+                }
+            };
+            
+            const dataStr = JSON.stringify(config, null, 2);
+            const dataBlob = new Blob([dataStr], { type: 'application/json' });
+            
+            const link = document.createElement('a');
+            link.href = URL.createObjectURL(dataBlob);
+            link.download = `dns-manager-config-${Date.now()}.json`;
+            link.click();
+            
+            showNotification('Configuration exported successfully', 'success');
+        }
+
+        function importConfiguration() {
+            const input = document.createElement('input');
+            input.type = 'file';
+            input.accept = '.json';
+            
+            input.onchange = (e) => {
+                const file = e.target.files[0];
+                if (file) {
+                    const reader = new FileReader();
+                    reader.onload = (e) => {
+                        try {
+                            const config = JSON.parse(e.target.result);
+                            console.log('Importing configuration:', config);
+                            showNotification('Configuration imported successfully', 'success');
+                        } catch (error) {
+                            showNotification('Invalid configuration file', 'error');
+                        }
+                    };
+                    reader.readAsText(file);
+                }
+            };
+            
+            input.click();
+        }
+
+        function importRecords() {
+            showNotification('Importing DNS records...', 'success');
+        }
+
+        function validateRecords() {
+            showNotification('Validating all DNS records...', 'success');
+        }
+
+        function syncWithCloudflare() {
+            showNotification('Syncing with Cloudflare...', 'success');
+        }
+
+        // Initialize
+        document.addEventListener('DOMContentLoaded', () => {
+            loadDomainRecords(currentDomain);
+            console.log('🌐 Unified DNS Manager initialized');
+            console.log('✅ Multi-domain support active');
+            console.log('✅ SoulFra authentication ready');
+            console.log('✅ Cloudflare API integration ready');
+        });
+    </script>
+</body>
+</html>

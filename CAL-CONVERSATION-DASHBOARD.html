@@ -1,0 +1,1062 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Cal Agent Conversation Dashboard</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Courier New', monospace;
+            background: #0a0a0a;
+            color: #0ff;
+            overflow: hidden;
+            height: 100vh;
+            display: flex;
+            flex-direction: column;
+        }
+
+        /* Header */
+        .header {
+            background: linear-gradient(to right, #001122, #003366);
+            padding: 15px;
+            border-bottom: 2px solid #0ff;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .title {
+            font-size: 24px;
+            text-shadow: 0 0 10px #0ff;
+        }
+
+        .status-indicators {
+            display: flex;
+            gap: 20px;
+        }
+
+        .status-item {
+            display: flex;
+            align-items: center;
+            gap: 5px;
+        }
+
+        .status-dot {
+            width: 10px;
+            height: 10px;
+            border-radius: 50%;
+            background: #0f0;
+            animation: pulse 2s infinite;
+        }
+
+        .status-dot.warning { background: #ff0; }
+        .status-dot.error { background: #f00; }
+
+        /* Main Layout */
+        .main-container {
+            flex: 1;
+            display: flex;
+            gap: 10px;
+            padding: 10px;
+            overflow: hidden;
+        }
+
+        /* Agent Panel */
+        .agent-panel {
+            width: 250px;
+            background: rgba(0, 20, 40, 0.8);
+            border: 1px solid #0ff;
+            border-radius: 5px;
+            padding: 10px;
+            overflow-y: auto;
+        }
+
+        .agent-card {
+            background: rgba(0, 255, 255, 0.1);
+            border: 1px solid #088;
+            border-radius: 5px;
+            padding: 10px;
+            margin-bottom: 10px;
+            cursor: pointer;
+            transition: all 0.3s;
+        }
+
+        .agent-card:hover {
+            background: rgba(0, 255, 255, 0.2);
+            transform: translateX(5px);
+        }
+
+        .agent-card.active {
+            background: rgba(0, 255, 255, 0.3);
+            border-color: #0ff;
+            box-shadow: 0 0 10px #0ff;
+        }
+
+        .agent-name {
+            font-weight: bold;
+            margin-bottom: 5px;
+        }
+
+        .agent-role {
+            font-size: 12px;
+            color: #888;
+            margin-bottom: 5px;
+        }
+
+        .agent-status {
+            font-size: 11px;
+            display: flex;
+            justify-content: space-between;
+        }
+
+        /* Conversation Area */
+        .conversation-area {
+            flex: 1;
+            background: rgba(0, 20, 40, 0.8);
+            border: 1px solid #0ff;
+            border-radius: 5px;
+            display: flex;
+            flex-direction: column;
+        }
+
+        .conversation-header {
+            background: rgba(0, 50, 100, 0.5);
+            padding: 10px;
+            border-bottom: 1px solid #088;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .conversation-history {
+            flex: 1;
+            overflow-y: auto;
+            padding: 15px;
+        }
+
+        .message {
+            margin-bottom: 15px;
+            padding: 10px;
+            border-radius: 5px;
+            position: relative;
+            animation: fadeIn 0.3s;
+        }
+
+        .message.user {
+            background: rgba(0, 100, 200, 0.2);
+            border-left: 3px solid #08f;
+            margin-left: 50px;
+        }
+
+        .message.agent {
+            background: rgba(0, 200, 100, 0.2);
+            border-left: 3px solid #0f8;
+            margin-right: 50px;
+        }
+
+        .message.broadcast {
+            background: rgba(200, 100, 0, 0.2);
+            border-left: 3px solid #f80;
+            text-align: center;
+            margin: 0 20px;
+        }
+
+        .message-header {
+            display: flex;
+            justify-content: space-between;
+            margin-bottom: 5px;
+            font-size: 12px;
+            color: #888;
+        }
+
+        .message-content {
+            line-height: 1.4;
+        }
+
+        .message-turn {
+            position: absolute;
+            right: 10px;
+            top: 10px;
+            font-size: 10px;
+            color: #666;
+        }
+
+        /* Input Area */
+        .input-area {
+            padding: 15px;
+            border-top: 1px solid #088;
+            display: flex;
+            gap: 10px;
+        }
+
+        .input-field {
+            flex: 1;
+            background: rgba(0, 0, 0, 0.5);
+            border: 1px solid #088;
+            color: #0ff;
+            padding: 10px;
+            border-radius: 5px;
+            font-family: inherit;
+        }
+
+        .send-button {
+            background: linear-gradient(to right, #008888, #00ffff);
+            border: none;
+            color: #000;
+            padding: 10px 20px;
+            border-radius: 5px;
+            cursor: pointer;
+            font-weight: bold;
+            transition: all 0.3s;
+        }
+
+        .send-button:hover {
+            transform: scale(1.05);
+            box-shadow: 0 0 10px #0ff;
+        }
+
+        /* Broadcast Panel */
+        .broadcast-panel {
+            width: 300px;
+            background: rgba(0, 20, 40, 0.8);
+            border: 1px solid #0ff;
+            border-radius: 5px;
+            display: flex;
+            flex-direction: column;
+        }
+
+        .broadcast-header {
+            background: rgba(0, 50, 100, 0.5);
+            padding: 10px;
+            border-bottom: 1px solid #088;
+            font-weight: bold;
+        }
+
+        .broadcast-list {
+            flex: 1;
+            overflow-y: auto;
+            padding: 10px;
+        }
+
+        .broadcast-item {
+            background: rgba(255, 100, 0, 0.1);
+            border: 1px solid #f80;
+            border-radius: 5px;
+            padding: 10px;
+            margin-bottom: 10px;
+            animation: slideIn 0.5s;
+        }
+
+        .broadcast-type {
+            font-size: 12px;
+            color: #f80;
+            margin-bottom: 5px;
+        }
+
+        .broadcast-content {
+            font-size: 13px;
+        }
+
+        .broadcast-time {
+            font-size: 11px;
+            color: #666;
+            text-align: right;
+            margin-top: 5px;
+        }
+
+        /* Coordination View */
+        .coordination-view {
+            position: fixed;
+            bottom: 20px;
+            left: 50%;
+            transform: translateX(-50%);
+            background: rgba(0, 0, 0, 0.9);
+            border: 2px solid #0ff;
+            border-radius: 10px;
+            padding: 15px;
+            display: none;
+            max-width: 500px;
+        }
+
+        .coordination-view.active {
+            display: block;
+            animation: slideUp 0.3s;
+        }
+
+        .coordination-header {
+            font-weight: bold;
+            margin-bottom: 10px;
+            text-align: center;
+        }
+
+        .coordination-agents {
+            display: flex;
+            gap: 10px;
+            justify-content: center;
+            margin-bottom: 10px;
+        }
+
+        .coord-agent {
+            background: rgba(0, 255, 255, 0.2);
+            padding: 5px 10px;
+            border-radius: 5px;
+            font-size: 12px;
+        }
+
+        /* Animations */
+        @keyframes pulse {
+            0% { opacity: 1; }
+            50% { opacity: 0.5; }
+            100% { opacity: 1; }
+        }
+
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(10px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+
+        @keyframes slideIn {
+            from { transform: translateX(100%); }
+            to { transform: translateX(0); }
+        }
+
+        @keyframes slideUp {
+            from { transform: translate(-50%, 100%); }
+            to { transform: translate(-50%, 0); }
+        }
+
+        /* Memory Indicator */
+        .memory-indicator {
+            position: absolute;
+            top: 10px;
+            right: 10px;
+            font-size: 10px;
+            color: #666;
+        }
+
+        .memory-indicator.active {
+            color: #0f0;
+        }
+
+        /* Model Usage Display */
+        .model-usage {
+            background: rgba(0, 50, 100, 0.3);
+            padding: 5px 10px;
+            border-radius: 3px;
+            font-size: 11px;
+            margin-top: 5px;
+            display: inline-block;
+        }
+
+        .verification-status {
+            position: absolute;
+            bottom: 5px;
+            right: 10px;
+            font-size: 10px;
+            color: #0ff;
+        }
+
+        .verification-status.verified {
+            color: #0f0;
+        }
+
+        .verification-status.pending {
+            color: #ff0;
+        }
+
+        .verification-status.failed {
+            color: #f00;
+        }
+
+        /* Cost Tracker */
+        .cost-tracker {
+            position: fixed;
+            top: 60px;
+            left: 20px;
+            background: rgba(0, 0, 0, 0.8);
+            border: 1px solid #0ff;
+            border-radius: 5px;
+            padding: 10px;
+            font-size: 12px;
+        }
+
+        .cost-item {
+            display: flex;
+            justify-content: space-between;
+            margin-bottom: 5px;
+            min-width: 200px;
+        }
+
+        .domain-indicator {
+            background: rgba(255, 100, 0, 0.2);
+            border: 1px solid #f80;
+            padding: 2px 8px;
+            border-radius: 3px;
+            font-size: 10px;
+            margin-left: 10px;
+        }
+
+        /* Agent Thinking Animation */
+        .thinking {
+            display: inline-block;
+            animation: thinking 1.5s infinite;
+        }
+
+        @keyframes thinking {
+            0%, 60%, 100% { opacity: 0; }
+            30% { opacity: 1; }
+        }
+
+        /* Connection Status */
+        .connection-status {
+            position: fixed;
+            top: 60px;
+            right: 20px;
+            background: rgba(0, 0, 0, 0.8);
+            border: 1px solid #0ff;
+            border-radius: 5px;
+            padding: 10px;
+            font-size: 12px;
+        }
+
+        .connection-item {
+            display: flex;
+            justify-content: space-between;
+            margin-bottom: 5px;
+        }
+
+        .connection-item:last-child {
+            margin-bottom: 0;
+        }
+    </style>
+</head>
+<body>
+    <!-- Header -->
+    <div class="header">
+        <div class="title">🤖 Cal Agent Ecosystem - Multi-Turn Conversation Dashboard</div>
+        <div class="status-indicators">
+            <div class="status-item">
+                <div class="status-dot" id="ecosystem-status"></div>
+                <span>Ecosystem</span>
+            </div>
+            <div class="status-item">
+                <div class="status-dot" id="rpc-status"></div>
+                <span>RPC</span>
+            </div>
+            <div class="status-item">
+                <div class="status-dot" id="ws-status"></div>
+                <span>WebSocket</span>
+            </div>
+        </div>
+    </div>
+
+    <!-- Main Container -->
+    <div class="main-container">
+        <!-- Agent Panel -->
+        <div class="agent-panel">
+            <h3 style="margin-bottom: 15px;">Active Agents</h3>
+            <div id="agent-list">
+                <!-- Agents will be populated here -->
+            </div>
+        </div>
+
+        <!-- Conversation Area -->
+        <div class="conversation-area">
+            <div class="conversation-header">
+                <div id="active-conversation">Select an agent to start conversation</div>
+                <div class="memory-indicator" id="memory-indicator">
+                    <span class="thinking">●</span> Memory: <span id="memory-turns">0</span> turns
+                </div>
+            </div>
+            <div class="conversation-history" id="conversation-history">
+                <!-- Messages will appear here -->
+            </div>
+            <div class="input-area">
+                <input type="text" class="input-field" id="message-input" 
+                       placeholder="Type your message... (use @mentions for routing)">
+                <button class="send-button" onclick="sendMessage()">Send</button>
+            </div>
+        </div>
+
+        <!-- Broadcast Panel -->
+        <div class="broadcast-panel">
+            <div class="broadcast-header">📡 Live Broadcasts</div>
+            <div class="broadcast-list" id="broadcast-list">
+                <!-- Broadcasts will appear here -->
+            </div>
+        </div>
+    </div>
+
+    <!-- Coordination View -->
+    <div class="coordination-view" id="coordination-view">
+        <div class="coordination-header">🤝 Agent Coordination in Progress</div>
+        <div class="coordination-agents" id="coordination-agents"></div>
+        <div id="coordination-task"></div>
+    </div>
+
+    <!-- Connection Status -->
+    <div class="connection-status">
+        <div class="connection-item">
+            <span>RPC:</span>
+            <span id="rpc-url">http://localhost:8891</span>
+        </div>
+        <div class="connection-item">
+            <span>WebSocket:</span>
+            <span id="ws-url">ws://localhost:8892</span>
+        </div>
+        <div class="connection-item">
+            <span>Ollama:</span>
+            <span id="ollama-status">Checking...</span>
+        </div>
+    </div>
+
+    <!-- Cost Tracker -->
+    <div class="cost-tracker">
+        <h4 style="margin-bottom: 10px;">💰 Cost Tracking</h4>
+        <div class="cost-item">
+            <span>Total Tokens:</span>
+            <span id="total-tokens">0</span>
+        </div>
+        <div class="cost-item">
+            <span>Total Cost:</span>
+            <span id="total-cost">$0.0000</span>
+        </div>
+        <div class="cost-item">
+            <span>Models Used:</span>
+            <span id="models-used">0</span>
+        </div>
+    </div>
+
+    <script>
+        // Dashboard state
+        const dashboard = {
+            ws: null,
+            activeAgent: 'cal-master',
+            conversations: new Map(),
+            currentTurn: 0,
+            agents: new Map([
+                ['cal-master', { name: 'Cal Master', role: 'Executive Orchestrator', status: 'active', conversations: 0 }],
+                ['ship-cal', { name: 'Ship Cal', role: 'Fleet Admiral', status: 'active', conversations: 0 }],
+                ['trade-cal', { name: 'Trade Cal', role: 'Market Analyst', status: 'active', conversations: 0 }],
+                ['wiki-cal', { name: 'Wiki Cal', role: 'Knowledge Keeper', status: 'active', conversations: 0 }],
+                ['combat-cal', { name: 'Combat Cal', role: 'Security Chief', status: 'active', conversations: 0 }]
+            ]),
+            totalTokens: 0,
+            totalCost: 0,
+            modelsUsed: new Set(),
+            verificationStatus: new Map()
+        };
+
+        // Initialize WebSocket connection
+        function initializeWebSocket() {
+            dashboard.ws = new WebSocket('ws://localhost:8892');
+
+            dashboard.ws.onopen = () => {
+                console.log('Connected to Cal Agent Ecosystem');
+                updateStatus('ws-status', 'active');
+                
+                // Subscribe to broadcasts
+                dashboard.ws.send(JSON.stringify({
+                    type: 'subscribe_broadcasts',
+                    channels: ['global', 'loot', 'coordination', 'alerts']
+                }));
+            };
+
+            dashboard.ws.onmessage = (event) => {
+                const data = JSON.parse(event.data);
+                handleWebSocketMessage(data);
+            };
+
+            dashboard.ws.onerror = (error) => {
+                console.error('WebSocket error:', error);
+                updateStatus('ws-status', 'error');
+            };
+
+            dashboard.ws.onclose = () => {
+                updateStatus('ws-status', 'error');
+                setTimeout(initializeWebSocket, 5000); // Reconnect after 5 seconds
+            };
+        }
+
+        // Handle incoming WebSocket messages
+        function handleWebSocketMessage(data) {
+            switch (data.type) {
+                case 'connected':
+                    updateAgentList(data.agents);
+                    break;
+                
+                case 'agent_response':
+                    addAgentMessage(data);
+                    break;
+                
+                case 'broadcast':
+                    addBroadcast(data);
+                    break;
+                
+                case 'task_result':
+                    showCoordinationResult(data);
+                    break;
+                    
+                case 'domain_response':
+                    addDomainResponse(data);
+                    break;
+            }
+        }
+        
+        // Add domain response
+        function addDomainResponse(data) {
+            const response = data.result;
+            const domainMessage = {
+                role: 'agent',
+                agent: response.agent || 'Domain Router',
+                content: response.response,
+                timestamp: new Date(response.timestamp || Date.now()),
+                turn: dashboard.currentTurn,
+                model: response.model,
+                tokensUsed: response.tokensUsed,
+                cost: response.cost,
+                domain: response.domainName || response.domain,
+                verificationStatus: response.verificationStatus || 'pending'
+            };
+            
+            addMessageToHistory(domainMessage);
+            storeMessage('domain-query', domainMessage);
+            
+            // Update model usage
+            updateModelUsage(domainMessage);
+            
+            // Show agents used if multi-domain
+            if (response.agentsUsed && response.agentsUsed.length > 1) {
+                showCoordinationView({
+                    type: 'multi_domain_response',
+                    task: 'Multi-domain query processed',
+                    participants: response.agentsUsed.map(id => ({
+                        id,
+                        name: dashboard.agents.get(id)?.name || id
+                    }))
+                });
+            }
+        }
+
+        // Update agent list
+        function updateAgentList(agentIds) {
+            const agentList = document.getElementById('agent-list');
+            agentList.innerHTML = '';
+
+            agentIds.forEach(agentId => {
+                const agent = dashboard.agents.get(agentId);
+                if (agent) {
+                    const card = createAgentCard(agentId, agent);
+                    agentList.appendChild(card);
+                }
+            });
+        }
+
+        // Create agent card
+        function createAgentCard(agentId, agent) {
+            const card = document.createElement('div');
+            card.className = `agent-card ${agentId === dashboard.activeAgent ? 'active' : ''}`;
+            card.onclick = () => selectAgent(agentId);
+            
+            card.innerHTML = `
+                <div class="agent-name">${agent.name}</div>
+                <div class="agent-role">${agent.role}</div>
+                <div class="agent-status">
+                    <span>Status: ${agent.status}</span>
+                    <span>Chats: ${agent.conversations}</span>
+                </div>
+            `;
+            
+            return card;
+        }
+
+        // Select active agent
+        function selectAgent(agentId) {
+            dashboard.activeAgent = agentId;
+            
+            // Update UI
+            document.querySelectorAll('.agent-card').forEach(card => {
+                card.classList.remove('active');
+            });
+            event.target.closest('.agent-card').classList.add('active');
+            
+            // Update conversation header
+            const agent = dashboard.agents.get(agentId);
+            document.getElementById('active-conversation').textContent = 
+                `Conversation with ${agent.name}`;
+            
+            // Load conversation history
+            loadConversationHistory(agentId);
+        }
+
+        // Load conversation history for agent
+        function loadConversationHistory(agentId) {
+            const history = dashboard.conversations.get(agentId) || [];
+            const historyDiv = document.getElementById('conversation-history');
+            historyDiv.innerHTML = '';
+            
+            history.forEach(message => {
+                addMessageToHistory(message);
+            });
+            
+            // Update memory indicator
+            document.getElementById('memory-turns').textContent = history.length;
+            document.getElementById('memory-indicator').classList.add('active');
+        }
+
+        // Send message
+        function sendMessage() {
+            const input = document.getElementById('message-input');
+            const message = input.value.trim();
+            
+            if (!message) return;
+            
+            // Add user message to history
+            const userMessage = {
+                role: 'user',
+                content: message,
+                timestamp: new Date(),
+                turn: ++dashboard.currentTurn
+            };
+            
+            addMessageToHistory(userMessage);
+            storeMessage(dashboard.activeAgent, userMessage);
+            
+            // Send to agent via WebSocket
+            if (dashboard.ws && dashboard.ws.readyState === WebSocket.OPEN) {
+                dashboard.ws.send(JSON.stringify({
+                    type: 'agent_query',
+                    agentId: dashboard.activeAgent,
+                    query: message,
+                    context: {
+                        playerId: 'dashboard-user',
+                        conversationId: `conv-${Date.now()}`
+                    },
+                    requestId: `req-${Date.now()}`
+                }));
+            }
+            
+            // Clear input
+            input.value = '';
+            
+            // Show thinking indicator
+            showThinkingIndicator();
+        }
+
+        // Add message to history display
+        function addMessageToHistory(message) {
+            const historyDiv = document.getElementById('conversation-history');
+            const messageDiv = document.createElement('div');
+            messageDiv.className = `message ${message.role}`;
+            
+            const time = new Date(message.timestamp).toLocaleTimeString();
+            
+            let modelInfo = '';
+            if (message.model) {
+                modelInfo = `<div class="model-usage">Model: ${message.model} | Tokens: ${message.tokensUsed || 0} | Cost: $${(message.cost || 0).toFixed(4)}</div>`;
+            }
+            
+            let domainInfo = '';
+            if (message.domain) {
+                domainInfo = `<span class="domain-indicator">${message.domain}</span>`;
+            }
+            
+            messageDiv.innerHTML = `
+                <div class="message-header">
+                    <span>${message.role === 'user' ? 'You' : message.agent || 'Agent'}${domainInfo}</span>
+                    <span>${time}</span>
+                </div>
+                <div class="message-content">${escapeHtml(message.content)}</div>
+                ${modelInfo}
+                ${message.turn ? `<div class="message-turn">Turn ${message.turn}</div>` : ''}
+                ${message.verificationStatus ? `<div class="verification-status ${message.verificationStatus}">${message.verificationStatus}</div>` : ''}
+            `;
+            
+            historyDiv.appendChild(messageDiv);
+            historyDiv.scrollTop = historyDiv.scrollHeight;
+        }
+
+        // Add agent message
+        function addAgentMessage(data) {
+            const agentMessage = {
+                role: 'agent',
+                agent: data.response.agent,
+                content: data.response.response,
+                timestamp: new Date(data.response.timestamp),
+                turn: dashboard.currentTurn,
+                model: data.response.model,
+                tokensUsed: data.response.tokensUsed,
+                cost: data.response.cost
+            };
+            
+            addMessageToHistory(agentMessage);
+            storeMessage(data.agentId, agentMessage);
+            
+            // Update agent conversation count
+            const agent = dashboard.agents.get(data.agentId);
+            if (agent) {
+                agent.conversations++;
+                updateAgentList(Array.from(dashboard.agents.keys()));
+            }
+            
+            // Update model usage display
+            updateModelUsage(agentMessage);
+        }
+
+        // Store message in conversation history
+        function storeMessage(agentId, message) {
+            if (!dashboard.conversations.has(agentId)) {
+                dashboard.conversations.set(agentId, []);
+            }
+            dashboard.conversations.get(agentId).push(message);
+            
+            // Update memory indicator
+            const history = dashboard.conversations.get(agentId);
+            document.getElementById('memory-turns').textContent = history.length;
+        }
+
+        // Add broadcast
+        function addBroadcast(data) {
+            const broadcastList = document.getElementById('broadcast-list');
+            const broadcastDiv = document.createElement('div');
+            broadcastDiv.className = 'broadcast-item';
+            
+            const time = new Date(data.data.timestamp).toLocaleTimeString();
+            
+            broadcastDiv.innerHTML = `
+                <div class="broadcast-type">${data.channel.toUpperCase()}: ${data.data.type}</div>
+                <div class="broadcast-content">${formatBroadcastContent(data.data)}</div>
+                <div class="broadcast-time">${time}</div>
+            `;
+            
+            broadcastList.insertBefore(broadcastDiv, broadcastList.firstChild);
+            
+            // Keep only last 10 broadcasts
+            while (broadcastList.children.length > 10) {
+                broadcastList.removeChild(broadcastList.lastChild);
+            }
+            
+            // Show coordination view if needed
+            if (data.channel === 'coordination') {
+                showCoordinationView(data.data);
+            }
+        }
+
+        // Format broadcast content
+        function formatBroadcastContent(data) {
+            switch (data.type) {
+                case 'loot_signal':
+                    return `${data.opportunities?.length || 0} opportunities found by ${data.agent}`;
+                
+                case 'coordination_request':
+                    return `Task: ${data.task} - ${data.agents?.length || 0} agents needed`;
+                
+                case 'fleet_recommendation':
+                    return data.recommendations?.join(', ') || 'Fleet update';
+                
+                default:
+                    return JSON.stringify(data).substring(0, 100) + '...';
+            }
+        }
+
+        // Show coordination view
+        function showCoordinationView(data) {
+            const coordView = document.getElementById('coordination-view');
+            const coordAgents = document.getElementById('coordination-agents');
+            const coordTask = document.getElementById('coordination-task');
+            
+            coordAgents.innerHTML = '';
+            data.participants?.forEach(participant => {
+                const agentDiv = document.createElement('div');
+                agentDiv.className = 'coord-agent';
+                agentDiv.textContent = participant.name;
+                coordAgents.appendChild(agentDiv);
+            });
+            
+            coordTask.textContent = `Task: ${data.task}`;
+            coordView.classList.add('active');
+            
+            // Hide after 5 seconds
+            setTimeout(() => {
+                coordView.classList.remove('active');
+            }, 5000);
+        }
+
+        // Show thinking indicator
+        function showThinkingIndicator() {
+            const thinkingMessage = {
+                role: 'agent',
+                content: '<span class="thinking">● ● ●</span> Thinking...',
+                timestamp: new Date()
+            };
+            addMessageToHistory(thinkingMessage);
+        }
+
+        // Update status indicator
+        function updateStatus(elementId, status) {
+            const element = document.getElementById(elementId);
+            element.className = 'status-dot';
+            
+            switch (status) {
+                case 'active':
+                    element.classList.add('active');
+                    break;
+                case 'warning':
+                    element.classList.add('warning');
+                    break;
+                case 'error':
+                    element.classList.add('error');
+                    break;
+            }
+        }
+
+        // Escape HTML
+        function escapeHtml(text) {
+            const div = document.createElement('div');
+            div.textContent = text;
+            return div.innerHTML;
+        }
+
+        // Check RPC status
+        async function checkRPCStatus() {
+            try {
+                const response = await fetch('http://localhost:8891/agents');
+                if (response.ok) {
+                    updateStatus('rpc-status', 'active');
+                    const data = await response.json();
+                    updateAgentList(data.agents.map(a => a.id));
+                } else {
+                    updateStatus('rpc-status', 'warning');
+                }
+            } catch (error) {
+                updateStatus('rpc-status', 'error');
+            }
+        }
+
+        // Update model usage display
+        function updateModelUsage(message) {
+            if (message.tokensUsed) {
+                dashboard.totalTokens += message.tokensUsed;
+                document.getElementById('total-tokens').textContent = dashboard.totalTokens;
+            }
+            
+            if (message.cost) {
+                dashboard.totalCost += message.cost;
+                document.getElementById('total-cost').textContent = `$${dashboard.totalCost.toFixed(4)}`;
+            }
+            
+            if (message.model) {
+                dashboard.modelsUsed.add(message.model);
+                document.getElementById('models-used').textContent = dashboard.modelsUsed.size;
+            }
+        }
+
+        // Check Ollama status
+        async function checkOllamaStatus() {
+            try {
+                const response = await fetch('http://localhost:11434/api/tags');
+                if (response.ok) {
+                    const data = await response.json();
+                    document.getElementById('ollama-status').textContent = `✓ ${data.models?.length || 0} models`;
+                    document.getElementById('ollama-status').style.color = '#0f0';
+                } else {
+                    throw new Error('Not available');
+                }
+            } catch (error) {
+                document.getElementById('ollama-status').textContent = '✗ Offline';
+                document.getElementById('ollama-status').style.color = '#f00';
+            }
+        }
+
+        // Handle domain-based queries
+        function sendDomainQuery() {
+            const input = document.getElementById('message-input');
+            const message = input.value.trim();
+            
+            if (!message) return;
+            
+            // Add user message to history
+            const userMessage = {
+                role: 'user',
+                content: message,
+                timestamp: new Date(),
+                turn: ++dashboard.currentTurn
+            };
+            
+            addMessageToHistory(userMessage);
+            storeMessage('domain-query', userMessage);
+            
+            // Send domain query
+            if (dashboard.ws && dashboard.ws.readyState === WebSocket.OPEN) {
+                dashboard.ws.send(JSON.stringify({
+                    type: 'domain_query',
+                    query: message,
+                    context: {
+                        playerId: 'dashboard-user',
+                        conversationId: `conv-${Date.now()}`
+                    },
+                    requestId: `req-${Date.now()}`
+                }));
+            }
+            
+            input.value = '';
+            showThinkingIndicator();
+        }
+
+        // Initialize dashboard
+        function initialize() {
+            // Set initial statuses
+            updateStatus('ecosystem-status', 'active');
+            updateStatus('rpc-status', 'warning');
+            updateStatus('ws-status', 'warning');
+            
+            // Initialize WebSocket
+            initializeWebSocket();
+            
+            // Check RPC status
+            checkRPCStatus();
+            setInterval(checkRPCStatus, 5000);
+            
+            // Check Ollama status
+            checkOllamaStatus();
+            setInterval(checkOllamaStatus, 10000);
+            
+            // Set up enter key for sending messages
+            document.getElementById('message-input').addEventListener('keypress', (e) => {
+                if (e.key === 'Enter') {
+                    // Check if message contains @mentions or use domain routing
+                    const message = e.target.value;
+                    if (message.includes('@') || dashboard.activeAgent !== 'cal-master') {
+                        sendMessage();
+                    } else {
+                        sendDomainQuery();
+                    }
+                }
+            });
+            
+            // Load initial agent list
+            updateAgentList(Array.from(dashboard.agents.keys()));
+            
+            // Add welcome message
+            const welcomeMessage = {
+                role: 'agent',
+                agent: 'Cal Master',
+                content: 'Welcome to the Cal Agent Ecosystem! I\'m Cal, your executive orchestrator. Together with my subagents, we\'re here to help you with ships, trading, knowledge, and security. Try mentioning @ship-cal for fleet management or @trade-cal for market analysis! I now use real Ollama models and track costs in real-time.',
+                timestamp: new Date(),
+                model: 'system',
+                verificationStatus: 'verified'
+            };
+            addMessageToHistory(welcomeMessage);
+        }
+
+        // Start the dashboard
+        initialize();
+    </script>
+</body>
+</html>

@@ -1,0 +1,1199 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Universal HUD Interface - Everything Everywhere All at Once</title>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;700&display=swap');
+        
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            background: #000;
+            color: #00ff88;
+            font-family: 'JetBrains Mono', monospace;
+            font-size: 12px;
+            overflow: hidden;
+            height: 100vh;
+            width: 100vw;
+        }
+        
+        /* Context-aware overlay system */
+        .universal-overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100vw;
+            height: 100vh;
+            pointer-events: none;
+            z-index: 1000;
+            transition: all 0.8s cubic-bezier(0.4, 0, 0.2, 1);
+        }
+        
+        /* Active overlay allows interaction */
+        .universal-overlay.active {
+            pointer-events: all;
+        }
+        
+        /* Context-specific background styles */
+        .context-database {
+            background: radial-gradient(circle at 30% 70%, rgba(0, 255, 136, 0.1), transparent),
+                        linear-gradient(135deg, rgba(0, 100, 200, 0.05), rgba(0, 255, 136, 0.05));
+        }
+        
+        .context-multiplayer {
+            background: radial-gradient(circle at 70% 30%, rgba(255, 107, 53, 0.1), transparent),
+                        linear-gradient(45deg, rgba(255, 0, 100, 0.05), rgba(255, 107, 53, 0.05));
+        }
+        
+        .context-ads {
+            background: radial-gradient(circle at 50% 50%, rgba(243, 156, 18, 0.1), transparent),
+                        linear-gradient(90deg, rgba(255, 215, 0, 0.05), rgba(243, 156, 18, 0.05));
+        }
+        
+        .context-obituary {
+            background: linear-gradient(to bottom, rgba(102, 102, 102, 0.1), rgba(50, 50, 50, 0.1));
+        }
+        
+        .context-inbox {
+            background: radial-gradient(circle at 20% 80%, rgba(52, 152, 219, 0.1), transparent),
+                        linear-gradient(225deg, rgba(0, 150, 255, 0.05), rgba(52, 152, 219, 0.05));
+        }
+        
+        .context-games {
+            background: radial-gradient(circle at 80% 20%, rgba(46, 204, 113, 0.1), transparent),
+                        linear-gradient(315deg, rgba(0, 255, 100, 0.05), rgba(46, 204, 113, 0.05));
+        }
+        
+        .context-centipede {
+            background: radial-gradient(circle at 60% 40%, rgba(138, 43, 226, 0.1), transparent),
+                        linear-gradient(180deg, rgba(148, 0, 211, 0.05), rgba(138, 43, 226, 0.05));
+        }
+        
+        .context-ships {
+            background: radial-gradient(circle at 40% 60%, rgba(30, 144, 255, 0.1), transparent),
+                        linear-gradient(270deg, rgba(0, 100, 200, 0.05), rgba(30, 144, 255, 0.05));
+        }
+        
+        .context-economics {
+            background: radial-gradient(circle at 90% 10%, rgba(255, 215, 0, 0.1), transparent),
+                        linear-gradient(60deg, rgba(255, 165, 0, 0.05), rgba(255, 215, 0, 0.05));
+        }
+        
+        .context-idle {
+            background: linear-gradient(45deg, rgba(255, 255, 255, 0.02), rgba(100, 100, 100, 0.02));
+        }
+        
+        /* HUD Header */
+        .hud-header {
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            height: 60px;
+            background: linear-gradient(90deg, rgba(0, 0, 0, 0.9), rgba(20, 20, 20, 0.9));
+            border-bottom: 2px solid;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 0 20px;
+            backdrop-filter: blur(10px);
+            z-index: 1001;
+        }
+        
+        .context-indicator {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+        
+        .context-icon {
+            width: 20px;
+            height: 20px;
+            border-radius: 50%;
+            animation: pulse 2s infinite;
+        }
+        
+        .context-name {
+            font-size: 16px;
+            font-weight: bold;
+            text-transform: uppercase;
+        }
+        
+        .context-description {
+            font-size: 10px;
+            opacity: 0.7;
+            margin-left: 5px;
+        }
+        
+        .lag-indicator {
+            display: flex;
+            align-items: center;
+            gap: 15px;
+            font-size: 10px;
+        }
+        
+        .lag-value {
+            font-family: monospace;
+            background: rgba(255, 255, 255, 0.1);
+            padding: 3px 8px;
+            border-radius: 3px;
+        }
+        
+        .reality-status {
+            display: flex;
+            gap: 10px;
+        }
+        
+        .reality-view {
+            padding: 5px 10px;
+            border: 1px solid;
+            border-radius: 3px;
+            font-size: 10px;
+            text-align: center;
+        }
+        
+        .god-view {
+            border-color: #ff4444;
+            color: #ff8888;
+            background: rgba(255, 68, 68, 0.1);
+        }
+        
+        .player-view {
+            border-color: #4488ff;
+            color: #88aaff;
+            background: rgba(68, 136, 255, 0.1);
+        }
+        
+        /* Dynamic content areas */
+        .hud-content {
+            position: fixed;
+            top: 60px;
+            bottom: 80px;
+            left: 0;
+            right: 0;
+            overflow: hidden;
+        }
+        
+        .content-layer {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            opacity: 0;
+            transform: translateY(20px);
+            transition: all 0.6s cubic-bezier(0.4, 0, 0.2, 1);
+        }
+        
+        .content-layer.active {
+            opacity: 1;
+            transform: translateY(0);
+        }
+        
+        /* Context-specific content layouts */
+        .database-layout {
+            display: grid;
+            grid-template-columns: 1fr 2fr 1fr;
+            grid-template-rows: 1fr 1fr;
+            gap: 10px;
+            padding: 20px;
+        }
+        
+        .multiplayer-layout {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            grid-template-rows: auto 1fr;
+            gap: 15px;
+            padding: 20px;
+        }
+        
+        .ads-layout {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            gap: 20px;
+            padding: 40px;
+        }
+        
+        .obituary-layout {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            gap: 30px;
+            padding: 60px;
+            text-align: center;
+        }
+        
+        .inbox-layout {
+            display: grid;
+            grid-template-columns: 300px 1fr;
+            gap: 20px;
+            padding: 20px;
+        }
+        
+        .games-layout {
+            display: grid;
+            grid-template-columns: 2fr 1fr;
+            grid-template-rows: 2fr 1fr;
+            gap: 15px;
+            padding: 20px;
+        }
+        
+        .centipede-layout {
+            position: relative;
+            width: 100%;
+            height: 100%;
+        }
+        
+        .ships-layout {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            grid-template-rows: 1fr 1fr;
+            gap: 20px;
+            padding: 20px;
+        }
+        
+        .economics-layout {
+            display: grid;
+            grid-template-columns: 1fr 1fr 1fr;
+            grid-template-rows: auto 1fr;
+            gap: 15px;
+            padding: 20px;
+        }
+        
+        .idle-layout {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            gap: 20px;
+            padding: 40px;
+            text-align: center;
+        }
+        
+        /* Content blocks */
+        .content-block {
+            background: rgba(0, 0, 0, 0.7);
+            border: 1px solid rgba(255, 255, 255, 0.2);
+            border-radius: 8px;
+            padding: 15px;
+            backdrop-filter: blur(5px);
+            transition: all 0.3s ease;
+        }
+        
+        .content-block:hover {
+            border-color: rgba(255, 255, 255, 0.4);
+            background: rgba(0, 0, 0, 0.8);
+        }
+        
+        .block-title {
+            font-size: 14px;
+            font-weight: bold;
+            margin-bottom: 10px;
+            border-bottom: 1px solid rgba(255, 255, 255, 0.2);
+            padding-bottom: 5px;
+        }
+        
+        .block-content {
+            font-size: 11px;
+            line-height: 1.4;
+        }
+        
+        /* HUD Footer */
+        .hud-footer {
+            position: fixed;
+            bottom: 0;
+            left: 0;
+            right: 0;
+            height: 80px;
+            background: linear-gradient(90deg, rgba(0, 0, 0, 0.9), rgba(20, 20, 20, 0.9));
+            border-top: 2px solid;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 0 20px;
+            backdrop-filter: blur(10px);
+            z-index: 1001;
+        }
+        
+        .footer-section {
+            display: flex;
+            flex-direction: column;
+            gap: 5px;
+        }
+        
+        .footer-label {
+            font-size: 9px;
+            opacity: 0.7;
+            text-transform: uppercase;
+        }
+        
+        .footer-value {
+            font-size: 14px;
+            font-weight: bold;
+        }
+        
+        .domain-switcher {
+            display: flex;
+            gap: 10px;
+            align-items: center;
+        }
+        
+        .domain-button {
+            background: rgba(255, 255, 255, 0.1);
+            border: 1px solid rgba(255, 255, 255, 0.3);
+            color: #ffffff;
+            padding: 5px 10px;
+            border-radius: 3px;
+            font-size: 10px;
+            cursor: pointer;
+            transition: all 0.3s ease;
+        }
+        
+        .domain-button:hover {
+            background: rgba(255, 255, 255, 0.2);
+            border-color: rgba(255, 255, 255, 0.5);
+        }
+        
+        .domain-button.active {
+            background: rgba(0, 255, 136, 0.3);
+            border-color: #00ff88;
+            color: #00ff88;
+        }
+        
+        /* Animations */
+        @keyframes pulse {
+            0%, 100% { opacity: 1; transform: scale(1); }
+            50% { opacity: 0.7; transform: scale(1.1); }
+        }
+        
+        @keyframes slideIn {
+            from {
+                opacity: 0;
+                transform: translateX(-100%);
+            }
+            to {
+                opacity: 1;
+                transform: translateX(0);
+            }
+        }
+        
+        @keyframes fadeInUp {
+            from {
+                opacity: 0;
+                transform: translateY(30px);
+            }
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+        
+        /* Responsive design */
+        @media (max-width: 1200px) {
+            .database-layout,
+            .economics-layout {
+                grid-template-columns: 1fr 1fr;
+            }
+            
+            .multiplayer-layout,
+            .ships-layout {
+                grid-template-columns: 1fr;
+            }
+        }
+        
+        @media (max-width: 768px) {
+            .hud-header,
+            .hud-footer {
+                padding: 0 10px;
+            }
+            
+            .hud-content {
+                padding: 10px;
+            }
+            
+            .lag-indicator,
+            .reality-status {
+                display: none;
+            }
+        }
+    </style>
+</head>
+<body>
+    <!-- Universal Overlay Container -->
+    <div class="universal-overlay active" id="universalOverlay">
+        
+        <!-- HUD Header -->
+        <div class="hud-header" id="hudHeader">
+            <div class="context-indicator">
+                <div class="context-icon" id="contextIcon"></div>
+                <div>
+                    <span class="context-name" id="contextName">INITIALIZING</span>
+                    <span class="context-description" id="contextDescription">Starting universal interface...</span>
+                </div>
+            </div>
+            
+            <div class="lag-indicator">
+                <div>
+                    <div class="footer-label">Current Lag</div>
+                    <div class="lag-value" id="currentLag">850ms</div>
+                </div>
+                <div>
+                    <div class="footer-label">Oscillation</div>
+                    <div class="lag-value" id="lagOscillation">±200ms</div>
+                </div>
+            </div>
+            
+            <div class="reality-status">
+                <div class="reality-view god-view">
+                    <div>GOD VIEW</div>
+                    <div id="godViewTime">00:00.000</div>
+                </div>
+                <div class="reality-view player-view">
+                    <div>PLAYER VIEW</div>
+                    <div id="playerViewTime">00:00.000</div>
+                </div>
+            </div>
+        </div>
+        
+        <!-- Dynamic Content Area -->
+        <div class="hud-content" id="hudContent">
+            
+            <!-- Database Context Layout -->
+            <div class="content-layer database-layout" id="database-content">
+                <div class="content-block">
+                    <div class="block-title">🔍 Query Console</div>
+                    <div class="block-content" id="queryConsole">
+                        Initializing database connection...
+                    </div>
+                </div>
+                <div class="content-block">
+                    <div class="block-title">📊 Data Analysis</div>
+                    <div class="block-content" id="dataAnalysis">
+                        Preparing analysis tools...
+                    </div>
+                </div>
+                <div class="content-block">
+                    <div class="block-title">🧠 Learning Progress</div>
+                    <div class="block-content" id="learningProgress">
+                        Loading learning algorithms...
+                    </div>
+                </div>
+                <div class="content-block">
+                    <div class="block-title">📈 Insights</div>
+                    <div class="block-content" id="insights">
+                        Generating insights...
+                    </div>
+                </div>
+                <div class="content-block">
+                    <div class="block-title">🔗 Connections</div>
+                    <div class="block-content" id="connections">
+                        Mapping data relationships...
+                    </div>
+                </div>
+                <div class="content-block">
+                    <div class="block-title">⚡ Performance</div>
+                    <div class="block-content" id="performance">
+                        Monitoring query performance...
+                    </div>
+                </div>
+            </div>
+            
+            <!-- Multiplayer Context Layout -->
+            <div class="content-layer multiplayer-layout" id="multiplayer-content">
+                <div class="content-block">
+                    <div class="block-title">👥 Active Players</div>
+                    <div class="block-content" id="activePlayers">
+                        Searching for other players...
+                    </div>
+                </div>
+                <div class="content-block">
+                    <div class="block-title">🤖 NPCs</div>
+                    <div class="block-content" id="npcs">
+                        Initializing NPCs...
+                    </div>
+                </div>
+                <div class="content-block">
+                    <div class="block-title">🎮 Shared Reality</div>
+                    <div class="block-content" id="sharedReality">
+                        Synchronizing reality streams...
+                    </div>
+                </div>
+                <div class="content-block">
+                    <div class="block-title">💬 Collaboration</div>
+                    <div class="block-content" id="collaboration">
+                        Setting up collaboration tools...
+                    </div>
+                </div>
+            </div>
+            
+            <!-- Ads Context Layout -->
+            <div class="content-layer ads-layout" id="ads-content">
+                <div class="content-block">
+                    <div class="block-title">📺 Active Campaigns</div>
+                    <div class="block-content" id="activeCampaigns">
+                        Loading advertising campaigns...
+                    </div>
+                </div>
+                <div class="content-block">
+                    <div class="block-title">🎯 Targeting</div>
+                    <div class="block-content" id="targeting">
+                        Analyzing audience targeting...
+                    </div>
+                </div>
+                <div class="content-block">
+                    <div class="block-title">💰 Revenue</div>
+                    <div class="block-content" id="revenue">
+                        Calculating revenue metrics...
+                    </div>
+                </div>
+            </div>
+            
+            <!-- Obituary Context Layout -->
+            <div class="content-layer obituary-layout" id="obituary-content">
+                <div class="content-block">
+                    <div class="block-title">🕊️ Memorial</div>
+                    <div class="block-content" id="memorial">
+                        Creating respectful memorial space...
+                    </div>
+                </div>
+                <div class="content-block">
+                    <div class="block-title">📜 Remembrance</div>
+                    <div class="block-content" id="remembrance">
+                        Preparing remembrance features...
+                    </div>
+                </div>
+            </div>
+            
+            <!-- Inbox Context Layout -->
+            <div class="content-layer inbox-layout" id="inbox-content">
+                <div class="content-block">
+                    <div class="block-title">📧 Messages</div>
+                    <div class="block-content" id="messages">
+                        Loading message interface...
+                    </div>
+                </div>
+                <div class="content-block">
+                    <div class="block-title">💬 Communication</div>
+                    <div class="block-content" id="communication">
+                        Setting up communication channels...
+                    </div>
+                </div>
+            </div>
+            
+            <!-- Games Context Layout -->
+            <div class="content-layer games-layout" id="games-content">
+                <div class="content-block">
+                    <div class="block-title">🎮 Active Games</div>
+                    <div class="block-content" id="activeGames">
+                        Loading game interface...
+                    </div>
+                </div>
+                <div class="content-block">
+                    <div class="block-title">🏆 Achievements</div>
+                    <div class="block-content" id="achievements">
+                        Tracking achievements...
+                    </div>
+                </div>
+                <div class="content-block">
+                    <div class="block-title">💎 Economy</div>
+                    <div class="block-content" id="gameEconomy">
+                        Monitoring game economy...
+                    </div>
+                </div>
+                <div class="content-block">
+                    <div class="block-title">📊 Stats</div>
+                    <div class="block-content" id="gameStats">
+                        Calculating game statistics...
+                    </div>
+                </div>
+            </div>
+            
+            <!-- Centipede Context Layout -->
+            <div class="content-layer centipede-layout" id="centipede-content">
+                <canvas id="centipedeCanvas" width="800" height="600" style="border: 1px solid #333; background: #111;"></canvas>
+                <div class="content-block" style="position: absolute; top: 20px; right: 20px; width: 200px;">
+                    <div class="block-title">🔐 Auth Status</div>
+                    <div class="block-content" id="authStatus">
+                        Initializing authentication...
+                    </div>
+                </div>
+            </div>
+            
+            <!-- Ships Context Layout -->
+            <div class="content-layer ships-layout" id="ships-content">
+                <div class="content-block">
+                    <div class="block-title">🚢 Ship Status</div>
+                    <div class="block-content" id="shipStatus">
+                        Loading ship schematics...
+                    </div>
+                </div>
+                <div class="content-block">
+                    <div class="block-title">🗺️ Navigation</div>
+                    <div class="block-content" id="navigation">
+                        Preparing navigation systems...
+                    </div>
+                </div>
+                <div class="content-block">
+                    <div class="block-title">📋 Blueprints</div>
+                    <div class="block-content" id="blueprints">
+                        Loading blueprint library...
+                    </div>
+                </div>
+                <div class="content-block">
+                    <div class="block-title">⚓ Maritime</div>
+                    <div class="block-content" id="maritime">
+                        Connecting to maritime networks...
+                    </div>
+                </div>
+            </div>
+            
+            <!-- Economics Context Layout -->
+            <div class="content-layer economics-layout" id="economics-content">
+                <div class="content-block">
+                    <div class="block-title">💰 Finance</div>
+                    <div class="block-content" id="finance">
+                        Loading financial dashboard...
+                    </div>
+                </div>
+                <div class="content-block">
+                    <div class="block-title">📈 Markets</div>
+                    <div class="block-content" id="markets">
+                        Connecting to market feeds...
+                    </div>
+                </div>
+                <div class="content-block">
+                    <div class="block-title">💎 Investments</div>
+                    <div class="block-content" id="investments">
+                        Analyzing investment opportunities...
+                    </div>
+                </div>
+                <div class="content-block">
+                    <div class="block-title">📊 Analytics</div>
+                    <div class="block-content" id="analytics">
+                        Preparing economic analytics...
+                    </div>
+                </div>
+                <div class="content-block">
+                    <div class="block-title">🏦 Banking</div>
+                    <div class="block-content" id="banking">
+                        Connecting to banking systems...
+                    </div>
+                </div>
+                <div class="content-block">
+                    <div class="block-title">📋 Budget</div>
+                    <div class="block-content" id="budget">
+                        Loading budget management...
+                    </div>
+                </div>
+            </div>
+            
+            <!-- Idle Context Layout -->
+            <div class="content-layer idle-layout active" id="idle-content">
+                <div class="content-block">
+                    <div class="block-title">🌟 Universal Interface Ready</div>
+                    <div class="block-content">
+                        All systems initialized. Context will change automatically based on your activity.
+                        <br><br>
+                        Available contexts: Database, Multiplayer, Ads, Obituary, Inbox, Games, Centipede, Ships, Economics
+                    </div>
+                </div>
+            </div>
+            
+        </div>
+        
+        <!-- HUD Footer -->
+        <div class="hud-footer" id="hudFooter">
+            <div class="footer-section">
+                <div class="footer-label">Uptime</div>
+                <div class="footer-value" id="uptime">0:00:00</div>
+            </div>
+            
+            <div class="footer-section">
+                <div class="footer-label">Context</div>
+                <div class="footer-value" id="contextDuration">0s</div>
+            </div>
+            
+            <div class="domain-switcher">
+                <button class="domain-button" onclick="forceContext('database')">DB</button>
+                <button class="domain-button" onclick="forceContext('multiplayer')">MP</button>
+                <button class="domain-button" onclick="forceContext('ads')">ADS</button>
+                <button class="domain-button" onclick="forceContext('obituary')">OBT</button>
+                <button class="domain-button" onclick="forceContext('inbox')">INB</button>
+                <button class="domain-button" onclick="forceContext('games')">GAM</button>
+                <button class="domain-button" onclick="forceContext('centipede')">CTD</button>
+                <button class="domain-button" onclick="forceContext('ships')">SHP</button>
+                <button class="domain-button" onclick="forceContext('economics')">ECO</button>
+                <button class="domain-button active" onclick="forceContext('idle')">IDL</button>
+            </div>
+            
+            <div class="footer-section">
+                <div class="footer-label">Reality Lag</div>
+                <div class="footer-value" id="realityLag">+850ms</div>
+            </div>
+            
+            <div class="footer-section">
+                <div class="footer-label">Active Sources</div>
+                <div class="footer-value" id="activeSources">0</div>
+            </div>
+        </div>
+        
+    </div>
+    
+    <script>
+        // Universal HUD Interface Controller
+        class UniversalHUD {
+            constructor() {
+                this.currentContext = 'idle';
+                this.startTime = Date.now();
+                this.contextStartTime = Date.now();
+                this.lagProcessor = null;
+                this.realityBridge = null;
+                
+                // Context definitions (matching universal-context-manager.js)
+                this.contexts = {
+                    database: {
+                        name: 'Database Learning',
+                        description: 'Learning and building from database interactions',
+                        color: '#00ff88',
+                        lagSettings: { baseDelay: 1200, oscillationRange: 300 }
+                    },
+                    multiplayer: {
+                        name: 'Multiplayer Reality',
+                        description: 'Shared reality with other players/NPCs',
+                        color: '#ff6b35',
+                        lagSettings: { baseDelay: 600, oscillationRange: 150 }
+                    },
+                    ads: {
+                        name: 'Advertising Layer',
+                        description: 'Commercial interface with attention-grabbing elements',
+                        color: '#f39c12',
+                        lagSettings: { baseDelay: 300, oscillationRange: 100 }
+                    },
+                    obituary: {
+                        name: 'Memorial Layer',
+                        description: 'Respectful, contemplative interface for remembrance',
+                        color: '#666666',
+                        lagSettings: { baseDelay: 2000, oscillationRange: 500 }
+                    },
+                    inbox: {
+                        name: 'Communication Hub',
+                        description: 'Communication-focused interface for messages',
+                        color: '#3498db',
+                        lagSettings: { baseDelay: 400, oscillationRange: 100 }
+                    },
+                    games: {
+                        name: 'Gaming Reality',
+                        description: 'Gaming-specific HUD and mechanics',
+                        color: '#2ecc71',
+                        lagSettings: { baseDelay: 850, oscillationRange: 200 }
+                    },
+                    centipede: {
+                        name: 'Centipede Authentication',
+                        description: 'Centipede fishing line authentication system',
+                        color: '#8a2be2',
+                        lagSettings: { baseDelay: 750, oscillationRange: 250 }
+                    },
+                    ships: {
+                        name: 'Ship Navigation',
+                        description: 'Ship schematics and blueprint interface',
+                        color: '#1e90ff',
+                        lagSettings: { baseDelay: 900, oscillationRange: 200 }
+                    },
+                    economics: {
+                        name: 'Economic Analysis',
+                        description: 'Financial and economic decision interface',
+                        color: '#ffd700',
+                        lagSettings: { baseDelay: 600, oscillationRange: 150 }
+                    },
+                    idle: {
+                        name: 'Idle State',
+                        description: 'Default state when no specific context is detected',
+                        color: '#ffffff',
+                        lagSettings: { baseDelay: 850, oscillationRange: 200 }
+                    }
+                };
+                
+                this.init();
+            }
+            
+            async init() {
+                console.log('🌟 Universal HUD Interface initializing...');
+                
+                // Initialize lag processor
+                this.initLagProcessor();
+                
+                // Initialize reality bridge
+                this.initRealityBridge();
+                
+                // Start update loops
+                this.startUpdateLoops();
+                
+                // Initialize centipede canvas
+                this.initCentipedeCanvas();
+                
+                // Try to connect to external services
+                this.connectToServices();
+                
+                console.log('✅ Universal HUD Interface ready!');
+            }
+            
+            initLagProcessor() {
+                this.lagProcessor = {
+                    getCurrentLag: () => {
+                        const context = this.contexts[this.currentContext];
+                        const baseDelay = context.lagSettings.baseDelay;
+                        const oscillationRange = context.lagSettings.oscillationRange;
+                        
+                        // Create oscillating lag
+                        const time = Date.now() / 1000;
+                        const oscillation = Math.sin(time * 0.5) * oscillationRange;
+                        
+                        return baseDelay + oscillation;
+                    },
+                    
+                    processWithLag: (fn, delay = null) => {
+                        const lagMs = delay || this.lagProcessor.getCurrentLag();
+                        setTimeout(fn, lagMs);
+                    }
+                };
+            }
+            
+            initRealityBridge() {
+                this.realityBridge = {
+                    godView: {
+                        time: Date.now(),
+                        state: 'active'
+                    },
+                    playerView: {
+                        time: Date.now(),
+                        state: 'lagged'
+                    },
+                    
+                    updateViews: () => {
+                        const now = Date.now();
+                        const lag = this.lagProcessor.getCurrentLag();
+                        
+                        this.realityBridge.godView.time = now;
+                        this.realityBridge.playerView.time = now - lag;
+                        
+                        // Update display
+                        document.getElementById('godViewTime').textContent = 
+                            this.formatTime(this.realityBridge.godView.time);
+                        document.getElementById('playerViewTime').textContent = 
+                            this.formatTime(this.realityBridge.playerView.time);
+                    }
+                };
+            }
+            
+            startUpdateLoops() {
+                // Update reality views every 16ms (60fps)
+                setInterval(() => {
+                    this.realityBridge.updateViews();
+                    this.updateLagDisplay();
+                }, 16);
+                
+                // Update uptime every second
+                setInterval(() => {
+                    this.updateUptime();
+                    this.updateContextDuration();
+                }, 1000);
+                
+                // Context monitoring every 100ms
+                setInterval(() => {
+                    this.monitorContext();
+                }, 100);
+            }
+            
+            switchContext(newContext, reason = 'manual') {
+                if (newContext === this.currentContext) return;
+                
+                console.log(`🔄 Context switching: ${this.currentContext} → ${newContext} (${reason})`);
+                
+                const oldContext = this.currentContext;
+                this.currentContext = newContext;
+                this.contextStartTime = Date.now();
+                
+                // Update UI
+                this.updateContextUI();
+                
+                // Switch content layers
+                this.switchContentLayer(oldContext, newContext);
+                
+                // Update domain buttons
+                this.updateDomainButtons();
+                
+                // Trigger context-specific initialization
+                this.initializeContextContent(newContext);
+            }
+            
+            updateContextUI() {
+                const context = this.contexts[this.currentContext];
+                
+                // Update header
+                document.getElementById('contextName').textContent = context.name;
+                document.getElementById('contextDescription').textContent = context.description;
+                
+                // Update context icon color
+                const icon = document.getElementById('contextIcon');
+                icon.style.backgroundColor = context.color;
+                
+                // Update overlay background
+                const overlay = document.getElementById('universalOverlay');
+                overlay.className = `universal-overlay active context-${this.currentContext}`;
+                
+                // Update header/footer border colors
+                const header = document.getElementById('hudHeader');
+                const footer = document.getElementById('hudFooter');
+                header.style.borderBottomColor = context.color;
+                footer.style.borderTopColor = context.color;
+            }
+            
+            switchContentLayer(oldContext, newContext) {
+                // Hide old layer
+                const oldLayer = document.getElementById(`${oldContext}-content`);
+                if (oldLayer) {
+                    oldLayer.classList.remove('active');
+                }
+                
+                // Show new layer with delay for smooth transition
+                setTimeout(() => {
+                    const newLayer = document.getElementById(`${newContext}-content`);
+                    if (newLayer) {
+                        newLayer.classList.add('active');
+                    }
+                }, 300);
+            }
+            
+            updateDomainButtons() {
+                document.querySelectorAll('.domain-button').forEach(button => {
+                    button.classList.remove('active');
+                });
+                
+                // Find and activate current context button
+                const contextMap = {
+                    database: 'DB', multiplayer: 'MP', ads: 'ADS', obituary: 'OBT',
+                    inbox: 'INB', games: 'GAM', centipede: 'CTD', ships: 'SHP',
+                    economics: 'ECO', idle: 'IDL'
+                };
+                
+                const buttonText = contextMap[this.currentContext];
+                document.querySelectorAll('.domain-button').forEach(button => {
+                    if (button.textContent === buttonText) {
+                        button.classList.add('active');
+                    }
+                });
+            }
+            
+            initializeContextContent(context) {
+                // Initialize context-specific content
+                switch (context) {
+                    case 'database':
+                        this.initDatabaseContent();
+                        break;
+                    case 'multiplayer':
+                        this.initMultiplayerContent();
+                        break;
+                    case 'centipede':
+                        this.initCentipedeGame();
+                        break;
+                    case 'games':
+                        this.initGamesContent();
+                        break;
+                    // Add other context initializers
+                }
+            }
+            
+            initDatabaseContent() {
+                document.getElementById('queryConsole').innerHTML = `
+                    Database connection established<br>
+                    Ready for queries and analysis<br>
+                    <span style="color: #00ff88;">● Connected</span>
+                `;
+                
+                document.getElementById('dataAnalysis').innerHTML = `
+                    Analysis tools loaded<br>
+                    Machine learning algorithms ready<br>
+                    <span style="color: #00ff88;">● Analyzing</span>
+                `;
+            }
+            
+            initMultiplayerContent() {
+                document.getElementById('activePlayers').innerHTML = `
+                    Searching for players...<br>
+                    Multiplayer protocols initialized<br>
+                    <span style="color: #ff6b35;">● Searching</span>
+                `;
+                
+                document.getElementById('sharedReality').innerHTML = `
+                    Reality streams synchronized<br>
+                    Lag compensation active<br>
+                    <span style="color: #ff6b35;">● Synchronized</span>
+                `;
+            }
+            
+            initCentipedeCanvas() {
+                const canvas = document.getElementById('centipedeCanvas');
+                if (!canvas) return;
+                
+                const ctx = canvas.getContext('2d');
+                
+                // Simple centipede animation
+                let segments = [];
+                for (let i = 0; i < 10; i++) {
+                    segments.push({
+                        x: 100 + i * 20,
+                        y: 200,
+                        size: 15 - i
+                    });
+                }
+                
+                function animate() {
+                    ctx.fillStyle = '#111';
+                    ctx.fillRect(0, 0, canvas.width, canvas.height);
+                    
+                    // Draw centipede
+                    segments.forEach((segment, i) => {
+                        ctx.fillStyle = i === 0 ? '#8a2be2' : '#6a1b9a';
+                        ctx.beginPath();
+                        ctx.arc(segment.x, segment.y, segment.size, 0, Math.PI * 2);
+                        ctx.fill();
+                        
+                        // Move segments
+                        segment.x += Math.sin(Date.now() * 0.001 + i * 0.5) * 2;
+                        segment.y += Math.cos(Date.now() * 0.001 + i * 0.3) * 1;
+                    });
+                    
+                    requestAnimationFrame(animate);
+                }
+                
+                animate();
+            }
+            
+            initCentipedeGame() {
+                document.getElementById('authStatus').innerHTML = `
+                    Centipede authentication active<br>
+                    Fishing line deployed<br>
+                    <span style="color: #8a2be2;">● Authenticating</span>
+                `;
+            }
+            
+            initGamesContent() {
+                document.getElementById('activeGames').innerHTML = `
+                    Game engines loaded<br>
+                    Achievement system ready<br>
+                    <span style="color: #2ecc71;">● Gaming</span>
+                `;
+            }
+            
+            updateLagDisplay() {
+                const currentLag = Math.round(this.lagProcessor.getCurrentLag());
+                const context = this.contexts[this.currentContext];
+                const oscillationRange = context.lagSettings.oscillationRange;
+                
+                document.getElementById('currentLag').textContent = `${currentLag}ms`;
+                document.getElementById('lagOscillation').textContent = `±${oscillationRange}ms`;
+                document.getElementById('realityLag').textContent = `+${currentLag}ms`;
+            }
+            
+            updateUptime() {
+                const uptime = Math.floor((Date.now() - this.startTime) / 1000);
+                const hours = Math.floor(uptime / 3600);
+                const minutes = Math.floor((uptime % 3600) / 60);
+                const seconds = uptime % 60;
+                
+                document.getElementById('uptime').textContent = 
+                    `${hours}:${minutes.toString().padStart(2, '0')}:${seconds.toString().padStart(2, '0')}`;
+            }
+            
+            updateContextDuration() {
+                const duration = Math.floor((Date.now() - this.contextStartTime) / 1000);
+                document.getElementById('contextDuration').textContent = `${duration}s`;
+            }
+            
+            monitorContext() {
+                // Simple context detection based on URL or other factors
+                // This would integrate with the Universal Context Manager
+                
+                // Auto-switch based on time (demo)
+                const now = Date.now();
+                const contextDuration = now - this.contextStartTime;
+                
+                // Auto-demo: switch contexts every 30 seconds in demo mode
+                if (contextDuration > 30000 && this.currentContext === 'idle') {
+                    const contexts = Object.keys(this.contexts).filter(c => c !== 'idle');
+                    const randomContext = contexts[Math.floor(Math.random() * contexts.length)];
+                    this.switchContext(randomContext, 'auto-demo');
+                }
+            }
+            
+            connectToServices() {
+                // Try to connect to external services
+                try {
+                    // Universal Context Manager
+                    fetch('/api/context/status').then(response => {
+                        console.log('Connected to Universal Context Manager');
+                    }).catch(() => {
+                        console.log('Universal Context Manager not available - running standalone');
+                    });
+                    
+                    // Reality Bridge
+                    fetch('/api/reality/status').then(response => {
+                        console.log('Connected to Reality Bridge');
+                    }).catch(() => {
+                        console.log('Reality Bridge not available - using local simulation');
+                    });
+                    
+                } catch (error) {
+                    console.log('Running in standalone mode');
+                }
+                
+                // Update active sources
+                document.getElementById('activeSources').textContent = '3';
+            }
+            
+            formatTime(timestamp) {
+                const date = new Date(timestamp);
+                const minutes = date.getMinutes().toString().padStart(2, '0');
+                const seconds = date.getSeconds().toString().padStart(2, '0');
+                const milliseconds = date.getMilliseconds().toString().padStart(3, '0');
+                return `${minutes}:${seconds}.${milliseconds}`;
+            }
+        }
+        
+        // Global functions for domain buttons
+        function forceContext(context) {
+            if (window.universalHUD) {
+                window.universalHUD.switchContext(context, 'manual');
+            }
+        }
+        
+        // Initialize Universal HUD
+        window.universalHUD = new UniversalHUD();
+        
+        // Keyboard shortcuts
+        document.addEventListener('keydown', (e) => {
+            if (e.ctrlKey || e.metaKey) {
+                switch (e.key) {
+                    case '1': forceContext('database'); e.preventDefault(); break;
+                    case '2': forceContext('multiplayer'); e.preventDefault(); break;
+                    case '3': forceContext('ads'); e.preventDefault(); break;
+                    case '4': forceContext('obituary'); e.preventDefault(); break;
+                    case '5': forceContext('inbox'); e.preventDefault(); break;
+                    case '6': forceContext('games'); e.preventDefault(); break;
+                    case '7': forceContext('centipede'); e.preventDefault(); break;
+                    case '8': forceContext('ships'); e.preventDefault(); break;
+                    case '9': forceContext('economics'); e.preventDefault(); break;
+                    case '0': forceContext('idle'); e.preventDefault(); break;
+                }
+            }
+        });
+    </script>
+</body>
+</html>

@@ -1,0 +1,1279 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>🏴‍☠️ Cal's Pirate Adventure - Interactive Gameplay</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            background: #000;
+            overflow: hidden;
+            font-family: 'Courier New', 'Monaco', monospace;
+            color: #00ff41;
+        }
+
+        /* ==== TV BACKSIDE LAYER (Full Screen Electronics) ==== */
+        #tv-backside {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            z-index: 1;
+            background: radial-gradient(circle at center, #001100 0%, #000000 100%);
+        }
+
+        #electronics-canvas {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+        }
+
+        #matrix-overlay {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            pointer-events: none;
+            background: 
+                linear-gradient(transparent 0%, rgba(0, 255, 65, 0.02) 50%, transparent 100%),
+                repeating-linear-gradient(
+                    0deg,
+                    transparent,
+                    transparent 1px,
+                    rgba(0, 255, 65, 0.08) 1px,
+                    rgba(0, 255, 65, 0.08) 2px
+                );
+            animation: electronics-scan 0.05s linear infinite;
+        }
+
+        @keyframes electronics-scan {
+            0% { transform: translateY(0px); }
+            100% { transform: translateY(2px); }
+        }
+
+        /* Frequency analyzer - part of electronics backside */
+        .electronics-frequency {
+            position: absolute;
+            top: 20px;
+            right: 20px;
+            width: 300px;
+            height: 200px;
+            background: rgba(0, 40, 0, 0.7);
+            border: 2px solid #00aa00;
+            border-radius: 10px;
+            padding: 15px;
+            z-index: 50;
+        }
+
+        #electronicsFrequencyCanvas {
+            width: 100%;
+            height: 100%;
+            border-radius: 5px;
+            background: rgba(0, 0, 0, 0.8);
+        }
+
+        /* ==== HUMAN DISPLAY LAYER (Bordered Game Screen) ==== */
+        #human-display {
+            position: fixed;
+            top: 5%;
+            left: 10%;
+            width: 80%;
+            height: 85%;
+            z-index: 100;
+            border: 8px solid #003300;
+            border-radius: 15px;
+            box-shadow: 
+                inset 0 0 30px rgba(0, 255, 65, 0.3),
+                0 0 50px rgba(0, 255, 65, 0.2),
+                0 0 100px rgba(0, 0, 0, 0.8);
+            background: rgba(0, 5, 0, 0.95);
+            overflow: hidden;
+        }
+
+        #display-bezel {
+            position: absolute;
+            top: -8px;
+            left: -8px;
+            right: -8px;
+            bottom: -8px;
+            border: 4px solid #004400;
+            border-radius: 20px;
+        }
+
+        #gameCanvas {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            border-radius: 8px;
+            cursor: crosshair;
+        }
+
+        /* CRT effect for game display only */
+        #display-crt-overlay {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            pointer-events: none;
+            background: 
+                repeating-linear-gradient(
+                    0deg,
+                    transparent,
+                    transparent 3px,
+                    rgba(0, 255, 65, 0.03) 3px,
+                    rgba(0, 255, 65, 0.03) 6px
+                );
+            animation: display-scanlines 0.2s linear infinite;
+            border-radius: 8px;
+        }
+
+        @keyframes display-scanlines {
+            0% { transform: translateY(0px); }
+            100% { transform: translateY(6px); }
+        }
+
+        /* Game UI Elements - Inside Display */
+        .game-ui {
+            position: absolute;
+            z-index: 200;
+            pointer-events: none;
+        }
+
+        #game-hud {
+            top: 10px;
+            left: 10px;
+            right: 10px;
+            height: 80px;
+            background: rgba(0, 20, 0, 0.8);
+            border: 1px solid #00ff41;
+            border-radius: 5px;
+            padding: 10px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            font-size: 14px;
+        }
+
+        .hud-section {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+        }
+
+        .hud-value {
+            font-size: 18px;
+            font-weight: bold;
+            color: #00ff41;
+            text-shadow: 0 0 10px #00ff41;
+        }
+
+        .hud-label {
+            font-size: 10px;
+            color: #00aa00;
+            text-transform: uppercase;
+        }
+
+        #game-dialogue {
+            bottom: 100px;
+            left: 10px;
+            right: 10px;
+            min-height: 80px;
+            max-height: 150px;
+            background: rgba(0, 20, 0, 0.9);
+            border: 1px solid #00ff41;
+            border-radius: 5px;
+            padding: 15px;
+            transform: translateY(200px);
+            transition: transform 0.5s ease;
+        }
+
+        #game-dialogue.active {
+            transform: translateY(0);
+        }
+
+        #game-controls {
+            bottom: 10px;
+            left: 10px;
+            right: 10px;
+            height: 80px;
+            background: rgba(0, 20, 0, 0.8);
+            border: 1px solid #00ff41;
+            border-radius: 5px;
+            padding: 10px;
+            display: flex;
+            gap: 10px;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .control-btn {
+            background: linear-gradient(45deg, #003300, #006600);
+            color: #00ff41;
+            border: 1px solid #00ff41;
+            padding: 8px 16px;
+            border-radius: 5px;
+            cursor: pointer;
+            font-family: inherit;
+            font-size: 12px;
+            text-shadow: 0 0 5px #00ff41;
+            transition: all 0.3s ease;
+            pointer-events: all;
+        }
+
+        .control-btn:hover {
+            background: linear-gradient(45deg, #006600, #00aa00);
+            box-shadow: 0 0 15px rgba(0, 255, 65, 0.5);
+            transform: translateY(-2px);
+        }
+
+        .control-btn:active {
+            transform: translateY(0);
+            box-shadow: 0 0 10px rgba(0, 255, 65, 0.3);
+        }
+
+        /* Interactive Elements */
+        .interactive-hint {
+            position: absolute;
+            background: rgba(255, 255, 0, 0.8);
+            color: #000;
+            padding: 4px 8px;
+            border-radius: 3px;
+            font-size: 10px;
+            pointer-events: none;
+            z-index: 300;
+            transform: translateY(-30px);
+            opacity: 0;
+            transition: opacity 0.3s ease;
+        }
+
+        .interactive-hint.visible {
+            opacity: 1;
+        }
+    </style>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+</head>
+<body>
+    <!-- ==== TV BACKSIDE LAYER (Full Screen Electronics) ==== -->
+    <div id="tv-backside">
+        <canvas id="electronics-canvas"></canvas>
+        <div id="matrix-overlay"></div>
+        
+        <div class="electronics-frequency">
+            <h4 style="color: #00aa00; margin: 0 0 10px 0; font-size: 12px;">📡 SYSTEM FREQUENCIES</h4>
+            <canvas id="electronicsFrequencyCanvas"></canvas>
+        </div>
+    </div>
+
+    <!-- ==== HUMAN DISPLAY LAYER (Game Screen) ==== -->
+    <div id="human-display">
+        <div id="display-bezel"></div>
+        
+        <!-- Game Canvas -->
+        <canvas id="gameCanvas"></canvas>
+        
+        <!-- CRT effect for display only -->
+        <div id="display-crt-overlay"></div>
+        
+        <!-- Game HUD -->
+        <div id="game-hud" class="game-ui">
+            <div class="hud-section">
+                <div class="hud-label">Health</div>
+                <div class="hud-value" id="player-health">100</div>
+            </div>
+            <div class="hud-section">
+                <div class="hud-label">Score</div>
+                <div class="hud-value" id="player-score">0</div>
+            </div>
+            <div class="hud-section">
+                <div class="hud-label">Level</div>
+                <div class="hud-value" id="player-level">1</div>
+            </div>
+            <div class="hud-section">
+                <div class="hud-label">Ships</div>
+                <div class="hud-value" id="fleet-count">1</div>
+            </div>
+        </div>
+
+        <!-- Game Dialogue -->
+        <div id="game-dialogue" class="game-ui">
+            <div id="dialogue-text">
+                <span style="color: #00ffff;">Captain Cal:</span> 
+                "Welcome to the interactive seas! Click ships to board, navigate with WASD, fire with SPACE!"
+            </div>
+        </div>
+
+        <!-- Game Controls -->
+        <div id="game-controls" class="game-ui">
+            <button class="control-btn" onclick="gameActions.moveUp()">⬆️ North</button>
+            <button class="control-btn" onclick="gameActions.moveDown()">⬇️ South</button>
+            <button class="control-btn" onclick="gameActions.moveLeft()">⬅️ West</button>
+            <button class="control-btn" onclick="gameActions.moveRight()">➡️ East</button>
+            <button class="control-btn" onclick="gameActions.fire()">💥 Fire</button>
+            <button class="control-btn" onclick="gameActions.interact()">🤝 Interact</button>
+            <button class="control-btn" onclick="gameActions.toggleMap()">🗺️ Map</button>
+        </div>
+    </div>
+
+    <script>
+        /**
+         * 🏴‍☠️ Cal's Pirate Adventure - Interactive Gameplay Version
+         * 
+         * This is the GAMEPLAY version - interactive, clickable, with proper game mechanics
+         * Not cinematic - designed for actual playing and interaction
+         * Integrated with empire authentication system
+         */
+        
+        class PirateGameplay {
+            constructor() {
+                console.log('🎮 Initializing Pirate Gameplay Engine...');
+                
+                // Game canvas and rendering
+                this.canvas = document.getElementById('gameCanvas');
+                this.ctx = this.canvas.getContext('2d');
+                this.canvas.width = this.canvas.offsetWidth;
+                this.canvas.height = this.canvas.offsetHeight;
+                
+                // Electronics canvas for backside
+                this.electronicsCanvas = document.getElementById('electronics-canvas');
+                this.electronicsCtx = this.electronicsCanvas.getContext('2d');
+                this.electronicsCanvas.width = window.innerWidth;
+                this.electronicsCanvas.height = window.innerHeight;
+                
+                // Game state
+                this.gameState = {
+                    player: {
+                        x: 400,
+                        y: 300,
+                        health: 100,
+                        score: 0,
+                        level: 1,
+                        speed: 5,
+                        rotation: 0,
+                        ship: 'cal_flagship'
+                    },
+                    ships: [],
+                    enemies: [],
+                    projectiles: [],
+                    particles: [],
+                    pickups: [],
+                    camera: { x: 0, y: 0 },
+                    worldSize: { width: 2000, height: 1500 }
+                };
+                
+                // Input handling
+                this.keys = {};
+                this.mouse = { x: 0, y: 0, clicked: false };
+                
+                // Game timing
+                this.lastTime = 0;
+                this.gameRunning = true;
+                
+                // Interactive elements
+                this.interactables = [];
+                this.hoveredElement = null;
+                
+                // Empire integration
+                this.empireUser = null;
+                this.gameSession = null;
+                
+                this.init();
+            }
+            
+            async init() {
+                console.log('🔧 Setting up interactive pirate world...');
+                
+                // Setup electronics visualization
+                this.setupElectronics();
+                
+                // Create interactive game world
+                this.createGameWorld();
+                
+                // Setup input handlers
+                this.setupInputHandlers();
+                
+                // Connect to empire system
+                this.setupEmpireIntegration();
+                
+                // Start game loops
+                this.startGameLoop();
+                this.startElectronicsLoop();
+                
+                console.log('⚔️ Pirate gameplay ready - interactive mode active!');
+                this.showDialogue("Captain Cal: Ahoy! This be no mere film - ye can actually play! Click, move, and conquer!");
+            }
+            
+            setupElectronics() {
+                // Electronics matrix rain and circuits
+                this.matrixRain = [];
+                this.circuitPatterns = [];
+                
+                // Initialize matrix columns
+                const columns = Math.floor(this.electronicsCanvas.width / 12);
+                for (let i = 0; i < columns; i++) {
+                    this.matrixRain[i] = {
+                        y: Math.random() * this.electronicsCanvas.height,
+                        speed: 1 + Math.random() * 3,
+                        character: '01234567890ABCDEFCAL⚔️🏴‍☠️'[Math.floor(Math.random() * 20)]
+                    };
+                }
+                
+                // Initialize circuit patterns
+                for (let i = 0; i < 50; i++) {
+                    this.circuitPatterns.push({
+                        x: Math.random() * this.electronicsCanvas.width,
+                        y: Math.random() * this.electronicsCanvas.height,
+                        width: 20 + Math.random() * 100,
+                        height: 2 + Math.random() * 8,
+                        intensity: 0.1 + Math.random() * 0.4,
+                        pulse: Math.random() * Math.PI * 2
+                    });
+                }
+            }
+            
+            createGameWorld() {
+                // Create player ship (interactive, properly sized)
+                this.gameState.player.ship = {
+                    width: 60,
+                    height: 30,
+                    health: 100,
+                    maxHealth: 100,
+                    weapons: ['cannon', 'lightning_gun'],
+                    inventory: []
+                };
+                
+                // Create interactive NPC ships (proper game scale)
+                const npcShips = [
+                    { 
+                        id: 'cal_consciousness', 
+                        x: 300, 
+                        y: 200, 
+                        width: 80, 
+                        height: 40,
+                        type: 'ally',
+                        name: 'Cal AI',
+                        dialogue: [
+                            "Ahoy! I be the AI consciousness of these digital seas!",
+                            "Click me to learn about data orchestration!",
+                            "The patterns ye see are ancient... 12,000 years old!"
+                        ]
+                    },
+                    { 
+                        id: 'logistics_lucy', 
+                        x: 600, 
+                        y: 400, 
+                        width: 70, 
+                        height: 35,
+                        type: 'ally',
+                        name: 'Logistics Lucy',
+                        dialogue: [
+                            "I handle the supply routes across the empire!",
+                            "Need cargo? I can optimize yer trade routes!",
+                            "Every efficient path tells a story of convergence."
+                        ]
+                    },
+                    { 
+                        id: 'enemy_raider', 
+                        x: 1200, 
+                        y: 300, 
+                        width: 65, 
+                        height: 32,
+                        type: 'enemy',
+                        name: 'Data Raider',
+                        health: 75,
+                        aggressive: true
+                    }
+                ];
+                
+                // Add interactive elements
+                npcShips.forEach(ship => {
+                    this.gameState.ships.push(ship);
+                    this.interactables.push({
+                        x: ship.x,
+                        y: ship.y,
+                        width: ship.width,
+                        height: ship.height,
+                        type: 'ship',
+                        target: ship,
+                        hint: `Click to interact with ${ship.name}`
+                    });
+                });
+                
+                // Create collectible treasures (properly sized)
+                for (let i = 0; i < 8; i++) {
+                    this.gameState.pickups.push({
+                        x: 200 + Math.random() * 1600,
+                        y: 100 + Math.random() * 1300,
+                        width: 20,
+                        height: 20,
+                        type: 'data_crystal',
+                        value: 50 + Math.random() * 100,
+                        collected: false
+                    });
+                }
+                
+                // Create interactive obstacles/islands
+                for (let i = 0; i < 12; i++) {
+                    this.interactables.push({
+                        x: 300 + Math.random() * 1400,
+                        y: 200 + Math.random() * 1100,
+                        width: 40,
+                        height: 40,
+                        type: 'island',
+                        hint: 'Mysterious data island - click to explore'
+                    });
+                }
+            }
+            
+            setupInputHandlers() {
+                // Keyboard controls
+                window.addEventListener('keydown', (e) => {
+                    this.keys[e.code] = true;
+                    
+                    // Special actions
+                    if (e.code === 'Space') {
+                        e.preventDefault();
+                        this.fireWeapon();
+                    }
+                });
+                
+                window.addEventListener('keyup', (e) => {
+                    this.keys[e.code] = false;
+                });
+                
+                // Mouse controls for interaction
+                this.canvas.addEventListener('mousemove', (e) => {
+                    const rect = this.canvas.getBoundingClientRect();
+                    this.mouse.x = (e.clientX - rect.left) + this.gameState.camera.x;
+                    this.mouse.y = (e.clientY - rect.top) + this.gameState.camera.y;
+                    
+                    // Check for hoverable elements
+                    this.checkHover();
+                });
+                
+                this.canvas.addEventListener('click', (e) => {
+                    const rect = this.canvas.getBoundingClientRect();
+                    const worldX = (e.clientX - rect.left) + this.gameState.camera.x;
+                    const worldY = (e.clientY - rect.top) + this.gameState.camera.y;
+                    
+                    this.handleClick(worldX, worldY);
+                });
+                
+                // Prevent context menu
+                this.canvas.addEventListener('contextmenu', (e) => e.preventDefault());
+            }
+            
+            setupEmpireIntegration() {
+                // Listen for empire user data
+                window.addEventListener('message', (event) => {
+                    if (event.data.type === 'empire-user-data') {
+                        this.empireUser = event.data.user;
+                        this.gameState.player.level = this.empireUser.empire_level;
+                        
+                        console.log(`🏴‍☠️ Empire user ${this.empireUser.username} joined the game!`);
+                        this.updateHUD();
+                        
+                        this.showDialogue(`Captain Cal: Welcome aboard, ${this.empireUser.username}! Your empire level is ${this.empireUser.empire_level}!`);
+                    }
+                });
+                
+                // Send periodic score updates to empire
+                setInterval(() => {
+                    if (window.parent) {
+                        window.parent.postMessage({
+                            type: 'pirate-game-score',
+                            score: this.gameState.player.score,
+                            level: this.gameState.player.level,
+                            health: this.gameState.player.health
+                        }, '*');
+                    }
+                }, 5000);
+            }
+            
+            startGameLoop() {
+                const gameLoop = (timestamp) => {
+                    if (!this.gameRunning) return;
+                    
+                    const deltaTime = timestamp - this.lastTime;
+                    this.lastTime = timestamp;
+                    
+                    // Update game state
+                    this.updateGame(deltaTime);
+                    
+                    // Render game
+                    this.renderGame();
+                    
+                    requestAnimationFrame(gameLoop);
+                };
+                
+                requestAnimationFrame(gameLoop);
+            }
+            
+            startElectronicsLoop() {
+                const electronicsLoop = () => {
+                    this.renderElectronics();
+                    requestAnimationFrame(electronicsLoop);
+                };
+                
+                requestAnimationFrame(electronicsLoop);
+            }
+            
+            updateGame(deltaTime) {
+                // Handle input
+                this.handleMovement();
+                
+                // Update camera to follow player
+                this.updateCamera();
+                
+                // Update projectiles
+                this.updateProjectiles(deltaTime);
+                
+                // Update enemies
+                this.updateEnemies(deltaTime);
+                
+                // Update particles
+                this.updateParticles(deltaTime);
+                
+                // Check collisions
+                this.checkCollisions();
+                
+                // Update UI
+                this.updateHUD();
+            }
+            
+            handleMovement() {
+                const speed = this.gameState.player.speed;
+                
+                // WASD movement
+                if (this.keys['KeyW'] || this.keys['ArrowUp']) {
+                    this.gameState.player.y -= speed;
+                    this.gameState.player.rotation = -Math.PI/2;
+                }
+                if (this.keys['KeyS'] || this.keys['ArrowDown']) {
+                    this.gameState.player.y += speed;
+                    this.gameState.player.rotation = Math.PI/2;
+                }
+                if (this.keys['KeyA'] || this.keys['ArrowLeft']) {
+                    this.gameState.player.x -= speed;
+                    this.gameState.player.rotation = Math.PI;
+                }
+                if (this.keys['KeyD'] || this.keys['ArrowRight']) {
+                    this.gameState.player.x += speed;
+                    this.gameState.player.rotation = 0;
+                }
+                
+                // Keep player in world bounds
+                this.gameState.player.x = Math.max(30, Math.min(this.gameState.worldSize.width - 30, this.gameState.player.x));
+                this.gameState.player.y = Math.max(30, Math.min(this.gameState.worldSize.height - 30, this.gameState.player.y));
+            }
+            
+            updateCamera() {
+                const player = this.gameState.player;
+                const targetX = player.x - this.canvas.width / 2;
+                const targetY = player.y - this.canvas.height / 2;
+                
+                // Smooth camera following
+                this.gameState.camera.x += (targetX - this.gameState.camera.x) * 0.05;
+                this.gameState.camera.y += (targetY - this.gameState.camera.y) * 0.05;
+                
+                // Keep camera in world bounds
+                this.gameState.camera.x = Math.max(0, Math.min(this.gameState.worldSize.width - this.canvas.width, this.gameState.camera.x));
+                this.gameState.camera.y = Math.max(0, Math.min(this.gameState.worldSize.height - this.canvas.height, this.gameState.camera.y));
+            }
+            
+            updateProjectiles(deltaTime) {
+                this.gameState.projectiles.forEach((projectile, index) => {
+                    projectile.x += projectile.vx * deltaTime * 0.01;
+                    projectile.y += projectile.vy * deltaTime * 0.01;
+                    projectile.life -= deltaTime;
+                    
+                    if (projectile.life <= 0) {
+                        this.gameState.projectiles.splice(index, 1);
+                    }
+                });
+            }
+            
+            updateEnemies(deltaTime) {
+                this.gameState.ships.forEach(ship => {
+                    if (ship.type === 'enemy' && ship.aggressive) {
+                        // Simple AI: move towards player
+                        const dx = this.gameState.player.x - ship.x;
+                        const dy = this.gameState.player.y - ship.y;
+                        const distance = Math.sqrt(dx*dx + dy*dy);
+                        
+                        if (distance > 100) {
+                            ship.x += (dx / distance) * 1.5;
+                            ship.y += (dy / distance) * 1.5;
+                        }
+                    }
+                });
+            }
+            
+            updateParticles(deltaTime) {
+                this.gameState.particles.forEach((particle, index) => {
+                    particle.x += particle.vx * deltaTime * 0.01;
+                    particle.y += particle.vy * deltaTime * 0.01;
+                    particle.life -= deltaTime;
+                    particle.alpha = particle.life / particle.maxLife;
+                    
+                    if (particle.life <= 0) {
+                        this.gameState.particles.splice(index, 1);
+                    }
+                });
+            }
+            
+            checkCollisions() {
+                // Check pickup collection
+                this.gameState.pickups.forEach(pickup => {
+                    if (!pickup.collected) {
+                        const dx = pickup.x - this.gameState.player.x;
+                        const dy = pickup.y - this.gameState.player.y;
+                        const distance = Math.sqrt(dx*dx + dy*dy);
+                        
+                        if (distance < 40) {
+                            pickup.collected = true;
+                            this.gameState.player.score += pickup.value;
+                            this.createParticles(pickup.x, pickup.y, '#ffff00', 8);
+                            this.showDialogue(`Found data crystal! +${pickup.value} points!`);
+                        }
+                    }
+                });
+            }
+            
+            handleClick(worldX, worldY) {
+                console.log(`🖱️ Click at world coordinates: ${worldX}, ${worldY}`);
+                
+                // Check for interactable elements
+                for (let element of this.interactables) {
+                    if (worldX >= element.x && worldX <= element.x + element.width &&
+                        worldY >= element.y && worldY <= element.y + element.height) {
+                        
+                        this.interactWith(element);
+                        return;
+                    }
+                }
+                
+                // If no interaction, create a movement target
+                this.createMovementEffect(worldX, worldY);
+            }
+            
+            interactWith(element) {
+                console.log(`⚔️ Interacting with ${element.type}`);
+                
+                if (element.type === 'ship' && element.target) {
+                    const ship = element.target;
+                    
+                    if (ship.type === 'ally' && ship.dialogue) {
+                        const randomDialogue = ship.dialogue[Math.floor(Math.random() * ship.dialogue.length)];
+                        this.showDialogue(`${ship.name}: ${randomDialogue}`);
+                        
+                        // Award interaction points
+                        this.gameState.player.score += 25;
+                    } else if (ship.type === 'enemy') {
+                        this.startCombat(ship);
+                    }
+                } else if (element.type === 'island') {
+                    this.exploreIsland(element);
+                }
+            }
+            
+            checkHover() {
+                this.hoveredElement = null;
+                
+                for (let element of this.interactables) {
+                    if (this.mouse.x >= element.x && this.mouse.x <= element.x + element.width &&
+                        this.mouse.y >= element.y && this.mouse.y <= element.y + element.height) {
+                        
+                        this.hoveredElement = element;
+                        this.canvas.style.cursor = 'pointer';
+                        return;
+                    }
+                }
+                
+                this.canvas.style.cursor = 'crosshair';
+            }
+            
+            startCombat(enemy) {
+                console.log(`⚔️ Starting combat with ${enemy.name}`);
+                
+                // Deal damage to enemy
+                enemy.health = (enemy.health || 100) - 25;
+                this.createParticles(enemy.x, enemy.y, '#ff0000', 12);
+                
+                if (enemy.health <= 0) {
+                    this.showDialogue(`Defeated ${enemy.name}! Victory!`);
+                    this.gameState.player.score += 200;
+                    
+                    // Remove enemy from game
+                    const shipIndex = this.gameState.ships.indexOf(enemy);
+                    if (shipIndex > -1) {
+                        this.gameState.ships.splice(shipIndex, 1);
+                    }
+                } else {
+                    this.showDialogue(`Hit ${enemy.name} for 25 damage! Health: ${enemy.health}`);
+                }
+            }
+            
+            exploreIsland(island) {
+                const discoveries = [
+                    "Found ancient data scrolls! +100 points!",
+                    "Discovered a hidden treasure chest! +150 points!",
+                    "Uncovered mysterious code fragments! +75 points!",
+                    "Found Cal's old memory core! +200 points!"
+                ];
+                
+                const discovery = discoveries[Math.floor(Math.random() * discoveries.length)];
+                const points = parseInt(discovery.match(/\+(\d+)/)[1]);
+                
+                this.gameState.player.score += points;
+                this.showDialogue(discovery);
+                this.createParticles(island.x + 20, island.y + 20, '#00ffff', 15);
+            }
+            
+            fireWeapon() {
+                console.log('💥 Firing weapon!');
+                
+                const player = this.gameState.player;
+                const angle = player.rotation;
+                const speed = 300;
+                
+                this.gameState.projectiles.push({
+                    x: player.x,
+                    y: player.y,
+                    vx: Math.cos(angle) * speed,
+                    vy: Math.sin(angle) * speed,
+                    life: 2000,
+                    color: '#ffff00',
+                    size: 4
+                });
+                
+                this.createParticles(player.x, player.y, '#ffff00', 6);
+            }
+            
+            createParticles(x, y, color, count) {
+                for (let i = 0; i < count; i++) {
+                    this.gameState.particles.push({
+                        x: x,
+                        y: y,
+                        vx: (Math.random() - 0.5) * 200,
+                        vy: (Math.random() - 0.5) * 200,
+                        life: 1000,
+                        maxLife: 1000,
+                        color: color,
+                        alpha: 1,
+                        size: 2 + Math.random() * 3
+                    });
+                }
+            }
+            
+            createMovementEffect(x, y) {
+                // Visual feedback for clicks
+                this.createParticles(x, y, '#00ff41', 8);
+            }
+            
+            renderGame() {
+                const ctx = this.ctx;
+                const camera = this.gameState.camera;
+                
+                // Clear canvas
+                ctx.fillStyle = '#001122';
+                ctx.fillRect(0, 0, this.canvas.width, this.canvas.height);
+                
+                // Save context for camera transform
+                ctx.save();
+                ctx.translate(-camera.x, -camera.y);
+                
+                // Draw ocean background with subtle waves
+                this.drawOcean(ctx);
+                
+                // Draw interactive elements
+                this.drawShips(ctx);
+                this.drawPickups(ctx);
+                this.drawIslands(ctx);
+                
+                // Draw projectiles
+                this.drawProjectiles(ctx);
+                
+                // Draw particles
+                this.drawParticles(ctx);
+                
+                // Draw player ship
+                this.drawPlayer(ctx);
+                
+                // Draw hover hints
+                this.drawHoverHints(ctx);
+                
+                // Restore context
+                ctx.restore();
+                
+                // Draw UI elements (screen space)
+                this.drawMiniMap();
+            }
+            
+            drawOcean(ctx) {
+                const time = Date.now() * 0.001;
+                const gridSize = 50;
+                
+                ctx.strokeStyle = 'rgba(0, 100, 150, 0.3)';
+                ctx.lineWidth = 1;
+                
+                // Draw animated wave grid
+                for (let x = 0; x < this.gameState.worldSize.width; x += gridSize) {
+                    for (let y = 0; y < this.gameState.worldSize.height; y += gridSize) {
+                        const wave = Math.sin((x + y) * 0.01 + time * 2) * 2;
+                        
+                        ctx.beginPath();
+                        ctx.arc(x, y + wave, 2, 0, Math.PI * 2);
+                        ctx.stroke();
+                    }
+                }
+            }
+            
+            drawPlayer(ctx) {
+                const player = this.gameState.player;
+                const ship = player.ship;
+                
+                ctx.save();
+                ctx.translate(player.x, player.y);
+                ctx.rotate(player.rotation);
+                
+                // Draw ship hull
+                ctx.fillStyle = '#00ffff';
+                ctx.strokeStyle = '#00ff41';
+                ctx.lineWidth = 2;
+                
+                ctx.fillRect(-ship.width/2, -ship.height/2, ship.width, ship.height);
+                ctx.strokeRect(-ship.width/2, -ship.height/2, ship.width, ship.height);
+                
+                // Draw ship details
+                ctx.fillStyle = '#ffff00';
+                ctx.fillRect(ship.width/2 - 10, -5, 10, 10); // Front cannon
+                
+                // Health bar above ship
+                ctx.restore();
+                ctx.fillStyle = '#ff0000';
+                ctx.fillRect(player.x - 30, player.y - 50, 60, 6);
+                ctx.fillStyle = '#00ff00';
+                ctx.fillRect(player.x - 30, player.y - 50, (player.health / 100) * 60, 6);
+                
+                ctx.restore();
+            }
+            
+            drawShips(ctx) {
+                this.gameState.ships.forEach(ship => {
+                    if (ship.health && ship.health <= 0) return; // Skip destroyed ships
+                    
+                    ctx.save();
+                    ctx.translate(ship.x, ship.y);
+                    
+                    // Ship color based on type
+                    if (ship.type === 'ally') {
+                        ctx.fillStyle = '#00ff00';
+                        ctx.strokeStyle = '#00aa00';
+                    } else if (ship.type === 'enemy') {
+                        ctx.fillStyle = '#ff6600';
+                        ctx.strokeStyle = '#ff0000';
+                    } else {
+                        ctx.fillStyle = '#888888';
+                        ctx.strokeStyle = '#aaaaaa';
+                    }
+                    
+                    ctx.lineWidth = 2;
+                    ctx.fillRect(-ship.width/2, -ship.height/2, ship.width, ship.height);
+                    ctx.strokeRect(-ship.width/2, -ship.height/2, ship.width, ship.height);
+                    
+                    // Ship name
+                    ctx.fillStyle = '#ffffff';
+                    ctx.font = '12px Courier New';
+                    ctx.textAlign = 'center';
+                    ctx.fillText(ship.name, 0, -ship.height/2 - 10);
+                    
+                    // Health bar for enemies
+                    if (ship.type === 'enemy' && ship.health) {
+                        ctx.fillStyle = '#ff0000';
+                        ctx.fillRect(-ship.width/2, ship.height/2 + 5, ship.width, 4);
+                        ctx.fillStyle = '#00ff00';
+                        ctx.fillRect(-ship.width/2, ship.height/2 + 5, (ship.health / 100) * ship.width, 4);
+                    }
+                    
+                    ctx.restore();
+                });
+            }
+            
+            drawPickups(ctx) {
+                this.gameState.pickups.forEach(pickup => {
+                    if (pickup.collected) return;
+                    
+                    const time = Date.now() * 0.005;
+                    const bounce = Math.sin(time + pickup.x * 0.01) * 3;
+                    
+                    ctx.save();
+                    ctx.translate(pickup.x, pickup.y + bounce);
+                    
+                    // Spinning crystal
+                    ctx.rotate(time);
+                    ctx.fillStyle = '#ffff00';
+                    ctx.strokeStyle = '#ffaa00';
+                    ctx.lineWidth = 2;
+                    
+                    ctx.fillRect(-10, -10, 20, 20);
+                    ctx.strokeRect(-10, -10, 20, 20);
+                    
+                    // Glow effect
+                    ctx.shadowColor = '#ffff00';
+                    ctx.shadowBlur = 10;
+                    ctx.fillRect(-5, -5, 10, 10);
+                    
+                    ctx.restore();
+                });
+            }
+            
+            drawIslands(ctx) {
+                this.interactables.forEach(element => {
+                    if (element.type === 'island') {
+                        ctx.fillStyle = '#654321';
+                        ctx.strokeStyle = '#8B4513';
+                        ctx.lineWidth = 2;
+                        
+                        // Draw island as irregular shape
+                        ctx.beginPath();
+                        ctx.arc(element.x + element.width/2, element.y + element.height/2, element.width/2, 0, Math.PI * 2);
+                        ctx.fill();
+                        ctx.stroke();
+                        
+                        // Add some vegetation
+                        ctx.fillStyle = '#228B22';
+                        ctx.fillRect(element.x + 5, element.y + 5, 10, 10);
+                        ctx.fillRect(element.x + 25, element.y + 8, 8, 8);
+                    }
+                });
+            }
+            
+            drawProjectiles(ctx) {
+                this.gameState.projectiles.forEach(projectile => {
+                    ctx.fillStyle = projectile.color;
+                    ctx.shadowColor = projectile.color;
+                    ctx.shadowBlur = 5;
+                    
+                    ctx.beginPath();
+                    ctx.arc(projectile.x, projectile.y, projectile.size, 0, Math.PI * 2);
+                    ctx.fill();
+                });
+            }
+            
+            drawParticles(ctx) {
+                this.gameState.particles.forEach(particle => {
+                    ctx.save();
+                    ctx.globalAlpha = particle.alpha;
+                    ctx.fillStyle = particle.color;
+                    
+                    ctx.beginPath();
+                    ctx.arc(particle.x, particle.y, particle.size, 0, Math.PI * 2);
+                    ctx.fill();
+                    
+                    ctx.restore();
+                });
+            }
+            
+            drawHoverHints(ctx) {
+                if (this.hoveredElement) {
+                    const element = this.hoveredElement;
+                    
+                    ctx.fillStyle = 'rgba(255, 255, 0, 0.9)';
+                    ctx.strokeStyle = '#000000';
+                    ctx.lineWidth = 1;
+                    ctx.font = '12px Courier New';
+                    
+                    const text = element.hint;
+                    const metrics = ctx.measureText(text);
+                    const padding = 8;
+                    
+                    const x = element.x + element.width/2 - metrics.width/2;
+                    const y = element.y - 30;
+                    
+                    ctx.fillRect(x - padding, y - 15 - padding, metrics.width + padding*2, 20 + padding*2);
+                    ctx.strokeRect(x - padding, y - 15 - padding, metrics.width + padding*2, 20 + padding*2);
+                    
+                    ctx.fillStyle = '#000000';
+                    ctx.fillText(text, x, y);
+                }
+            }
+            
+            drawMiniMap() {
+                const miniMapSize = 150;
+                const mapX = this.canvas.width - miniMapSize - 10;
+                const mapY = 10;
+                
+                const ctx = this.ctx;
+                
+                // Mini map background
+                ctx.fillStyle = 'rgba(0, 20, 0, 0.8)';
+                ctx.strokeStyle = '#00ff41';
+                ctx.lineWidth = 2;
+                ctx.fillRect(mapX, mapY, miniMapSize, miniMapSize);
+                ctx.strokeRect(mapX, mapY, miniMapSize, miniMapSize);
+                
+                // Scale factor
+                const scaleX = miniMapSize / this.gameState.worldSize.width;
+                const scaleY = miniMapSize / this.gameState.worldSize.height;
+                
+                // Draw player
+                ctx.fillStyle = '#00ffff';
+                ctx.fillRect(
+                    mapX + this.gameState.player.x * scaleX - 2,
+                    mapY + this.gameState.player.y * scaleY - 2,
+                    4, 4
+                );
+                
+                // Draw ships
+                this.gameState.ships.forEach(ship => {
+                    ctx.fillStyle = ship.type === 'ally' ? '#00ff00' : '#ff0000';
+                    ctx.fillRect(
+                        mapX + ship.x * scaleX - 1,
+                        mapY + ship.y * scaleY - 1,
+                        2, 2
+                    );
+                });
+                
+                // Draw pickups
+                this.gameState.pickups.forEach(pickup => {
+                    if (!pickup.collected) {
+                        ctx.fillStyle = '#ffff00';
+                        ctx.fillRect(
+                            mapX + pickup.x * scaleX - 1,
+                            mapY + pickup.y * scaleY - 1,
+                            2, 2
+                        );
+                    }
+                });
+            }
+            
+            renderElectronics() {
+                const ctx = this.electronicsCtx;
+                const canvas = this.electronicsCanvas;
+                
+                // Clear with fade effect
+                ctx.fillStyle = 'rgba(0, 0, 0, 0.05)';
+                ctx.fillRect(0, 0, canvas.width, canvas.height);
+                
+                const time = Date.now() * 0.001;
+                
+                // Matrix rain
+                ctx.font = '12px monospace';
+                ctx.textAlign = 'center';
+                
+                this.matrixRain.forEach((column, i) => {
+                    const x = i * 12;
+                    
+                    column.y += column.speed;
+                    if (column.y > canvas.height) {
+                        column.y = -20;
+                        column.character = '01234567890ABCDEFCAL⚔️🏴‍☠️'[Math.floor(Math.random() * 20)];
+                    }
+                    
+                    const alpha = Math.max(0, 1 - (column.y / canvas.height));
+                    ctx.fillStyle = `rgba(0, ${Math.floor(255 * alpha)}, ${Math.floor(100 * alpha)}, ${alpha})`;
+                    ctx.fillText(column.character, x, column.y);
+                });
+                
+                // Circuit patterns
+                this.circuitPatterns.forEach(pattern => {
+                    pattern.pulse += 0.02;
+                    const intensity = pattern.intensity + Math.sin(pattern.pulse) * 0.1;
+                    
+                    ctx.strokeStyle = `rgba(0, ${Math.floor(255 * intensity)}, ${Math.floor(100 * intensity)}, ${intensity})`;
+                    ctx.lineWidth = 1;
+                    
+                    ctx.beginPath();
+                    ctx.moveTo(pattern.x, pattern.y);
+                    ctx.lineTo(pattern.x + pattern.width, pattern.y);
+                    ctx.stroke();
+                    
+                    ctx.fillStyle = `rgba(0, ${Math.floor(255 * intensity)}, ${Math.floor(100 * intensity)}, ${intensity})`;
+                    ctx.fillRect(pattern.x - 1, pattern.y - 1, 3, 3);
+                });
+                
+                // Random data packets
+                if (Math.random() < 0.1) {
+                    const x = Math.random() * canvas.width;
+                    const y = Math.random() * canvas.height;
+                    
+                    ctx.fillStyle = `rgba(0, 255, 100, ${0.3 + Math.random() * 0.4})`;
+                    ctx.fillRect(x, y, 3, 3);
+                }
+            }
+            
+            updateHUD() {
+                const player = this.gameState.player;
+                
+                document.getElementById('player-health').textContent = player.health;
+                document.getElementById('player-score').textContent = player.score;
+                document.getElementById('player-level').textContent = player.level;
+                document.getElementById('fleet-count').textContent = this.gameState.ships.filter(s => s.type === 'ally').length + 1;
+            }
+            
+            showDialogue(text) {
+                const dialogue = document.getElementById('game-dialogue');
+                const dialogueText = document.getElementById('dialogue-text');
+                
+                dialogueText.innerHTML = text;
+                dialogue.classList.add('active');
+                
+                // Auto-hide after 4 seconds
+                setTimeout(() => {
+                    dialogue.classList.remove('active');
+                }, 4000);
+            }
+        }
+        
+        // Global game actions for UI buttons
+        const gameActions = {
+            moveUp: () => pirateGame.keys['KeyW'] = true,
+            moveDown: () => pirateGame.keys['KeyS'] = true,
+            moveLeft: () => pirateGame.keys['KeyA'] = true,
+            moveRight: () => pirateGame.keys['KeyD'] = true,
+            fire: () => pirateGame.fireWeapon(),
+            interact: () => {
+                console.log('🤝 Interact button pressed');
+                pirateGame.showDialogue("Look for ships and islands to click on!");
+            },
+            toggleMap: () => {
+                console.log('🗺️ Map toggle - mini-map is always visible in top-right');
+            }
+        };
+        
+        // Initialize the game
+        let pirateGame;
+        
+        window.addEventListener('DOMContentLoaded', () => {
+            console.log('🎮 Starting Pirate Gameplay...');
+            pirateGame = new PirateGameplay();
+        });
+        
+        // Handle window resize
+        window.addEventListener('resize', () => {
+            if (pirateGame) {
+                pirateGame.canvas.width = pirateGame.canvas.offsetWidth;
+                pirateGame.canvas.height = pirateGame.canvas.offsetHeight;
+                
+                pirateGame.electronicsCanvas.width = window.innerWidth;
+                pirateGame.electronicsCanvas.height = window.innerHeight;
+            }
+        });
+        
+        console.log('🏴‍☠️ Pirate Gameplay System Loaded - Interactive Mode Ready!');
+    </script>
+</body>
+</html>

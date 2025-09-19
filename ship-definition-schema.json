@@ -1,0 +1,454 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://document-generator.dev/schemas/ship-definition.json",
+  "title": "Universal Ship Definition",
+  "description": "Master schema for ships that can be converted to GLTF, ASCII, Solidity, Binary, COBOL, PDF, and sprites",
+  "type": "object",
+  "required": ["id", "name", "type", "hull", "dimensions", "materials"],
+  "properties": {
+    "id": {
+      "type": "string",
+      "pattern": "^ship_[a-zA-Z0-9_]{8,}$",
+      "description": "Unique ship identifier"
+    },
+    "name": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 64,
+      "description": "Display name of the ship"
+    },
+    "type": {
+      "type": "string",
+      "enum": ["pirate_galleon", "pirate_frigate", "pirate_sloop", "space_cruiser", "space_fighter", "space_cargo", "merchant_vessel", "warship", "exploration_vessel"],
+      "description": "Ship archetype determining base characteristics"
+    },
+    "faction": {
+      "type": "string",
+      "enum": ["pirates", "navy", "merchants", "rebels", "empire", "federation", "independent", "unknown"],
+      "default": "independent",
+      "description": "Allegiance affecting colors and symbols"
+    },
+    "hull": {
+      "type": "object",
+      "required": ["segments", "armor", "integrity"],
+      "properties": {
+        "segments": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "required": ["name", "geometry", "material", "hitpoints"],
+            "properties": {
+              "name": {
+                "type": "string",
+                "enum": ["bow", "stern", "port_side", "starboard_side", "deck", "hull_bottom", "bridge", "engine_section"]
+              },
+              "geometry": {
+                "type": "object",
+                "required": ["vertices", "faces", "bounds"],
+                "properties": {
+                  "vertices": {
+                    "type": "array",
+                    "items": {
+                      "type": "array",
+                      "items": {"type": "number"},
+                      "minItems": 3,
+                      "maxItems": 3
+                    },
+                    "description": "3D vertices as [x, y, z] coordinates"
+                  },
+                  "faces": {
+                    "type": "array",
+                    "items": {
+                      "type": "array",
+                      "items": {"type": "integer", "minimum": 0},
+                      "minItems": 3
+                    },
+                    "description": "Face indices referencing vertices"
+                  },
+                  "bounds": {
+                    "type": "object",
+                    "required": ["min", "max"],
+                    "properties": {
+                      "min": {"type": "array", "items": {"type": "number"}, "minItems": 3, "maxItems": 3},
+                      "max": {"type": "array", "items": {"type": "number"}, "minItems": 3, "maxItems": 3}
+                    }
+                  }
+                }
+              },
+              "material": {"$ref": "#/definitions/material"},
+              "hitpoints": {
+                "type": "object",
+                "required": ["max", "current"],
+                "properties": {
+                  "max": {"type": "integer", "minimum": 1},
+                  "current": {"type": "integer", "minimum": 0}
+                }
+              },
+              "damage_effects": {
+                "type": "array",
+                "items": {
+                  "type": "object",
+                  "required": ["threshold", "visual_effect", "mechanical_effect"],
+                  "properties": {
+                    "threshold": {"type": "number", "minimum": 0, "maximum": 1},
+                    "visual_effect": {"type": "string", "enum": ["scorch_marks", "holes", "cracks", "rust", "missing_pieces"]},
+                    "mechanical_effect": {"type": "string", "enum": ["reduced_speed", "reduced_armor", "weapon_disabled", "system_failure"]}
+                  }
+                }
+              }
+            }
+          }
+        },
+        "armor": {
+          "type": "object",
+          "required": ["base_rating", "material_bonus"],
+          "properties": {
+            "base_rating": {"type": "integer", "minimum": 0, "maximum": 100},
+            "material_bonus": {"type": "integer", "minimum": 0, "maximum": 50},
+            "enchantments": {
+              "type": "array",
+              "items": {
+                "type": "object",
+                "required": ["name", "effect", "strength"],
+                "properties": {
+                  "name": {"type": "string"},
+                  "effect": {"type": "string", "enum": ["magic_resistance", "fire_resistance", "impact_resistance", "self_repair"]},
+                  "strength": {"type": "number", "minimum": 0.1, "maximum": 2.0}
+                }
+              }
+            }
+          }
+        },
+        "integrity": {
+          "type": "object",
+          "required": ["structural", "watertight"],
+          "properties": {
+            "structural": {"type": "number", "minimum": 0, "maximum": 1, "description": "0=broken, 1=perfect"},
+            "watertight": {"type": "number", "minimum": 0, "maximum": 1, "description": "0=sinking, 1=sealed"}
+          }
+        }
+      }
+    },
+    "dimensions": {
+      "type": "object",
+      "required": ["length", "width", "height", "displacement"],
+      "properties": {
+        "length": {"type": "number", "minimum": 5, "description": "meters"},
+        "width": {"type": "number", "minimum": 2, "description": "meters"},
+        "height": {"type": "number", "minimum": 3, "description": "meters"},
+        "displacement": {"type": "number", "minimum": 1, "description": "tons"},
+        "draft": {"type": "number", "minimum": 0.5, "description": "depth in water, meters"}
+      }
+    },
+    "sails": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["name", "type", "position", "material", "condition"],
+        "properties": {
+          "name": {"type": "string"},
+          "type": {"type": "string", "enum": ["mainsail", "jib", "topsail", "spinnaker", "lateen", "square_rig", "solar_panel", "plasma_sail"]},
+          "position": {
+            "type": "array",
+            "items": {"type": "number"},
+            "minItems": 3,
+            "maxItems": 3,
+            "description": "Center position [x, y, z]"
+          },
+          "size": {
+            "type": "object",
+            "required": ["width", "height"],
+            "properties": {
+              "width": {"type": "number", "minimum": 1},
+              "height": {"type": "number", "minimum": 1}
+            }
+          },
+          "material": {"$ref": "#/definitions/material"},
+          "condition": {"type": "number", "minimum": 0, "maximum": 1, "description": "0=destroyed, 1=perfect"},
+          "animation": {
+            "type": "object",
+            "properties": {
+              "wind_response": {"type": "number", "minimum": 0, "maximum": 2, "description": "How much sail moves with wind"},
+              "flap_frequency": {"type": "number", "minimum": 0, "maximum": 10, "description": "Hz"},
+              "tension_points": {
+                "type": "array",
+                "items": {
+                  "type": "array",
+                  "items": {"type": "number"},
+                  "minItems": 3,
+                  "maxItems": 3
+                },
+                "description": "Points where sail connects to rigging"
+              }
+            }
+          }
+        }
+      }
+    },
+    "weapons": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["name", "type", "position", "damage", "range"],
+        "properties": {
+          "name": {"type": "string"},
+          "type": {"type": "string", "enum": ["cannon", "carronade", "swivel_gun", "laser_turret", "plasma_cannon", "missile_launcher", "railgun"]},
+          "position": {
+            "type": "array",
+            "items": {"type": "number"},
+            "minItems": 3,
+            "maxItems": 3,
+            "description": "Weapon mount position [x, y, z]"
+          },
+          "rotation": {
+            "type": "object",
+            "required": ["yaw_min", "yaw_max", "pitch_min", "pitch_max"],
+            "properties": {
+              "yaw_min": {"type": "number", "minimum": -180, "maximum": 180, "description": "degrees"},
+              "yaw_max": {"type": "number", "minimum": -180, "maximum": 180, "description": "degrees"},
+              "pitch_min": {"type": "number", "minimum": -90, "maximum": 90, "description": "degrees"},
+              "pitch_max": {"type": "number", "minimum": -90, "maximum": 90, "description": "degrees"}
+            }
+          },
+          "damage": {
+            "type": "object",
+            "required": ["base", "type"],
+            "properties": {
+              "base": {"type": "integer", "minimum": 1},
+              "type": {"type": "string", "enum": ["kinetic", "explosive", "energy", "magical"]},
+              "area_effect": {"type": "number", "minimum": 0, "description": "blast radius in meters"},
+              "armor_penetration": {"type": "number", "minimum": 0, "maximum": 1}
+            }
+          },
+          "range": {"type": "number", "minimum": 10, "description": "effective range in meters"},
+          "reload_time": {"type": "number", "minimum": 0.1, "description": "seconds"},
+          "ammunition": {
+            "type": "object",
+            "properties": {
+              "type": {"type": "string", "enum": ["cannonball", "grapeshot", "chain_shot", "energy_cell", "missile", "magic_crystal"]},
+              "current": {"type": "integer", "minimum": 0},
+              "max": {"type": "integer", "minimum": 1}
+            }
+          }
+        }
+      }
+    },
+    "materials": {
+      "type": "object",
+      "patternProperties": {
+        "^[a-zA-Z_][a-zA-Z0-9_]*$": {"$ref": "#/definitions/material"}
+      }
+    },
+    "crew": {
+      "type": "object",
+      "properties": {
+        "capacity": {"type": "integer", "minimum": 1},
+        "current": {"type": "integer", "minimum": 0},
+        "positions": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "required": ["role", "position"],
+            "properties": {
+              "role": {"type": "string", "enum": ["captain", "navigator", "gunner", "engineer", "lookout", "crew"]},
+              "position": {
+                "type": "array",
+                "items": {"type": "number"},
+                "minItems": 3,
+                "maxItems": 3
+              },
+              "animation_idle": {"type": "string", "description": "idle animation name"},
+              "animation_work": {"type": "string", "description": "working animation name"}
+            }
+          }
+        }
+      }
+    },
+    "propulsion": {
+      "type": "object",
+      "required": ["type", "max_speed"],
+      "properties": {
+        "type": {"type": "string", "enum": ["wind", "steam", "diesel", "nuclear", "fusion", "antimatter", "magic"]},
+        "max_speed": {"type": "number", "minimum": 1, "description": "knots or equivalent"},
+        "acceleration": {"type": "number", "minimum": 0.1, "description": "speed units per second"},
+        "maneuverability": {"type": "number", "minimum": 0.1, "maximum": 10, "description": "turning rate"},
+        "fuel": {
+          "type": "object",
+          "properties": {
+            "type": {"type": "string"},
+            "current": {"type": "number", "minimum": 0},
+            "max": {"type": "number", "minimum": 1},
+            "consumption": {"type": "number", "minimum": 0, "description": "fuel per hour at max speed"}
+          }
+        }
+      }
+    },
+    "systems": {
+      "type": "object",
+      "properties": {
+        "navigation": {
+          "type": "object",
+          "properties": {
+            "compass": {"type": "boolean"},
+            "gps": {"type": "boolean"},
+            "star_charts": {"type": "boolean"},
+            "radar": {"type": "boolean"},
+            "magical_guidance": {"type": "boolean"}
+          }
+        },
+        "communication": {
+          "type": "object",
+          "properties": {
+            "flags": {"type": "boolean"},
+            "radio": {"type": "boolean"},
+            "quantum_comm": {"type": "boolean"},
+            "telepathic": {"type": "boolean"}
+          }
+        },
+        "life_support": {
+          "type": "object",
+          "properties": {
+            "air_recycling": {"type": "boolean"},
+            "water_purification": {"type": "boolean"},
+            "gravity_generator": {"type": "boolean"},
+            "magical_sustenance": {"type": "boolean"}
+          }
+        }
+      }
+    },
+    "cargo": {
+      "type": "object",
+      "properties": {
+        "capacity": {"type": "number", "minimum": 0, "description": "cubic meters"},
+        "current_load": {"type": "number", "minimum": 0},
+        "cargo_types": {
+          "type": "array",
+          "items": {"type": "string", "enum": ["general", "liquid", "gas", "hazardous", "living", "magical", "precious"]}
+        }
+      }
+    },
+    "lore": {
+      "type": "object",
+      "properties": {
+        "history": {"type": "string", "maxLength": 1000},
+        "famous_battles": {"type": "array", "items": {"type": "string"}},
+        "previous_captains": {"type": "array", "items": {"type": "string"}},
+        "legends": {"type": "array", "items": {"type": "string"}},
+        "current_mission": {"type": "string"}
+      }
+    },
+    "rendering": {
+      "type": "object",
+      "properties": {
+        "lod_levels": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "required": ["distance", "detail_level"],
+            "properties": {
+              "distance": {"type": "number", "minimum": 1, "description": "distance in meters"},
+              "detail_level": {"type": "string", "enum": ["ultra", "high", "medium", "low", "minimal"]},
+              "geometry_simplification": {"type": "number", "minimum": 0.1, "maximum": 1},
+              "texture_resolution": {"type": "string", "enum": ["4K", "2K", "1K", "512", "256"]}
+            }
+          }
+        },
+        "ascii_representation": {
+          "type": "object",
+          "properties": {
+            "side_view": {"type": "array", "items": {"type": "string"}},
+            "top_view": {"type": "array", "items": {"type": "string"}},
+            "front_view": {"type": "array", "items": {"type": "string"}},
+            "compact": {"type": "string", "maxLength": 20, "description": "Single line representation"}
+          }
+        }
+      }
+    },
+    "blockchain": {
+      "type": "object",
+      "properties": {
+        "nft_metadata": {
+          "type": "object",
+          "properties": {
+            "token_id": {"type": "string"},
+            "contract_address": {"type": "string"},
+            "ownership_history": {"type": "array", "items": {"type": "string"}},
+            "rarity_score": {"type": "number", "minimum": 0, "maximum": 100},
+            "traits": {"type": "array", "items": {"type": "object"}}
+          }
+        },
+        "smart_contract_data": {
+          "type": "object",
+          "description": "Data structure for Solidity representation"
+        }
+      }
+    },
+    "version": {
+      "type": "string",
+      "pattern": "^\\d+\\.\\d+\\.\\d+$",
+      "default": "1.0.0",
+      "description": "Schema version for backwards compatibility"
+    },
+    "created": {"type": "string", "format": "date-time"},
+    "updated": {"type": "string", "format": "date-time"}
+  },
+  "definitions": {
+    "material": {
+      "type": "object",
+      "required": ["name", "type"],
+      "properties": {
+        "name": {"type": "string"},
+        "type": {"type": "string", "enum": ["wood", "metal", "fabric", "ceramic", "composite", "energy", "magical", "biological"]},
+        "subtype": {"type": "string", "description": "oak, steel, canvas, etc."},
+        "color": {
+          "type": "object",
+          "required": ["hex"],
+          "properties": {
+            "hex": {"type": "string", "pattern": "^#[0-9A-Fa-f]{6}$"},
+            "name": {"type": "string"},
+            "hsv": {
+              "type": "array",
+              "items": {"type": "number", "minimum": 0, "maximum": 360},
+              "minItems": 3,
+              "maxItems": 3
+            }
+          }
+        },
+        "texture": {
+          "type": "object",
+          "properties": {
+            "diffuse_map": {"type": "string", "description": "texture file path or data URI"},
+            "normal_map": {"type": "string"},
+            "roughness_map": {"type": "string"},
+            "metallic_map": {"type": "string"},
+            "ao_map": {"type": "string"},
+            "emissive_map": {"type": "string"},
+            "tiling": {"type": "array", "items": {"type": "number"}, "minItems": 2, "maxItems": 2}
+          }
+        },
+        "physical_properties": {
+          "type": "object",
+          "properties": {
+            "density": {"type": "number", "minimum": 0.1, "description": "kg/m³"},
+            "hardness": {"type": "number", "minimum": 1, "maximum": 10, "description": "Mohs scale"},
+            "flexibility": {"type": "number", "minimum": 0, "maximum": 1, "description": "0=rigid, 1=flexible"},
+            "conductivity": {"type": "number", "minimum": 0, "maximum": 1, "description": "electrical"},
+            "magical_affinity": {"type": "number", "minimum": 0, "maximum": 1, "description": "magic absorption"}
+          }
+        },
+        "wear_patterns": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "required": ["type", "intensity", "location"],
+            "properties": {
+              "type": {"type": "string", "enum": ["weathering", "scratches", "dents", "rust", "burn_marks", "magical_corruption"]},
+              "intensity": {"type": "number", "minimum": 0, "maximum": 1},
+              "location": {"type": "string", "enum": ["edges", "surface", "joints", "high_stress", "random"]}
+            }
+          }
+        }
+      }
+    }
+  }
+}

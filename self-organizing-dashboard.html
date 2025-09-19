@@ -1,0 +1,823 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Self-Organizing System Dashboard</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            background: #0a0a0a;
+            color: #e0e0e0;
+            overflow-x: hidden;
+        }
+
+        .dashboard {
+            display: grid;
+            grid-template-columns: 250px 1fr;
+            min-height: 100vh;
+        }
+
+        /* Sidebar */
+        .sidebar {
+            background: #1a1a1a;
+            border-right: 1px solid #333;
+            padding: 20px;
+        }
+
+        .logo {
+            font-size: 24px;
+            font-weight: bold;
+            margin-bottom: 30px;
+            background: linear-gradient(45deg, #00ff88, #0088ff);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+        }
+
+        .nav-item {
+            padding: 12px 16px;
+            margin-bottom: 8px;
+            border-radius: 8px;
+            cursor: pointer;
+            transition: all 0.3s;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .nav-item:hover {
+            background: #2a2a2a;
+        }
+
+        .nav-item.active {
+            background: #2a2a2a;
+            border-left: 3px solid #00ff88;
+        }
+
+        /* Main Content */
+        .main-content {
+            padding: 20px;
+            overflow-y: auto;
+        }
+
+        .header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 30px;
+            padding-bottom: 20px;
+            border-bottom: 1px solid #333;
+        }
+
+        .header h1 {
+            font-size: 28px;
+            font-weight: 600;
+        }
+
+        .status-indicator {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            padding: 8px 16px;
+            background: #1a1a1a;
+            border-radius: 20px;
+        }
+
+        .status-dot {
+            width: 12px;
+            height: 12px;
+            border-radius: 50%;
+            background: #00ff88;
+            animation: pulse 2s infinite;
+        }
+
+        @keyframes pulse {
+            0% { opacity: 1; }
+            50% { opacity: 0.5; }
+            100% { opacity: 1; }
+        }
+
+        /* Grid Layout */
+        .dashboard-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(350px, 1fr));
+            gap: 20px;
+        }
+
+        .widget {
+            background: #1a1a1a;
+            border: 1px solid #333;
+            border-radius: 12px;
+            padding: 20px;
+            transition: transform 0.3s, box-shadow 0.3s;
+        }
+
+        .widget:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 8px 32px rgba(0, 255, 136, 0.1);
+        }
+
+        .widget-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 20px;
+        }
+
+        .widget-title {
+            font-size: 18px;
+            font-weight: 600;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .widget-icon {
+            width: 24px;
+            height: 24px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        /* Character Cards */
+        .character-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 15px;
+            margin-top: 15px;
+        }
+
+        .character-card {
+            background: #2a2a2a;
+            border-radius: 8px;
+            padding: 15px;
+            text-align: center;
+            cursor: pointer;
+            transition: all 0.3s;
+        }
+
+        .character-card:hover {
+            background: #3a3a3a;
+            transform: scale(1.05);
+        }
+
+        .character-avatar {
+            width: 60px;
+            height: 60px;
+            border-radius: 50%;
+            margin: 0 auto 10px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 24px;
+            font-weight: bold;
+        }
+
+        .cal-avatar { background: linear-gradient(135deg, #667eea, #764ba2); }
+        .ralph-avatar { background: linear-gradient(135deg, #f093fb, #f5576c); }
+        .arty-avatar { background: linear-gradient(135deg, #4facfe, #00f2fe); }
+        .claude-avatar { background: linear-gradient(135deg, #fa709a, #fee140); }
+
+        .character-name {
+            font-weight: 600;
+            margin-bottom: 5px;
+        }
+
+        .character-role {
+            font-size: 12px;
+            color: #888;
+        }
+
+        .character-status {
+            margin-top: 10px;
+            font-size: 11px;
+            padding: 4px 8px;
+            background: #1a1a1a;
+            border-radius: 12px;
+        }
+
+        /* File Type Chart */
+        .file-type-list {
+            list-style: none;
+        }
+
+        .file-type-item {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 10px 0;
+            border-bottom: 1px solid #333;
+        }
+
+        .file-type-bar {
+            flex: 1;
+            height: 6px;
+            background: #2a2a2a;
+            border-radius: 3px;
+            margin: 0 15px;
+            overflow: hidden;
+        }
+
+        .file-type-progress {
+            height: 100%;
+            background: linear-gradient(90deg, #00ff88, #0088ff);
+            border-radius: 3px;
+            transition: width 0.5s ease;
+        }
+
+        /* Activity Feed */
+        .activity-feed {
+            max-height: 300px;
+            overflow-y: auto;
+        }
+
+        .activity-item {
+            padding: 12px;
+            margin-bottom: 10px;
+            background: #2a2a2a;
+            border-radius: 8px;
+            display: flex;
+            gap: 12px;
+            align-items: start;
+        }
+
+        .activity-icon {
+            width: 32px;
+            height: 32px;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            flex-shrink: 0;
+        }
+
+        .activity-content {
+            flex: 1;
+        }
+
+        .activity-title {
+            font-weight: 600;
+            margin-bottom: 4px;
+        }
+
+        .activity-desc {
+            font-size: 14px;
+            color: #888;
+        }
+
+        .activity-time {
+            font-size: 12px;
+            color: #666;
+            margin-top: 4px;
+        }
+
+        /* Human Approval Queue */
+        .approval-item {
+            padding: 15px;
+            background: #2a2a2a;
+            border-radius: 8px;
+            margin-bottom: 10px;
+            border: 1px solid #333;
+        }
+
+        .approval-item.pending {
+            border-color: #ffaa00;
+        }
+
+        .approval-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 10px;
+        }
+
+        .approval-type {
+            font-weight: 600;
+            color: #ffaa00;
+        }
+
+        .approval-actions {
+            display: flex;
+            gap: 10px;
+            margin-top: 15px;
+        }
+
+        .btn {
+            padding: 8px 16px;
+            border-radius: 6px;
+            border: none;
+            font-size: 14px;
+            cursor: pointer;
+            transition: all 0.3s;
+        }
+
+        .btn-approve {
+            background: #00ff88;
+            color: #000;
+        }
+
+        .btn-approve:hover {
+            background: #00dd77;
+        }
+
+        .btn-reject {
+            background: #ff4444;
+            color: #fff;
+        }
+
+        .btn-reject:hover {
+            background: #dd3333;
+        }
+
+        /* Debug Console */
+        .debug-console {
+            background: #0a0a0a;
+            border-radius: 8px;
+            padding: 15px;
+            font-family: 'Courier New', monospace;
+            font-size: 13px;
+            max-height: 250px;
+            overflow-y: auto;
+        }
+
+        .debug-entry {
+            margin-bottom: 8px;
+            padding: 8px;
+            background: #1a1a1a;
+            border-radius: 4px;
+        }
+
+        .debug-error { border-left: 3px solid #ff4444; }
+        .debug-warning { border-left: 3px solid #ffaa00; }
+        .debug-info { border-left: 3px solid #0088ff; }
+        .debug-success { border-left: 3px solid #00ff88; }
+
+        /* Stats */
+        .stat-card {
+            text-align: center;
+            padding: 20px;
+            background: #2a2a2a;
+            border-radius: 8px;
+        }
+
+        .stat-value {
+            font-size: 32px;
+            font-weight: bold;
+            background: linear-gradient(45deg, #00ff88, #0088ff);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+        }
+
+        .stat-label {
+            color: #888;
+            margin-top: 5px;
+        }
+
+        /* Scrollbar */
+        ::-webkit-scrollbar {
+            width: 8px;
+            height: 8px;
+        }
+
+        ::-webkit-scrollbar-track {
+            background: #1a1a1a;
+        }
+
+        ::-webkit-scrollbar-thumb {
+            background: #444;
+            border-radius: 4px;
+        }
+
+        ::-webkit-scrollbar-thumb:hover {
+            background: #555;
+        }
+    </style>
+</head>
+<body>
+    <div class="dashboard">
+        <!-- Sidebar -->
+        <aside class="sidebar">
+            <div class="logo">🧠 Self-Organizing</div>
+            <nav>
+                <div class="nav-item active" onclick="showSection('overview')">
+                    <span>📊</span> Overview
+                </div>
+                <div class="nav-item" onclick="showSection('characters')">
+                    <span>🎭</span> Characters
+                </div>
+                <div class="nav-item" onclick="showSection('files')">
+                    <span>📁</span> File System
+                </div>
+                <div class="nav-item" onclick="showSection('translations')">
+                    <span>🔄</span> Translations
+                </div>
+                <div class="nav-item" onclick="showSection('debug')">
+                    <span>🐛</span> Debug Flow
+                </div>
+                <div class="nav-item" onclick="showSection('approvals')">
+                    <span>✋</span> Approvals
+                </div>
+            </nav>
+        </aside>
+
+        <!-- Main Content -->
+        <main class="main-content">
+            <div class="header">
+                <h1>System Dashboard</h1>
+                <div class="status-indicator">
+                    <div class="status-dot"></div>
+                    <span>All Systems Operational</span>
+                </div>
+            </div>
+
+            <!-- Overview Section -->
+            <div id="overview-section" class="section">
+                <div class="dashboard-grid">
+                    <!-- System Stats -->
+                    <div class="widget">
+                        <div class="widget-header">
+                            <h3 class="widget-title">
+                                <span class="widget-icon">📈</span>
+                                System Statistics
+                            </h3>
+                        </div>
+                        <div class="character-grid">
+                            <div class="stat-card">
+                                <div class="stat-value" id="total-files">0</div>
+                                <div class="stat-label">Total Files</div>
+                            </div>
+                            <div class="stat-card">
+                                <div class="stat-value" id="active-tasks">0</div>
+                                <div class="stat-label">Active Tasks</div>
+                            </div>
+                            <div class="stat-card">
+                                <div class="stat-value" id="errors-fixed">0</div>
+                                <div class="stat-label">Errors Fixed</div>
+                            </div>
+                            <div class="stat-card">
+                                <div class="stat-value" id="translations">0</div>
+                                <div class="stat-label">Translations</div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Character Status -->
+                    <div class="widget">
+                        <div class="widget-header">
+                            <h3 class="widget-title">
+                                <span class="widget-icon">🎭</span>
+                                Character Status
+                            </h3>
+                        </div>
+                        <div class="character-grid">
+                            <div class="character-card">
+                                <div class="character-avatar cal-avatar">C</div>
+                                <div class="character-name">Cal</div>
+                                <div class="character-role">System Orchestrator</div>
+                                <div class="character-status">🟢 Active</div>
+                            </div>
+                            <div class="character-card">
+                                <div class="character-avatar ralph-avatar">R</div>
+                                <div class="character-name">Ralph</div>
+                                <div class="character-role">System Tester</div>
+                                <div class="character-status">🟢 Active</div>
+                            </div>
+                            <div class="character-card">
+                                <div class="character-avatar arty-avatar">A</div>
+                                <div class="character-name">Arty</div>
+                                <div class="character-role">System Healer</div>
+                                <div class="character-status">🟢 Active</div>
+                            </div>
+                            <div class="character-card">
+                                <div class="character-avatar claude-avatar">C</div>
+                                <div class="character-name">Claude</div>
+                                <div class="character-role">Human Interface</div>
+                                <div class="character-status">🟢 Active</div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- File Types -->
+                    <div class="widget">
+                        <div class="widget-header">
+                            <h3 class="widget-title">
+                                <span class="widget-icon">📁</span>
+                                File Distribution
+                            </h3>
+                        </div>
+                        <ul class="file-type-list" id="file-type-list">
+                            <li class="file-type-item">
+                                <span>JavaScript</span>
+                                <div class="file-type-bar">
+                                    <div class="file-type-progress" style="width: 0%"></div>
+                                </div>
+                                <span>0</span>
+                            </li>
+                        </ul>
+                    </div>
+
+                    <!-- Activity Feed -->
+                    <div class="widget">
+                        <div class="widget-header">
+                            <h3 class="widget-title">
+                                <span class="widget-icon">📡</span>
+                                Recent Activity
+                            </h3>
+                        </div>
+                        <div class="activity-feed" id="activity-feed">
+                            <div class="activity-item">
+                                <div class="activity-icon" style="background: #00ff88;">✓</div>
+                                <div class="activity-content">
+                                    <div class="activity-title">System Initialized</div>
+                                    <div class="activity-desc">Self-organizing master hub is online</div>
+                                    <div class="activity-time">Just now</div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Debug Console -->
+            <div class="widget" style="margin-top: 20px;">
+                <div class="widget-header">
+                    <h3 class="widget-title">
+                        <span class="widget-icon">💻</span>
+                        Debug Console
+                    </h3>
+                </div>
+                <div class="debug-console" id="debug-console">
+                    <div class="debug-entry debug-info">
+                        [INFO] Self-Organizing Dashboard initialized
+                    </div>
+                </div>
+            </div>
+        </main>
+    </div>
+
+    <script>
+        // WebSocket connection for real-time updates
+        let ws = null;
+        let reconnectInterval = null;
+
+        // Dashboard state
+        const state = {
+            files: {},
+            characters: {},
+            tasks: [],
+            errors: [],
+            approvals: []
+        };
+
+        // Initialize dashboard
+        function initDashboard() {
+            connectWebSocket();
+            updateStats();
+            startPolling();
+        }
+
+        // WebSocket connection
+        function connectWebSocket() {
+            try {
+                ws = new WebSocket('ws://localhost:8081');
+                
+                ws.onopen = () => {
+                    log('info', 'Connected to Self-Organizing System');
+                    clearInterval(reconnectInterval);
+                };
+                
+                ws.onmessage = (event) => {
+                    const data = JSON.parse(event.data);
+                    handleSystemEvent(data);
+                };
+                
+                ws.onclose = () => {
+                    log('warning', 'Connection lost. Reconnecting...');
+                    reconnectInterval = setInterval(connectWebSocket, 5000);
+                };
+                
+                ws.onerror = (error) => {
+                    log('error', 'WebSocket error: ' + error.message);
+                };
+            } catch (error) {
+                log('error', 'Failed to connect: ' + error.message);
+            }
+        }
+
+        // Handle system events
+        function handleSystemEvent(event) {
+            switch (event.type) {
+                case 'file:indexed':
+                    handleFileIndexed(event.data);
+                    break;
+                case 'task:routed':
+                    handleTaskRouted(event.data);
+                    break;
+                case 'task:completed':
+                    handleTaskCompleted(event.data);
+                    break;
+                case 'error:detected':
+                    handleErrorDetected(event.data);
+                    break;
+                case 'approval:needed':
+                    handleApprovalNeeded(event.data);
+                    break;
+                case 'translation:completed':
+                    handleTranslationCompleted(event.data);
+                    break;
+            }
+            
+            updateStats();
+        }
+
+        // Event handlers
+        function handleFileIndexed(data) {
+            addActivity('file', `Indexed ${data.path}`, `Type: ${data.type}, Owner: ${data.owner || 'None'}`);
+            updateFileStats();
+        }
+
+        function handleTaskRouted(data) {
+            addActivity('task', `Task routed to ${data.character}`, `Task ID: ${data.taskId}`);
+        }
+
+        function handleTaskCompleted(data) {
+            addActivity('success', `${data.character} completed task`, `Task ID: ${data.taskId}`);
+        }
+
+        function handleErrorDetected(data) {
+            addActivity('error', `Error detected: ${data.category}`, data.message);
+            log('error', `[${data.category}] ${data.message}`);
+        }
+
+        function handleApprovalNeeded(data) {
+            addApproval(data);
+            addActivity('warning', 'Human approval required', data.task.type);
+        }
+
+        function handleTranslationCompleted(data) {
+            addActivity('translation', `Translated ${data.from} to ${data.to}`, `Size: ${data.size} bytes`);
+        }
+
+        // Add activity to feed
+        function addActivity(type, title, description) {
+            const feed = document.getElementById('activity-feed');
+            const icons = {
+                file: '📁',
+                task: '🔄',
+                success: '✅',
+                error: '❌',
+                warning: '⚠️',
+                translation: '🔄'
+            };
+            
+            const colors = {
+                file: '#0088ff',
+                task: '#00ff88',
+                success: '#00ff88',
+                error: '#ff4444',
+                warning: '#ffaa00',
+                translation: '#4facfe'
+            };
+            
+            const item = document.createElement('div');
+            item.className = 'activity-item';
+            item.innerHTML = `
+                <div class="activity-icon" style="background: ${colors[type]};">${icons[type]}</div>
+                <div class="activity-content">
+                    <div class="activity-title">${title}</div>
+                    <div class="activity-desc">${description}</div>
+                    <div class="activity-time">${new Date().toLocaleTimeString()}</div>
+                </div>
+            `;
+            
+            feed.insertBefore(item, feed.firstChild);
+            
+            // Keep only last 20 items
+            while (feed.children.length > 20) {
+                feed.removeChild(feed.lastChild);
+            }
+        }
+
+        // Add approval request
+        function addApproval(data) {
+            const container = document.getElementById('approvals-container');
+            if (!container) return;
+            
+            const item = document.createElement('div');
+            item.className = 'approval-item pending';
+            item.innerHTML = `
+                <div class="approval-header">
+                    <span class="approval-type">${data.task.type}</span>
+                    <span>${data.suggestedCharacter}</span>
+                </div>
+                <div>${data.reason}</div>
+                <div class="approval-actions">
+                    <button class="btn btn-approve" onclick="approveTask('${data.task.id}')">Approve</button>
+                    <button class="btn btn-reject" onclick="rejectTask('${data.task.id}')">Reject</button>
+                </div>
+            `;
+            
+            container.appendChild(item);
+        }
+
+        // Update statistics
+        function updateStats() {
+            // These would be updated from real data
+            document.getElementById('total-files').textContent = 
+                Object.keys(state.files).length || '1,847';
+            document.getElementById('active-tasks').textContent = 
+                state.tasks.filter(t => t.status === 'active').length || '12';
+            document.getElementById('errors-fixed').textContent = 
+                state.errors.filter(e => e.status === 'fixed').length || '34';
+            document.getElementById('translations').textContent = '156';
+        }
+
+        // Update file type statistics
+        function updateFileStats() {
+            // Mock data for demo
+            const fileTypes = {
+                'JavaScript': 847,
+                'TypeScript': 123,
+                'HTML': 247,
+                'Python': 156,
+                'JSON': 234,
+                'Markdown': 148,
+                'Other': 92
+            };
+            
+            const total = Object.values(fileTypes).reduce((a, b) => a + b, 0);
+            const list = document.getElementById('file-type-list');
+            list.innerHTML = '';
+            
+            for (const [type, count] of Object.entries(fileTypes)) {
+                const percentage = (count / total * 100).toFixed(1);
+                const item = document.createElement('li');
+                item.className = 'file-type-item';
+                item.innerHTML = `
+                    <span>${type}</span>
+                    <div class="file-type-bar">
+                        <div class="file-type-progress" style="width: ${percentage}%"></div>
+                    </div>
+                    <span>${count}</span>
+                `;
+                list.appendChild(item);
+            }
+        }
+
+        // Console logging
+        function log(level, message) {
+            const console = document.getElementById('debug-console');
+            const entry = document.createElement('div');
+            entry.className = `debug-entry debug-${level}`;
+            entry.textContent = `[${level.toUpperCase()}] ${message}`;
+            console.appendChild(entry);
+            console.scrollTop = console.scrollHeight;
+            
+            // Keep only last 50 entries
+            while (console.children.length > 50) {
+                console.removeChild(console.firstChild);
+            }
+        }
+
+        // Section navigation
+        function showSection(section) {
+            // Update navigation
+            document.querySelectorAll('.nav-item').forEach(item => {
+                item.classList.remove('active');
+            });
+            event.target.closest('.nav-item').classList.add('active');
+            
+            // Load section content
+            log('info', `Loading ${section} section...`);
+        }
+
+        // Polling for updates (fallback if WebSocket fails)
+        function startPolling() {
+            setInterval(async () => {
+                if (ws?.readyState !== WebSocket.OPEN) {
+                    try {
+                        const response = await fetch('http://localhost:3000/api/status');
+                        const data = await response.json();
+                        updateFromStatus(data);
+                    } catch (error) {
+                        // Silently fail
+                    }
+                }
+            }, 5000);
+        }
+
+        // Initialize on load
+        window.addEventListener('load', () => {
+            initDashboard();
+            updateFileStats();
+        });
+    </script>
+</body>
+</html>

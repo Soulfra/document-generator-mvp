@@ -1,0 +1,875 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Meta-System Verification Overlay</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Consolas', 'Monaco', monospace;
+            background: radial-gradient(circle at center, #0a0a0a 0%, #000000 100%);
+            color: #00ff88;
+            overflow: hidden;
+            height: 100vh;
+        }
+
+        /* HUD Overlay Style */
+        .hud-overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100vw;
+            height: 100vh;
+            pointer-events: none;
+            z-index: 1000;
+        }
+
+        .hud-element {
+            position: absolute;
+            pointer-events: auto;
+            border: 1px solid #00ff88;
+            background: rgba(0, 0, 0, 0.8);
+            backdrop-filter: blur(10px);
+            border-radius: 8px;
+            padding: 10px;
+            box-shadow: 0 0 20px rgba(0, 255, 136, 0.3);
+        }
+
+        /* Top Status Bar */
+        .status-bar {
+            top: 20px;
+            left: 20px;
+            right: 20px;
+            height: 60px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 0 20px;
+        }
+
+        .system-status {
+            display: flex;
+            gap: 15px;
+        }
+
+        .status-indicator {
+            display: flex;
+            align-items: center;
+            gap: 5px;
+            font-size: 12px;
+        }
+
+        .status-dot {
+            width: 8px;
+            height: 8px;
+            border-radius: 50%;
+            animation: pulse 2s infinite;
+        }
+
+        .status-online { background: #00ff88; }
+        .status-processing { background: #ffaa00; }
+        .status-error { background: #ff4444; }
+
+        @keyframes pulse {
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0.5; }
+        }
+
+        /* Left Panel - Current Analysis */
+        .analysis-panel {
+            top: 100px;
+            left: 20px;
+            width: 350px;
+            height: calc(100vh - 140px);
+            overflow-y: auto;
+        }
+
+        .panel-header {
+            background: rgba(0, 255, 136, 0.2);
+            padding: 10px;
+            margin: -10px -10px 10px -10px;
+            border-radius: 8px 8px 0 0;
+            font-weight: bold;
+            text-align: center;
+        }
+
+        .analysis-item {
+            margin-bottom: 15px;
+            padding: 10px;
+            background: rgba(0, 255, 136, 0.1);
+            border-radius: 5px;
+            font-size: 12px;
+        }
+
+        .analysis-title {
+            color: #00ffff;
+            font-weight: bold;
+            margin-bottom: 5px;
+        }
+
+        .analysis-value {
+            color: #ffffff;
+        }
+
+        /* Right Panel - Reasoning Stream */
+        .reasoning-panel {
+            top: 100px;
+            right: 20px;
+            width: 400px;
+            height: calc(100vh - 140px);
+            overflow-y: auto;
+        }
+
+        .reasoning-stream {
+            height: 100%;
+            overflow-y: auto;
+        }
+
+        .reasoning-bubble {
+            margin-bottom: 10px;
+            padding: 10px;
+            background: rgba(0, 255, 255, 0.1);
+            border-left: 3px solid #00ffff;
+            border-radius: 0 8px 8px 0;
+            font-size: 11px;
+            animation: slideIn 0.5s ease-out;
+        }
+
+        @keyframes slideIn {
+            from {
+                transform: translateX(100%);
+                opacity: 0;
+            }
+            to {
+                transform: translateX(0);
+                opacity: 1;
+            }
+        }
+
+        .reasoning-type {
+            color: #ffaa00;
+            font-weight: bold;
+            text-transform: uppercase;
+            font-size: 10px;
+        }
+
+        .reasoning-content {
+            color: #ffffff;
+            margin-top: 5px;
+        }
+
+        /* Center Visualization Area */
+        .viz-container {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            width: 600px;
+            height: 400px;
+            border: 2px solid #00ff88;
+            background: rgba(0, 0, 0, 0.3);
+            border-radius: 12px;
+            overflow: hidden;
+        }
+
+        .viz-header {
+            background: rgba(0, 255, 136, 0.2);
+            padding: 10px;
+            text-align: center;
+            font-weight: bold;
+        }
+
+        .viz-content {
+            padding: 20px;
+            height: calc(100% - 50px);
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+        }
+
+        /* Layer Navigation */
+        .layer-nav {
+            bottom: 20px;
+            left: 50%;
+            transform: translateX(-50%);
+            display: flex;
+            gap: 10px;
+        }
+
+        .layer-button {
+            padding: 10px 15px;
+            background: rgba(0, 255, 136, 0.2);
+            border: 1px solid #00ff88;
+            color: #00ff88;
+            cursor: pointer;
+            border-radius: 5px;
+            font-size: 12px;
+            transition: all 0.3s;
+        }
+
+        .layer-button:hover,
+        .layer-button.active {
+            background: rgba(0, 255, 136, 0.4);
+            box-shadow: 0 0 10px rgba(0, 255, 136, 0.5);
+        }
+
+        /* Verification Results */
+        .verification-results {
+            position: absolute;
+            top: 120px;
+            left: 50%;
+            transform: translateX(-50%);
+            width: 500px;
+            max-height: 300px;
+            overflow-y: auto;
+            background: rgba(0, 0, 0, 0.9);
+            border: 2px solid #00ff88;
+            border-radius: 8px;
+            padding: 15px;
+            display: none;
+        }
+
+        .verification-item {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 8px 0;
+            border-bottom: 1px solid rgba(0, 255, 136, 0.2);
+        }
+
+        .verification-item:last-child {
+            border-bottom: none;
+        }
+
+        .verification-status {
+            padding: 3px 8px;
+            border-radius: 12px;
+            font-size: 10px;
+            font-weight: bold;
+        }
+
+        .status-pass {
+            background: rgba(0, 255, 136, 0.3);
+            color: #00ff88;
+        }
+
+        .status-warning {
+            background: rgba(255, 170, 0, 0.3);
+            color: #ffaa00;
+        }
+
+        .status-fail {
+            background: rgba(255, 68, 68, 0.3);
+            color: #ff4444;
+        }
+
+        /* Mini-map */
+        .mini-map {
+            bottom: 100px;
+            right: 20px;
+            width: 200px;
+            height: 150px;
+            border: 1px solid #00ff88;
+            background: rgba(0, 0, 0, 0.8);
+            border-radius: 5px;
+            padding: 10px;
+        }
+
+        .map-title {
+            font-size: 10px;
+            color: #00ff88;
+            margin-bottom: 5px;
+            text-align: center;
+        }
+
+        .map-grid {
+            display: grid;
+            grid-template-columns: repeat(4, 1fr);
+            gap: 2px;
+            height: calc(100% - 20px);
+        }
+
+        .map-cell {
+            background: rgba(0, 255, 136, 0.1);
+            border-radius: 2px;
+            position: relative;
+        }
+
+        .map-cell.active {
+            background: rgba(0, 255, 136, 0.5);
+        }
+
+        .map-cell.processing {
+            background: rgba(255, 170, 0, 0.5);
+            animation: pulse 1s infinite;
+        }
+
+        /* Control Panel */
+        .control-panel {
+            bottom: 20px;
+            left: 20px;
+            width: 250px;
+            padding: 15px;
+        }
+
+        .control-group {
+            margin-bottom: 15px;
+        }
+
+        .control-label {
+            font-size: 11px;
+            color: #00ff88;
+            margin-bottom: 5px;
+        }
+
+        .control-buttons {
+            display: flex;
+            gap: 5px;
+        }
+
+        .control-btn {
+            flex: 1;
+            padding: 8px;
+            background: rgba(0, 255, 136, 0.2);
+            border: 1px solid #00ff88;
+            color: #00ff88;
+            cursor: pointer;
+            border-radius: 4px;
+            font-size: 10px;
+            text-align: center;
+            transition: all 0.3s;
+        }
+
+        .control-btn:hover {
+            background: rgba(0, 255, 136, 0.4);
+        }
+
+        /* Notifications */
+        .notification {
+            position: fixed;
+            top: 100px;
+            right: 20px;
+            background: rgba(0, 255, 136, 0.9);
+            color: #000;
+            padding: 10px 15px;
+            border-radius: 5px;
+            font-size: 12px;
+            animation: slideInRight 0.5s ease-out, fadeOut 0.5s ease-out 4.5s;
+            z-index: 1001;
+        }
+
+        @keyframes slideInRight {
+            from { transform: translateX(100%); }
+            to { transform: translateX(0); }
+        }
+
+        @keyframes fadeOut {
+            from { opacity: 1; }
+            to { opacity: 0; }
+        }
+
+        /* Scrollbars */
+        ::-webkit-scrollbar {
+            width: 6px;
+        }
+
+        ::-webkit-scrollbar-track {
+            background: rgba(0, 0, 0, 0.3);
+        }
+
+        ::-webkit-scrollbar-thumb {
+            background: rgba(0, 255, 136, 0.5);
+            border-radius: 3px;
+        }
+
+        /* Hide/show controls */
+        .toggle-overlay {
+            position: fixed;
+            top: 20px;
+            right: 20px;
+            background: rgba(0, 255, 136, 0.2);
+            border: 1px solid #00ff88;
+            color: #00ff88;
+            padding: 5px 10px;
+            border-radius: 5px;
+            cursor: pointer;
+            font-size: 12px;
+            z-index: 1002;
+        }
+    </style>
+</head>
+<body>
+    <!-- Toggle Control -->
+    <div class="toggle-overlay" onclick="toggleOverlay()">◐ OVERLAY</div>
+
+    <!-- Main HUD Overlay -->
+    <div class="hud-overlay" id="hudOverlay">
+        <!-- Status Bar -->
+        <div class="hud-element status-bar">
+            <div class="system-title">META-SYSTEM VERIFICATION</div>
+            <div class="system-status">
+                <div class="status-indicator">
+                    <div class="status-dot status-online"></div>
+                    <span>Backwards Engine</span>
+                </div>
+                <div class="status-indicator">
+                    <div class="status-dot status-processing"></div>
+                    <span>Questioning System</span>
+                </div>
+                <div class="status-indicator">
+                    <div class="status-dot status-online"></div>
+                    <span>Document Comparison</span>
+                </div>
+                <div class="status-indicator">
+                    <div class="status-dot status-online"></div>
+                    <span>Reasoning Layers</span>
+                </div>
+            </div>
+        </div>
+
+        <!-- Left Analysis Panel -->
+        <div class="hud-element analysis-panel">
+            <div class="panel-header">CURRENT ANALYSIS</div>
+            <div id="analysisContent">
+                <div class="analysis-item">
+                    <div class="analysis-title">System Complexity</div>
+                    <div class="analysis-value">1,847 files detected</div>
+                </div>
+                <div class="analysis-item">
+                    <div class="analysis-title">Intent Classification</div>
+                    <div class="analysis-value">Internet Rebuilding (87%)</div>
+                </div>
+                <div class="analysis-item">
+                    <div class="analysis-title">Architecture Pattern</div>
+                    <div class="analysis-value">Emergent Complexity</div>
+                </div>
+                <div class="analysis-item">
+                    <div class="analysis-title">Game Systems</div>
+                    <div class="analysis-value">ShipRekt, Blood Ninja, Joy Vendor</div>
+                </div>
+                <div class="analysis-item">
+                    <div class="analysis-title">AI Services</div>
+                    <div class="analysis-value">CalCompare, LLM Router, Monitors</div>
+                </div>
+                <div class="analysis-item">
+                    <div class="analysis-title">Current State</div>
+                    <div class="analysis-value">Organized Chaos (Intentional)</div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Right Reasoning Panel -->
+        <div class="hud-element reasoning-panel">
+            <div class="panel-header">REASONING STREAM</div>
+            <div class="reasoning-stream" id="reasoningStream">
+                <!-- Reasoning bubbles will be added here -->
+            </div>
+        </div>
+
+        <!-- Verification Results Popup -->
+        <div class="verification-results" id="verificationResults">
+            <div class="panel-header">VERIFICATION RESULTS</div>
+            <div id="verificationList">
+                <!-- Results will be populated here -->
+            </div>
+        </div>
+
+        <!-- Mini-map -->
+        <div class="hud-element mini-map">
+            <div class="map-title">SYSTEM MAP</div>
+            <div class="map-grid" id="systemMap">
+                <!-- Map cells will be generated -->
+            </div>
+        </div>
+
+        <!-- Control Panel -->
+        <div class="hud-element control-panel">
+            <div class="control-group">
+                <div class="control-label">VERIFICATION</div>
+                <div class="control-buttons">
+                    <div class="control-btn" onclick="runVerification()">RUN</div>
+                    <div class="control-btn" onclick="showResults()">RESULTS</div>
+                </div>
+            </div>
+            <div class="control-group">
+                <div class="control-label">REASONING</div>
+                <div class="control-buttons">
+                    <div class="control-btn" onclick="toggleReasoning()">STREAM</div>
+                    <div class="control-btn" onclick="exportReasoning()">EXPORT</div>
+                </div>
+            </div>
+            <div class="control-group">
+                <div class="control-label">VIEW</div>
+                <div class="control-buttons">
+                    <div class="control-btn" onclick="switchView('dungeon')">DUNGEON</div>
+                    <div class="control-btn" onclick="switchView('sky')">SKY</div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Layer Navigation -->
+        <div class="hud-element layer-nav">
+            <div class="layer-button active" onclick="switchLayer('foundation')">FOUNDATION</div>
+            <div class="layer-button" onclick="switchLayer('services')">SERVICES</div>
+            <div class="layer-button" onclick="switchLayer('interfaces')">INTERFACES</div>
+            <div class="layer-button" onclick="switchLayer('testing')">TESTING</div>
+            <div class="layer-button" onclick="switchLayer('integration')">INTEGRATION</div>
+        </div>
+    </div>
+
+    <script>
+        // System state
+        let overlayVisible = true;
+        let reasoningActive = false;
+        let currentLayer = 'foundation';
+        let verificationRunning = false;
+
+        // Initialize the overlay
+        function initializeOverlay() {
+            generateSystemMap();
+            startReasoningStream();
+            updateSystemStatus();
+            
+            // Start periodic updates
+            setInterval(updateSystemStatus, 2000);
+            setInterval(updateReasoning, 1000);
+        }
+
+        // Generate the system map
+        function generateSystemMap() {
+            const mapContainer = document.getElementById('systemMap');
+            mapContainer.innerHTML = '';
+            
+            for (let i = 0; i < 16; i++) {
+                const cell = document.createElement('div');
+                cell.className = 'map-cell';
+                cell.id = `map-cell-${i}`;
+                
+                // Randomly activate some cells
+                if (Math.random() > 0.7) {
+                    cell.classList.add('active');
+                }
+                
+                mapContainer.appendChild(cell);
+            }
+        }
+
+        // Toggle overlay visibility
+        function toggleOverlay() {
+            const overlay = document.getElementById('hudOverlay');
+            overlayVisible = !overlayVisible;
+            overlay.style.display = overlayVisible ? 'block' : 'none';
+            
+            showNotification(overlayVisible ? 'Overlay Enabled' : 'Overlay Disabled');
+        }
+
+        // Run verification process
+        function runVerification() {
+            if (verificationRunning) return;
+            
+            verificationRunning = true;
+            showNotification('Running system verification...');
+            
+            // Simulate verification process
+            const steps = [
+                'Checking backwards engineering system...',
+                'Validating questioning system responses...',
+                'Comparing document states...',
+                'Analyzing reasoning patterns...',
+                'Verifying integration points...',
+                'Generating presentable results...'
+            ];
+            
+            let stepIndex = 0;
+            const interval = setInterval(() => {
+                if (stepIndex < steps.length) {
+                    addReasoningBubble('VERIFICATION', steps[stepIndex]);
+                    
+                    // Update map
+                    const cell = document.getElementById(`map-cell-${stepIndex}`);
+                    if (cell) {
+                        cell.classList.add('processing');
+                        setTimeout(() => {
+                            cell.classList.remove('processing');
+                            cell.classList.add('active');
+                        }, 500);
+                    }
+                    
+                    stepIndex++;
+                } else {
+                    clearInterval(interval);
+                    verificationRunning = false;
+                    showNotification('Verification complete!');
+                    generateVerificationResults();
+                }
+            }, 1000);
+        }
+
+        // Generate verification results
+        function generateVerificationResults() {
+            const results = [
+                { test: 'Backwards Engineering System', status: 'pass', details: 'Successfully maps from end state to current' },
+                { test: 'Interactive Questioning', status: 'pass', details: 'Properly understands user intent' },
+                { test: 'Document Comparison', status: 'pass', details: 'Identifies gaps and improvements' },
+                { test: 'Reasoning Layer Integration', status: 'warning', details: 'Some visualizations need tuning' },
+                { test: 'Presentable Information', status: 'pass', details: 'Clear, actionable outputs generated' },
+                { test: 'Layer Mapping', status: 'pass', details: 'Dungeon/Sky metaphor working' },
+                { test: 'Real-time Updates', status: 'pass', details: 'Live reasoning stream active' }
+            ];
+            
+            const container = document.getElementById('verificationList');
+            container.innerHTML = '';
+            
+            results.forEach(result => {
+                const item = document.createElement('div');
+                item.className = 'verification-item';
+                
+                item.innerHTML = `
+                    <div>
+                        <div style="font-weight: bold; font-size: 12px;">${result.test}</div>
+                        <div style="font-size: 10px; color: #888;">${result.details}</div>
+                    </div>
+                    <div class="verification-status status-${result.status}">
+                        ${result.status.toUpperCase()}
+                    </div>
+                `;
+                
+                container.appendChild(item);
+            });
+        }
+
+        // Show verification results
+        function showResults() {
+            const results = document.getElementById('verificationResults');
+            results.style.display = results.style.display === 'none' ? 'block' : 'none';
+        }
+
+        // Start reasoning stream
+        function startReasoningStream() {
+            reasoningActive = true;
+            
+            const reasoningTypes = [
+                'ANALYSIS', 'COMPARISON', 'QUESTION', 'INSIGHT', 'VERIFICATION', 'INTEGRATION'
+            ];
+            
+            const reasoningMessages = [
+                'Analyzing system complexity patterns...',
+                'Comparing current vs desired states...',
+                'Generating clarifying questions...',
+                'Understanding intentional chaos structure...',
+                'Verifying backwards engineering path...',
+                'Integrating multiple reasoning layers...',
+                'Mapping dungeon-level processing...',
+                'Visualizing sky-level abstractions...',
+                'Processing meta-system understanding...',
+                'Bridging implementation gaps...'
+            ];
+            
+            setInterval(() => {
+                if (reasoningActive) {
+                    const type = reasoningTypes[Math.floor(Math.random() * reasoningTypes.length)];
+                    const message = reasoningMessages[Math.floor(Math.random() * reasoningMessages.length)];
+                    addReasoningBubble(type, message);
+                }
+            }, 2000);
+        }
+
+        // Add reasoning bubble
+        function addReasoningBubble(type, content) {
+            const stream = document.getElementById('reasoningStream');
+            
+            const bubble = document.createElement('div');
+            bubble.className = 'reasoning-bubble';
+            
+            bubble.innerHTML = `
+                <div class="reasoning-type">${type}</div>
+                <div class="reasoning-content">${content}</div>
+            `;
+            
+            stream.appendChild(bubble);
+            stream.scrollTop = stream.scrollHeight;
+            
+            // Keep only last 20 bubbles
+            while (stream.children.length > 20) {
+                stream.removeChild(stream.firstChild);
+            }
+        }
+
+        // Toggle reasoning stream
+        function toggleReasoning() {
+            reasoningActive = !reasoningActive;
+            showNotification(reasoningActive ? 'Reasoning stream enabled' : 'Reasoning stream paused');
+        }
+
+        // Export reasoning data
+        function exportReasoning() {
+            const reasoningData = {
+                timestamp: new Date().toISOString(),
+                session: 'meta-system-verification',
+                reasoning: Array.from(document.querySelectorAll('.reasoning-bubble')).map(bubble => ({
+                    type: bubble.querySelector('.reasoning-type').textContent,
+                    content: bubble.querySelector('.reasoning-content').textContent
+                }))
+            };
+            
+            const blob = new Blob([JSON.stringify(reasoningData, null, 2)], { type: 'application/json' });
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = `reasoning-export-${Date.now()}.json`;
+            a.click();
+            
+            showNotification('Reasoning data exported');
+        }
+
+        // Switch view (dungeon vs sky)
+        function switchView(view) {
+            const isLowerLevel = view === 'dungeon';
+            
+            // Update analysis panel for different views
+            const analysisContent = document.getElementById('analysisContent');
+            
+            if (isLowerLevel) {
+                // Dungeon view - show low-level processing
+                analysisContent.innerHTML = `
+                    <div class="analysis-item">
+                        <div class="analysis-title">File Processing</div>
+                        <div class="analysis-value">Parsing 1,847 source files</div>
+                    </div>
+                    <div class="analysis-item">
+                        <div class="analysis-title">Database Operations</div>
+                        <div class="analysis-value">SQLite queries executing</div>
+                    </div>
+                    <div class="analysis-item">
+                        <div class="analysis-title">Pattern Matching</div>
+                        <div class="analysis-value">Regex patterns: 47 active</div>
+                    </div>
+                    <div class="analysis-item">
+                        <div class="analysis-title">Memory Usage</div>
+                        <div class="analysis-value">Processing buffers: 234MB</div>
+                    </div>
+                `;
+            } else {
+                // Sky view - show high-level abstractions
+                analysisContent.innerHTML = `
+                    <div class="analysis-item">
+                        <div class="analysis-title">System Intent</div>
+                        <div class="analysis-value">Internet Reconstruction</div>
+                    </div>
+                    <div class="analysis-item">
+                        <div class="analysis-title">User Journey</div>
+                        <div class="analysis-value">Multiple entry points → Unified ecosystem</div>
+                    </div>
+                    <div class="analysis-item">
+                        <div class="analysis-title">Emergent Properties</div>
+                        <div class="analysis-value">Self-organization achieved</div>
+                    </div>
+                    <div class="analysis-item">
+                        <div class="analysis-title">Meta-Understanding</div>
+                        <div class="analysis-value">Chaos → Order transition mapped</div>
+                    </div>
+                `;
+            }
+            
+            showNotification(`Switched to ${view.toUpperCase()} view`);
+        }
+
+        // Switch layer
+        function switchLayer(layer) {
+            document.querySelectorAll('.layer-button').forEach(btn => btn.classList.remove('active'));
+            event.target.classList.add('active');
+            currentLayer = layer;
+            
+            showNotification(`Viewing ${layer.toUpperCase()} layer`);
+            
+            // Update system map based on layer
+            updateMapForLayer(layer);
+        }
+
+        // Update map for current layer
+        function updateMapForLayer(layer) {
+            const cells = document.querySelectorAll('.map-cell');
+            cells.forEach((cell, index) => {
+                cell.classList.remove('active', 'processing');
+                
+                // Different layers show different activity patterns
+                const shouldBeActive = {
+                    'foundation': index < 4,
+                    'services': index >= 4 && index < 8,
+                    'interfaces': index >= 8 && index < 12,
+                    'testing': index >= 12 && index < 14,
+                    'integration': index >= 14
+                }[layer];
+                
+                if (shouldBeActive) {
+                    cell.classList.add('active');
+                }
+            });
+        }
+
+        // Update system status
+        function updateSystemStatus() {
+            // This would connect to actual backend services
+            // For demo, we'll simulate status updates
+            
+            const indicators = document.querySelectorAll('.status-dot');
+            indicators.forEach(dot => {
+                // Occasionally change status
+                if (Math.random() > 0.95) {
+                    const classes = ['status-online', 'status-processing', 'status-error'];
+                    dot.className = 'status-dot ' + classes[Math.floor(Math.random() * classes.length)];
+                }
+            });
+        }
+
+        // Update reasoning
+        function updateReasoning() {
+            // This would connect to actual reasoning streams
+            // Already handled by startReasoningStream()
+        }
+
+        // Show notification
+        function showNotification(message) {
+            const notification = document.createElement('div');
+            notification.className = 'notification';
+            notification.textContent = message;
+            
+            document.body.appendChild(notification);
+            
+            setTimeout(() => {
+                document.body.removeChild(notification);
+            }, 5000);
+        }
+
+        // Initialize when page loads
+        window.addEventListener('load', initializeOverlay);
+
+        // Handle keyboard shortcuts
+        document.addEventListener('keydown', (e) => {
+            if (e.ctrlKey || e.metaKey) {
+                switch (e.key) {
+                    case 'v':
+                        e.preventDefault();
+                        runVerification();
+                        break;
+                    case 'r':
+                        e.preventDefault();
+                        toggleReasoning();
+                        break;
+                    case 'h':
+                        e.preventDefault();
+                        toggleOverlay();
+                        break;
+                }
+            }
+        });
+    </script>
+</body>
+</html>

@@ -1,0 +1,1 @@
+tier-3/debugging-quest/documents/INVESTIGATION-CHECKLIST.md

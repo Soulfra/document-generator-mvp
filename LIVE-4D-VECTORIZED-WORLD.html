@@ -1,0 +1,846 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>4D Vectorized World - LIVE DEMO</title>
+    <style>
+        body {
+            margin: 0;
+            padding: 0;
+            background: #000;
+            color: #00ff00;
+            font-family: 'Courier New', monospace;
+            overflow: hidden;
+        }
+        
+        #worldContainer {
+            position: relative;
+            width: 100vw;
+            height: 100vh;
+        }
+        
+        #canvas3d {
+            position: absolute;
+            top: 0;
+            left: 0;
+            z-index: 1;
+        }
+        
+        #ui-overlay {
+            position: absolute;
+            top: 0;
+            left: 0;
+            z-index: 100;
+            pointer-events: none;
+        }
+        
+        #the-button {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            width: 200px;
+            height: 200px;
+            border-radius: 50%;
+            background: radial-gradient(circle, #ff0040, #800020);
+            border: 4px solid #ff0040;
+            color: white;
+            font-size: 18px;
+            font-weight: bold;
+            cursor: pointer;
+            pointer-events: all;
+            z-index: 1000;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            text-align: center;
+            box-shadow: 
+                0 0 20px #ff0040,
+                inset 0 0 20px rgba(255, 255, 255, 0.1);
+            transition: all 0.3s ease;
+            animation: pulse 2s infinite;
+        }
+        
+        #the-button:hover {
+            transform: translate(-50%, -50%) scale(1.1);
+            box-shadow: 
+                0 0 40px #ff0040,
+                inset 0 0 30px rgba(255, 255, 255, 0.2);
+        }
+        
+        @keyframes pulse {
+            0% { box-shadow: 0 0 20px #ff0040; }
+            50% { box-shadow: 0 0 40px #ff0040, 0 0 60px #ff0040; }
+            100% { box-shadow: 0 0 20px #ff0040; }
+        }
+        
+        #status {
+            position: absolute;
+            top: 20px;
+            left: 20px;
+            pointer-events: none;
+            z-index: 200;
+        }
+        
+        #minimap {
+            position: absolute;
+            top: 20px;
+            right: 20px;
+            width: 200px;
+            height: 200px;
+            border: 2px solid #00ff00;
+            background: rgba(0, 0, 0, 0.8);
+            pointer-events: none;
+            z-index: 200;
+        }
+        
+        #component-grid {
+            position: absolute;
+            bottom: 20px;
+            left: 20px;
+            width: calc(100% - 40px);
+            height: 150px;
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(120px, 1fr));
+            gap: 10px;
+            pointer-events: none;
+            z-index: 200;
+        }
+        
+        .component-cell {
+            background: rgba(0, 255, 0, 0.1);
+            border: 1px solid #00ff00;
+            padding: 10px;
+            text-align: center;
+            font-size: 10px;
+            pointer-events: all;
+            cursor: pointer;
+            transition: all 0.3s ease;
+        }
+        
+        .component-cell:hover {
+            background: rgba(0, 255, 0, 0.3);
+            transform: scale(1.05);
+        }
+        
+        .component-cell.active {
+            background: rgba(255, 0, 64, 0.3);
+            border-color: #ff0040;
+        }
+        
+        #console {
+            position: absolute;
+            bottom: 0;
+            left: 0;
+            width: 100%;
+            height: 0;
+            background: rgba(0, 0, 0, 0.9);
+            color: #00ff00;
+            font-family: 'Courier New', monospace;
+            font-size: 12px;
+            padding: 0;
+            border-top: 2px solid #00ff00;
+            overflow-y: auto;
+            transition: height 0.3s ease;
+            z-index: 300;
+        }
+        
+        #console.open {
+            height: 300px;
+            padding: 20px;
+        }
+        
+        #console-toggle {
+            position: absolute;
+            bottom: 10px;
+            right: 10px;
+            background: #00ff00;
+            color: #000;
+            border: none;
+            padding: 10px 20px;
+            cursor: pointer;
+            z-index: 301;
+        }
+    </style>
+</head>
+<body>
+    <div id="worldContainer">
+        <!-- 3D Canvas -->
+        <canvas id="canvas3d"></canvas>
+        
+        <!-- UI Overlay -->
+        <div id="ui-overlay">
+            <!-- Status Display -->
+            <div id="status">
+                <div>🌌 4D Vectorized World - LIVE</div>
+                <div>⚡ System Status: <span id="system-status">INITIALIZING</span></div>
+                <div>🎯 Active Components: <span id="active-count">0</span></div>
+                <div>📊 FPS: <span id="fps">60</span></div>
+                <div>🧠 AI Status: <span id="ai-status">READY</span></div>
+            </div>
+            
+            <!-- Minimap -->
+            <div id="minimap">
+                <canvas id="minimap-canvas" width="196" height="196"></canvas>
+            </div>
+            
+            <!-- Component Grid -->
+            <div id="component-grid"></div>
+        </div>
+        
+        <!-- THE BUTTON -->
+        <button id="the-button" onclick="doTheThing()">
+            🔴<br>
+            DO THE<br>
+            THING
+        </button>
+        
+        <!-- Console -->
+        <div id="console"></div>
+        <button id="console-toggle" onclick="toggleConsole()">CONSOLE</button>
+    </div>
+
+    <!-- Three.js -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+    
+    <script>
+        // ============================================
+        // LIVE 4D VECTORIZED WORLD ENGINE
+        // ============================================
+        
+        class Live4DWorld {
+            constructor() {
+                this.scene = null;
+                this.camera = null;
+                this.renderer = null;
+                this.canvas = document.getElementById('canvas3d');
+                
+                // 4D Vector tracking
+                this.vectors = new Map();
+                this.timeVector = 0;
+                this.consciousness = new Map();
+                
+                // Components system
+                this.components = new Map();
+                this.activeComponents = new Set();
+                
+                // Million dollar homepage style grid
+                this.pixelGrid = new Map();
+                this.gridSize = 1000; // 1000x1000 like the original
+                
+                // Real-time data
+                this.realTimeData = {
+                    grants: [],
+                    crawlerResults: [],
+                    audioFrequencies: [],
+                    languageProcessing: [],
+                    shadowPositions: new Map()
+                };
+                
+                this.init();
+            }
+            
+            async init() {
+                this.log('🌌 Initializing 4D Vectorized World...');
+                
+                // Initialize 3D scene
+                this.initThreeJS();
+                
+                // Setup 4D vector system
+                this.setup4DVectors();
+                
+                // Register all components
+                this.registerComponents();
+                
+                // Start the world
+                this.startWorld();
+                
+                // Connect to real data sources
+                this.connectRealData();
+                
+                this.log('✅ 4D World LIVE and running!');
+                document.getElementById('system-status').textContent = 'LIVE';
+            }
+            
+            initThreeJS() {
+                // Scene
+                this.scene = new THREE.Scene();
+                this.scene.background = new THREE.Color(0x000011);
+                
+                // Camera
+                this.camera = new THREE.PerspectiveCamera(
+                    75, 
+                    window.innerWidth / window.innerHeight, 
+                    0.1, 
+                    10000
+                );
+                this.camera.position.set(0, 0, 100);
+                
+                // Renderer
+                this.renderer = new THREE.WebGLRenderer({ 
+                    canvas: this.canvas,
+                    antialias: true 
+                });
+                this.renderer.setSize(window.innerWidth, window.innerHeight);
+                this.renderer.shadowMap.enabled = true;
+                this.renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+                
+                // Lighting
+                const ambientLight = new THREE.AmbientLight(0x404040, 0.3);
+                this.scene.add(ambientLight);
+                
+                const directionalLight = new THREE.DirectionalLight(0xffffff, 0.8);
+                directionalLight.position.set(100, 100, 50);
+                directionalLight.castShadow = true;
+                this.scene.add(directionalLight);
+                
+                // Create the grid world
+                this.createGridWorld();
+                
+                this.log('✅ 3D Scene initialized');
+            }
+            
+            createGridWorld() {
+                // Create the million-dollar-homepage style grid in 3D
+                const gridGeometry = new THREE.PlaneGeometry(1000, 1000, 100, 100);
+                const gridMaterial = new THREE.MeshLambertMaterial({ 
+                    color: 0x001100,
+                    wireframe: true,
+                    transparent: true,
+                    opacity: 0.3
+                });
+                
+                const gridMesh = new THREE.Mesh(gridGeometry, gridMaterial);
+                gridMesh.rotation.x = -Math.PI / 2;
+                this.scene.add(gridMesh);
+                
+                // Create component nodes
+                this.createComponentNodes();
+                
+                // Create data flow lines
+                this.createDataFlowLines();
+            }
+            
+            createComponentNodes() {
+                const components = [
+                    { name: 'ONE BUTTON', pos: [0, 10, 0], color: 0xff0040, size: 5 },
+                    { name: 'GRANT SCRAPER', pos: [-30, 5, -20], color: 0x00ff00, size: 3 },
+                    { name: 'LANGUAGE AI', pos: [40, 8, 10], color: 0x0080ff, size: 4 },
+                    { name: 'DUNGEON MASTER', pos: [0, 15, 30], color: 0x8000ff, size: 4 },
+                    { name: 'SHADOW MAP', pos: [-40, 3, 40], color: 0xff8000, size: 3 },
+                    { name: 'ORCHESTRATOR', pos: [30, 12, -30], color: 0xff0080, size: 4 },
+                    { name: 'CRAWLER', pos: [-20, 6, -40], color: 0x80ff00, size: 3 },
+                    { name: 'AUDIO ENGINE', pos: [20, 9, 20], color: 0x00ffff, size: 3 }
+                ];
+                
+                components.forEach(comp => {
+                    // Main node
+                    const geometry = new THREE.SphereGeometry(comp.size, 16, 16);
+                    const material = new THREE.MeshLambertMaterial({ 
+                        color: comp.color,
+                        emissive: comp.color,
+                        emissiveIntensity: 0.2
+                    });
+                    
+                    const mesh = new THREE.Mesh(geometry, material);
+                    mesh.position.set(...comp.pos);
+                    mesh.userData = { 
+                        name: comp.name, 
+                        type: 'component',
+                        active: false,
+                        connections: []
+                    };
+                    
+                    this.scene.add(mesh);
+                    this.components.set(comp.name, mesh);
+                    
+                    // Add floating label
+                    this.addFloatingLabel(comp.name, comp.pos);
+                    
+                    // Add pulsing effect
+                    this.addPulsingEffect(mesh);
+                });
+            }
+            
+            addFloatingLabel(text, position) {
+                const canvas = document.createElement('canvas');
+                const context = canvas.getContext('2d');
+                canvas.width = 256;
+                canvas.height = 64;
+                
+                context.fillStyle = 'rgba(0, 0, 0, 0.8)';
+                context.fillRect(0, 0, canvas.width, canvas.height);
+                
+                context.fillStyle = '#00ff00';
+                context.font = '20px Courier New';
+                context.textAlign = 'center';
+                context.fillText(text, canvas.width / 2, canvas.height / 2 + 7);
+                
+                const texture = new THREE.CanvasTexture(canvas);
+                const material = new THREE.SpriteMaterial({ map: texture });
+                const sprite = new THREE.Sprite(material);
+                
+                sprite.position.set(position[0], position[1] + 10, position[2]);
+                sprite.scale.set(20, 5, 1);
+                
+                this.scene.add(sprite);
+            }
+            
+            addPulsingEffect(mesh) {
+                const originalScale = mesh.scale.clone();
+                
+                const pulse = () => {
+                    const time = Date.now() * 0.005;
+                    const scale = 1 + Math.sin(time) * 0.1;
+                    mesh.scale.copy(originalScale).multiplyScalar(scale);
+                    
+                    if (mesh.userData.active) {
+                        mesh.material.emissiveIntensity = 0.5 + Math.sin(time * 2) * 0.3;
+                    } else {
+                        mesh.material.emissiveIntensity = 0.2;
+                    }
+                };
+                
+                mesh.userData.pulse = pulse;
+            }
+            
+            createDataFlowLines() {
+                // Create connections between components
+                const connections = [
+                    ['ONE BUTTON', 'GRANT SCRAPER'],
+                    ['ONE BUTTON', 'LANGUAGE AI'],
+                    ['ONE BUTTON', 'DUNGEON MASTER'],
+                    ['GRANT SCRAPER', 'CRAWLER'],
+                    ['LANGUAGE AI', 'SHADOW MAP'],
+                    ['ORCHESTRATOR', 'ONE BUTTON'],
+                    ['AUDIO ENGINE', 'DUNGEON MASTER']
+                ];
+                
+                connections.forEach(([from, to]) => {
+                    const fromComp = this.components.get(from);
+                    const toComp = this.components.get(to);
+                    
+                    if (fromComp && toComp) {
+                        const points = [
+                            fromComp.position,
+                            toComp.position
+                        ];
+                        
+                        const geometry = new THREE.BufferGeometry().setFromPoints(points);
+                        const material = new THREE.LineBasicMaterial({ 
+                            color: 0x004400,
+                            transparent: true,
+                            opacity: 0.6
+                        });
+                        
+                        const line = new THREE.Line(geometry, material);
+                        line.userData = { type: 'connection', from, to, active: false };
+                        this.scene.add(line);
+                        
+                        // Store connection references
+                        fromComp.userData.connections.push(line);
+                        toComp.userData.connections.push(line);
+                    }
+                });
+            }
+            
+            setup4DVectors() {
+                // Initialize 4D vector space
+                this.log('🔢 Setting up 4D vector space...');
+                
+                // Base vectors: X, Y, Z, Time
+                this.vectors.set('space', new THREE.Vector3(0, 0, 0));
+                this.vectors.set('time', 0);
+                this.vectors.set('consciousness', new Map([
+                    ['awareness', 0.5],
+                    ['intent', 0.7],
+                    ['understanding', 0.3]
+                ]));
+                
+                // Create visual representation of vectors
+                this.createVectorVisuals();
+            }
+            
+            createVectorVisuals() {
+                // Create vector arrows
+                const vectorColors = {
+                    x: 0xff0000,
+                    y: 0x00ff00,
+                    z: 0x0000ff,
+                    time: 0xffff00
+                };
+                
+                Object.entries(vectorColors).forEach(([axis, color]) => {
+                    const direction = new THREE.Vector3();
+                    direction[axis === 'time' ? 'y' : axis] = 1;
+                    
+                    const origin = new THREE.Vector3(-80, -40, -80);
+                    const length = 20;
+                    
+                    const arrowHelper = new THREE.ArrowHelper(direction, origin, length, color);
+                    arrowHelper.userData = { type: 'vector', axis };
+                    this.scene.add(arrowHelper);
+                });
+            }
+            
+            registerComponents() {
+                this.log('📦 Registering components...');
+                
+                const componentData = [
+                    { id: 'one_button', name: 'One Button Engine', price: 1000000 },
+                    { id: 'grant_scraper', name: 'Grant Scraper', price: 50000 },
+                    { id: 'language_ai', name: 'Language AI', price: 150000 },
+                    { id: 'dungeon_master', name: 'Dungeon Master', price: 100000 },
+                    { id: 'shadow_map', name: 'Shadow Map', price: 80000 },
+                    { id: 'orchestrator', name: 'Orchestrator', price: 120000 },
+                    { id: 'crawler', name: 'Mega Crawler', price: 60000 },
+                    { id: 'audio_engine', name: 'Audio Engine', price: 40000 }
+                ];
+                
+                // Create component grid UI
+                const gridContainer = document.getElementById('component-grid');
+                
+                componentData.forEach(comp => {
+                    const cell = document.createElement('div');
+                    cell.className = 'component-cell';
+                    cell.innerHTML = `
+                        <div><strong>${comp.name}</strong></div>
+                        <div>$${comp.price.toLocaleString()}</div>
+                        <div id="status-${comp.id}">IDLE</div>
+                    `;
+                    
+                    cell.addEventListener('click', () => this.activateComponent(comp.id));
+                    gridContainer.appendChild(cell);
+                });
+            }
+            
+            startWorld() {
+                this.log('🚀 Starting world simulation...');
+                
+                // Animation loop
+                const animate = () => {
+                    requestAnimationFrame(animate);
+                    
+                    // Update time vector
+                    this.timeVector += 0.016; // ~60fps
+                    this.vectors.set('time', this.timeVector);
+                    
+                    // Update consciousness
+                    this.updateConsciousness();
+                    
+                    // Update components
+                    this.updateComponents();
+                    
+                    // Update camera
+                    this.updateCamera();
+                    
+                    // Render
+                    this.renderer.render(this.scene, this.camera);
+                    
+                    // Update UI
+                    this.updateUI();
+                };
+                
+                animate();
+                
+                // Handle window resize
+                window.addEventListener('resize', () => {
+                    this.camera.aspect = window.innerWidth / window.innerHeight;
+                    this.camera.updateProjectionMatrix();
+                    this.renderer.setSize(window.innerWidth, window.innerHeight);
+                });
+            }
+            
+            updateConsciousness() {
+                const consciousness = this.vectors.get('consciousness');
+                const time = this.timeVector;
+                
+                // Evolving consciousness based on time and activity
+                consciousness.set('awareness', 0.5 + Math.sin(time * 0.1) * 0.3);
+                consciousness.set('intent', 0.7 + Math.cos(time * 0.05) * 0.2);
+                consciousness.set('understanding', 
+                    0.3 + (this.activeComponents.size / 8) * 0.4
+                );
+            }
+            
+            updateComponents() {
+                // Update component visuals
+                this.components.forEach((mesh, name) => {
+                    if (mesh.userData.pulse) {
+                        mesh.userData.pulse();
+                    }
+                    
+                    // Update connections
+                    mesh.userData.connections.forEach(line => {
+                        if (line.userData.active) {
+                            line.material.opacity = 0.8 + Math.sin(this.timeVector * 5) * 0.2;
+                            line.material.color.setHex(0x00ff00);
+                        } else {
+                            line.material.opacity = 0.3;
+                            line.material.color.setHex(0x004400);
+                        }
+                    });
+                });
+            }
+            
+            updateCamera() {
+                // Slow camera rotation
+                const radius = 150;
+                const speed = 0.001;
+                
+                this.camera.position.x = Math.cos(this.timeVector * speed) * radius;
+                this.camera.position.z = Math.sin(this.timeVector * speed) * radius;
+                this.camera.position.y = 50 + Math.sin(this.timeVector * speed * 0.5) * 20;
+                
+                this.camera.lookAt(0, 0, 0);
+            }
+            
+            updateUI() {
+                // Update status
+                document.getElementById('active-count').textContent = this.activeComponents.size;
+                document.getElementById('fps').textContent = Math.round(1000 / 16);
+                
+                // Update minimap
+                this.updateMinimap();
+            }
+            
+            updateMinimap() {
+                const canvas = document.getElementById('minimap-canvas');
+                const ctx = canvas.getContext('2d');
+                
+                // Clear
+                ctx.fillStyle = 'rgba(0, 0, 0, 0.8)';
+                ctx.fillRect(0, 0, 196, 196);
+                
+                // Draw components as dots
+                this.components.forEach((mesh, name) => {
+                    const x = (mesh.position.x + 100) * 0.98;
+                    const y = (mesh.position.z + 100) * 0.98;
+                    
+                    ctx.fillStyle = mesh.userData.active ? '#ff0040' : '#00ff00';
+                    ctx.beginPath();
+                    ctx.arc(x, y, mesh.userData.active ? 4 : 2, 0, Math.PI * 2);
+                    ctx.fill();
+                });
+                
+                // Draw camera position
+                const camX = (this.camera.position.x + 100) * 0.98;
+                const camY = (this.camera.position.z + 100) * 0.98;
+                
+                ctx.strokeStyle = '#ffffff';
+                ctx.beginPath();
+                ctx.arc(camX, camY, 6, 0, Math.PI * 2);
+                ctx.stroke();
+            }
+            
+            activateComponent(componentId) {
+                this.log(`🔧 Activating component: ${componentId}`);
+                
+                const componentName = componentId.toUpperCase().replace('_', ' ');
+                const mesh = this.components.get(componentName);
+                
+                if (mesh) {
+                    mesh.userData.active = !mesh.userData.active;
+                    
+                    if (mesh.userData.active) {
+                        this.activeComponents.add(componentName);
+                        
+                        // Activate connections
+                        mesh.userData.connections.forEach(line => {
+                            line.userData.active = true;
+                        });
+                        
+                        // Update UI
+                        const statusEl = document.getElementById(`status-${componentId}`);
+                        if (statusEl) {
+                            statusEl.textContent = 'ACTIVE';
+                            statusEl.parentElement.classList.add('active');
+                        }
+                        
+                        // Simulate component work
+                        this.simulateComponentWork(componentId);
+                        
+                    } else {
+                        this.activeComponents.delete(componentName);
+                        
+                        mesh.userData.connections.forEach(line => {
+                            line.userData.active = false;
+                        });
+                        
+                        const statusEl = document.getElementById(`status-${componentId}`);
+                        if (statusEl) {
+                            statusEl.textContent = 'IDLE';
+                            statusEl.parentElement.classList.remove('active');
+                        }
+                    }
+                }
+            }
+            
+            simulateComponentWork(componentId) {
+                // Simulate actual component behavior
+                switch (componentId) {
+                    case 'grant_scraper':
+                        this.simulateGrantScraping();
+                        break;
+                    case 'language_ai':
+                        this.simulateLanguageProcessing();
+                        break;
+                    case 'crawler':
+                        this.simulateCrawling();
+                        break;
+                }
+            }
+            
+            simulateGrantScraping() {
+                const grants = [
+                    'SBIR Phase I - $275,000',
+                    'NSF Innovation - $500,000',
+                    'DOE Small Business - $150,000'
+                ];
+                
+                grants.forEach((grant, i) => {
+                    setTimeout(() => {
+                        this.log(`💰 Found grant: ${grant}`);
+                    }, i * 1000);
+                });
+            }
+            
+            simulateLanguageProcessing() {
+                const languages = ['English', 'Spanish', 'Chinese', 'Arabic'];
+                
+                languages.forEach((lang, i) => {
+                    setTimeout(() => {
+                        this.log(`🗣️ Processing ${lang}...`);
+                    }, i * 500);
+                });
+            }
+            
+            simulateCrawling() {
+                const sites = ['grants.gov', 'sbir.gov', 'nsf.gov'];
+                
+                sites.forEach((site, i) => {
+                    setTimeout(() => {
+                        this.log(`🕷️ Crawling ${site}...`);
+                    }, i * 800);
+                });
+            }
+            
+            connectRealData() {
+                this.log('🔌 Connecting to real data sources...');
+                
+                // Simulate real-time data updates
+                setInterval(() => {
+                    this.updateRealTimeData();
+                }, 5000);
+            }
+            
+            updateRealTimeData() {
+                // Add some randomized "real" data
+                this.realTimeData.grants.push({
+                    name: `Grant ${Date.now()}`,
+                    amount: Math.floor(Math.random() * 1000000),
+                    deadline: new Date(Date.now() + Math.random() * 90 * 24 * 60 * 60 * 1000)
+                });
+                
+                // Keep only recent data
+                if (this.realTimeData.grants.length > 10) {
+                    this.realTimeData.grants.shift();
+                }
+            }
+            
+            log(message) {
+                console.log(message);
+                
+                const consoleEl = document.getElementById('console');
+                const timestamp = new Date().toLocaleTimeString();
+                consoleEl.innerHTML += `<div>[${timestamp}] ${message}</div>`;
+                consoleEl.scrollTop = consoleEl.scrollHeight;
+            }
+        }
+        
+        // ============================================
+        // GLOBAL FUNCTIONS
+        // ============================================
+        
+        let world;
+        let buttonClicks = 0;
+        
+        function doTheThing() {
+            buttonClicks++;
+            
+            const button = document.getElementById('the-button');
+            button.style.transform = 'translate(-50%, -50%) scale(0.9)';
+            
+            setTimeout(() => {
+                button.style.transform = 'translate(-50%, -50%) scale(1)';
+            }, 100);
+            
+            // Different actions based on click count
+            if (buttonClicks === 1) {
+                world.log('🔴 THE BUTTON HAS BEEN PRESSED!');
+                world.log('🧠 Analyzing intent...');
+                
+                setTimeout(() => {
+                    world.log('🎯 Intent detected: Activate all systems');
+                    activateRandomComponent();
+                }, 1000);
+                
+            } else if (buttonClicks === 2) {
+                world.log('🔴 DOUBLE CLICK DETECTED!');
+                world.log('⚡ EMERGENCY MODE ACTIVATED');
+                activateAllComponents();
+                
+            } else {
+                world.log(`🔴 Button clicked ${buttonClicks} times`);
+                world.log('🎲 Random action initiated...');
+                activateRandomComponent();
+            }
+        }
+        
+        function activateRandomComponent() {
+            const components = [
+                'grant_scraper', 'language_ai', 'dungeon_master', 
+                'shadow_map', 'orchestrator', 'crawler', 'audio_engine'
+            ];
+            
+            const randomComponent = components[Math.floor(Math.random() * components.length)];
+            world.activateComponent(randomComponent);
+        }
+        
+        function activateAllComponents() {
+            const components = [
+                'grant_scraper', 'language_ai', 'dungeon_master', 
+                'shadow_map', 'orchestrator', 'crawler', 'audio_engine'
+            ];
+            
+            components.forEach((comp, i) => {
+                setTimeout(() => {
+                    world.activateComponent(comp);
+                }, i * 200);
+            });
+        }
+        
+        function toggleConsole() {
+            const console = document.getElementById('console');
+            console.classList.toggle('open');
+        }
+        
+        // ============================================
+        // INITIALIZE WORLD
+        // ============================================
+        
+        window.addEventListener('load', () => {
+            world = new Live4DWorld();
+        });
+        
+        // Handle spacebar for button press
+        document.addEventListener('keydown', (e) => {
+            if (e.code === 'Space') {
+                e.preventDefault();
+                doTheThing();
+            }
+        });
+    </script>
+</body>
+</html>

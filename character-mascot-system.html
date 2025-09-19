@@ -1,0 +1,888 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Character Mascot System - Natural Movement</title>
+    <style>
+        body {
+            margin: 0;
+            overflow: hidden;
+            font-family: 'Arial', sans-serif;
+            background: #87CEEB;
+        }
+        
+        #canvas-container {
+            position: relative;
+            width: 100vw;
+            height: 100vh;
+        }
+        
+        #speech-bubble {
+            position: absolute;
+            background: white;
+            border: 3px solid #333;
+            border-radius: 20px;
+            padding: 15px;
+            font-size: 16px;
+            max-width: 200px;
+            display: none;
+            z-index: 1000;
+            box-shadow: 0 4px 8px rgba(0,0,0,0.2);
+        }
+        
+        #speech-bubble:after {
+            content: '';
+            position: absolute;
+            bottom: -10px;
+            left: 30px;
+            width: 0;
+            height: 0;
+            border-left: 10px solid transparent;
+            border-right: 10px solid transparent;
+            border-top: 10px solid white;
+        }
+        
+        #controls {
+            position: absolute;
+            top: 20px;
+            right: 20px;
+            background: rgba(255,255,255,0.9);
+            padding: 20px;
+            border-radius: 10px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+        }
+        
+        .control-group {
+            margin: 10px 0;
+        }
+        
+        .control-group label {
+            display: inline-block;
+            width: 150px;
+            font-size: 14px;
+        }
+        
+        .control-group input[type="range"] {
+            width: 150px;
+        }
+        
+        .control-group input[type="color"] {
+            width: 50px;
+            height: 30px;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+        }
+        
+        #character-info {
+            position: absolute;
+            bottom: 20px;
+            left: 20px;
+            background: rgba(255,255,255,0.9);
+            padding: 15px;
+            border-radius: 10px;
+            font-size: 14px;
+        }
+        
+        button {
+            background: #4CAF50;
+            color: white;
+            border: none;
+            padding: 10px 20px;
+            border-radius: 5px;
+            cursor: pointer;
+            margin: 5px;
+            font-size: 14px;
+            transition: background 0.3s;
+        }
+        
+        button:hover {
+            background: #45a049;
+        }
+    </style>
+</head>
+<body>
+    <div id="canvas-container">
+        <canvas id="mascotCanvas"></canvas>
+        <div id="speech-bubble"></div>
+    </div>
+    
+    <div id="controls">
+        <h3>Character Controls</h3>
+        
+        <div class="control-group">
+            <label>Walk Speed:</label>
+            <input type="range" id="walkSpeed" min="0.5" max="5" step="0.1" value="2">
+            <span id="walkSpeedValue">2</span>
+        </div>
+        
+        <div class="control-group">
+            <label>Smoothness:</label>
+            <input type="range" id="smoothness" min="1" max="10" step="1" value="8">
+            <span id="smoothnessValue">8</span>
+        </div>
+        
+        <div class="control-group">
+            <label>Primary Color:</label>
+            <input type="color" id="primaryColor" value="#FF6B6B">
+        </div>
+        
+        <div class="control-group">
+            <label>Secondary Color:</label>
+            <input type="color" id="secondaryColor" value="#4ECDC4">
+        </div>
+        
+        <div class="control-group">
+            <label>Movement Style:</label>
+            <select id="movementStyle">
+                <option value="bird">Bird-like</option>
+                <option value="mammal" selected>Mammal-like</option>
+                <option value="hybrid">Hybrid</option>
+            </select>
+        </div>
+        
+        <button onclick="mascot.speak('Hello! I\\'m your mascot!')">Test Speech</button>
+        <button onclick="mascot.wave()">Wave</button>
+        <button onclick="mascot.jump()">Jump</button>
+        <button onclick="mascot.dance()">Dance</button>
+    </div>
+    
+    <div id="character-info">
+        <h4>Character State</h4>
+        <div>Position: <span id="position">0, 0</span></div>
+        <div>Animation: <span id="animation">idle</span></div>
+        <div>Mood: <span id="mood">happy</span></div>
+    </div>
+    
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+    <script>
+        // Character Mascot System with Natural Movement
+        class CharacterMascot {
+            constructor(canvas) {
+                this.canvas = canvas;
+                this.ctx = canvas.getContext('2d');
+                this.setupCanvas();
+                
+                // Character properties
+                this.x = window.innerWidth / 2;
+                this.y = window.innerHeight / 2;
+                this.size = 80;
+                this.rotation = 0;
+                this.targetX = this.x;
+                this.targetY = this.y;
+                
+                // Movement properties
+                this.walkSpeed = 2;
+                this.smoothness = 8;
+                this.movementStyle = 'mammal';
+                
+                // Animation properties
+                this.animationFrame = 0;
+                this.animationSpeed = 0.1;
+                this.currentAnimation = 'idle';
+                this.mood = 'happy';
+                
+                // Natural movement parameters
+                this.breathing = 0;
+                this.tailWag = 0;
+                this.wingFlap = 0;
+                this.bobAmount = 0;
+                this.stridePhase = 0;
+                
+                // Body parts for smooth animation
+                this.bodyParts = {
+                    head: { x: 0, y: 0, size: 1, rotation: 0 },
+                    body: { x: 0, y: 0, size: 1, rotation: 0 },
+                    leftArm: { x: 0, y: 0, rotation: 0 },
+                    rightArm: { x: 0, y: 0, rotation: 0 },
+                    leftLeg: { x: 0, y: 0, rotation: 0 },
+                    rightLeg: { x: 0, y: 0, rotation: 0 },
+                    tail: { x: 0, y: 0, rotation: 0 },
+                    ears: { rotation: 0 }
+                };
+                
+                // Colors
+                this.colors = {
+                    primary: '#FF6B6B',
+                    secondary: '#4ECDC4',
+                    accent: '#FECA57',
+                    outline: '#2C3E50'
+                };
+                
+                // Speech
+                this.speechBubble = document.getElementById('speech-bubble');
+                this.isSpeaking = false;
+                this.speechQueue = [];
+                
+                // Physics
+                this.velocity = { x: 0, y: 0 };
+                this.acceleration = { x: 0, y: 0 };
+                this.friction = 0.85;
+                this.springiness = 0.12;
+                
+                this.setupEventListeners();
+                this.animate();
+            }
+            
+            setupCanvas() {
+                this.canvas.width = window.innerWidth;
+                this.canvas.height = window.innerHeight;
+                
+                window.addEventListener('resize', () => {
+                    this.canvas.width = window.innerWidth;
+                    this.canvas.height = window.innerHeight;
+                });
+            }
+            
+            setupEventListeners() {
+                // Mouse movement
+                this.canvas.addEventListener('click', (e) => {
+                    this.targetX = e.clientX;
+                    this.targetY = e.clientY;
+                    this.currentAnimation = 'walking';
+                });
+                
+                // Control panel
+                document.getElementById('walkSpeed').addEventListener('input', (e) => {
+                    this.walkSpeed = parseFloat(e.target.value);
+                    document.getElementById('walkSpeedValue').textContent = e.target.value;
+                });
+                
+                document.getElementById('smoothness').addEventListener('input', (e) => {
+                    this.smoothness = parseInt(e.target.value);
+                    document.getElementById('smoothnessValue').textContent = e.target.value;
+                });
+                
+                document.getElementById('primaryColor').addEventListener('input', (e) => {
+                    this.colors.primary = e.target.value;
+                });
+                
+                document.getElementById('secondaryColor').addEventListener('input', (e) => {
+                    this.colors.secondary = e.target.value;
+                });
+                
+                document.getElementById('movementStyle').addEventListener('change', (e) => {
+                    this.movementStyle = e.target.value;
+                });
+            }
+            
+            updatePhysics() {
+                // Calculate direction to target
+                const dx = this.targetX - this.x;
+                const dy = this.targetY - this.y;
+                const distance = Math.sqrt(dx * dx + dy * dy);
+                
+                if (distance > 5) {
+                    // Apply spring force toward target
+                    this.acceleration.x = dx * this.springiness / this.smoothness;
+                    this.acceleration.y = dy * this.springiness / this.smoothness;
+                    
+                    // Update velocity
+                    this.velocity.x += this.acceleration.x;
+                    this.velocity.y += this.acceleration.y;
+                    
+                    // Apply friction
+                    this.velocity.x *= this.friction;
+                    this.velocity.y *= this.friction;
+                    
+                    // Update position
+                    this.x += this.velocity.x * this.walkSpeed;
+                    this.y += this.velocity.y * this.walkSpeed;
+                    
+                    // Update rotation based on movement direction
+                    if (Math.abs(this.velocity.x) > 0.1 || Math.abs(this.velocity.y) > 0.1) {
+                        this.rotation = Math.atan2(this.velocity.y, this.velocity.x);
+                    }
+                } else {
+                    this.currentAnimation = 'idle';
+                    this.velocity.x *= 0.8;
+                    this.velocity.y *= 0.8;
+                }
+                
+                // Natural movement animations
+                this.updateNaturalMovement();
+            }
+            
+            updateNaturalMovement() {
+                // Breathing animation
+                this.breathing = Math.sin(Date.now() * 0.002) * 0.02;
+                
+                // Movement-specific animations
+                if (this.movementStyle === 'bird') {
+                    // Wing flapping for birds
+                    if (this.currentAnimation === 'walking') {
+                        this.wingFlap = Math.sin(Date.now() * 0.01) * 0.3;
+                        this.bobAmount = Math.abs(Math.sin(Date.now() * 0.008)) * 5;
+                    } else {
+                        this.wingFlap *= 0.9;
+                        this.bobAmount *= 0.9;
+                    }
+                } else if (this.movementStyle === 'mammal') {
+                    // Tail wagging and stride for mammals
+                    this.tailWag = Math.sin(Date.now() * 0.005) * 0.2;
+                    
+                    if (this.currentAnimation === 'walking') {
+                        this.stridePhase += 0.15;
+                        this.bobAmount = Math.abs(Math.sin(this.stridePhase)) * 3;
+                        
+                        // Leg movement
+                        this.bodyParts.leftLeg.rotation = Math.sin(this.stridePhase) * 0.4;
+                        this.bodyParts.rightLeg.rotation = Math.sin(this.stridePhase + Math.PI) * 0.4;
+                        
+                        // Arm swing
+                        this.bodyParts.leftArm.rotation = Math.sin(this.stridePhase + Math.PI) * 0.3;
+                        this.bodyParts.rightArm.rotation = Math.sin(this.stridePhase) * 0.3;
+                    } else {
+                        this.stridePhase = 0;
+                        this.bobAmount *= 0.9;
+                        
+                        // Return limbs to rest position
+                        this.bodyParts.leftLeg.rotation *= 0.9;
+                        this.bodyParts.rightLeg.rotation *= 0.9;
+                        this.bodyParts.leftArm.rotation *= 0.9;
+                        this.bodyParts.rightArm.rotation *= 0.9;
+                    }
+                } else {
+                    // Hybrid movement
+                    this.tailWag = Math.sin(Date.now() * 0.004) * 0.15;
+                    this.wingFlap = Math.sin(Date.now() * 0.008) * 0.15;
+                    
+                    if (this.currentAnimation === 'walking') {
+                        this.bobAmount = Math.abs(Math.sin(Date.now() * 0.006)) * 4;
+                    } else {
+                        this.bobAmount *= 0.9;
+                    }
+                }
+                
+                // Head movement (looking around)
+                this.bodyParts.head.rotation = Math.sin(Date.now() * 0.001) * 0.05;
+                
+                // Ear wiggle
+                this.bodyParts.ears.rotation = Math.sin(Date.now() * 0.003) * 0.1;
+            }
+            
+            draw() {
+                this.ctx.clearRect(0, 0, this.canvas.width, this.canvas.height);
+                
+                // Save context
+                this.ctx.save();
+                
+                // Translate to character position
+                this.ctx.translate(this.x, this.y - this.bobAmount);
+                
+                // Apply breathing effect
+                const breathScale = 1 + this.breathing;
+                
+                // Draw shadow
+                this.ctx.fillStyle = 'rgba(0, 0, 0, 0.2)';
+                this.ctx.beginPath();
+                this.ctx.ellipse(0, this.size * 0.6, this.size * 0.4, this.size * 0.15, 0, 0, Math.PI * 2);
+                this.ctx.fill();
+                
+                // Draw tail (behind body)
+                if (this.movementStyle !== 'bird') {
+                    this.drawTail();
+                }
+                
+                // Draw body
+                this.drawBody(breathScale);
+                
+                // Draw limbs
+                this.drawLimbs();
+                
+                // Draw head
+                this.drawHead(breathScale);
+                
+                // Draw wings (for bird mode)
+                if (this.movementStyle === 'bird' || this.movementStyle === 'hybrid') {
+                    this.drawWings();
+                }
+                
+                // Restore context
+                this.ctx.restore();
+                
+                // Update info panel
+                this.updateInfo();
+            }
+            
+            drawBody(scale) {
+                this.ctx.save();
+                this.ctx.scale(scale, scale);
+                
+                // Main body
+                this.ctx.fillStyle = this.colors.primary;
+                this.ctx.strokeStyle = this.colors.outline;
+                this.ctx.lineWidth = 3;
+                
+                // Smooth body shape using bezier curves
+                this.ctx.beginPath();
+                this.ctx.moveTo(0, -this.size * 0.3);
+                this.ctx.bezierCurveTo(
+                    -this.size * 0.4, -this.size * 0.2,
+                    -this.size * 0.4, this.size * 0.2,
+                    0, this.size * 0.3
+                );
+                this.ctx.bezierCurveTo(
+                    this.size * 0.4, this.size * 0.2,
+                    this.size * 0.4, -this.size * 0.2,
+                    0, -this.size * 0.3
+                );
+                this.ctx.fill();
+                this.ctx.stroke();
+                
+                // Belly marking
+                this.ctx.fillStyle = this.colors.secondary;
+                this.ctx.beginPath();
+                this.ctx.ellipse(0, 0, this.size * 0.25, this.size * 0.2, 0, 0, Math.PI * 2);
+                this.ctx.fill();
+                
+                this.ctx.restore();
+            }
+            
+            drawHead(scale) {
+                this.ctx.save();
+                this.ctx.translate(0, -this.size * 0.5);
+                this.ctx.rotate(this.bodyParts.head.rotation);
+                this.ctx.scale(scale, scale);
+                
+                // Head shape
+                this.ctx.fillStyle = this.colors.primary;
+                this.ctx.strokeStyle = this.colors.outline;
+                this.ctx.lineWidth = 3;
+                
+                this.ctx.beginPath();
+                this.ctx.arc(0, 0, this.size * 0.35, 0, Math.PI * 2);
+                this.ctx.fill();
+                this.ctx.stroke();
+                
+                // Ears
+                this.drawEars();
+                
+                // Eyes
+                this.drawEyes();
+                
+                // Nose/Beak
+                if (this.movementStyle === 'bird') {
+                    this.drawBeak();
+                } else {
+                    this.drawNose();
+                }
+                
+                // Mouth
+                this.drawMouth();
+                
+                this.ctx.restore();
+            }
+            
+            drawEars() {
+                this.ctx.save();
+                this.ctx.rotate(this.bodyParts.ears.rotation);
+                
+                // Left ear
+                this.ctx.save();
+                this.ctx.translate(-this.size * 0.25, -this.size * 0.2);
+                this.ctx.rotate(-0.3);
+                
+                this.ctx.fillStyle = this.colors.primary;
+                this.ctx.strokeStyle = this.colors.outline;
+                this.ctx.lineWidth = 2;
+                
+                this.ctx.beginPath();
+                this.ctx.moveTo(0, 0);
+                this.ctx.quadraticCurveTo(-this.size * 0.1, -this.size * 0.15, 0, -this.size * 0.2);
+                this.ctx.quadraticCurveTo(this.size * 0.1, -this.size * 0.15, 0, 0);
+                this.ctx.fill();
+                this.ctx.stroke();
+                
+                // Inner ear
+                this.ctx.fillStyle = this.colors.secondary;
+                this.ctx.beginPath();
+                this.ctx.moveTo(0, -this.size * 0.05);
+                this.ctx.quadraticCurveTo(-this.size * 0.05, -this.size * 0.1, 0, -this.size * 0.15);
+                this.ctx.quadraticCurveTo(this.size * 0.05, -this.size * 0.1, 0, -this.size * 0.05);
+                this.ctx.fill();
+                
+                this.ctx.restore();
+                
+                // Right ear (mirror)
+                this.ctx.save();
+                this.ctx.translate(this.size * 0.25, -this.size * 0.2);
+                this.ctx.rotate(0.3);
+                
+                this.ctx.fillStyle = this.colors.primary;
+                this.ctx.strokeStyle = this.colors.outline;
+                this.ctx.lineWidth = 2;
+                
+                this.ctx.beginPath();
+                this.ctx.moveTo(0, 0);
+                this.ctx.quadraticCurveTo(this.size * 0.1, -this.size * 0.15, 0, -this.size * 0.2);
+                this.ctx.quadraticCurveTo(-this.size * 0.1, -this.size * 0.15, 0, 0);
+                this.ctx.fill();
+                this.ctx.stroke();
+                
+                // Inner ear
+                this.ctx.fillStyle = this.colors.secondary;
+                this.ctx.beginPath();
+                this.ctx.moveTo(0, -this.size * 0.05);
+                this.ctx.quadraticCurveTo(this.size * 0.05, -this.size * 0.1, 0, -this.size * 0.15);
+                this.ctx.quadraticCurveTo(-this.size * 0.05, -this.size * 0.1, 0, -this.size * 0.05);
+                this.ctx.fill();
+                
+                this.ctx.restore();
+                this.ctx.restore();
+            }
+            
+            drawEyes() {
+                const eyeSize = this.size * 0.08;
+                const eyeSpacing = this.size * 0.15;
+                
+                // Left eye
+                this.ctx.fillStyle = 'white';
+                this.ctx.beginPath();
+                this.ctx.arc(-eyeSpacing, 0, eyeSize, 0, Math.PI * 2);
+                this.ctx.fill();
+                
+                this.ctx.fillStyle = '#333';
+                this.ctx.beginPath();
+                this.ctx.arc(-eyeSpacing, 0, eyeSize * 0.6, 0, Math.PI * 2);
+                this.ctx.fill();
+                
+                // Eye shine
+                this.ctx.fillStyle = 'white';
+                this.ctx.beginPath();
+                this.ctx.arc(-eyeSpacing - eyeSize * 0.3, -eyeSize * 0.3, eyeSize * 0.2, 0, Math.PI * 2);
+                this.ctx.fill();
+                
+                // Right eye
+                this.ctx.fillStyle = 'white';
+                this.ctx.beginPath();
+                this.ctx.arc(eyeSpacing, 0, eyeSize, 0, Math.PI * 2);
+                this.ctx.fill();
+                
+                this.ctx.fillStyle = '#333';
+                this.ctx.beginPath();
+                this.ctx.arc(eyeSpacing, 0, eyeSize * 0.6, 0, Math.PI * 2);
+                this.ctx.fill();
+                
+                // Eye shine
+                this.ctx.fillStyle = 'white';
+                this.ctx.beginPath();
+                this.ctx.arc(eyeSpacing - eyeSize * 0.3, -eyeSize * 0.3, eyeSize * 0.2, 0, Math.PI * 2);
+                this.ctx.fill();
+            }
+            
+            drawBeak() {
+                this.ctx.fillStyle = this.colors.accent;
+                this.ctx.strokeStyle = this.colors.outline;
+                this.ctx.lineWidth = 2;
+                
+                this.ctx.beginPath();
+                this.ctx.moveTo(0, this.size * 0.1);
+                this.ctx.lineTo(-this.size * 0.08, this.size * 0.15);
+                this.ctx.lineTo(0, this.size * 0.2);
+                this.ctx.lineTo(this.size * 0.08, this.size * 0.15);
+                this.ctx.closePath();
+                this.ctx.fill();
+                this.ctx.stroke();
+            }
+            
+            drawNose() {
+                this.ctx.fillStyle = this.colors.outline;
+                this.ctx.beginPath();
+                this.ctx.arc(0, this.size * 0.15, this.size * 0.03, 0, Math.PI * 2);
+                this.ctx.fill();
+            }
+            
+            drawMouth() {
+                this.ctx.strokeStyle = this.colors.outline;
+                this.ctx.lineWidth = 2;
+                this.ctx.lineCap = 'round';
+                
+                if (this.mood === 'happy') {
+                    this.ctx.beginPath();
+                    this.ctx.arc(0, this.size * 0.1, this.size * 0.1, 0.2 * Math.PI, 0.8 * Math.PI);
+                    this.ctx.stroke();
+                } else {
+                    this.ctx.beginPath();
+                    this.ctx.moveTo(-this.size * 0.08, this.size * 0.2);
+                    this.ctx.lineTo(this.size * 0.08, this.size * 0.2);
+                    this.ctx.stroke();
+                }
+            }
+            
+            drawLimbs() {
+                // Arms
+                this.ctx.strokeStyle = this.colors.primary;
+                this.ctx.lineWidth = this.size * 0.15;
+                this.ctx.lineCap = 'round';
+                
+                // Left arm
+                this.ctx.save();
+                this.ctx.translate(-this.size * 0.3, -this.size * 0.1);
+                this.ctx.rotate(this.bodyParts.leftArm.rotation);
+                
+                this.ctx.beginPath();
+                this.ctx.moveTo(0, 0);
+                this.ctx.quadraticCurveTo(-this.size * 0.2, this.size * 0.1, -this.size * 0.15, this.size * 0.3);
+                this.ctx.stroke();
+                
+                // Hand
+                this.ctx.fillStyle = this.colors.secondary;
+                this.ctx.beginPath();
+                this.ctx.arc(-this.size * 0.15, this.size * 0.3, this.size * 0.08, 0, Math.PI * 2);
+                this.ctx.fill();
+                
+                this.ctx.restore();
+                
+                // Right arm
+                this.ctx.save();
+                this.ctx.translate(this.size * 0.3, -this.size * 0.1);
+                this.ctx.rotate(this.bodyParts.rightArm.rotation);
+                
+                this.ctx.beginPath();
+                this.ctx.moveTo(0, 0);
+                this.ctx.quadraticCurveTo(this.size * 0.2, this.size * 0.1, this.size * 0.15, this.size * 0.3);
+                this.ctx.stroke();
+                
+                // Hand
+                this.ctx.fillStyle = this.colors.secondary;
+                this.ctx.beginPath();
+                this.ctx.arc(this.size * 0.15, this.size * 0.3, this.size * 0.08, 0, Math.PI * 2);
+                this.ctx.fill();
+                
+                this.ctx.restore();
+                
+                // Legs
+                this.ctx.strokeStyle = this.colors.primary;
+                
+                // Left leg
+                this.ctx.save();
+                this.ctx.translate(-this.size * 0.15, this.size * 0.2);
+                this.ctx.rotate(this.bodyParts.leftLeg.rotation);
+                
+                this.ctx.beginPath();
+                this.ctx.moveTo(0, 0);
+                this.ctx.lineTo(0, this.size * 0.3);
+                this.ctx.stroke();
+                
+                // Foot
+                this.ctx.fillStyle = this.colors.secondary;
+                this.ctx.beginPath();
+                this.ctx.ellipse(0, this.size * 0.35, this.size * 0.12, this.size * 0.08, 0, 0, Math.PI * 2);
+                this.ctx.fill();
+                
+                this.ctx.restore();
+                
+                // Right leg
+                this.ctx.save();
+                this.ctx.translate(this.size * 0.15, this.size * 0.2);
+                this.ctx.rotate(this.bodyParts.rightLeg.rotation);
+                
+                this.ctx.beginPath();
+                this.ctx.moveTo(0, 0);
+                this.ctx.lineTo(0, this.size * 0.3);
+                this.ctx.stroke();
+                
+                // Foot
+                this.ctx.fillStyle = this.colors.secondary;
+                this.ctx.beginPath();
+                this.ctx.ellipse(0, this.size * 0.35, this.size * 0.12, this.size * 0.08, 0, 0, Math.PI * 2);
+                this.ctx.fill();
+                
+                this.ctx.restore();
+            }
+            
+            drawTail() {
+                this.ctx.save();
+                this.ctx.translate(0, this.size * 0.2);
+                this.ctx.rotate(this.tailWag);
+                
+                this.ctx.fillStyle = this.colors.primary;
+                this.ctx.strokeStyle = this.colors.outline;
+                this.ctx.lineWidth = 3;
+                
+                // Fluffy tail using multiple circles
+                for (let i = 0; i < 5; i++) {
+                    const offset = i * this.size * 0.1;
+                    const size = this.size * 0.2 * (1 - i * 0.15);
+                    
+                    this.ctx.beginPath();
+                    this.ctx.arc(0, offset, size, 0, Math.PI * 2);
+                    this.ctx.fill();
+                }
+                
+                // Tail tip
+                this.ctx.fillStyle = this.colors.secondary;
+                this.ctx.beginPath();
+                this.ctx.arc(0, this.size * 0.4, this.size * 0.15, 0, Math.PI * 2);
+                this.ctx.fill();
+                this.ctx.stroke();
+                
+                this.ctx.restore();
+            }
+            
+            drawWings() {
+                this.ctx.save();
+                
+                // Left wing
+                this.ctx.save();
+                this.ctx.translate(-this.size * 0.4, -this.size * 0.1);
+                this.ctx.rotate(-this.wingFlap);
+                
+                this.ctx.fillStyle = this.colors.secondary;
+                this.ctx.strokeStyle = this.colors.outline;
+                this.ctx.lineWidth = 2;
+                
+                this.ctx.beginPath();
+                this.ctx.moveTo(0, 0);
+                this.ctx.quadraticCurveTo(-this.size * 0.4, -this.size * 0.1, -this.size * 0.5, this.size * 0.1);
+                this.ctx.quadraticCurveTo(-this.size * 0.4, this.size * 0.3, -this.size * 0.1, this.size * 0.3);
+                this.ctx.closePath();
+                this.ctx.fill();
+                this.ctx.stroke();
+                
+                // Wing feathers
+                for (let i = 0; i < 3; i++) {
+                    this.ctx.beginPath();
+                    this.ctx.moveTo(-this.size * 0.2 - i * this.size * 0.1, this.size * 0.1);
+                    this.ctx.lineTo(-this.size * 0.2 - i * this.size * 0.1, this.size * 0.25);
+                    this.ctx.stroke();
+                }
+                
+                this.ctx.restore();
+                
+                // Right wing
+                this.ctx.save();
+                this.ctx.translate(this.size * 0.4, -this.size * 0.1);
+                this.ctx.rotate(this.wingFlap);
+                
+                this.ctx.fillStyle = this.colors.secondary;
+                this.ctx.beginPath();
+                this.ctx.moveTo(0, 0);
+                this.ctx.quadraticCurveTo(this.size * 0.4, -this.size * 0.1, this.size * 0.5, this.size * 0.1);
+                this.ctx.quadraticCurveTo(this.size * 0.4, this.size * 0.3, this.size * 0.1, this.size * 0.3);
+                this.ctx.closePath();
+                this.ctx.fill();
+                this.ctx.stroke();
+                
+                // Wing feathers
+                for (let i = 0; i < 3; i++) {
+                    this.ctx.beginPath();
+                    this.ctx.moveTo(this.size * 0.2 + i * this.size * 0.1, this.size * 0.1);
+                    this.ctx.lineTo(this.size * 0.2 + i * this.size * 0.1, this.size * 0.25);
+                    this.ctx.stroke();
+                }
+                
+                this.ctx.restore();
+                this.ctx.restore();
+            }
+            
+            speak(text) {
+                this.speechBubble.textContent = text;
+                this.speechBubble.style.display = 'block';
+                
+                // Position speech bubble above character
+                const rect = this.canvas.getBoundingClientRect();
+                this.speechBubble.style.left = this.x - 100 + 'px';
+                this.speechBubble.style.top = this.y - this.size - 100 + 'px';
+                
+                // Hide after 3 seconds
+                setTimeout(() => {
+                    this.speechBubble.style.display = 'none';
+                }, 3000);
+                
+                // Character animation
+                this.mood = 'happy';
+            }
+            
+            wave() {
+                this.currentAnimation = 'waving';
+                let waveCount = 0;
+                
+                const waveInterval = setInterval(() => {
+                    this.bodyParts.rightArm.rotation = Math.sin(waveCount * 0.5) * 0.8 - 0.5;
+                    waveCount++;
+                    
+                    if (waveCount > 20) {
+                        clearInterval(waveInterval);
+                        this.currentAnimation = 'idle';
+                    }
+                }, 50);
+                
+                this.speak("Hello there! 👋");
+            }
+            
+            jump() {
+                this.currentAnimation = 'jumping';
+                let jumpPhase = 0;
+                
+                const jumpInterval = setInterval(() => {
+                    jumpPhase += 0.15;
+                    this.bobAmount = -Math.abs(Math.sin(jumpPhase)) * 40;
+                    
+                    if (jumpPhase > Math.PI) {
+                        clearInterval(jumpInterval);
+                        this.currentAnimation = 'idle';
+                        this.bobAmount = 0;
+                    }
+                }, 20);
+                
+                this.speak("Wheee! 🎉");
+            }
+            
+            dance() {
+                this.currentAnimation = 'dancing';
+                let dancePhase = 0;
+                
+                const danceInterval = setInterval(() => {
+                    dancePhase += 0.1;
+                    
+                    // Body sway
+                    this.bodyParts.body.rotation = Math.sin(dancePhase) * 0.2;
+                    
+                    // Arm movements
+                    this.bodyParts.leftArm.rotation = Math.sin(dancePhase * 2) * 0.5;
+                    this.bodyParts.rightArm.rotation = Math.sin(dancePhase * 2 + Math.PI) * 0.5;
+                    
+                    // Head bob
+                    this.bodyParts.head.rotation = Math.sin(dancePhase * 1.5) * 0.1;
+                    
+                    // Leg movements
+                    this.bodyParts.leftLeg.rotation = Math.sin(dancePhase * 2) * 0.3;
+                    this.bodyParts.rightLeg.rotation = Math.sin(dancePhase * 2 + Math.PI) * 0.3;
+                    
+                    if (dancePhase > Math.PI * 4) {
+                        clearInterval(danceInterval);
+                        this.currentAnimation = 'idle';
+                        this.bodyParts.body.rotation = 0;
+                    }
+                }, 50);
+                
+                this.speak("Let's dance! 🎵💃");
+            }
+            
+            updateInfo() {
+                document.getElementById('position').textContent = 
+                    `${Math.round(this.x)}, ${Math.round(this.y)}`;
+                document.getElementById('animation').textContent = this.currentAnimation;
+                document.getElementById('mood').textContent = this.mood;
+            }
+            
+            animate() {
+                this.updatePhysics();
+                this.draw();
+                
+                requestAnimationFrame(() => this.animate());
+            }
+        }
+        
+        // Initialize mascot
+        const canvas = document.getElementById('mascotCanvas');
+        const mascot = new CharacterMascot(canvas);
+        
+        // Initial greeting
+        setTimeout(() => {
+            mascot.speak("Hi! I'm your mascot! Click anywhere to make me walk there!");
+        }, 1000);
+    </script>
+</body>
+</html>

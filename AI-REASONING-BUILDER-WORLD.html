@@ -1,0 +1,1437 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>AI Reasoning Agent Builder World</title>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            background: linear-gradient(135deg, #0f1419 0%, #1a0f1a 50%, #0f1a0f 100%);
+            font-family: 'Courier New', monospace;
+            overflow: hidden;
+            color: #ffffff;
+        }
+
+        #aiWorld {
+            width: 100vw;
+            height: 100vh;
+            position: relative;
+            background: radial-gradient(circle at center, rgba(255, 255, 255, 0.05) 0%, transparent 70%);
+        }
+
+        /* AI Reasoning Display */
+        #reasoningDisplay {
+            position: absolute;
+            top: 20px;
+            left: 20px;
+            background: rgba(0, 0, 0, 0.9);
+            border: 2px solid #00ff88;
+            border-radius: 12px;
+            padding: 20px;
+            width: 400px;
+            height: 300px;
+            z-index: 1000;
+            overflow-y: auto;
+        }
+
+        .reasoning-title {
+            color: #00ff88;
+            font-size: 14px;
+            font-weight: bold;
+            margin-bottom: 15px;
+            text-align: center;
+            border-bottom: 1px solid #00ff88;
+            padding-bottom: 8px;
+        }
+
+        .thought-bubble {
+            background: rgba(0, 255, 136, 0.1);
+            border: 1px solid #00ff88;
+            border-radius: 8px;
+            padding: 10px;
+            margin: 8px 0;
+            font-size: 11px;
+            line-height: 1.4;
+            animation: thoughtAppear 0.5s ease-in;
+        }
+
+        @keyframes thoughtAppear {
+            0% { opacity: 0; transform: translateY(10px); }
+            100% { opacity: 1; transform: translateY(0); }
+        }
+
+        .thought-type {
+            color: #ffff00;
+            font-weight: bold;
+            text-transform: uppercase;
+            font-size: 9px;
+            margin-bottom: 4px;
+        }
+
+        .thought-content {
+            color: #ffffff;
+        }
+
+        .thought-question {
+            background: rgba(255, 255, 0, 0.1);
+            border-color: #ffff00;
+        }
+
+        .thought-decision {
+            background: rgba(0, 255, 255, 0.1);
+            border-color: #00ffff;
+        }
+
+        .thought-learning {
+            background: rgba(255, 107, 157, 0.1);
+            border-color: #ff6b9d;
+        }
+
+        /* Interaction Alert System */
+        #interactionAlert {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            background: rgba(0, 0, 0, 0.95);
+            border: 4px solid #ff0000;
+            border-radius: 20px;
+            padding: 40px;
+            text-align: center;
+            z-index: 2000;
+            display: none;
+            animation: alertFlash 0.5s infinite;
+        }
+
+        @keyframes alertFlash {
+            0%, 100% { border-color: #ff0000; background: rgba(255, 0, 0, 0.2); }
+            50% { border-color: #ffff00; background: rgba(255, 255, 0, 0.2); }
+        }
+
+        .alert-title {
+            color: #ff0000;
+            font-size: 24px;
+            font-weight: bold;
+            margin-bottom: 20px;
+            text-shadow: 0 0 10px currentColor;
+        }
+
+        .alert-question {
+            color: #ffffff;
+            font-size: 16px;
+            margin-bottom: 30px;
+            line-height: 1.6;
+        }
+
+        .alert-options {
+            display: flex;
+            gap: 20px;
+            justify-content: center;
+        }
+
+        .alert-btn {
+            background: linear-gradient(135deg, #ff0000, #cc0000);
+            border: 2px solid #ff0000;
+            color: #ffffff;
+            padding: 15px 30px;
+            border-radius: 10px;
+            cursor: pointer;
+            font-size: 14px;
+            font-weight: bold;
+            transition: all 0.3s;
+            text-transform: uppercase;
+        }
+
+        .alert-btn:hover {
+            background: linear-gradient(135deg, #ff3333, #ff0000);
+            transform: scale(1.1);
+            box-shadow: 0 0 20px rgba(255, 0, 0, 0.5);
+        }
+
+        .alert-btn.yes {
+            background: linear-gradient(135deg, #00ff00, #00cc00);
+            border-color: #00ff00;
+        }
+
+        .alert-btn.yes:hover {
+            background: linear-gradient(135deg, #33ff33, #00ff00);
+            box-shadow: 0 0 20px rgba(0, 255, 0, 0.5);
+        }
+
+        /* Building Progress Display */
+        #buildProgress {
+            position: absolute;
+            top: 20px;
+            right: 20px;
+            background: rgba(0, 0, 0, 0.9);
+            border: 2px solid #00ffff;
+            border-radius: 12px;
+            padding: 20px;
+            width: 350px;
+            z-index: 1000;
+        }
+
+        .progress-title {
+            color: #00ffff;
+            font-size: 14px;
+            font-weight: bold;
+            margin-bottom: 15px;
+            text-align: center;
+        }
+
+        .build-item {
+            background: rgba(0, 255, 255, 0.1);
+            border: 1px solid #00ffff;
+            border-radius: 6px;
+            padding: 12px;
+            margin: 8px 0;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .build-name {
+            color: #ffffff;
+            font-size: 12px;
+            flex: 1;
+        }
+
+        .build-status {
+            color: #00ffff;
+            font-size: 11px;
+            margin-left: 10px;
+        }
+
+        .progress-bar {
+            width: 80px;
+            height: 6px;
+            background: rgba(0, 255, 255, 0.3);
+            border-radius: 3px;
+            overflow: hidden;
+            margin-left: 10px;
+        }
+
+        .progress-fill {
+            height: 100%;
+            background: linear-gradient(90deg, #00ffff, #0099cc);
+            transition: width 0.5s ease;
+        }
+
+        /* AI Learning Stats */
+        #learningStats {
+            position: absolute;
+            bottom: 20px;
+            left: 20px;
+            background: rgba(0, 0, 0, 0.9);
+            border: 2px solid #ff6b9d;
+            border-radius: 12px;
+            padding: 20px;
+            width: 300px;
+            z-index: 1000;
+        }
+
+        .stats-title {
+            color: #ff6b9d;
+            font-size: 14px;
+            font-weight: bold;
+            margin-bottom: 15px;
+            text-align: center;
+        }
+
+        .stat-item {
+            display: flex;
+            justify-content: space-between;
+            margin: 8px 0;
+            font-size: 11px;
+        }
+
+        .stat-label {
+            color: #cccccc;
+        }
+
+        .stat-value {
+            color: #ff6b9d;
+            font-weight: bold;
+        }
+
+        .experience-bar {
+            width: 100%;
+            height: 8px;
+            background: rgba(255, 107, 157, 0.3);
+            border-radius: 4px;
+            overflow: hidden;
+            margin-top: 10px;
+        }
+
+        .experience-fill {
+            height: 100%;
+            background: linear-gradient(90deg, #ff6b9d, #cc5577);
+            transition: width 1s ease;
+        }
+
+        /* World Controls */
+        #worldControls {
+            position: absolute;
+            bottom: 20px;
+            right: 20px;
+            background: rgba(0, 0, 0, 0.9);
+            border: 2px solid #ffd700;
+            border-radius: 12px;
+            padding: 20px;
+            z-index: 1000;
+        }
+
+        .controls-title {
+            color: #ffd700;
+            font-size: 14px;
+            font-weight: bold;
+            margin-bottom: 15px;
+            text-align: center;
+        }
+
+        .control-section {
+            margin: 10px 0;
+        }
+
+        .control-label {
+            color: #cccccc;
+            font-size: 10px;
+            margin-bottom: 5px;
+            text-transform: uppercase;
+        }
+
+        .control-slider {
+            width: 100%;
+            height: 6px;
+            background: rgba(255, 215, 0, 0.3);
+            border-radius: 3px;
+            cursor: pointer;
+        }
+
+        .control-slider::-webkit-slider-thumb {
+            appearance: none;
+            width: 16px;
+            height: 16px;
+            background: #ffd700;
+            border-radius: 50%;
+            cursor: pointer;
+        }
+
+        .control-btn {
+            background: rgba(255, 215, 0, 0.2);
+            border: 1px solid #ffd700;
+            color: #ffd700;
+            padding: 8px 15px;
+            border-radius: 6px;
+            cursor: pointer;
+            font-size: 11px;
+            margin: 5px;
+            transition: all 0.3s;
+        }
+
+        .control-btn:hover {
+            background: rgba(255, 215, 0, 0.4);
+            transform: scale(1.05);
+        }
+
+        .control-btn.active {
+            background: #ffd700;
+            color: #000000;
+        }
+
+        /* Building Material Palette */
+        #materialPalette {
+            position: absolute;
+            left: 20px;
+            top: 50%;
+            transform: translateY(-50%);
+            background: rgba(0, 0, 0, 0.9);
+            border: 2px solid #9966ff;
+            border-radius: 12px;
+            padding: 15px;
+            width: 120px;
+            z-index: 1000;
+        }
+
+        .palette-title {
+            color: #9966ff;
+            font-size: 12px;
+            font-weight: bold;
+            margin-bottom: 10px;
+            text-align: center;
+        }
+
+        .material-item {
+            background: rgba(153, 102, 255, 0.1);
+            border: 1px solid #9966ff;
+            border-radius: 6px;
+            padding: 8px;
+            margin: 5px 0;
+            text-align: center;
+            cursor: pointer;
+            font-size: 10px;
+            transition: all 0.3s;
+        }
+
+        .material-item:hover {
+            background: rgba(153, 102, 255, 0.3);
+            transform: scale(1.05);
+        }
+
+        .material-item.selected-by-ai {
+            background: #9966ff;
+            color: #000000;
+            animation: aiSelect 1s ease-in-out;
+        }
+
+        @keyframes aiSelect {
+            0% { transform: scale(1); }
+            50% { transform: scale(1.2); }
+            100% { transform: scale(1); }
+        }
+
+        /* AI Activity Indicator */
+        #aiActivity {
+            position: absolute;
+            top: 50%;
+            right: 20px;
+            transform: translateY(-50%);
+            background: rgba(0, 0, 0, 0.9);
+            border: 2px solid #00ff00;
+            border-radius: 50%;
+            width: 80px;
+            height: 80px;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            z-index: 1000;
+        }
+
+        .ai-indicator {
+            color: #00ff00;
+            font-size: 24px;
+            margin-bottom: 5px;
+            animation: aiPulse 2s infinite;
+        }
+
+        .ai-status {
+            color: #ffffff;
+            font-size: 8px;
+            text-align: center;
+            text-transform: uppercase;
+        }
+
+        @keyframes aiPulse {
+            0%, 100% { transform: scale(1); opacity: 1; }
+            50% { transform: scale(1.2); opacity: 0.7; }
+        }
+
+        /* 3D World Viewport */
+        #worldViewport {
+            position: absolute;
+            left: 150px;
+            top: 20px;
+            right: 380px;
+            bottom: 160px;
+            border: 2px solid #333333;
+            border-radius: 8px;
+            overflow: hidden;
+            background: #000000;
+        }
+
+        /* Color Training Flash Overlay */
+        .color-flash {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            pointer-events: none;
+            z-index: 1500;
+            opacity: 0;
+            transition: opacity 0.3s ease;
+        }
+
+        .color-flash.red { background: rgba(255, 0, 0, 0.3); }
+        .color-flash.green { background: rgba(0, 255, 0, 0.3); }
+        .color-flash.blue { background: rgba(0, 0, 255, 0.3); }
+        .color-flash.yellow { background: rgba(255, 255, 0, 0.3); }
+        .color-flash.purple { background: rgba(255, 0, 255, 0.3); }
+
+        .color-flash.active {
+            opacity: 1;
+            animation: colorPulse 0.5s infinite;
+        }
+
+        @keyframes colorPulse {
+            0%, 100% { opacity: 0.3; }
+            50% { opacity: 0.7; }
+        }
+
+        /* Building Block Styles */
+        .building-block {
+            position: absolute;
+            border-radius: 4px;
+            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.3);
+            transition: all 0.5s ease;
+            cursor: pointer;
+        }
+
+        .building-block.placing {
+            animation: blockPlace 0.5s ease-out;
+        }
+
+        @keyframes blockPlace {
+            0% { transform: scale(0) rotate(180deg); opacity: 0; }
+            50% { transform: scale(1.2) rotate(90deg); opacity: 0.8; }
+            100% { transform: scale(1) rotate(0deg); opacity: 1; }
+        }
+
+        .building-block.connecting {
+            animation: blockConnect 0.3s ease-in-out;
+        }
+
+        @keyframes blockConnect {
+            0%, 100% { transform: scale(1); }
+            50% { transform: scale(1.1); }
+        }
+
+        /* Loading Screen */
+        #loadingScreen {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: linear-gradient(45deg, #000000, #1a1a1a, #000000);
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            z-index: 3000;
+            transition: opacity 2s ease-out;
+        }
+
+        .loading-title {
+            color: #00ff88;
+            font-size: 28px;
+            font-weight: bold;
+            margin-bottom: 30px;
+            text-shadow: 0 0 20px currentColor;
+        }
+
+        .loading-subtitle {
+            color: #ffffff;
+            font-size: 16px;
+            margin-bottom: 40px;
+            text-align: center;
+            line-height: 1.6;
+        }
+
+        .ai-brain-animation {
+            width: 100px;
+            height: 100px;
+            border: 4px solid rgba(0, 255, 136, 0.3);
+            border-top: 4px solid #00ff88;
+            border-radius: 50%;
+            animation: brainSpin 2s linear infinite;
+            margin-bottom: 30px;
+        }
+
+        @keyframes brainSpin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+
+        .loading-progress {
+            width: 300px;
+            height: 6px;
+            background: rgba(0, 255, 136, 0.3);
+            border-radius: 3px;
+            overflow: hidden;
+        }
+
+        .loading-bar {
+            height: 100%;
+            background: linear-gradient(90deg, #00ff88, #00cc66);
+            width: 0%;
+            transition: width 0.5s ease;
+        }
+    </style>
+</head>
+<body>
+    <div id="aiWorld">
+        <!-- Loading Screen -->
+        <div id="loadingScreen">
+            <div class="loading-title">🤖 AI Reasoning Agent Initializing</div>
+            <div class="loading-subtitle">
+                Teaching AI to build with blocks...<br>
+                Calibrating reasoning patterns...<br>
+                Preparing interactive training system...
+            </div>
+            <div class="ai-brain-animation"></div>
+            <div class="loading-progress">
+                <div class="loading-bar" id="loadingBar"></div>
+            </div>
+        </div>
+
+        <!-- Color Flash Overlays -->
+        <div class="color-flash red" id="redFlash"></div>
+        <div class="color-flash green" id="greenFlash"></div>
+        <div class="color-flash blue" id="blueFlash"></div>
+        <div class="color-flash yellow" id="yellowFlash"></div>
+        <div class="color-flash purple" id="purpleFlash"></div>
+
+        <!-- AI Reasoning Display -->
+        <div id="reasoningDisplay">
+            <div class="reasoning-title">🧠 AI REASONING STREAM</div>
+            <div id="thoughtStream">
+                <div class="thought-bubble">
+                    <div class="thought-type">INITIALIZATION</div>
+                    <div class="thought-content">AI reasoning agent coming online...</div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Building Progress -->
+        <div id="buildProgress">
+            <div class="progress-title">🏗️ CONSTRUCTION PROGRESS</div>
+            <div id="buildQueue">
+                <div class="build-item">
+                    <div class="build-name">Foundation Block</div>
+                    <div class="progress-bar">
+                        <div class="progress-fill" style="width: 0%"></div>
+                    </div>
+                    <div class="build-status">Planning</div>
+                </div>
+            </div>
+        </div>
+
+        <!-- 3D World Viewport -->
+        <div id="worldViewport">
+            <canvas id="worldCanvas"></canvas>
+        </div>
+
+        <!-- Material Palette -->
+        <div id="materialPalette">
+            <div class="palette-title">🧱 MATERIALS</div>
+            <div class="material-item" data-type="log">🪵 Log</div>
+            <div class="material-item" data-type="brick">🧱 Brick</div>
+            <div class="material-item" data-type="connector">🔗 Connector</div>
+            <div class="material-item" data-type="wheel">⚙️ Wheel</div>
+            <div class="material-item" data-type="beam">📏 Beam</div>
+        </div>
+
+        <!-- AI Learning Stats -->
+        <div id="learningStats">
+            <div class="stats-title">📊 AI LEARNING PROGRESS</div>
+            <div class="stat-item">
+                <span class="stat-label">Blocks Placed:</span>
+                <span class="stat-value" id="blocksPlaced">0</span>
+            </div>
+            <div class="stat-item">
+                <span class="stat-label">Structures Built:</span>
+                <span class="stat-value" id="structuresBuilt">0</span>
+            </div>
+            <div class="stat-item">
+                <span class="stat-label">Training Sessions:</span>
+                <span class="stat-value" id="trainingSessions">0</span>
+            </div>
+            <div class="stat-item">
+                <span class="stat-label">Success Rate:</span>
+                <span class="stat-value" id="successRate">0%</span>
+            </div>
+            <div class="experience-bar">
+                <div class="experience-fill" id="experienceFill" style="width: 0%"></div>
+            </div>
+            <div style="text-align: center; font-size: 10px; color: #888; margin-top: 5px;">
+                Level <span id="aiLevel">1</span> Experience
+            </div>
+        </div>
+
+        <!-- World Controls -->
+        <div id="worldControls">
+            <div class="controls-title">🎮 WORLD CONTROLS</div>
+            
+            <div class="control-section">
+                <div class="control-label">AI Building Speed</div>
+                <input type="range" class="control-slider" id="buildSpeed" min="1" max="10" value="5">
+            </div>
+            
+            <div class="control-section">
+                <div class="control-label">Interaction Frequency</div>
+                <input type="range" class="control-slider" id="interactionFreq" min="1" max="10" value="3">
+            </div>
+            
+            <div style="margin-top: 15px;">
+                <button class="control-btn active" id="pauseBtn" onclick="togglePause()">⏸ Pause</button>
+                <button class="control-btn" onclick="resetWorld()">🔄 Reset</button>
+                <button class="control-btn" onclick="saveProgress()">💾 Save</button>
+            </div>
+        </div>
+
+        <!-- AI Activity Indicator -->
+        <div id="aiActivity">
+            <div class="ai-indicator">🤖</div>
+            <div class="ai-status" id="aiStatus">Thinking</div>
+        </div>
+
+        <!-- Interaction Alert -->
+        <div id="interactionAlert">
+            <div class="alert-title">🚨 TRAINING MOMENT</div>
+            <div class="alert-question" id="alertQuestion">
+                The AI wants to place a red block here. Should it continue?
+            </div>
+            <div class="alert-options">
+                <button class="alert-btn yes" onclick="respondToAI(true)">✅ YES</button>
+                <button class="alert-btn no" onclick="respondToAI(false)">❌ NO</button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        class AIReasoningBuilderWorld {
+            constructor() {
+                this.scene = null;
+                this.camera = null;
+                this.renderer = null;
+                this.world = {
+                    blocks: [],
+                    structures: [],
+                    gridSize: 20,
+                    worldSize: 400
+                };
+                
+                this.ai = {
+                    isActive: true,
+                    isPaused: false,
+                    buildSpeed: 5,
+                    interactionFrequency: 3,
+                    currentTask: null,
+                    reasoningQueue: [],
+                    experience: 0,
+                    level: 1,
+                    stats: {
+                        blocksPlaced: 0,
+                        structuresBuilt: 0,
+                        trainingSessions: 0,
+                        successfulInteractions: 0,
+                        totalInteractions: 0
+                    }
+                };
+                
+                this.interaction = {
+                    isWaiting: false,
+                    currentQuestion: null,
+                    callback: null,
+                    flashColor: null
+                };
+                
+                this.materials = {
+                    log: { color: 0x8B4513, icon: '🪵', strength: 3 },
+                    brick: { color: 0xB22222, icon: '🧱', strength: 5 },
+                    connector: { color: 0xFFD700, icon: '🔗', strength: 2 },
+                    wheel: { color: 0x696969, icon: '⚙️', strength: 4 },
+                    beam: { color: 0x2F4F4F, icon: '📏', strength: 4 }
+                };
+                
+                this.buildQueue = [];
+                this.thoughtStream = [];
+                
+                this.initializeWorld();
+            }
+            
+            async initializeWorld() {
+                console.log('🤖 Initializing AI Reasoning Builder World...');
+                
+                await this.showLoadingScreen();
+                await this.setupThreeJS();
+                await this.createWorldBase();
+                await this.startAIReasoning();
+                
+                this.hideLoadingScreen();
+                this.startGameLoop();
+                
+                console.log('✅ AI Builder World ready - AI will start building shortly!');
+            }
+            
+            async showLoadingScreen() {
+                const loadingBar = document.getElementById('loadingBar');
+                const steps = [
+                    'Initializing AI neural networks...',
+                    'Loading building material library...',
+                    'Calibrating reasoning patterns...',
+                    'Setting up 3D construction space...',
+                    'Preparing interaction training system...',
+                    'AI Builder ready to learn!'
+                ];
+                
+                for (let i = 0; i < steps.length; i++) {
+                    loadingBar.style.width = ((i + 1) / steps.length * 100) + '%';
+                    await this.delay(800);
+                }
+            }
+            
+            delay(ms) {
+                return new Promise(resolve => setTimeout(resolve, ms));
+            }
+            
+            hideLoadingScreen() {
+                const loadingScreen = document.getElementById('loadingScreen');
+                loadingScreen.style.opacity = '0';
+                setTimeout(() => {
+                    loadingScreen.style.display = 'none';
+                }, 2000);
+            }
+            
+            async setupThreeJS() {
+                const container = document.getElementById('worldViewport');
+                const canvas = document.getElementById('worldCanvas');
+                
+                // Scene
+                this.scene = new THREE.Scene();
+                this.scene.background = new THREE.Color(0x001122);
+                this.scene.fog = new THREE.Fog(0x001122, 200, 800);
+                
+                // Camera (isometric-style view)
+                this.camera = new THREE.PerspectiveCamera(
+                    60, 
+                    container.clientWidth / container.clientHeight, 
+                    1, 
+                    1000
+                );
+                this.camera.position.set(300, 200, 300);
+                this.camera.lookAt(0, 0, 0);
+                
+                // Renderer
+                this.renderer = new THREE.WebGLRenderer({ 
+                    canvas: canvas,
+                    antialias: true 
+                });
+                this.renderer.setSize(container.clientWidth, container.clientHeight);
+                this.renderer.shadowMap.enabled = true;
+                this.renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+                
+                // Lighting
+                this.setupLighting();
+                
+                // Camera controls (simple auto-rotation)
+                this.setupCameraControls();
+            }
+            
+            setupLighting() {
+                // Ambient light
+                const ambientLight = new THREE.AmbientLight(0x404040, 0.4);
+                this.scene.add(ambientLight);
+                
+                // Main directional light
+                const directionalLight = new THREE.DirectionalLight(0xffffff, 0.8);
+                directionalLight.position.set(100, 200, 100);
+                directionalLight.castShadow = true;
+                directionalLight.shadow.mapSize.width = 2048;
+                directionalLight.shadow.mapSize.height = 2048;
+                this.scene.add(directionalLight);
+                
+                // Colored accent lights
+                const colors = [0x00ff88, 0xff6b9d, 0x00ffff, 0xffd700];
+                colors.forEach((color, i) => {
+                    const light = new THREE.PointLight(color, 0.3, 150);
+                    const angle = (i / colors.length) * Math.PI * 2;
+                    light.position.set(
+                        Math.cos(angle) * 100,
+                        50,
+                        Math.sin(angle) * 100
+                    );
+                    this.scene.add(light);
+                });
+            }
+            
+            setupCameraControls() {
+                // Simple camera orbit animation
+                this.cameraAngle = 0;
+                this.cameraRadius = 400;
+                this.cameraHeight = 200;
+            }
+            
+            createWorldBase() {
+                // Create ground plane
+                const groundGeometry = new THREE.PlaneGeometry(this.world.worldSize, this.world.worldSize);
+                const groundMaterial = new THREE.MeshLambertMaterial({ 
+                    color: 0x228B22,
+                    transparent: true,
+                    opacity: 0.8
+                });
+                const ground = new THREE.Mesh(groundGeometry, groundMaterial);
+                ground.rotation.x = -Math.PI / 2;
+                ground.receiveShadow = true;
+                this.scene.add(ground);
+                
+                // Create grid lines
+                const gridHelper = new THREE.GridHelper(
+                    this.world.worldSize, 
+                    this.world.worldSize / this.world.gridSize,
+                    0x444444,
+                    0x444444
+                );
+                gridHelper.material.opacity = 0.3;
+                gridHelper.material.transparent = true;
+                this.scene.add(gridHelper);
+                
+                console.log('🌍 World base created with grid system');
+            }
+            
+            async startAIReasoning() {
+                // Start the AI's autonomous building process
+                setTimeout(() => {
+                    this.aiThinkAndBuild();
+                }, 2000);
+                
+                // Start periodic interaction requests
+                setTimeout(() => {
+                    this.scheduleInteractions();
+                }, 5000);
+            }
+            
+            async aiThinkAndBuild() {
+                if (this.ai.isPaused || this.interaction.isWaiting) {
+                    setTimeout(() => this.aiThinkAndBuild(), 1000);
+                    return;
+                }
+                
+                // AI reasoning process
+                const thoughts = [
+                    { type: 'observation', content: 'Analyzing current world state...' },
+                    { type: 'planning', content: 'Considering block placement options...' },
+                    { type: 'decision', content: 'Selecting optimal building strategy...' },
+                    { type: 'action', content: 'Executing construction plan...' }
+                ];
+                
+                // Display AI thoughts
+                for (const thought of thoughts) {
+                    this.addThought(thought.type, thought.content);
+                    await this.delay(800);
+                }
+                
+                // Decide what to build
+                const buildAction = this.decideWhatToBuild();
+                if (buildAction) {
+                    await this.executeBuildAction(buildAction);
+                }
+                
+                // Schedule next thinking cycle
+                const nextThinkDelay = (11 - this.ai.buildSpeed) * 1000;
+                setTimeout(() => this.aiThinkAndBuild(), nextThinkDelay);
+            }
+            
+            decideWhatToBuild() {
+                const currentBlocks = this.world.blocks.length;
+                
+                if (currentBlocks === 0) {
+                    return {
+                        type: 'foundation',
+                        material: 'log',
+                        position: { x: 0, y: 0, z: 0 },
+                        reasoning: 'Starting with a foundation log'
+                    };
+                } else if (currentBlocks < 5) {
+                    return {
+                        type: 'wall',
+                        material: Math.random() > 0.5 ? 'brick' : 'log',
+                        position: this.findGoodPosition(),
+                        reasoning: 'Building up the basic structure'
+                    };
+                } else if (Math.random() > 0.7) {
+                    return {
+                        type: 'connector',
+                        material: 'connector',
+                        position: this.findConnectionPoint(),
+                        reasoning: 'Adding connectors to strengthen the build'
+                    };
+                } else {
+                    return {
+                        type: 'expansion',
+                        material: this.chooseRandomMaterial(),
+                        position: this.findExpansionPoint(),
+                        reasoning: 'Expanding the structure creatively'
+                    };
+                }
+            }
+            
+            findGoodPosition() {
+                const existingBlocks = this.world.blocks;
+                if (existingBlocks.length === 0) {
+                    return { x: 0, y: 0, z: 0 };
+                }
+                
+                // Find a position adjacent to existing blocks
+                const lastBlock = existingBlocks[existingBlocks.length - 1];
+                const directions = [
+                    { x: this.world.gridSize, y: 0, z: 0 },
+                    { x: -this.world.gridSize, y: 0, z: 0 },
+                    { x: 0, y: this.world.gridSize, z: 0 },
+                    { x: 0, y: 0, z: this.world.gridSize },
+                    { x: 0, y: 0, z: -this.world.gridSize }
+                ];
+                
+                const direction = directions[Math.floor(Math.random() * directions.length)];
+                return {
+                    x: lastBlock.position.x + direction.x,
+                    y: lastBlock.position.y + direction.y,
+                    z: lastBlock.position.z + direction.z
+                };
+            }
+            
+            findConnectionPoint() {
+                return this.findGoodPosition(); // Simplified for now
+            }
+            
+            findExpansionPoint() {
+                return this.findGoodPosition(); // Simplified for now
+            }
+            
+            chooseRandomMaterial() {
+                const materialNames = Object.keys(this.materials);
+                return materialNames[Math.floor(Math.random() * materialNames.length)];
+            }
+            
+            async executeBuildAction(action) {
+                // Add thought about the action
+                this.addThought('action', `${action.reasoning} using ${action.material}`);
+                
+                // Highlight material in palette
+                this.highlightMaterial(action.material);
+                
+                // Add to build queue
+                const buildItem = {
+                    id: Date.now(),
+                    name: `${action.type} (${action.material})`,
+                    progress: 0,
+                    position: action.position,
+                    material: action.material,
+                    type: action.type
+                };
+                
+                this.buildQueue.push(buildItem);
+                this.updateBuildQueueDisplay();
+                
+                // Animate build progress
+                await this.animateBuildProgress(buildItem);
+                
+                // Create the actual 3D block
+                const block = this.createBlock(action.material, action.position);
+                this.world.blocks.push({
+                    mesh: block,
+                    material: action.material,
+                    position: action.position,
+                    type: action.type,
+                    id: buildItem.id
+                });
+                
+                // Update stats
+                this.ai.stats.blocksPlaced++;
+                this.ai.experience += 10;
+                this.updateStatsDisplay();
+                
+                // Remove from build queue
+                this.buildQueue = this.buildQueue.filter(item => item.id !== buildItem.id);
+                this.updateBuildQueueDisplay();
+                
+                console.log(`🤖 AI placed ${action.material} ${action.type} at`, action.position);
+            }
+            
+            createBlock(materialType, position) {
+                const material = this.materials[materialType];
+                
+                // Create geometry based on material type
+                let geometry;
+                switch (materialType) {
+                    case 'log':
+                        geometry = new THREE.CylinderGeometry(3, 3, 20, 8);
+                        break;
+                    case 'brick':
+                        geometry = new THREE.BoxGeometry(18, 6, 9);
+                        break;
+                    case 'connector':
+                        geometry = new THREE.SphereGeometry(4, 8, 8);
+                        break;
+                    case 'wheel':
+                        geometry = new THREE.CylinderGeometry(6, 6, 3, 12);
+                        break;
+                    case 'beam':
+                        geometry = new THREE.BoxGeometry(25, 3, 3);
+                        break;
+                    default:
+                        geometry = new THREE.BoxGeometry(10, 10, 10);
+                }
+                
+                const meshMaterial = new THREE.MeshLambertMaterial({ 
+                    color: material.color,
+                    transparent: true,
+                    opacity: 0.9
+                });
+                
+                const mesh = new THREE.Mesh(geometry, meshMaterial);
+                mesh.position.set(position.x, position.y + 10, position.z);
+                mesh.castShadow = true;
+                mesh.receiveShadow = true;
+                
+                // Add placement animation
+                mesh.scale.set(0, 0, 0);
+                mesh.rotation.set(
+                    Math.random() * Math.PI,
+                    Math.random() * Math.PI,
+                    Math.random() * Math.PI
+                );
+                
+                this.scene.add(mesh);
+                
+                // Animate into place
+                const targetScale = 1;
+                const animatePlace = () => {
+                    mesh.scale.x = THREE.MathUtils.lerp(mesh.scale.x, targetScale, 0.1);
+                    mesh.scale.y = THREE.MathUtils.lerp(mesh.scale.y, targetScale, 0.1);
+                    mesh.scale.z = THREE.MathUtils.lerp(mesh.scale.z, targetScale, 0.1);
+                    
+                    mesh.rotation.x = THREE.MathUtils.lerp(mesh.rotation.x, 0, 0.1);
+                    mesh.rotation.y = THREE.MathUtils.lerp(mesh.rotation.y, 0, 0.1);
+                    mesh.rotation.z = THREE.MathUtils.lerp(mesh.rotation.z, 0, 0.1);
+                    
+                    if (mesh.scale.x < 0.99) {
+                        requestAnimationFrame(animatePlace);
+                    }
+                };
+                animatePlace();
+                
+                return mesh;
+            }
+            
+            highlightMaterial(materialType) {
+                // Remove previous highlights
+                document.querySelectorAll('.material-item').forEach(item => {
+                    item.classList.remove('selected-by-ai');
+                });
+                
+                // Highlight selected material
+                const materialElement = document.querySelector(`[data-type="${materialType}"]`);
+                if (materialElement) {
+                    materialElement.classList.add('selected-by-ai');
+                    setTimeout(() => {
+                        materialElement.classList.remove('selected-by-ai');
+                    }, 2000);
+                }
+            }
+            
+            async animateBuildProgress(buildItem) {
+                const duration = 3000; // 3 seconds
+                const startTime = Date.now();
+                
+                return new Promise(resolve => {
+                    const updateProgress = () => {
+                        const elapsed = Date.now() - startTime;
+                        const progress = Math.min(100, (elapsed / duration) * 100);
+                        buildItem.progress = progress;
+                        
+                        this.updateBuildQueueDisplay();
+                        
+                        if (progress >= 100) {
+                            resolve();
+                        } else {
+                            requestAnimationFrame(updateProgress);
+                        }
+                    };
+                    updateProgress();
+                });
+            }
+            
+            scheduleInteractions() {
+                if (this.ai.isPaused) {
+                    setTimeout(() => this.scheduleInteractions(), 2000);
+                    return;
+                }
+                
+                // Random chance for interaction based on frequency setting
+                const chance = this.ai.interactionFrequency / 10;
+                if (Math.random() < chance) {
+                    this.triggerInteractionTraining();
+                }
+                
+                // Schedule next check
+                const nextCheck = 5000 + Math.random() * 10000; // 5-15 seconds
+                setTimeout(() => this.scheduleInteractions(), nextCheck);
+            }
+            
+            triggerInteractionTraining() {
+                if (this.interaction.isWaiting) return;
+                
+                const trainingScenarios = [
+                    {
+                        question: "The AI wants to place a red brick vertically. Should it continue?",
+                        color: "red",
+                        correctAnswer: true
+                    },
+                    {
+                        question: "AI is considering connecting two distant blocks. Good idea?",
+                        color: "blue",
+                        correctAnswer: true
+                    },
+                    {
+                        question: "The AI wants to place a heavy block on a weak foundation. Allow it?",
+                        color: "yellow",
+                        correctAnswer: false
+                    },
+                    {
+                        question: "AI suggests adding decorative elements. Should it proceed?",
+                        color: "green",
+                        correctAnswer: true
+                    },
+                    {
+                        question: "The AI wants to demolish part of the structure to rebuild. Okay?",
+                        color: "purple",
+                        correctAnswer: false
+                    }
+                ];
+                
+                const scenario = trainingScenarios[Math.floor(Math.random() * trainingScenarios.length)];
+                
+                this.interaction.isWaiting = true;
+                this.interaction.currentQuestion = scenario;
+                
+                // Flash the color
+                this.flashColor(scenario.color);
+                
+                // Show interaction alert
+                document.getElementById('alertQuestion').textContent = scenario.question;
+                document.getElementById('interactionAlert').style.display = 'block';
+                
+                // AI pauses and waits
+                this.addThought('question', 'Requesting human guidance...');
+                document.getElementById('aiStatus').textContent = 'Waiting';
+                
+                console.log('🎯 Training interaction triggered:', scenario.question);
+            }
+            
+            flashColor(color) {
+                const flashElement = document.getElementById(color + 'Flash');
+                if (flashElement) {
+                    flashElement.classList.add('active');
+                    this.interaction.flashColor = color;
+                }
+            }
+            
+            stopColorFlash() {
+                if (this.interaction.flashColor) {
+                    const flashElement = document.getElementById(this.interaction.flashColor + 'Flash');
+                    if (flashElement) {
+                        flashElement.classList.remove('active');
+                    }
+                    this.interaction.flashColor = null;
+                }
+            }
+            
+            addThought(type, content) {
+                const thoughtTypes = {
+                    observation: '👁️ OBSERVATION',
+                    planning: '🎯 PLANNING',
+                    decision: '⚡ DECISION',
+                    action: '🔨 ACTION',
+                    question: '❓ QUESTION',
+                    learning: '📚 LEARNING'
+                };
+                
+                const thoughtBubble = document.createElement('div');
+                thoughtBubble.className = `thought-bubble thought-${type}`;
+                thoughtBubble.innerHTML = `
+                    <div class="thought-type">${thoughtTypes[type] || '🤖 THINKING'}</div>
+                    <div class="thought-content">${content}</div>
+                `;
+                
+                const thoughtStream = document.getElementById('thoughtStream');
+                thoughtStream.appendChild(thoughtBubble);
+                
+                // Keep only last 8 thoughts
+                while (thoughtStream.children.length > 8) {
+                    thoughtStream.removeChild(thoughtStream.firstChild);
+                }
+                
+                // Auto-scroll to bottom
+                thoughtStream.scrollTop = thoughtStream.scrollHeight;
+            }
+            
+            updateBuildQueueDisplay() {
+                const buildQueueElement = document.getElementById('buildQueue');
+                buildQueueElement.innerHTML = '';
+                
+                this.buildQueue.slice(0, 3).forEach(item => {
+                    const buildItemElement = document.createElement('div');
+                    buildItemElement.className = 'build-item';
+                    buildItemElement.innerHTML = `
+                        <div class="build-name">${item.name}</div>
+                        <div class="progress-bar">
+                            <div class="progress-fill" style="width: ${item.progress}%"></div>
+                        </div>
+                        <div class="build-status">${item.progress >= 100 ? 'Complete' : 'Building'}</div>
+                    `;
+                    buildQueueElement.appendChild(buildItemElement);
+                });
+                
+                if (this.buildQueue.length === 0) {
+                    buildQueueElement.innerHTML = '<div style="text-align: center; color: #888; padding: 20px;">No active builds</div>';
+                }
+            }
+            
+            updateStatsDisplay() {
+                document.getElementById('blocksPlaced').textContent = this.ai.stats.blocksPlaced;
+                document.getElementById('structuresBuilt').textContent = this.ai.stats.structuresBuilt;
+                document.getElementById('trainingSessions').textContent = this.ai.stats.trainingSessions;
+                
+                const successRate = this.ai.stats.totalInteractions > 0 ? 
+                    Math.round((this.ai.stats.successfulInteractions / this.ai.stats.totalInteractions) * 100) : 0;
+                document.getElementById('successRate').textContent = successRate + '%';
+                
+                // Update experience and level
+                const experienceForNextLevel = this.ai.level * 100;
+                const experienceProgress = (this.ai.experience % experienceForNextLevel) / experienceForNextLevel * 100;
+                document.getElementById('experienceFill').style.width = experienceProgress + '%';
+                
+                if (this.ai.experience >= experienceForNextLevel) {
+                    this.ai.level++;
+                    document.getElementById('aiLevel').textContent = this.ai.level;
+                    this.addThought('learning', `Level up! Now level ${this.ai.level}`);
+                }
+            }
+            
+            updateCamera() {
+                // Gentle camera orbit
+                this.cameraAngle += 0.005;
+                this.camera.position.x = Math.cos(this.cameraAngle) * this.cameraRadius;
+                this.camera.position.z = Math.sin(this.cameraAngle) * this.cameraRadius;
+                this.camera.position.y = this.cameraHeight;
+                this.camera.lookAt(0, 20, 0);
+            }
+            
+            startGameLoop() {
+                const gameLoop = () => {
+                    // Update camera
+                    this.updateCamera();
+                    
+                    // Update AI status
+                    if (!this.ai.isPaused) {
+                        const statuses = ['Thinking', 'Planning', 'Analyzing', 'Building'];
+                        if (!this.interaction.isWaiting) {
+                            const randomStatus = statuses[Math.floor(Math.random() * statuses.length)];
+                            document.getElementById('aiStatus').textContent = randomStatus;
+                        }
+                    }
+                    
+                    // Render
+                    this.renderer.render(this.scene, this.camera);
+                    
+                    requestAnimationFrame(gameLoop);
+                };
+                
+                requestAnimationFrame(gameLoop);
+            }
+        }
+        
+        // Global functions for UI
+        function respondToAI(response) {
+            if (!window.aiBuilder || !window.aiBuilder.interaction.isWaiting) return;
+            
+            const currentQuestion = window.aiBuilder.interaction.currentQuestion;
+            const isCorrect = response === currentQuestion.correctAnswer;
+            
+            // Update stats
+            window.aiBuilder.ai.stats.totalInteractions++;
+            window.aiBuilder.ai.stats.trainingSessions++;
+            
+            if (isCorrect) {
+                window.aiBuilder.ai.stats.successfulInteractions++;
+                window.aiBuilder.addThought('learning', 'Great! Learning from positive feedback.');
+                window.aiBuilder.ai.experience += 25;
+            } else {
+                window.aiBuilder.addThought('learning', 'I see, adjusting my approach based on feedback.');
+                window.aiBuilder.ai.experience += 10;
+            }
+            
+            // Hide alert and stop color flash
+            document.getElementById('interactionAlert').style.display = 'none';
+            window.aiBuilder.stopColorFlash();
+            
+            // Resume AI activity
+            window.aiBuilder.interaction.isWaiting = false;
+            document.getElementById('aiStatus').textContent = 'Learning';
+            
+            // Update stats display
+            window.aiBuilder.updateStatsDisplay();
+            
+            console.log(`👨‍🏫 Human responded: ${response ? 'YES' : 'NO'} (${isCorrect ? 'Correct' : 'Learning opportunity'})`);
+        }
+        
+        function togglePause() {
+            if (!window.aiBuilder) return;
+            
+            window.aiBuilder.ai.isPaused = !window.aiBuilder.ai.isPaused;
+            const pauseBtn = document.getElementById('pauseBtn');
+            
+            if (window.aiBuilder.ai.isPaused) {
+                pauseBtn.textContent = '▶ Resume';
+                pauseBtn.classList.remove('active');
+                document.getElementById('aiStatus').textContent = 'Paused';
+                window.aiBuilder.addThought('observation', 'System paused by human');
+            } else {
+                pauseBtn.textContent = '⏸ Pause';
+                pauseBtn.classList.add('active');
+                document.getElementById('aiStatus').textContent = 'Active';
+                window.aiBuilder.addThought('observation', 'Resuming construction activities');
+            }
+        }
+        
+        function resetWorld() {
+            if (confirm('Reset the AI\'s world? This will clear all progress.')) {
+                location.reload();
+            }
+        }
+        
+        function saveProgress() {
+            alert('📊 Progress saved!\n\nBlocks placed: ' + (window.aiBuilder?.ai.stats.blocksPlaced || 0) + 
+                  '\nAI Level: ' + (window.aiBuilder?.ai.level || 1) + 
+                  '\nTraining sessions: ' + (window.aiBuilder?.ai.stats.trainingSessions || 0));
+        }
+        
+        // Setup control sliders
+        document.addEventListener('DOMContentLoaded', () => {
+            const buildSpeedSlider = document.getElementById('buildSpeed');
+            const interactionFreqSlider = document.getElementById('interactionFreq');
+            
+            buildSpeedSlider?.addEventListener('input', (e) => {
+                if (window.aiBuilder) {
+                    window.aiBuilder.ai.buildSpeed = parseInt(e.target.value);
+                }
+            });
+            
+            interactionFreqSlider?.addEventListener('input', (e) => {
+                if (window.aiBuilder) {
+                    window.aiBuilder.ai.interactionFrequency = parseInt(e.target.value);
+                }
+            });
+        });
+        
+        // Initialize the AI Reasoning Builder World
+        window.aiBuilder = new AIReasoningBuilderWorld();
+        
+        console.log('🤖 AI Reasoning Builder World Initialized');
+        console.log('🏗️ Watch the AI learn to build with K\'NEX and Lincoln Log style blocks');
+        console.log('🎯 Respond to color flashes to train the AI');
+        console.log('📊 Monitor AI learning progress and reasoning stream');
+        console.log('🎮 Use controls to adjust AI behavior and interaction frequency');
+    </script>
+</body>
+</html>

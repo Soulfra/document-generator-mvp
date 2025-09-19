@@ -1,0 +1,664 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>🌍 Dual Reality Lag System - Visual Demo</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            background: #000;
+            color: #fff;
+            font-family: 'Courier New', monospace;
+            overflow: hidden;
+            height: 100vh;
+        }
+        
+        .reality-container {
+            display: flex;
+            height: 100vh;
+        }
+        
+        .reality-view {
+            flex: 1;
+            position: relative;
+            border-right: 2px solid #333;
+        }
+        
+        .reality-view:last-child {
+            border-right: none;
+        }
+        
+        .god-view {
+            background: linear-gradient(45deg, #001a1a, #003333);
+        }
+        
+        .player-view {
+            background: linear-gradient(45deg, #1a0a1a, #330033);
+        }
+        
+        .reality-header {
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            height: 60px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            background: rgba(0, 0, 0, 0.8);
+            z-index: 100;
+            font-size: 18px;
+            font-weight: bold;
+        }
+        
+        .god-view .reality-header {
+            color: #0ff;
+            text-shadow: 0 0 10px #0ff;
+        }
+        
+        .player-view .reality-header {
+            color: #f0f;
+            text-shadow: 0 0 10px #f0f;
+        }
+        
+        .reality-canvas {
+            position: absolute;
+            top: 60px;
+            left: 0;
+            right: 0;
+            bottom: 100px;
+        }
+        
+        .reality-info {
+            position: absolute;
+            bottom: 0;
+            left: 0;
+            right: 0;
+            height: 100px;
+            background: rgba(0, 0, 0, 0.9);
+            padding: 10px;
+            font-size: 12px;
+            overflow-y: auto;
+        }
+        
+        .centipede {
+            position: absolute;
+            width: 20px;
+            height: 20px;
+            border-radius: 50%;
+            transition: all 0.1s;
+        }
+        
+        .god-view .centipede {
+            background: radial-gradient(circle, #00ffff, #0088aa);
+            box-shadow: 0 0 20px #0ff;
+        }
+        
+        .player-view .centipede {
+            background: radial-gradient(circle, #ff00ff, #aa0088);
+            box-shadow: 0 0 20px #f0f;
+        }
+        
+        .fishing-line {
+            position: absolute;
+            width: 2px;
+            background: linear-gradient(to bottom, transparent, #fff, transparent);
+            transform-origin: top;
+            opacity: 0.7;
+        }
+        
+        .god-view .fishing-line {
+            background: linear-gradient(to bottom, transparent, #0ff, transparent);
+        }
+        
+        .player-view .fishing-line {
+            background: linear-gradient(to bottom, transparent, #f0f, transparent);
+        }
+        
+        .ship {
+            position: absolute;
+            width: 30px;
+            height: 15px;
+            clip-path: polygon(50% 0%, 0% 100%, 100% 100%);
+            transition: all 0.2s;
+        }
+        
+        .god-view .ship {
+            background: #0ff;
+            box-shadow: 0 0 15px #0ff;
+        }
+        
+        .player-view .ship {
+            background: #f0f;
+            box-shadow: 0 0 15px #f0f;
+            opacity: 0.8;
+        }
+        
+        .brain {
+            position: absolute;
+            width: 25px;
+            height: 25px;
+            border-radius: 50% 50% 0 0;
+            transition: all 0.15s;
+        }
+        
+        .god-view .brain {
+            background: #0ff;
+            box-shadow: 0 0 10px #0ff;
+        }
+        
+        .player-view .brain {
+            background: #f0f;
+            box-shadow: 0 0 10px #f0f;
+            transform: scale(0.9);
+        }
+        
+        .black-screen-overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: #000;
+            z-index: 1000;
+            opacity: 0;
+            pointer-events: none;
+            transition: opacity 0.1s;
+        }
+        
+        .black-screen-overlay.active {
+            opacity: 1;
+        }
+        
+        .lag-indicator {
+            position: fixed;
+            top: 20px;
+            left: 50%;
+            transform: translateX(-50%);
+            background: rgba(0, 0, 0, 0.8);
+            padding: 10px 20px;
+            border-radius: 5px;
+            border: 1px solid #666;
+            z-index: 200;
+            text-align: center;
+            min-width: 200px;
+        }
+        
+        .lag-value {
+            font-size: 20px;
+            font-weight: bold;
+            color: #ff0;
+            text-shadow: 0 0 10px #ff0;
+        }
+        
+        .oscillation-indicator {
+            width: 100%;
+            height: 5px;
+            background: #333;
+            margin: 10px 0;
+            position: relative;
+            border-radius: 3px;
+        }
+        
+        .oscillation-bar {
+            height: 100%;
+            background: linear-gradient(90deg, #0ff, #f0f, #0ff);
+            border-radius: 3px;
+            transition: width 0.1s;
+        }
+        
+        .controls {
+            position: fixed;
+            bottom: 20px;
+            right: 20px;
+            background: rgba(0, 0, 0, 0.8);
+            padding: 15px;
+            border-radius: 5px;
+            border: 1px solid #666;
+            z-index: 200;
+        }
+        
+        .controls button {
+            background: #333;
+            color: #fff;
+            border: 1px solid #666;
+            padding: 8px 12px;
+            margin: 5px;
+            border-radius: 3px;
+            cursor: pointer;
+            font-family: inherit;
+        }
+        
+        .controls button:hover {
+            background: #555;
+        }
+        
+        .reality-swap-indicator {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            font-size: 24px;
+            color: #ff0;
+            text-shadow: 0 0 20px #ff0;
+            opacity: 0;
+            pointer-events: none;
+            transition: opacity 0.3s;
+        }
+        
+        .reality-swap-indicator.active {
+            opacity: 1;
+        }
+    </style>
+</head>
+<body>
+    <!-- Black Screen Overlay -->
+    <div class="black-screen-overlay" id="blackScreenOverlay"></div>
+    
+    <!-- Lag Indicator -->
+    <div class="lag-indicator">
+        <div>Reality Lag: <span class="lag-value" id="lagValue">850ms</span></div>
+        <div class="oscillation-indicator">
+            <div class="oscillation-bar" id="oscillationBar"></div>
+        </div>
+        <div id="oscillationPhase">Phase: 0.00</div>
+    </div>
+    
+    <!-- Reality Container -->
+    <div class="reality-container">
+        <!-- God View -->
+        <div class="reality-view god-view">
+            <div class="reality-header">
+                🌟 GOD VIEW (Real-time Truth)
+            </div>
+            <div class="reality-canvas" id="godCanvas">
+                <!-- Entities will be added here -->
+            </div>
+            <div class="reality-info" id="godInfo">
+                <strong>God View Status:</strong><br>
+                - Shows real positions immediately<br>
+                - No lag or delay<br>
+                - True entity states<br>
+                - Reality layer: TRUTH<br>
+            </div>
+            <div class="reality-swap-indicator" id="godSwapIndicator">⚡ REALITY GLIMPSE ⚡</div>
+        </div>
+        
+        <!-- Player View -->
+        <div class="reality-view player-view">
+            <div class="reality-header">
+                👁️ PLAYER VIEW (Lagged Illusion)
+            </div>
+            <div class="reality-canvas" id="playerCanvas">
+                <!-- Entities will be added here -->
+            </div>
+            <div class="reality-info" id="playerInfo">
+                <strong>Player View Status:</strong><br>
+                - Shows shadow positions with lag<br>
+                - 850ms ± 200ms delay<br>
+                - Modified entity states<br>
+                - Reality layer: ILLUSION<br>
+            </div>
+            <div class="reality-swap-indicator" id="playerSwapIndicator">⚡ GOD GLIMPSE ⚡</div>
+        </div>
+    </div>
+    
+    <!-- Controls -->
+    <div class="controls">
+        <div style="margin-bottom: 10px; color: #ccc;">Reality Controls:</div>
+        <button onclick="triggerBlackScreen()">Force Black Screen</button>
+        <button onclick="adjustLag(-100)">Decrease Lag</button>
+        <button onclick="adjustLag(100)">Increase Lag</button>
+        <button onclick="togglePause()">Pause/Resume</button>
+    </div>
+    
+    <script>
+        // Dual Reality System State
+        const realityState = {
+            entities: new Map(),
+            godView: new Map(),
+            playerView: new Map(),
+            lagSettings: {
+                baseDelay: 850,
+                oscillationRange: 200,
+                blackScreenBuffer: 100,
+                realitySwingRate: 2000
+            },
+            oscillation: {
+                phase: 0,
+                direction: 1,
+                lastSwing: Date.now(),
+                isBlackScreen: false
+            },
+            paused: false
+        };
+        
+        // Entity types and their behaviors
+        const entityTypes = {
+            centipede: { color: '#0ff', size: 20, speed: 2 },
+            ship: { color: '#0ff', size: 30, speed: 1.5 },
+            brain: { color: '#0ff', size: 25, speed: 1 },
+            fishingLine: { color: '#0ff', size: 2, speed: 0 }
+        };
+        
+        // Initialize entities
+        function initializeEntities() {
+            // Create centipede segments
+            for (let i = 0; i < 5; i++) {
+                createEntity(`centipede_${i}`, 'centipede', {
+                    x: 200 + i * 30,
+                    y: 200 + Math.sin(i) * 50,
+                    targetX: 200 + i * 30,
+                    targetY: 200 + Math.sin(i) * 50
+                });
+            }
+            
+            // Create ship
+            createEntity('main_ship', 'ship', {
+                x: 400,
+                y: 300,
+                targetX: 400,
+                targetY: 300
+            });
+            
+            // Create brain
+            createEntity('autonomous_brain', 'brain', {
+                x: 300,
+                y: 150,
+                targetX: 300,
+                targetY: 150
+            });
+            
+            // Create fishing line
+            createEntity('fishing_line', 'fishingLine', {
+                x: 250,
+                y: 250,
+                targetX: 250,
+                targetY: 250,
+                length: 100,
+                angle: 0
+            });
+        }
+        
+        function createEntity(id, type, initialState) {
+            const entity = {
+                id,
+                type,
+                ...initialState,
+                lastUpdate: Date.now()
+            };
+            
+            realityState.entities.set(id, entity);
+            realityState.godView.set(id, { ...entity });
+            realityState.playerView.set(id, { ...entity });
+            
+            // Create DOM elements for both views
+            createEntityElement(id, type, 'god');
+            createEntityElement(id, type, 'player');
+        }
+        
+        function createEntityElement(id, type, view) {
+            const canvas = document.getElementById(view === 'god' ? 'godCanvas' : 'playerCanvas');
+            const element = document.createElement('div');
+            element.id = `${view}_${id}`;
+            element.className = type;
+            
+            if (type === 'fishingLine') {
+                element.className = 'fishing-line';
+            }
+            
+            canvas.appendChild(element);
+        }
+        
+        // Main animation loop
+        function animate() {
+            if (!realityState.paused) {
+                updateEntities();
+                processLag();
+                updateOscillation();
+                renderRealities();
+                updateUI();
+            }
+            
+            requestAnimationFrame(animate);
+        }
+        
+        function updateEntities() {
+            const now = Date.now();
+            
+            realityState.entities.forEach((entity, id) => {
+                // Update entity logic based on type
+                switch (entity.type) {
+                    case 'centipede':
+                        updateCentipede(entity, now);
+                        break;
+                    case 'ship':
+                        updateShip(entity, now);
+                        break;
+                    case 'brain':
+                        updateBrain(entity, now);
+                        break;
+                    case 'fishingLine':
+                        updateFishingLine(entity, now);
+                        break;
+                }
+                
+                // Update god view immediately
+                realityState.godView.set(id, { ...entity, timestamp: now });
+            });
+        }
+        
+        function updateCentipede(entity, now) {
+            // Organic movement pattern
+            const time = now * 0.001;
+            const baseX = 200 + Math.cos(time * 0.5) * 100;
+            const baseY = 200 + Math.sin(time * 0.3) * 80;
+            
+            entity.targetX = baseX;
+            entity.targetY = baseY;
+            
+            // Smooth movement
+            entity.x += (entity.targetX - entity.x) * 0.1;
+            entity.y += (entity.targetY - entity.y) * 0.1;
+        }
+        
+        function updateShip(entity, now) {
+            // Ship follows a wider pattern
+            const time = now * 0.0008;
+            entity.targetX = 400 + Math.cos(time) * 150;
+            entity.targetY = 300 + Math.sin(time * 0.7) * 100;
+            
+            entity.x += (entity.targetX - entity.x) * 0.05;
+            entity.y += (entity.targetY - entity.y) * 0.05;
+        }
+        
+        function updateBrain(entity, now) {
+            // Brain has more erratic movement
+            const time = now * 0.002;
+            entity.targetX = 300 + Math.sin(time) * 80 + Math.cos(time * 3) * 20;
+            entity.targetY = 150 + Math.cos(time * 1.3) * 60;
+            
+            entity.x += (entity.targetX - entity.x) * 0.15;
+            entity.y += (entity.targetY - entity.y) * 0.15;
+        }
+        
+        function updateFishingLine(entity, now) {
+            // Fishing line connects centipede to target
+            const centipede = realityState.entities.get('centipede_0');
+            if (centipede) {
+                entity.x = centipede.x;
+                entity.y = centipede.y;
+                entity.angle += 0.02;
+                entity.length = 100 + Math.sin(now * 0.003) * 30;
+            }
+        }
+        
+        function processLag() {
+            const now = Date.now();
+            const currentLag = calculateCurrentLag();
+            const laggedTime = now - currentLag;
+            
+            // Update player view with lagged positions
+            realityState.entities.forEach((entity, id) => {
+                const godEntity = realityState.godView.get(id);
+                
+                if (godEntity) {
+                    // Calculate shadow position with lag
+                    const lagFactor = Math.max(0, 1 - (currentLag / 2000));
+                    const shadowX = entity.x + (Math.sin(now * 0.001) * 20 * (1 - lagFactor));
+                    const shadowY = entity.y + (Math.cos(now * 0.0013) * 15 * (1 - lagFactor));
+                    
+                    realityState.playerView.set(id, {
+                        ...godEntity,
+                        x: shadowX,
+                        y: shadowY,
+                        timestamp: laggedTime,
+                        lagAmount: currentLag
+                    });
+                }
+            });
+        }
+        
+        function calculateCurrentLag() {
+            const { baseDelay, oscillationRange } = realityState.lagSettings;
+            const oscillation = Math.sin(realityState.oscillation.phase) * oscillationRange;
+            return Math.max(100, baseDelay + oscillation);
+        }
+        
+        function updateOscillation() {
+            const now = Date.now();
+            
+            realityState.oscillation.phase += 0.05 * realityState.oscillation.direction;
+            
+            // Swing direction every 2 seconds
+            if (now - realityState.oscillation.lastSwing > realityState.lagSettings.realitySwingRate) {
+                realityState.oscillation.direction *= -1;
+                realityState.oscillation.lastSwing = now;
+                
+                // Trigger black screen
+                triggerBlackScreen();
+            }
+        }
+        
+        function triggerBlackScreen() {
+            if (realityState.oscillation.isBlackScreen) return;
+            
+            realityState.oscillation.isBlackScreen = true;
+            document.getElementById('blackScreenOverlay').classList.add('active');
+            
+            // Show reality swap indicators
+            document.getElementById('godSwapIndicator').classList.add('active');
+            document.getElementById('playerSwapIndicator').classList.add('active');
+            
+            // Process reality swap
+            processRealitySwap();
+            
+            setTimeout(() => {
+                realityState.oscillation.isBlackScreen = false;
+                document.getElementById('blackScreenOverlay').classList.remove('active');
+                document.getElementById('godSwapIndicator').classList.remove('active');
+                document.getElementById('playerSwapIndicator').classList.remove('active');
+            }, realityState.lagSettings.blackScreenBuffer);
+        }
+        
+        function processRealitySwap() {
+            // Briefly swap some positions during black screen
+            const swapIds = ['centipede_0', 'main_ship'];
+            
+            swapIds.forEach(id => {
+                const godEntity = realityState.godView.get(id);
+                const playerEntity = realityState.playerView.get(id);
+                
+                if (godEntity && playerEntity) {
+                    const tempX = playerEntity.x;
+                    const tempY = playerEntity.y;
+                    
+                    // Show player a glimpse of god position
+                    playerEntity.x = godEntity.x;
+                    playerEntity.y = godEntity.y;
+                    
+                    // Snap back after black screen
+                    setTimeout(() => {
+                        if (realityState.playerView.has(id)) {
+                            const current = realityState.playerView.get(id);
+                            current.x = tempX;
+                            current.y = tempY;
+                        }
+                    }, realityState.lagSettings.blackScreenBuffer - 10);
+                }
+            });
+        }
+        
+        function renderRealities() {
+            // Render god view
+            renderView('god', realityState.godView);
+            
+            // Render player view
+            renderView('player', realityState.playerView);
+        }
+        
+        function renderView(viewType, viewState) {
+            viewState.forEach((entity, id) => {
+                const element = document.getElementById(`${viewType}_${id}`);
+                if (!element) return;
+                
+                if (entity.type === 'fishingLine') {
+                    // Render fishing line
+                    element.style.left = entity.x + 'px';
+                    element.style.top = entity.y + 'px';
+                    element.style.height = entity.length + 'px';
+                    element.style.transform = `rotate(${entity.angle}rad)`;
+                } else {
+                    // Render normal entity
+                    element.style.left = (entity.x - 10) + 'px';
+                    element.style.top = (entity.y - 10) + 'px';
+                    
+                    // Add slight transparency to player view for lag effect
+                    if (viewType === 'player') {
+                        element.style.opacity = 0.85;
+                    }
+                }
+            });
+        }
+        
+        function updateUI() {
+            const currentLag = calculateCurrentLag();
+            document.getElementById('lagValue').textContent = Math.round(currentLag) + 'ms';
+            
+            const oscillationPercent = (Math.sin(realityState.oscillation.phase) + 1) * 50;
+            document.getElementById('oscillationBar').style.width = oscillationPercent + '%';
+            
+            document.getElementById('oscillationPhase').textContent = 
+                'Phase: ' + realityState.oscillation.phase.toFixed(2);
+        }
+        
+        // Control functions
+        function adjustLag(delta) {
+            realityState.lagSettings.baseDelay = Math.max(100, 
+                realityState.lagSettings.baseDelay + delta);
+        }
+        
+        function togglePause() {
+            realityState.paused = !realityState.paused;
+        }
+        
+        // Initialize and start
+        window.addEventListener('load', () => {
+            initializeEntities();
+            animate();
+            
+            console.log('🌍 Dual Reality Lag System Active');
+            console.log('- God View: Real-time truth on left');
+            console.log('- Player View: Lagged illusion on right');
+            console.log('- Black screens show reality swaps');
+            console.log('- Oscillation affects lag amount');
+        });
+    </script>
+</body>
+</html>

@@ -1,0 +1,916 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>🎮 Empire Game Platform - REAL</title>
+    <meta name="description" content="Real mobile gaming platform connected to empire systems">
+    
+    <!-- PWA manifest -->
+    <link rel="manifest" href="data:application/json,{
+        \"name\": \"Empire Game Platform\",
+        \"short_name\": \"EmpireGames\",
+        \"description\": \"Real gaming platform with empire integration\",
+        \"start_url\": \"/\",
+        \"display\": \"standalone\",
+        \"background_color\": \"#000000\",
+        \"theme_color\": \"#00ff00\",
+        \"icons\": [{
+            \"src\": \"data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Ctext y='.9em' font-size='90'%3E🎮%3C/text%3E%3C/svg%3E\",
+            \"sizes\": \"any\",
+            \"type\": \"image/svg+xml\"
+        }]
+    }">
+    
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            background: linear-gradient(135deg, #000428 0%, #004e92 100%);
+            color: #00ff00;
+            font-family: 'Courier New', monospace;
+            min-height: 100vh;
+            touch-action: manipulation;
+            user-select: none;
+            overflow-x: hidden;
+        }
+        
+        .glass {
+            background: rgba(255, 255, 255, 0.1);
+            backdrop-filter: blur(10px);
+            border: 1px solid rgba(255, 255, 255, 0.2);
+            border-radius: 15px;
+        }
+        
+        .mobile-container {
+            max-width: 100vw;
+            margin: 0 auto;
+            padding: 10px;
+            min-height: 100vh;
+            position: relative;
+        }
+        
+        .header {
+            text-align: center;
+            padding: 20px;
+            margin-bottom: 20px;
+        }
+        
+        .header h1 {
+            font-size: 1.8rem;
+            margin-bottom: 10px;
+            text-shadow: 0 0 10px #00ff00;
+        }
+        
+        .status-bar {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 10px 20px;
+            font-size: 0.8rem;
+            margin-bottom: 20px;
+        }
+        
+        .status-item {
+            display: flex;
+            align-items: center;
+            gap: 5px;
+        }
+        
+        .game-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+            gap: 15px;
+            padding: 0 10px;
+            margin-bottom: 80px;
+        }
+        
+        .game-card {
+            padding: 20px;
+            text-align: center;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            position: relative;
+            overflow: hidden;
+            min-height: 120px;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+        }
+        
+        .game-card:hover, .game-card:active {
+            transform: scale(1.05);
+            background: rgba(0, 255, 0, 0.1);
+            box-shadow: 0 0 20px rgba(0, 255, 0, 0.3);
+        }
+        
+        .game-icon {
+            font-size: 2.5rem;
+            margin-bottom: 10px;
+            filter: drop-shadow(0 0 10px currentColor);
+        }
+        
+        .game-title {
+            font-size: 0.9rem;
+            font-weight: bold;
+            margin-bottom: 5px;
+        }
+        
+        .game-status {
+            font-size: 0.7rem;
+            opacity: 0.7;
+        }
+        
+        .bottom-nav {
+            position: fixed;
+            bottom: 0;
+            left: 0;
+            right: 0;
+            height: 70px;
+            padding: 10px;
+            display: flex;
+            justify-content: space-around;
+            align-items: center;
+            z-index: 100;
+        }
+        
+        .nav-btn {
+            background: none;
+            border: none;
+            color: #00ff00;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 5px;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            padding: 10px;
+            border-radius: 10px;
+        }
+        
+        .nav-btn:hover, .nav-btn:active {
+            background: rgba(0, 255, 0, 0.1);
+            transform: scale(1.1);
+        }
+        
+        .nav-btn .icon {
+            font-size: 1.5rem;
+        }
+        
+        .nav-btn .label {
+            font-size: 0.7rem;
+        }
+        
+        .modal {
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: rgba(0, 0, 0, 0.8);
+            backdrop-filter: blur(5px);
+            z-index: 1000;
+            display: none;
+            align-items: center;
+            justify-content: center;
+            padding: 20px;
+        }
+        
+        .modal-content {
+            width: 100%;
+            max-width: 400px;
+            max-height: 80vh;
+            overflow-y: auto;
+            padding: 30px;
+            position: relative;
+        }
+        
+        .close-btn {
+            position: absolute;
+            top: 15px;
+            right: 15px;
+            background: none;
+            border: none;
+            color: #00ff00;
+            font-size: 1.5rem;
+            cursor: pointer;
+        }
+        
+        .input-group {
+            margin-bottom: 20px;
+        }
+        
+        .input-group label {
+            display: block;
+            margin-bottom: 8px;
+            font-size: 0.9rem;
+        }
+        
+        .input-group input, .input-group textarea, .input-group select {
+            width: 100%;
+            padding: 12px;
+            background: rgba(0, 0, 0, 0.3);
+            border: 1px solid rgba(0, 255, 0, 0.3);
+            border-radius: 8px;
+            color: #00ff00;
+            font-family: inherit;
+            font-size: 0.9rem;
+        }
+        
+        .input-group textarea {
+            min-height: 100px;
+            resize: vertical;
+        }
+        
+        .btn {
+            background: linear-gradient(45deg, #00ff00, #00cc00);
+            color: #000;
+            border: none;
+            padding: 12px 24px;
+            border-radius: 8px;
+            font-weight: bold;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            width: 100%;
+            margin-bottom: 10px;
+        }
+        
+        .btn:hover, .btn:active {
+            transform: scale(1.05);
+            box-shadow: 0 0 20px rgba(0, 255, 0, 0.5);
+        }
+        
+        .btn:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+            transform: none;
+        }
+        
+        .loading {
+            text-align: center;
+            padding: 20px;
+        }
+        
+        .loading::after {
+            content: '';
+            display: inline-block;
+            width: 20px;
+            height: 20px;
+            border: 2px solid #00ff00;
+            border-radius: 50%;
+            border-top-color: transparent;
+            animation: spin 1s linear infinite;
+            margin-left: 10px;
+        }
+        
+        @keyframes spin {
+            to { transform: rotate(360deg); }
+        }
+        
+        .game-interface {
+            display: none;
+            padding: 20px;
+            text-align: center;
+        }
+        
+        .game-interface.active {
+            display: block;
+        }
+        
+        .score-display {
+            padding: 15px;
+            margin-bottom: 20px;
+            border-radius: 10px;
+            background: rgba(0, 255, 0, 0.1);
+        }
+        
+        .qr-section {
+            margin-top: 20px;
+            padding: 20px;
+            text-align: center;
+        }
+        
+        .qr-code {
+            background: white;
+            padding: 10px;
+            border-radius: 10px;
+            display: inline-block;
+            margin: 10px 0;
+        }
+        
+        .share-buttons {
+            display: flex;
+            gap: 10px;
+            justify-content: center;
+            margin-top: 15px;
+        }
+        
+        .share-btn {
+            padding: 8px 16px;
+            background: rgba(0, 255, 0, 0.2);
+            border: 1px solid #00ff00;
+            border-radius: 8px;
+            color: #00ff00;
+            text-decoration: none;
+            font-size: 0.8rem;
+            transition: all 0.3s ease;
+        }
+        
+        .share-btn:hover {
+            background: rgba(0, 255, 0, 0.3);
+            transform: scale(1.05);
+        }
+        
+        @media (max-width: 480px) {
+            .header h1 {
+                font-size: 1.5rem;
+            }
+            
+            .game-grid {
+                grid-template-columns: repeat(2, 1fr);
+                gap: 10px;
+            }
+            
+            .game-card {
+                min-height: 100px;
+                padding: 15px;
+            }
+            
+            .game-icon {
+                font-size: 2rem;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="mobile-container">
+        <!-- Header -->
+        <div class="header glass">
+            <h1>🎮 Empire Game Platform</h1>
+            <div class="status-bar">
+                <div class="status-item">
+                    <span>🌐</span>
+                    <span id="connectionStatus">Connecting...</span>
+                </div>
+                <div class="status-item">
+                    <span>🏰</span>
+                    <span id="empireCount">0</span>
+                </div>
+                <div class="status-item">
+                    <span>💰</span>
+                    <span id="creditsDisplay">0</span>
+                </div>
+            </div>
+        </div>
+        
+        <!-- Main Game Grid -->
+        <div class="game-grid" id="gameGrid">
+            <!-- Games will be loaded here -->
+        </div>
+        
+        <!-- Bottom Navigation -->
+        <div class="bottom-nav glass">
+            <button class="nav-btn" onclick="showCreateGameModal()">
+                <div class="icon">➕</div>
+                <div class="label">Create</div>
+            </button>
+            <button class="nav-btn" onclick="showMyGames()">
+                <div class="icon">🎮</div>
+                <div class="label">My Games</div>
+            </button>
+            <button class="nav-btn" onclick="showShareModal()">
+                <div class="icon">📱</div>
+                <div class="label">Share</div>
+            </button>
+            <button class="nav-btn" onclick="showRevenue()">
+                <div class="icon">💰</div>
+                <div class="label">Earnings</div>
+            </button>
+        </div>
+    </div>
+    
+    <!-- Create Game Modal -->
+    <div class="modal" id="createGameModal">
+        <div class="modal-content glass">
+            <button class="close-btn" onclick="closeModal('createGameModal')">&times;</button>
+            <h2>🎮 Create Real Game</h2>
+            <form id="createGameForm">
+                <div class="input-group">
+                    <label for="gameIdea">Game Idea/Concept</label>
+                    <textarea id="gameIdea" placeholder="Describe your game idea..."></textarea>
+                </div>
+                <div class="input-group">
+                    <label for="gameType">Game Type</label>
+                    <select id="gameType">
+                        <option value="strategy">Strategy Game</option>
+                        <option value="action">Action Game</option>
+                        <option value="puzzle">Puzzle Game</option>
+                        <option value="simulation">Simulation</option>
+                        <option value="rpg">RPG</option>
+                    </select>
+                </div>
+                <button type="submit" class="btn">🚀 Create Game</button>
+            </form>
+        </div>
+    </div>
+    
+    <!-- Share Modal -->
+    <div class="modal" id="shareModal">
+        <div class="modal-content glass">
+            <button class="close-btn" onclick="closeModal('shareModal')">&times;</button>
+            <h2>📱 Share with Friends</h2>
+            <div class="qr-section">
+                <div>Share this platform with your brother and friends:</div>
+                <div class="qr-code" id="qrCode">
+                    <canvas id="qrCanvas" width="200" height="200"></canvas>
+                </div>
+                <div class="share-buttons">
+                    <a href="#" class="share-btn" onclick="shareViaSnapchat()">Snapchat</a>
+                    <a href="#" class="share-btn" onclick="shareViaMessages()">Messages</a>
+                    <a href="#" class="share-btn" onclick="copyLink()">Copy Link</a>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <!-- Game Interface -->
+    <div class="game-interface" id="gameInterface">
+        <h2 id="gameTitle">Game Loading...</h2>
+        <div class="score-display glass">
+            <div>Score: <span id="gameScore">0</span></div>
+            <div>Credits: <span id="gameCredits">0</span></div>
+        </div>
+        <div id="gameContent">
+            <!-- Game content will be dynamically loaded -->
+        </div>
+        <button class="btn" onclick="exitGame()">Exit Game</button>
+    </div>
+    
+    <script>
+        // Global state
+        let platformState = {
+            connected: false,
+            empireCount: 0,
+            credits: 0,
+            userId: localStorage.getItem('userId') || generateUserId(),
+            games: []
+        };
+        
+        // Bridge API configuration
+        const BRIDGE_API = 'http://localhost:3333/api';
+        
+        function generateUserId() {
+            const id = 'user_' + Math.random().toString(36).substr(2, 9);
+            localStorage.setItem('userId', id);
+            return id;
+        }
+        
+        // Initialize platform
+        async function initializePlatform() {
+            console.log('🚀 Initializing Empire Game Platform...');
+            
+            try {
+                // Connect to real bridge
+                await connectToBridge();
+                
+                // Load games
+                await loadAvailableGames();
+                
+                // Setup QR sharing
+                setupQRCode();
+                
+                // Update UI
+                updateStatusDisplay();
+                
+                console.log('✅ Platform initialized successfully');
+                
+            } catch (error) {
+                console.error('❌ Platform initialization failed:', error);
+                showOfflineMode();
+            }
+        }
+        
+        async function connectToBridge() {
+            console.log('🌉 Connecting to Empire Bridge...');
+            
+            const response = await fetch(`${BRIDGE_API}/systems`);
+            if (!response.ok) throw new Error('Bridge not responding');
+            
+            const data = await response.json();
+            
+            platformState.connected = true;
+            platformState.empireCount = data.totalFiles;
+            
+            document.getElementById('connectionStatus').textContent = 'Connected';
+            document.getElementById('empireCount').textContent = data.totalFiles;
+            
+            console.log(`✅ Connected to bridge: ${data.totalFiles} empire systems`);
+        }
+        
+        async function loadAvailableGames() {
+            const gameGrid = document.getElementById('gameGrid');
+            
+            // Default games that connect to empire systems
+            const defaultGames = [
+                {
+                    id: 'empire-builder',
+                    title: 'Empire Builder',
+                    icon: '🏰',
+                    description: 'Build your digital empire using real systems',
+                    status: 'Connected to empire'
+                },
+                {
+                    id: 'audit-hunter',
+                    title: 'Bug Hunter',
+                    icon: '🕵️',
+                    description: 'Find bugs, earn real bounties',
+                    status: 'Real rewards'
+                },
+                {
+                    id: 'ai-trainer',
+                    title: 'AI Trainer',
+                    icon: '🤖',
+                    description: 'Train AI agents for empire tasks',
+                    status: 'Live AI integration'
+                },
+                {
+                    id: 'crypto-miner',
+                    title: 'Crypto Empire',
+                    icon: '⛓️',
+                    description: 'Mine and trade using blockchain systems',
+                    status: 'Real blockchain'
+                },
+                {
+                    id: 'document-processor',
+                    title: 'Doc Processor',
+                    icon: '📄',
+                    description: 'Turn documents into playable experiences',
+                    status: 'Real processing'
+                },
+                {
+                    id: 'mobile-commander',
+                    title: 'Mobile Command',
+                    icon: '📱',
+                    description: 'Command empire from mobile device',
+                    status: 'Real-time control'
+                }
+            ];
+            
+            platformState.games = defaultGames;
+            
+            gameGrid.innerHTML = defaultGames.map(game => `
+                <div class="game-card glass" onclick="playGame('${game.id}')">
+                    <div class="game-icon">${game.icon}</div>
+                    <div class="game-title">${game.title}</div>
+                    <div class="game-status">${game.status}</div>
+                </div>
+            `).join('');
+        }
+        
+        async function createGame() {
+            const form = document.getElementById('createGameForm');
+            const formData = new FormData(form);
+            
+            const gameData = {
+                concept: formData.get('gameIdea'),
+                type: formData.get('gameType'),
+                userId: platformState.userId
+            };
+            
+            if (!gameData.concept.trim()) {
+                alert('Please enter a game idea');
+                return;
+            }
+            
+            try {
+                const response = await fetch(`${BRIDGE_API}/create-game`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(gameData)
+                });
+                
+                const result = await response.json();
+                
+                if (result.success) {
+                    alert(`Game created! Connected to ${result.empireSystems} empire systems`);
+                    closeModal('createGameModal');
+                    loadAvailableGames();
+                } else {
+                    alert('Failed to create game: ' + result.error);
+                }
+                
+            } catch (error) {
+                console.error('Game creation failed:', error);
+                alert('Failed to create game. Check connection.');
+            }
+        }
+        
+        async function playGame(gameId) {
+            console.log(`🎮 Starting game: ${gameId}`);
+            
+            const game = platformState.games.find(g => g.id === gameId);
+            if (!game) return;
+            
+            // Show game interface
+            document.querySelector('.mobile-container').style.display = 'none';
+            document.getElementById('gameInterface').classList.add('active');
+            document.getElementById('gameTitle').textContent = game.title;
+            
+            // Load game-specific content
+            await loadGameContent(gameId);
+            
+            // Award credits for playing
+            awardCredits(10);
+        }
+        
+        async function loadGameContent(gameId) {
+            const gameContent = document.getElementById('gameContent');
+            
+            switch (gameId) {
+                case 'empire-builder':
+                    gameContent.innerHTML = `
+                        <div class="glass" style="padding: 20px; margin: 20px 0;">
+                            <h3>🏰 Empire Builder</h3>
+                            <p>Connected to ${platformState.empireCount} real systems</p>
+                            <button class="btn" onclick="buildEmpire()">Build New System</button>
+                            <button class="btn" onclick="connectSystems()">Connect Systems</button>
+                        </div>
+                    `;
+                    break;
+                    
+                case 'audit-hunter':
+                    gameContent.innerHTML = `
+                        <div class="glass" style="padding: 20px; margin: 20px 0;">
+                            <h3>🕵️ Bug Hunter</h3>
+                            <p>Find bugs in real systems and earn bounties</p>
+                            <button class="btn" onclick="startAudit()">Start Security Audit</button>
+                            <button class="btn" onclick="reportBug()">Report Bug</button>
+                        </div>
+                    `;
+                    break;
+                    
+                case 'document-processor':
+                    gameContent.innerHTML = `
+                        <div class="glass" style="padding: 20px; margin: 20px 0;">
+                            <h3>📄 Document Processor</h3>
+                            <p>Transform documents into interactive experiences</p>
+                            <textarea id="docInput" placeholder="Paste document text here..." style="width: 100%; height: 100px; margin: 10px 0;"></textarea>
+                            <button class="btn" onclick="processDocument()">Process Document</button>
+                        </div>
+                    `;
+                    break;
+                    
+                default:
+                    gameContent.innerHTML = `
+                        <div class="glass" style="padding: 20px; margin: 20px 0;">
+                            <h3>${gameId}</h3>
+                            <p>Game loading...</p>
+                            <button class="btn" onclick="simulateGameplay()">Play</button>
+                        </div>
+                    `;
+            }
+        }
+        
+        async function buildEmpire() {
+            // Connect to real empire bridge
+            try {
+                const response = await fetch(`${BRIDGE_API}/bridge/empire-action`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        action: 'build-system',
+                        value: Math.floor(Math.random() * 1000),
+                        systemType: 'empire-core'
+                    })
+                });
+                
+                const result = await response.json();
+                
+                if (result.success) {
+                    awardCredits(50);
+                    updateGameScore(100);
+                    alert(`Empire expanded! Connected to ${result.connectedSystems} systems`);
+                }
+                
+            } catch (error) {
+                console.error('Empire building failed:', error);
+            }
+        }
+        
+        async function startAudit() {
+            // Start real audit process
+            try {
+                const response = await fetch(`${BRIDGE_API}/bridge/empire-action`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        action: 'audit-system',
+                        value: Date.now(),
+                        systemType: 'auditing'
+                    })
+                });
+                
+                const result = await response.json();
+                
+                if (result.success) {
+                    awardCredits(100);
+                    updateGameScore(250);
+                    alert(`Audit started on ${result.connectedSystems} systems!`);
+                }
+                
+            } catch (error) {
+                console.error('Audit failed:', error);
+            }
+        }
+        
+        async function processDocument() {
+            const docText = document.getElementById('docInput').value;
+            if (!docText.trim()) {
+                alert('Please enter document text');
+                return;
+            }
+            
+            try {
+                const response = await fetch(`${BRIDGE_API}/process-document`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        document: docText,
+                        type: 'game-design',
+                        userId: platformState.userId
+                    })
+                });
+                
+                const result = await response.json();
+                
+                if (result.success) {
+                    awardCredits(75);
+                    updateGameScore(150);
+                    alert(`Document processed! Generated game: ${result.result.processed.gameType}`);
+                }
+                
+            } catch (error) {
+                console.error('Document processing failed:', error);
+            }
+        }
+        
+        function awardCredits(amount) {
+            platformState.credits += amount;
+            document.getElementById('creditsDisplay').textContent = platformState.credits;
+            document.getElementById('gameCredits').textContent = platformState.credits;
+            
+            // Save to localStorage
+            localStorage.setItem('credits', platformState.credits);
+        }
+        
+        function updateGameScore(points) {
+            const currentScore = parseInt(document.getElementById('gameScore').textContent) || 0;
+            document.getElementById('gameScore').textContent = currentScore + points;
+        }
+        
+        function exitGame() {
+            document.querySelector('.mobile-container').style.display = 'block';
+            document.getElementById('gameInterface').classList.remove('active');
+        }
+        
+        function updateStatusDisplay() {
+            document.getElementById('connectionStatus').textContent = 
+                platformState.connected ? 'Connected' : 'Offline';
+            document.getElementById('empireCount').textContent = platformState.empireCount;
+            document.getElementById('creditsDisplay').textContent = platformState.credits;
+        }
+        
+        function showCreateGameModal() {
+            document.getElementById('createGameModal').style.display = 'flex';
+        }
+        
+        function showShareModal() {
+            document.getElementById('shareModal').style.display = 'flex';
+            generateQRCode();
+        }
+        
+        function closeModal(modalId) {
+            document.getElementById(modalId).style.display = 'none';
+        }
+        
+        function setupQRCode() {
+            // Generate QR code for sharing
+            const url = window.location.href;
+            generateQRCode(url);
+        }
+        
+        function generateQRCode(text = window.location.href) {
+            const canvas = document.getElementById('qrCanvas');
+            const ctx = canvas.getContext('2d');
+            
+            // Simple QR-like pattern (in real implementation, use QR library)
+            ctx.fillStyle = '#000';
+            ctx.fillRect(0, 0, 200, 200);
+            ctx.fillStyle = '#fff';
+            
+            // Create pattern
+            for (let i = 0; i < 20; i++) {
+                for (let j = 0; j < 20; j++) {
+                    if ((i + j) % 2 === 0) {
+                        ctx.fillRect(i * 10, j * 10, 10, 10);
+                    }
+                }
+            }
+            
+            // Add some pattern based on URL
+            ctx.fillStyle = '#00ff00';
+            const hash = text.split('').reduce((a, b) => {
+                a = ((a << 5) - a) + b.charCodeAt(0);
+                return a & a;
+            }, 0);
+            
+            for (let i = 0; i < 10; i++) {
+                const x = (hash * i) % 180 + 10;
+                const y = (hash * (i + 1)) % 180 + 10;
+                ctx.fillRect(x, y, 10, 10);
+            }
+        }
+        
+        function shareViaSnapchat() {
+            const url = encodeURIComponent(window.location.href);
+            const text = encodeURIComponent('Check out this Empire Game Platform!');
+            
+            // Snapchat sharing (opens app if available)
+            if (navigator.share) {
+                navigator.share({
+                    title: 'Empire Game Platform',
+                    text: 'Play real games connected to empire systems!',
+                    url: window.location.href
+                });
+            } else {
+                // Fallback to copying link
+                copyLink();
+            }
+        }
+        
+        function shareViaMessages() {
+            const text = encodeURIComponent('Check out this Empire Game Platform: ' + window.location.href);
+            window.open(`sms:?body=${text}`, '_blank');
+        }
+        
+        function copyLink() {
+            navigator.clipboard.writeText(window.location.href).then(() => {
+                alert('Link copied to clipboard!');
+            });
+        }
+        
+        function showMyGames() {
+            alert('My Games feature coming soon!');
+        }
+        
+        async function showRevenue() {
+            try {
+                const response = await fetch(`${BRIDGE_API}/revenue`);
+                const data = await response.json();
+                
+                if (data.success) {
+                    alert(`Total Platform Revenue: $${data.totalRevenue}\\nTransactions: ${data.transactions}\\nYour Credits: ${platformState.credits}`);
+                } else {
+                    alert(`Your Credits: ${platformState.credits}\\nEarn more by playing games!`);
+                }
+            } catch (error) {
+                alert(`Your Credits: ${platformState.credits}\\nConnect to see platform revenue`);
+            }
+        }
+        
+        function showOfflineMode() {
+            document.getElementById('connectionStatus').textContent = 'Offline';
+            alert('Running in offline mode. Connect to bridge for full features.');
+        }
+        
+        // Form submission
+        document.getElementById('createGameForm').addEventListener('submit', (e) => {
+            e.preventDefault();
+            createGame();
+        });
+        
+        // Load saved credits
+        platformState.credits = parseInt(localStorage.getItem('credits')) || 0;
+        
+        // Initialize when page loads
+        document.addEventListener('DOMContentLoaded', initializePlatform);
+        
+        // Register service worker for PWA
+        if ('serviceWorker' in navigator) {
+            window.addEventListener('load', () => {
+                navigator.serviceWorker.register('data:text/javascript,console.log("SW registered")')
+                    .then(() => console.log('SW registered'))
+                    .catch(() => console.log('SW failed'));
+            });
+        }
+        
+        console.log('🎮 Empire Game Platform loaded');
+        console.log('📱 Mobile-optimized and PWA-ready');
+        console.log('🌐 Connects to real empire bridge at localhost:3333');
+    </script>
+</body>
+</html>

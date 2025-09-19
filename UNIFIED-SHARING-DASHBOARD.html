@@ -1,0 +1,1411 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>🌐 SoulFra Unified Sharing Dashboard - One-Click Social Platform Integration</title>
+    <style>
+        :root {
+            --bg-dark: #0a0a0a;
+            --bg-medium: #1a1a1a;
+            --bg-light: #2a2a2a;
+            --accent: #00ff88;
+            --accent-hover: #00cc6a;
+            --text: #ffffff;
+            --text-dim: #cccccc;
+            --border: #333333;
+            --success: #00ff88;
+            --warning: #ffaa00;
+            --error: #ff4444;
+            --info: #00aaff;
+        }
+
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Segoe UI', 'SF Pro Display', system-ui, sans-serif;
+            background: linear-gradient(135deg, var(--bg-dark) 0%, var(--bg-medium) 100%);
+            color: var(--text);
+            min-height: 100vh;
+            overflow-x: hidden;
+        }
+
+        .dashboard {
+            display: grid;
+            grid-template-areas: 
+                "header header header"
+                "sidebar content preview"
+                "status status status";
+            grid-template-columns: 280px 1fr 320px;
+            grid-template-rows: 80px 1fr 60px;
+            min-height: 100vh;
+            gap: 2px;
+        }
+
+        .header {
+            grid-area: header;
+            background: var(--bg-medium);
+            border-bottom: 2px solid var(--border);
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: 0 30px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.3);
+        }
+
+        .logo {
+            display: flex;
+            align-items: center;
+            gap: 15px;
+            font-size: 24px;
+            font-weight: bold;
+            color: var(--accent);
+            text-shadow: 0 0 10px var(--accent);
+        }
+
+        .status-indicators {
+            display: flex;
+            gap: 15px;
+            align-items: center;
+        }
+
+        .status-indicator {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            padding: 8px 12px;
+            border-radius: 20px;
+            border: 1px solid var(--border);
+            font-size: 12px;
+            transition: all 0.3s ease;
+        }
+
+        .status-indicator.connected {
+            background: rgba(0, 255, 136, 0.1);
+            border-color: var(--success);
+            color: var(--success);
+        }
+
+        .status-indicator.disconnected {
+            background: rgba(255, 68, 68, 0.1);
+            border-color: var(--error);
+            color: var(--error);
+        }
+
+        .status-dot {
+            width: 8px;
+            height: 8px;
+            border-radius: 50%;
+            animation: pulse 2s infinite;
+        }
+
+        @keyframes pulse {
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0.5; }
+        }
+
+        .sidebar {
+            grid-area: sidebar;
+            background: var(--bg-medium);
+            border-right: 2px solid var(--border);
+            padding: 20px;
+            overflow-y: auto;
+        }
+
+        .content {
+            grid-area: content;
+            background: var(--bg-light);
+            padding: 30px;
+            overflow-y: auto;
+        }
+
+        .preview {
+            grid-area: preview;
+            background: var(--bg-medium);
+            border-left: 2px solid var(--border);
+            padding: 20px;
+            overflow-y: auto;
+        }
+
+        .status-bar {
+            grid-area: status;
+            background: var(--bg-dark);
+            border-top: 2px solid var(--border);
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: 0 30px;
+            font-size: 12px;
+            color: var(--text-dim);
+        }
+
+        .section {
+            margin-bottom: 30px;
+        }
+
+        .section-title {
+            font-size: 18px;
+            font-weight: bold;
+            margin-bottom: 15px;
+            color: var(--accent);
+            border-bottom: 1px solid var(--border);
+            padding-bottom: 8px;
+        }
+
+        .platform-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(120px, 1fr));
+            gap: 15px;
+            margin-bottom: 20px;
+        }
+
+        .platform-card {
+            background: var(--bg-dark);
+            border: 2px solid var(--border);
+            border-radius: 12px;
+            padding: 15px;
+            text-align: center;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .platform-card:hover {
+            border-color: var(--accent);
+            transform: translateY(-2px);
+            box-shadow: 0 5px 20px rgba(0, 255, 136, 0.2);
+        }
+
+        .platform-card.selected {
+            border-color: var(--accent);
+            background: rgba(0, 255, 136, 0.1);
+        }
+
+        .platform-card.disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+        }
+
+        .platform-icon {
+            font-size: 24px;
+            margin-bottom: 8px;
+            display: block;
+        }
+
+        .platform-name {
+            font-size: 12px;
+            font-weight: bold;
+            margin-bottom: 4px;
+        }
+
+        .platform-status {
+            font-size: 10px;
+            color: var(--text-dim);
+        }
+
+        .content-composer {
+            background: var(--bg-dark);
+            border: 1px solid var(--border);
+            border-radius: 12px;
+            padding: 20px;
+            margin-bottom: 20px;
+        }
+
+        .input-group {
+            margin-bottom: 15px;
+        }
+
+        .input-label {
+            display: block;
+            font-size: 12px;
+            font-weight: bold;
+            margin-bottom: 8px;
+            color: var(--text-dim);
+        }
+
+        .input-field {
+            width: 100%;
+            background: var(--bg-medium);
+            border: 1px solid var(--border);
+            border-radius: 8px;
+            padding: 12px;
+            color: var(--text);
+            font-family: inherit;
+            transition: border-color 0.3s ease;
+        }
+
+        .input-field:focus {
+            outline: none;
+            border-color: var(--accent);
+            box-shadow: 0 0 0 2px rgba(0, 255, 136, 0.2);
+        }
+
+        .textarea-field {
+            min-height: 120px;
+            resize: vertical;
+        }
+
+        .file-upload {
+            border: 2px dashed var(--border);
+            border-radius: 8px;
+            padding: 20px;
+            text-align: center;
+            cursor: pointer;
+            transition: all 0.3s ease;
+        }
+
+        .file-upload:hover {
+            border-color: var(--accent);
+            background: rgba(0, 255, 136, 0.05);
+        }
+
+        .file-upload.dragover {
+            border-color: var(--accent);
+            background: rgba(0, 255, 136, 0.1);
+        }
+
+        .action-buttons {
+            display: flex;
+            gap: 15px;
+            flex-wrap: wrap;
+        }
+
+        .btn {
+            background: linear-gradient(135deg, var(--accent) 0%, var(--accent-hover) 100%);
+            border: none;
+            border-radius: 8px;
+            padding: 12px 24px;
+            color: var(--bg-dark);
+            font-weight: bold;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            font-family: inherit;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .btn:hover {
+            transform: translateY(-1px);
+            box-shadow: 0 5px 15px rgba(0, 255, 136, 0.3);
+        }
+
+        .btn:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+            transform: none;
+            box-shadow: none;
+        }
+
+        .btn-secondary {
+            background: var(--bg-light);
+            color: var(--text);
+            border: 1px solid var(--border);
+        }
+
+        .btn-secondary:hover {
+            background: var(--bg-medium);
+            border-color: var(--accent);
+        }
+
+        .preview-section {
+            background: var(--bg-dark);
+            border: 1px solid var(--border);
+            border-radius: 12px;
+            padding: 20px;
+            margin-bottom: 20px;
+        }
+
+        .preview-platform {
+            margin-bottom: 20px;
+            padding: 15px;
+            background: var(--bg-light);
+            border-radius: 8px;
+            border-left: 4px solid var(--accent);
+        }
+
+        .preview-header {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            margin-bottom: 10px;
+            font-weight: bold;
+        }
+
+        .preview-content {
+            color: var(--text-dim);
+            font-size: 14px;
+            line-height: 1.5;
+        }
+
+        .sharing-queue {
+            background: var(--bg-dark);
+            border: 1px solid var(--border);
+            border-radius: 12px;
+            padding: 20px;
+        }
+
+        .queue-item {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: 12px;
+            margin-bottom: 8px;
+            background: var(--bg-medium);
+            border-radius: 8px;
+            border-left: 4px solid var(--info);
+        }
+
+        .queue-item.success {
+            border-left-color: var(--success);
+        }
+
+        .queue-item.error {
+            border-left-color: var(--error);
+        }
+
+        .queue-item.processing {
+            border-left-color: var(--warning);
+            animation: processing 1.5s infinite;
+        }
+
+        @keyframes processing {
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0.7; }
+        }
+
+        .progress-bar {
+            width: 100%;
+            height: 6px;
+            background: var(--bg-medium);
+            border-radius: 3px;
+            overflow: hidden;
+            margin: 10px 0;
+        }
+
+        .progress-fill {
+            height: 100%;
+            background: linear-gradient(90deg, var(--accent), var(--accent-hover));
+            width: 0%;
+            transition: width 0.3s ease;
+        }
+
+        .notification {
+            position: fixed;
+            top: 20px;
+            right: 20px;
+            background: var(--bg-dark);
+            border: 1px solid var(--border);
+            border-radius: 8px;
+            padding: 15px 20px;
+            max-width: 300px;
+            box-shadow: 0 5px 20px rgba(0,0,0,0.3);
+            transform: translateX(400px);
+            transition: transform 0.3s ease;
+            z-index: 1000;
+        }
+
+        .notification.show {
+            transform: translateX(0);
+        }
+
+        .notification.success {
+            border-left: 4px solid var(--success);
+        }
+
+        .notification.error {
+            border-left: 4px solid var(--error);
+        }
+
+        .notification.warning {
+            border-left: 4px solid var(--warning);
+        }
+
+        .api-config {
+            background: var(--bg-dark);
+            border: 1px solid var(--border);
+            border-radius: 12px;
+            padding: 20px;
+            margin-bottom: 20px;
+        }
+
+        .config-item {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: 8px 0;
+            border-bottom: 1px solid var(--border);
+        }
+
+        .config-item:last-child {
+            border-bottom: none;
+        }
+
+        .config-status {
+            padding: 4px 8px;
+            border-radius: 4px;
+            font-size: 10px;
+            font-weight: bold;
+        }
+
+        .config-status.configured {
+            background: var(--success);
+            color: var(--bg-dark);
+        }
+
+        .config-status.missing {
+            background: var(--error);
+            color: var(--text);
+        }
+
+        .gameboy-integration {
+            background: var(--bg-dark);
+            border: 1px solid var(--border);
+            border-radius: 12px;
+            padding: 20px;
+            margin-bottom: 20px;
+        }
+
+        .gameboy-viewer {
+            background: #8B956D;
+            border: 4px solid #4A5D23;
+            border-radius: 8px;
+            width: 100%;
+            height: 200px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            margin-bottom: 15px;
+            position: relative;
+            font-family: monospace;
+            color: #1E2E0A;
+        }
+
+        .stats-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+            gap: 15px;
+        }
+
+        .stat-card {
+            background: var(--bg-dark);
+            border: 1px solid var(--border);
+            border-radius: 8px;
+            padding: 15px;
+            text-align: center;
+        }
+
+        .stat-value {
+            font-size: 24px;
+            font-weight: bold;
+            color: var(--accent);
+            display: block;
+        }
+
+        .stat-label {
+            font-size: 12px;
+            color: var(--text-dim);
+            margin-top: 5px;
+        }
+
+        @media (max-width: 1200px) {
+            .dashboard {
+                grid-template-areas: 
+                    "header"
+                    "content"
+                    "status";
+                grid-template-columns: 1fr;
+                grid-template-rows: 80px 1fr 60px;
+            }
+            
+            .sidebar, .preview {
+                display: none;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="dashboard">
+        <!-- Header -->
+        <div class="header">
+            <div class="logo">
+                🌐 SoulFra Unified Sharing Dashboard
+            </div>
+            <div class="status-indicators">
+                <div class="status-indicator connected" id="spriteEditorStatus">
+                    <span class="status-dot" style="background: var(--success);"></span>
+                    Sprite Editor
+                </div>
+                <div class="status-indicator connected" id="gameBoyStatus">
+                    <span class="status-dot" style="background: var(--success);"></span>
+                    Game Boy
+                </div>
+                <div class="status-indicator connected" id="apiHubStatus">
+                    <span class="status-dot" style="background: var(--success);"></span>
+                    API Hub
+                </div>
+            </div>
+        </div>
+
+        <!-- Sidebar -->
+        <div class="sidebar">
+            <div class="section">
+                <div class="section-title">🎯 Select Platforms</div>
+                <div class="platform-grid">
+                    <div class="platform-card" data-platform="imgur">
+                        <span class="platform-icon">📷</span>
+                        <div class="platform-name">Imgur</div>
+                        <div class="platform-status">Image hosting</div>
+                    </div>
+                    <div class="platform-card" data-platform="discord">
+                        <span class="platform-icon">💬</span>
+                        <div class="platform-name">Discord</div>
+                        <div class="platform-status">Chat sharing</div>
+                    </div>
+                    <div class="platform-card" data-platform="giphy">
+                        <span class="platform-icon">🎭</span>
+                        <div class="platform-name">Giphy</div>
+                        <div class="platform-status">GIF hosting</div>
+                    </div>
+                    <div class="platform-card" data-platform="twitter">
+                        <span class="platform-icon">🐦</span>
+                        <div class="platform-name">Twitter</div>
+                        <div class="platform-status">Social media</div>
+                    </div>
+                    <div class="platform-card" data-platform="reddit">
+                        <span class="platform-icon">🔴</span>
+                        <div class="platform-name">Reddit</div>
+                        <div class="platform-status">Communities</div>
+                    </div>
+                    <div class="platform-card" data-platform="gameboy">
+                        <span class="platform-icon">🎮</span>
+                        <div class="platform-name">Game Boy</div>
+                        <div class="platform-status">Live feed</div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="section">
+                <div class="section-title">⚙️ API Configuration</div>
+                <div class="api-config">
+                    <div class="config-item">
+                        <span>Imgur Client ID</span>
+                        <span class="config-status missing" id="imgurConfig">Missing</span>
+                    </div>
+                    <div class="config-item">
+                        <span>Discord Webhook</span>
+                        <span class="config-status missing" id="discordConfig">Missing</span>
+                    </div>
+                    <div class="config-item">
+                        <span>Giphy API Key</span>
+                        <span class="config-status missing" id="giphyConfig">Missing</span>
+                    </div>
+                    <div class="config-item">
+                        <span>Game Boy Bridge</span>
+                        <span class="config-status configured" id="gameboyConfig">Connected</span>
+                    </div>
+                </div>
+                <button class="btn btn-secondary" onclick="dashboard.openAPISettings()">
+                    ⚙️ Configure APIs
+                </button>
+            </div>
+
+            <div class="section">
+                <div class="section-title">📊 Usage Stats</div>
+                <div class="stats-grid">
+                    <div class="stat-card">
+                        <span class="stat-value" id="totalShares">0</span>
+                        <div class="stat-label">Total Shares</div>
+                    </div>
+                    <div class="stat-card">
+                        <span class="stat-value" id="successRate">100%</span>
+                        <div class="stat-label">Success Rate</div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Main Content -->
+        <div class="content">
+            <div class="section">
+                <div class="section-title">✨ Content Composer</div>
+                <div class="content-composer">
+                    <div class="input-group">
+                        <label class="input-label">Title</label>
+                        <input type="text" class="input-field" id="contentTitle" placeholder="Enter your content title...">
+                    </div>
+                    
+                    <div class="input-group">
+                        <label class="input-label">Message</label>
+                        <textarea class="input-field textarea-field" id="contentMessage" placeholder="Write your message here..."></textarea>
+                    </div>
+                    
+                    <div class="input-group">
+                        <label class="input-label">Tags (comma-separated)</label>
+                        <input type="text" class="input-field" id="contentTags" placeholder="soulfra, sprite, gameboy, ai">
+                    </div>
+                    
+                    <div class="input-group">
+                        <label class="input-label">Media Content</label>
+                        <div class="file-upload" id="fileUpload">
+                            <div>📁 Drag & drop files here or click to browse</div>
+                            <div style="font-size: 12px; color: var(--text-dim); margin-top: 8px;">
+                                Supports: PNG, GIF, MP4 (from Sprite Editor or Game Boy)
+                            </div>
+                        </div>
+                        <input type="file" id="fileInput" style="display: none;" accept="image/*,video/*">
+                    </div>
+                </div>
+            </div>
+
+            <div class="section">
+                <div class="section-title">🎮 Game Boy Integration</div>
+                <div class="gameboy-integration">
+                    <div class="gameboy-viewer" id="gameBoyViewer">
+                        🎮 Game Boy Live Feed
+                        <br><small>Connect to see real-time gameplay</small>
+                    </div>
+                    <div class="action-buttons">
+                        <button class="btn btn-secondary" onclick="dashboard.captureGameBoy()">
+                            📸 Capture Frame
+                        </button>
+                        <button class="btn btn-secondary" onclick="dashboard.recordGameBoy()">
+                            🎬 Record GIF
+                        </button>
+                        <button class="btn btn-secondary" onclick="dashboard.loadSprite()">
+                            🎨 Load from Sprite Editor
+                        </button>
+                    </div>
+                </div>
+            </div>
+
+            <div class="section">
+                <div class="action-buttons">
+                    <button class="btn" onclick="dashboard.shareAll()">
+                        🚀 Share to All Platforms
+                    </button>
+                    <button class="btn btn-secondary" onclick="dashboard.schedulePost()">
+                        ⏰ Schedule Post
+                    </button>
+                    <button class="btn btn-secondary" onclick="dashboard.saveTemplate()">
+                        💾 Save Template
+                    </button>
+                    <button class="btn btn-secondary" onclick="dashboard.preview()">
+                        👁️ Preview
+                    </button>
+                </div>
+            </div>
+
+            <div class="section">
+                <div class="section-title">📋 Sharing Queue</div>
+                <div class="sharing-queue" id="sharingQueue">
+                    <div style="text-align: center; color: var(--text-dim); padding: 20px;">
+                        No items in queue. Select platforms and click "Share to All Platforms" to get started.
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Preview Panel -->
+        <div class="preview">
+            <div class="section">
+                <div class="section-title">👁️ Platform Previews</div>
+                <div id="previewContent">
+                    <div class="preview-section">
+                        <div class="preview-platform">
+                            <div class="preview-header">
+                                📷 Imgur Preview
+                            </div>
+                            <div class="preview-content">
+                                Your image will appear here with title and description...
+                            </div>
+                        </div>
+                        
+                        <div class="preview-platform">
+                            <div class="preview-header">
+                                💬 Discord Preview
+                            </div>
+                            <div class="preview-content">
+                                <strong>SoulFra Bot</strong><br>
+                                Your message with embedded image...
+                            </div>
+                        </div>
+                        
+                        <div class="preview-platform">
+                            <div class="preview-header">
+                                🎭 Giphy Preview
+                            </div>
+                            <div class="preview-content">
+                                Animated GIF with tags: soulfra, sprite, gameboy...
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="section">
+                <div class="section-title">📈 Real-time Analytics</div>
+                <div class="stats-grid">
+                    <div class="stat-card">
+                        <span class="stat-value" id="todayShares">0</span>
+                        <div class="stat-label">Today</div>
+                    </div>
+                    <div class="stat-card">
+                        <span class="stat-value" id="weekShares">0</span>
+                        <div class="stat-label">This Week</div>
+                    </div>
+                    <div class="stat-card">
+                        <span class="stat-value" id="monthShares">0</span>
+                        <div class="stat-label">This Month</div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Status Bar -->
+        <div class="status-bar">
+            <div id="statusText">Ready to share • All systems operational</div>
+            <div class="progress-bar" id="progressBar" style="width: 200px; display: none;">
+                <div class="progress-fill" id="progressFill"></div>
+            </div>
+            <div>Connected to Enhanced External Service Hub</div>
+        </div>
+    </div>
+
+    <!-- Notification Container -->
+    <div class="notification" id="notification">
+        <div id="notificationContent"></div>
+    </div>
+
+    <script>
+        class UnifiedSharingDashboard {
+            constructor() {
+                this.selectedPlatforms = new Set();
+                this.apiConfigs = new Map();
+                this.sharingQueue = [];
+                this.currentMedia = null;
+                this.gameBoyConnected = false;
+                this.spriteEditorConnected = false;
+                
+                // WebSocket connections
+                this.apiHubWS = null;
+                this.gameBoyWS = null;
+                this.spriteEditorWS = null;
+                
+                this.init();
+            }
+            
+            init() {
+                console.log('🌐 Initializing Unified Sharing Dashboard...');
+                
+                // Setup event listeners
+                this.setupEventListeners();
+                
+                // Connect to services
+                this.connectToServices();
+                
+                // Load saved configurations
+                this.loadSavedConfigs();
+                
+                // Setup periodic updates
+                this.startPeriodicUpdates();
+                
+                console.log('✅ Dashboard initialized');
+            }
+            
+            setupEventListeners() {
+                // Platform selection
+                document.querySelectorAll('.platform-card').forEach(card => {
+                    card.addEventListener('click', () => {
+                        const platform = card.dataset.platform;
+                        this.togglePlatform(platform, card);
+                    });
+                });
+                
+                // File upload
+                const fileUpload = document.getElementById('fileUpload');
+                const fileInput = document.getElementById('fileInput');
+                
+                fileUpload.addEventListener('click', () => fileInput.click());
+                fileUpload.addEventListener('dragover', (e) => {
+                    e.preventDefault();
+                    fileUpload.classList.add('dragover');
+                });
+                fileUpload.addEventListener('dragleave', () => {
+                    fileUpload.classList.remove('dragover');
+                });
+                fileUpload.addEventListener('drop', (e) => {
+                    e.preventDefault();
+                    fileUpload.classList.remove('dragover');
+                    this.handleFileUpload(e.dataTransfer.files[0]);
+                });
+                
+                fileInput.addEventListener('change', (e) => {
+                    this.handleFileUpload(e.target.files[0]);
+                });
+                
+                // Real-time preview updates
+                ['contentTitle', 'contentMessage', 'contentTags'].forEach(id => {
+                    document.getElementById(id).addEventListener('input', () => {
+                        this.updatePreviews();
+                    });
+                });
+            }
+            
+            connectToServices() {
+                // Connect to Enhanced External Service Hub
+                try {
+                    this.apiHubWS = new WebSocket('ws://localhost:3054');
+                    
+                    this.apiHubWS.onopen = () => {
+                        console.log('✅ Connected to API Hub');
+                        this.updateServiceStatus('apiHubStatus', true);
+                    };
+                    
+                    this.apiHubWS.onmessage = (event) => {
+                        const data = JSON.parse(event.data);
+                        this.handleAPIHubMessage(data);
+                    };
+                    
+                    this.apiHubWS.onclose = () => {
+                        console.log('❌ API Hub disconnected');
+                        this.updateServiceStatus('apiHubStatus', false);
+                    };
+                } catch (error) {
+                    console.warn('API Hub connection failed:', error);
+                }
+                
+                // Connect to Game Boy Bridge
+                try {
+                    this.gameBoyWS = new WebSocket('ws://localhost:8082/gameboy');
+                    
+                    this.gameBoyWS.onopen = () => {
+                        console.log('✅ Connected to Game Boy Bridge');
+                        this.updateServiceStatus('gameBoyStatus', true);
+                        this.gameBoyConnected = true;
+                    };
+                    
+                    this.gameBoyWS.onmessage = (event) => {
+                        const data = JSON.parse(event.data);
+                        this.handleGameBoyMessage(data);
+                    };
+                    
+                    this.gameBoyWS.onclose = () => {
+                        console.log('❌ Game Boy Bridge disconnected');
+                        this.updateServiceStatus('gameBoyStatus', false);
+                        this.gameBoyConnected = false;
+                    };
+                } catch (error) {
+                    console.warn('Game Boy Bridge connection failed:', error);
+                }
+                
+                // Connect to Sprite Editor (assuming it has WebSocket)
+                try {
+                    this.spriteEditorWS = new WebSocket('ws://localhost:8084/sprite');
+                    
+                    this.spriteEditorWS.onopen = () => {
+                        console.log('✅ Connected to Sprite Editor');
+                        this.updateServiceStatus('spriteEditorStatus', true);
+                        this.spriteEditorConnected = true;
+                    };
+                    
+                    this.spriteEditorWS.onmessage = (event) => {
+                        const data = JSON.parse(event.data);
+                        this.handleSpriteEditorMessage(data);
+                    };
+                    
+                    this.spriteEditorWS.onclose = () => {
+                        console.log('❌ Sprite Editor disconnected');
+                        this.updateServiceStatus('spriteEditorStatus', false);
+                        this.spriteEditorConnected = false;
+                    };
+                } catch (error) {
+                    console.warn('Sprite Editor connection failed:', error);
+                }
+            }
+            
+            updateServiceStatus(elementId, connected) {
+                const element = document.getElementById(elementId);
+                if (connected) {
+                    element.classList.remove('disconnected');
+                    element.classList.add('connected');
+                    element.querySelector('.status-dot').style.background = 'var(--success)';
+                } else {
+                    element.classList.remove('connected');
+                    element.classList.add('disconnected');
+                    element.querySelector('.status-dot').style.background = 'var(--error)';
+                }
+            }
+            
+            togglePlatform(platform, cardElement) {
+                if (cardElement.classList.contains('disabled')) return;
+                
+                if (this.selectedPlatforms.has(platform)) {
+                    this.selectedPlatforms.delete(platform);
+                    cardElement.classList.remove('selected');
+                } else {
+                    this.selectedPlatforms.add(platform);
+                    cardElement.classList.add('selected');
+                }
+                
+                this.updatePreviews();
+                console.log('Selected platforms:', Array.from(this.selectedPlatforms));
+            }
+            
+            handleFileUpload(file) {
+                if (!file) return;
+                
+                console.log('📁 File uploaded:', file.name);
+                
+                // Convert to base64 for sharing
+                const reader = new FileReader();
+                reader.onload = (e) => {
+                    this.currentMedia = {
+                        name: file.name,
+                        type: file.type,
+                        size: file.size,
+                        data: e.target.result
+                    };
+                    
+                    this.updateFileUploadDisplay();
+                    this.updatePreviews();
+                };
+                reader.readAsDataURL(file);
+            }
+            
+            updateFileUploadDisplay() {
+                const fileUpload = document.getElementById('fileUpload');
+                if (this.currentMedia) {
+                    fileUpload.innerHTML = `
+                        <div>✅ ${this.currentMedia.name}</div>
+                        <div style="font-size: 12px; color: var(--text-dim); margin-top: 8px;">
+                            ${this.formatFileSize(this.currentMedia.size)} • Click to change
+                        </div>
+                    `;
+                }
+            }
+            
+            updatePreviews() {
+                const title = document.getElementById('contentTitle').value;
+                const message = document.getElementById('contentMessage').value;
+                const tags = document.getElementById('contentTags').value;
+                
+                // Update preview content based on selected platforms
+                const previewContent = document.getElementById('previewContent');
+                let previewHTML = '<div class="preview-section">';
+                
+                this.selectedPlatforms.forEach(platform => {
+                    switch (platform) {
+                        case 'imgur':
+                            previewHTML += `
+                                <div class="preview-platform">
+                                    <div class="preview-header">📷 Imgur Preview</div>
+                                    <div class="preview-content">
+                                        <strong>${title || 'Untitled'}</strong><br>
+                                        ${message || 'No description provided'}
+                                        ${this.currentMedia ? '<br>📎 Image attached' : ''}
+                                    </div>
+                                </div>
+                            `;
+                            break;
+                        case 'discord':
+                            previewHTML += `
+                                <div class="preview-platform">
+                                    <div class="preview-header">💬 Discord Preview</div>
+                                    <div class="preview-content">
+                                        <strong>SoulFra Bot</strong><br>
+                                        ${title ? `**${title}**\\n` : ''}${message || 'No message'}
+                                        ${this.currentMedia ? '\\n📎 File attached' : ''}
+                                    </div>
+                                </div>
+                            `;
+                            break;
+                        case 'giphy':
+                            previewHTML += `
+                                <div class="preview-platform">
+                                    <div class="preview-header">🎭 Giphy Preview</div>
+                                    <div class="preview-content">
+                                        Title: ${title || 'Untitled GIF'}<br>
+                                        Tags: ${tags || 'soulfra, sprite, gameboy'}
+                                        ${this.currentMedia && this.currentMedia.type.includes('gif') ? '<br>✅ GIF ready for upload' : '<br>⚠️ GIF format required'}
+                                    </div>
+                                </div>
+                            `;
+                            break;
+                        case 'gameboy':
+                            previewHTML += `
+                                <div class="preview-platform">
+                                    <div class="preview-header">🎮 Game Boy Preview</div>
+                                    <div class="preview-content">
+                                        Live gameplay feed with overlay text:<br>
+                                        "${message || 'Playing with SoulFra sprites!'}"
+                                    </div>
+                                </div>
+                            `;
+                            break;
+                    }
+                });
+                
+                previewHTML += '</div>';
+                previewContent.innerHTML = previewHTML;
+            }
+            
+            async shareAll() {
+                if (this.selectedPlatforms.size === 0) {
+                    this.showNotification('Please select at least one platform', 'warning');
+                    return;
+                }
+                
+                const title = document.getElementById('contentTitle').value;
+                const message = document.getElementById('contentMessage').value;
+                const tags = document.getElementById('contentTags').value;
+                
+                if (!message && !this.currentMedia) {
+                    this.showNotification('Please add a message or media content', 'warning');
+                    return;
+                }
+                
+                console.log('🚀 Starting multi-platform share...');
+                this.updateStatus('Sharing to platforms...');
+                this.showProgress();
+                
+                const shareData = {
+                    title,
+                    message,
+                    tags,
+                    media: this.currentMedia,
+                    platforms: Array.from(this.selectedPlatforms)
+                };
+                
+                let completed = 0;
+                const total = this.selectedPlatforms.size;
+                
+                for (const platform of this.selectedPlatforms) {
+                    const queueItem = this.addToQueue(platform, 'processing');
+                    
+                    try {
+                        await this.shareToSinglePlatform(platform, shareData);
+                        this.updateQueueItem(queueItem, 'success', `Shared successfully to ${platform}`);
+                        completed++;
+                    } catch (error) {
+                        console.error(`Failed to share to ${platform}:`, error);
+                        this.updateQueueItem(queueItem, 'error', error.message);
+                    }
+                    
+                    this.updateProgress((completed / total) * 100);
+                }
+                
+                this.hideProgress();
+                this.updateStatus('Sharing complete');
+                
+                const successCount = document.querySelectorAll('.queue-item.success').length;
+                this.showNotification(`Shared to ${successCount}/${total} platforms successfully`, 'success');
+                
+                this.updateStats();
+            }
+            
+            async shareToSinglePlatform(platform, data) {
+                if (!this.apiHubWS || this.apiHubWS.readyState !== WebSocket.OPEN) {
+                    throw new Error('API Hub not connected');
+                }
+                
+                return new Promise((resolve, reject) => {
+                    const requestId = this.generateRequestId();
+                    
+                    // Set up response handler
+                    const handler = (event) => {
+                        const response = JSON.parse(event.data);
+                        if (response.requestId === requestId) {
+                            this.apiHubWS.removeEventListener('message', handler);
+                            if (response.success) {
+                                resolve(response.data);
+                            } else {
+                                reject(new Error(response.error));
+                            }
+                        }
+                    };
+                    
+                    this.apiHubWS.addEventListener('message', handler);
+                    
+                    // Send request
+                    this.apiHubWS.send(JSON.stringify({
+                        type: 'share-request',
+                        requestId,
+                        platform,
+                        data
+                    }));
+                    
+                    // Timeout after 30 seconds
+                    setTimeout(() => {
+                        this.apiHubWS.removeEventListener('message', handler);
+                        reject(new Error('Request timeout'));
+                    }, 30000);
+                });
+            }
+            
+            addToQueue(platform, status) {
+                const queueContainer = document.getElementById('sharingQueue');
+                
+                // Clear empty message if this is first item
+                if (this.sharingQueue.length === 0) {
+                    queueContainer.innerHTML = '';
+                }
+                
+                const queueItem = document.createElement('div');
+                queueItem.className = `queue-item ${status}`;
+                queueItem.innerHTML = `
+                    <div>
+                        <strong>${this.getPlatformIcon(platform)} ${platform}</strong>
+                        <div style="font-size: 12px; color: var(--text-dim);">Processing...</div>
+                    </div>
+                    <div>⏳</div>
+                `;
+                
+                queueContainer.appendChild(queueItem);
+                this.sharingQueue.push({ platform, element: queueItem, status });
+                
+                return queueItem;
+            }
+            
+            updateQueueItem(queueItem, status, message) {
+                queueItem.className = `queue-item ${status}`;
+                const icon = status === 'success' ? '✅' : 
+                            status === 'error' ? '❌' : '⏳';
+                
+                queueItem.querySelector('div div').textContent = message;
+                queueItem.querySelector('div:last-child').textContent = icon;
+            }
+            
+            getPlatformIcon(platform) {
+                const icons = {
+                    imgur: '📷',
+                    discord: '💬',
+                    giphy: '🎭',
+                    twitter: '🐦',
+                    reddit: '🔴',
+                    gameboy: '🎮'
+                };
+                return icons[platform] || '📱';
+            }
+            
+            showProgress() {
+                const progressBar = document.getElementById('progressBar');
+                progressBar.style.display = 'block';
+                this.updateProgress(0);
+            }
+            
+            hideProgress() {
+                const progressBar = document.getElementById('progressBar');
+                progressBar.style.display = 'none';
+            }
+            
+            updateProgress(percent) {
+                const progressFill = document.getElementById('progressFill');
+                progressFill.style.width = `${percent}%`;
+            }
+            
+            updateStatus(text) {
+                document.getElementById('statusText').textContent = text;
+            }
+            
+            showNotification(message, type = 'info') {
+                const notification = document.getElementById('notification');
+                const content = document.getElementById('notificationContent');
+                
+                content.textContent = message;
+                notification.className = `notification ${type} show`;
+                
+                setTimeout(() => {
+                    notification.classList.remove('show');
+                }, 5000);
+            }
+            
+            // Game Boy Integration
+            captureGameBoy() {
+                if (!this.gameBoyConnected) {
+                    this.showNotification('Game Boy not connected', 'warning');
+                    return;
+                }
+                
+                this.gameBoyWS.send(JSON.stringify({
+                    type: 'capture-frame'
+                }));
+                
+                this.showNotification('Game Boy frame captured', 'success');
+            }
+            
+            recordGameBoy() {
+                if (!this.gameBoyConnected) {
+                    this.showNotification('Game Boy not connected', 'warning');
+                    return;
+                }
+                
+                this.gameBoyWS.send(JSON.stringify({
+                    type: 'start-recording',
+                    duration: 5000 // 5 seconds
+                }));
+                
+                this.showNotification('Recording Game Boy gameplay...', 'info');
+            }
+            
+            loadSprite() {
+                if (!this.spriteEditorConnected) {
+                    this.showNotification('Sprite Editor not connected', 'warning');
+                    return;
+                }
+                
+                this.spriteEditorWS.send(JSON.stringify({
+                    type: 'export-sprite',
+                    format: 'base64'
+                }));
+                
+                this.showNotification('Loading sprite from editor...', 'info');
+            }
+            
+            // Message Handlers
+            handleAPIHubMessage(data) {
+                switch (data.type) {
+                    case 'share-result':
+                        console.log('Share result:', data);
+                        break;
+                    case 'service-status':
+                        this.updateAPIConfigs(data.data);
+                        break;
+                    case 'health-status':
+                        this.updateServiceHealth(data.services);
+                        break;
+                }
+            }
+            
+            handleGameBoyMessage(data) {
+                switch (data.type) {
+                    case 'frame-captured':
+                        this.currentMedia = {
+                            name: 'gameboy-capture.png',
+                            type: 'image/png',
+                            data: data.frame
+                        };
+                        this.updateFileUploadDisplay();
+                        this.showNotification('Game Boy frame captured and loaded', 'success');
+                        break;
+                    case 'recording-complete':
+                        this.currentMedia = {
+                            name: 'gameboy-recording.gif',
+                            type: 'image/gif',
+                            data: data.gif
+                        };
+                        this.updateFileUploadDisplay();
+                        this.showNotification('Game Boy recording complete and loaded', 'success');
+                        break;
+                    case 'gameboy-frame':
+                        this.updateGameBoyViewer(data.frame);
+                        break;
+                }
+            }
+            
+            handleSpriteEditorMessage(data) {
+                switch (data.type) {
+                    case 'sprite-exported':
+                        this.currentMedia = {
+                            name: 'sprite-export.png',
+                            type: 'image/png',
+                            data: data.sprite
+                        };
+                        this.updateFileUploadDisplay();
+                        this.showNotification('Sprite loaded from editor', 'success');
+                        break;
+                }
+            }
+            
+            updateGameBoyViewer(frameData) {
+                const viewer = document.getElementById('gameBoyViewer');
+                if (frameData && frameData.length > 0) {
+                    // Convert frame data to visual representation
+                    viewer.innerHTML = '🎮 Live Game Boy Feed<br><small>📡 Receiving data...</small>';
+                }
+            }
+            
+            // Utility functions
+            generateRequestId() {
+                return Math.random().toString(36).substring(2, 15);
+            }
+            
+            formatFileSize(bytes) {
+                if (bytes === 0) return '0 Bytes';
+                const k = 1024;
+                const sizes = ['Bytes', 'KB', 'MB', 'GB'];
+                const i = Math.floor(Math.log(bytes) / Math.log(k));
+                return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + ' ' + sizes[i];
+            }
+            
+            updateStats() {
+                // Update sharing statistics
+                const totalShares = parseInt(document.getElementById('totalShares').textContent) + 1;
+                document.getElementById('totalShares').textContent = totalShares;
+                
+                // Save to localStorage
+                localStorage.setItem('soulfra_total_shares', totalShares);
+            }
+            
+            loadSavedConfigs() {
+                // Load saved statistics
+                const savedShares = localStorage.getItem('soulfra_total_shares');
+                if (savedShares) {
+                    document.getElementById('totalShares').textContent = savedShares;
+                }
+            }
+            
+            startPeriodicUpdates() {
+                // Update stats every minute
+                setInterval(() => {
+                    if (this.apiHubWS && this.apiHubWS.readyState === WebSocket.OPEN) {
+                        this.apiHubWS.send(JSON.stringify({
+                            type: 'service-status'
+                        }));
+                    }
+                }, 60000);
+            }
+            
+            // Public API methods
+            openAPISettings() {
+                this.showNotification('API Settings: Configure keys in Enhanced External Service Hub', 'info');
+            }
+            
+            schedulePost() {
+                this.showNotification('Post scheduling coming soon!', 'info');
+            }
+            
+            saveTemplate() {
+                const template = {
+                    title: document.getElementById('contentTitle').value,
+                    message: document.getElementById('contentMessage').value,
+                    tags: document.getElementById('contentTags').value,
+                    platforms: Array.from(this.selectedPlatforms)
+                };
+                
+                localStorage.setItem('soulfra_template', JSON.stringify(template));
+                this.showNotification('Template saved successfully', 'success');
+            }
+            
+            preview() {
+                this.updatePreviews();
+                this.showNotification('Preview updated', 'info');
+            }
+        }
+        
+        // Initialize dashboard when page loads
+        let dashboard;
+        window.addEventListener('load', () => {
+            dashboard = new UnifiedSharingDashboard();
+            
+            // Make dashboard globally available
+            window.dashboard = dashboard;
+        });
+    </script>
+</body>
+</html>

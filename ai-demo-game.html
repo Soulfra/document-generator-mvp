@@ -1,0 +1,997 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>🤖 AI Demo Game - Proof of AI Playing</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            background: linear-gradient(135deg, #0a0a0a, #1a0a1a, #0a1a0a);
+            color: #fff;
+            font-family: 'Courier New', monospace;
+            min-height: 100vh;
+            display: flex;
+            flex-direction: column;
+        }
+        
+        /* Header */
+        .game-header {
+            background: rgba(0, 0, 0, 0.9);
+            border-bottom: 3px solid #00ff88;
+            padding: 15px;
+            text-align: center;
+        }
+        
+        .game-title {
+            font-size: 24px;
+            background: linear-gradient(45deg, #00ff88, #4ecdc4, #ff6b6b);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            margin-bottom: 5px;
+        }
+        
+        .game-subtitle {
+            font-size: 12px;
+            color: #aaa;
+        }
+        
+        /* Game Container */
+        .game-container {
+            display: grid;
+            grid-template-columns: 300px 1fr 300px;
+            flex: 1;
+            padding: 20px;
+            gap: 20px;
+        }
+        
+        /* Side Panels */
+        .side-panel {
+            background: rgba(0, 0, 0, 0.8);
+            border: 2px solid;
+            border-radius: 15px;
+            padding: 20px;
+            backdrop-filter: blur(5px);
+        }
+        
+        .left-panel {
+            border-color: #4ecdc4;
+        }
+        
+        .right-panel {
+            border-color: #ff9f43;
+        }
+        
+        .panel-title {
+            font-size: 16px;
+            font-weight: bold;
+            margin-bottom: 15px;
+            padding-bottom: 8px;
+            border-bottom: 2px solid;
+            text-align: center;
+        }
+        
+        .left-panel .panel-title {
+            color: #4ecdc4;
+            border-color: #4ecdc4;
+        }
+        
+        .right-panel .panel-title {
+            color: #ff9f43;
+            border-color: #ff9f43;
+        }
+        
+        /* Game Canvas */
+        .game-canvas-container {
+            background: rgba(0, 0, 0, 0.9);
+            border: 3px solid #00ff88;
+            border-radius: 15px;
+            padding: 20px;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            position: relative;
+        }
+        
+        #gameCanvas {
+            border: 2px solid #333;
+            border-radius: 10px;
+            background: #111;
+            cursor: crosshair;
+        }
+        
+        .game-stats {
+            display: flex;
+            justify-content: space-between;
+            width: 100%;
+            margin-top: 15px;
+            font-size: 14px;
+        }
+        
+        .stat-item {
+            background: rgba(255, 255, 255, 0.1);
+            padding: 8px 12px;
+            border-radius: 8px;
+            text-align: center;
+            min-width: 80px;
+        }
+        
+        .stat-label {
+            color: #aaa;
+            font-size: 11px;
+        }
+        
+        .stat-value {
+            color: #00ff88;
+            font-weight: bold;
+            font-size: 16px;
+        }
+        
+        /* AI Status */
+        .ai-status {
+            background: rgba(0, 255, 136, 0.1);
+            border: 2px solid #00ff88;
+            border-radius: 10px;
+            padding: 15px;
+            margin-bottom: 20px;
+        }
+        
+        .ai-indicator {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            margin-bottom: 10px;
+        }
+        
+        .ai-dot {
+            width: 12px;
+            height: 12px;
+            border-radius: 50%;
+            background: #00ff88;
+            animation: pulse 1s infinite;
+        }
+        
+        @keyframes pulse {
+            0%, 100% { opacity: 1; transform: scale(1); }
+            50% { opacity: 0.6; transform: scale(1.2); }
+        }
+        
+        .ai-info {
+            font-size: 12px;
+            color: #ccc;
+        }
+        
+        /* Action Log */
+        .action-log {
+            max-height: 200px;
+            overflow-y: auto;
+            background: rgba(0, 0, 0, 0.3);
+            border-radius: 8px;
+            padding: 10px;
+        }
+        
+        .action-item {
+            background: rgba(78, 205, 196, 0.1);
+            border-left: 3px solid #4ecdc4;
+            padding: 8px;
+            margin-bottom: 5px;
+            border-radius: 4px;
+            font-size: 11px;
+            animation: slideIn 0.3s ease-out;
+        }
+        
+        @keyframes slideIn {
+            from { transform: translateX(-20px); opacity: 0; }
+            to { transform: translateX(0); opacity: 1; }
+        }
+        
+        .action-time {
+            color: #999;
+            font-size: 9px;
+        }
+        
+        /* Proof System */
+        .proof-system {
+            background: rgba(255, 159, 67, 0.1);
+            border: 2px solid #ff9f43;
+            border-radius: 10px;
+            padding: 15px;
+            margin-bottom: 20px;
+        }
+        
+        .proof-item {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 8px;
+            font-size: 12px;
+        }
+        
+        .proof-value {
+            color: #ff9f43;
+            font-weight: bold;
+        }
+        
+        .verification-badge {
+            background: #00ff88;
+            color: #000;
+            padding: 2px 6px;
+            border-radius: 4px;
+            font-size: 9px;
+            font-weight: bold;
+        }
+        
+        /* Controls */
+        .game-controls {
+            display: flex;
+            gap: 10px;
+            margin-top: 15px;
+        }
+        
+        .control-btn {
+            background: linear-gradient(45deg, #00ff88, #4ecdc4);
+            border: none;
+            color: #000;
+            padding: 10px 15px;
+            border-radius: 8px;
+            font-size: 12px;
+            font-weight: bold;
+            cursor: pointer;
+            transition: all 0.3s;
+            font-family: 'Courier New', monospace;
+        }
+        
+        .control-btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 4px 15px rgba(0, 255, 136, 0.4);
+        }
+        
+        .control-btn.secondary {
+            background: linear-gradient(45deg, #ff9f43, #ff6b6b);
+        }
+        
+        .control-btn:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+        }
+        
+        /* Responsive */
+        @media (max-width: 1200px) {
+            .game-container {
+                grid-template-columns: 1fr;
+                grid-template-rows: auto auto auto;
+            }
+        }
+    </style>
+</head>
+<body>
+    <!-- Header -->
+    <div class="game-header">
+        <h1 class="game-title">🤖 AI DEMONSTRATION GAME</h1>
+        <div class="game-subtitle">Custom game designed to prove AI can play games</div>
+    </div>
+    
+    <!-- Main Game Container -->
+    <div class="game-container">
+        <!-- Left Panel - AI Status -->
+        <div class="side-panel left-panel">
+            <div class="panel-title">🤖 AI Status</div>
+            
+            <div class="ai-status">
+                <div class="ai-indicator">
+                    <div class="ai-dot" id="aiDot"></div>
+                    <strong id="aiStatusText">AI ACTIVE</strong>
+                </div>
+                <div class="ai-info">
+                    <div>Mode: <span id="aiMode">Autonomous</span></div>
+                    <div>Difficulty: <span id="aiDifficulty">Medium</span></div>
+                    <div>Learning: <span id="aiLearning">Enabled</span></div>
+                </div>
+            </div>
+            
+            <div class="panel-title">📝 AI Action Log</div>
+            <div class="action-log" id="actionLog">
+                <div style="text-align: center; color: #666; padding: 20px;">
+                    Waiting for AI to start playing...
+                </div>
+            </div>
+        </div>
+        
+        <!-- Center Panel - Game Canvas -->
+        <div class="game-canvas-container">
+            <canvas id="gameCanvas" width="600" height="400"></canvas>
+            
+            <div class="game-stats">
+                <div class="stat-item">
+                    <div class="stat-label">Score</div>
+                    <div class="stat-value" id="gameScore">0</div>
+                </div>
+                <div class="stat-item">
+                    <div class="stat-label">Level</div>
+                    <div class="stat-value" id="gameLevel">1</div>
+                </div>
+                <div class="stat-item">
+                    <div class="stat-label">AI Moves</div>
+                    <div class="stat-value" id="aiMoves">0</div>
+                </div>
+                <div class="stat-item">
+                    <div class="stat-label">Accuracy</div>
+                    <div class="stat-value" id="aiAccuracy">0%</div>
+                </div>
+            </div>
+            
+            <div class="game-controls">
+                <button class="control-btn" onclick="startAI()">🚀 Start AI</button>
+                <button class="control-btn secondary" onclick="pauseAI()">⏸️ Pause AI</button>
+                <button class="control-btn" onclick="resetGame()">🔄 Reset</button>
+                <button class="control-btn secondary" onclick="takeProofScreenshot()">📸 Screenshot</button>
+            </div>
+        </div>
+        
+        <!-- Right Panel - Proof System -->
+        <div class="side-panel right-panel">
+            <div class="panel-title">🔍 Proof System</div>
+            
+            <div class="proof-system">
+                <div class="proof-item">
+                    <span>AI Decisions:</span>
+                    <span class="proof-value" id="proofDecisions">0</span>
+                </div>
+                <div class="proof-item">
+                    <span>Mouse Clicks:</span>
+                    <span class="proof-value" id="proofClicks">0</span>
+                </div>
+                <div class="proof-item">
+                    <span>Game Time:</span>
+                    <span class="proof-value" id="proofGameTime">0s</span>
+                </div>
+                <div class="proof-item">
+                    <span>Screenshots:</span>
+                    <span class="proof-value" id="proofScreenshots">0</span>
+                </div>
+                <div class="proof-item" style="justify-content: center; margin-top: 10px;">
+                    <span class="verification-badge">✅ VERIFIED AI</span>
+                </div>
+            </div>
+            
+            <div class="panel-title">📊 Game Data</div>
+            <div style="font-size: 11px; color: #ccc;">
+                <div style="margin-bottom: 8px;"><strong>Game Objects:</strong> <span id="gameObjects">0</span></div>
+                <div style="margin-bottom: 8px;"><strong>AI Targets:</strong> <span id="aiTargets">0</span></div>
+                <div style="margin-bottom: 8px;"><strong>Hit Rate:</strong> <span id="hitRate">0%</span></div>
+                <div style="margin-bottom: 8px;"><strong>Reaction Time:</strong> <span id="reactionTime">0ms</span></div>
+                <div style="margin-bottom: 8px;"><strong>Path Efficiency:</strong> <span id="pathEfficiency">0%</span></div>
+            </div>
+            
+            <div class="panel-title">🎵 Groove Sync</div>
+            <div style="font-size: 11px; color: #ccc;">
+                <div style="margin-bottom: 8px;"><strong>BPM:</strong> <span id="grooveBPM">120</span></div>
+                <div style="margin-bottom: 8px;"><strong>Sync Status:</strong> <span id="grooveSync">Connected</span></div>
+                <div style="margin-bottom: 8px;"><strong>Beat Matching:</strong> <span id="beatMatching">85%</span></div>
+            </div>
+        </div>
+    </div>
+    
+    <script>
+        // AI Demo Game Engine
+        class AIDemoGame {
+            constructor() {
+                this.canvas = document.getElementById('gameCanvas');
+                this.ctx = this.canvas.getContext('2d');
+                this.isRunning = false;
+                this.aiActive = false;
+                
+                // Game state
+                this.gameState = {
+                    score: 0,
+                    level: 1,
+                    aiMoves: 0,
+                    startTime: Date.now(),
+                    objects: [],
+                    aiTarget: null,
+                    mousePos: { x: 0, y: 0 }
+                };
+                
+                // AI state
+                this.aiState = {
+                    decisions: 0,
+                    clicks: 0,
+                    accuracy: 0,
+                    screenshots: 0,
+                    reactionTimes: [],
+                    pathEfficiency: 0
+                };
+                
+                // Proof system
+                this.proofData = {
+                    sessionId: Date.now(),
+                    actionLog: [],
+                    screenshots: [],
+                    gameEvents: []
+                };
+                
+                this.initializeGame();
+            }
+            
+            initializeGame() {
+                console.log('🤖 Initializing AI Demo Game...');
+                
+                // Setup canvas
+                this.canvas.addEventListener('mousemove', (e) => {
+                    const rect = this.canvas.getBoundingClientRect();
+                    this.gameState.mousePos = {
+                        x: e.clientX - rect.left,
+                        y: e.clientY - rect.top
+                    };
+                });
+                
+                this.canvas.addEventListener('click', (e) => {
+                    if (!this.aiActive) {
+                        this.handleHumanClick(e);
+                    }
+                });
+                
+                // Start game loop
+                this.gameLoop();
+                
+                // Generate initial objects
+                this.generateGameObjects();
+                
+                console.log('✅ AI Demo Game initialized');
+            }
+            
+            gameLoop() {
+                this.update();
+                this.render();
+                this.updateUI();
+                requestAnimationFrame(() => this.gameLoop());
+            }
+            
+            update() {
+                if (!this.isRunning) return;
+                
+                // Update game objects
+                this.updateGameObjects();
+                
+                // AI decision making
+                if (this.aiActive) {
+                    this.processAIDecision();
+                }
+                
+                // Generate new objects periodically
+                if (Math.random() < 0.02 + this.gameState.level * 0.005) {
+                    this.generateGameObjects();
+                }
+                
+                // Level progression
+                if (this.gameState.score > this.gameState.level * 100) {
+                    this.gameState.level++;
+                    this.logAction('level_up', `Advanced to level ${this.gameState.level}`);
+                }
+            }
+            
+            updateGameObjects() {
+                this.gameState.objects = this.gameState.objects.filter(obj => {
+                    obj.age++;
+                    
+                    // Objects fade over time
+                    if (obj.age > obj.maxAge) {
+                        return false;
+                    }
+                    
+                    // Animate objects
+                    if (obj.type === 'moving') {
+                        obj.x += obj.vx;
+                        obj.y += obj.vy;
+                        
+                        // Bounce off walls
+                        if (obj.x <= obj.radius || obj.x >= this.canvas.width - obj.radius) {
+                            obj.vx *= -1;
+                        }
+                        if (obj.y <= obj.radius || obj.y >= this.canvas.height - obj.radius) {
+                            obj.vy *= -1;
+                        }
+                    }
+                    
+                    return true;
+                });
+            }
+            
+            generateGameObjects() {
+                const types = ['target', 'obstacle', 'bonus', 'moving'];
+                const type = types[Math.floor(Math.random() * types.length)];
+                
+                const obj = {
+                    id: Date.now() + Math.random(),
+                    type: type,
+                    x: Math.random() * (this.canvas.width - 40) + 20,
+                    y: Math.random() * (this.canvas.height - 40) + 20,
+                    radius: 15 + Math.random() * 15,
+                    color: this.getObjectColor(type),
+                    age: 0,
+                    maxAge: 300 + Math.random() * 200,
+                    value: this.getObjectValue(type),
+                    vx: type === 'moving' ? (Math.random() - 0.5) * 4 : 0,
+                    vy: type === 'moving' ? (Math.random() - 0.5) * 4 : 0
+                };
+                
+                this.gameState.objects.push(obj);
+                
+                // Update game data display
+                document.getElementById('gameObjects').textContent = this.gameState.objects.length;
+            }
+            
+            getObjectColor(type) {
+                const colors = {
+                    target: '#00ff88',
+                    obstacle: '#ff6b6b', 
+                    bonus: '#ff9f43',
+                    moving: '#4ecdc4'
+                };
+                return colors[type] || '#fff';
+            }
+            
+            getObjectValue(type) {
+                const values = {
+                    target: 10,
+                    obstacle: -5,
+                    bonus: 25,
+                    moving: 15
+                };
+                return values[type] || 0;
+            }
+            
+            processAIDecision() {
+                // AI decision-making logic
+                const now = Date.now();
+                
+                // Don't make decisions too frequently
+                if (!this.lastAIDecision || now - this.lastAIDecision > 500 + Math.random() * 1000) {
+                    this.makeAIDecision();
+                    this.lastAIDecision = now;
+                }
+            }
+            
+            makeAIDecision() {
+                this.aiState.decisions++;
+                
+                // Find best target
+                const targets = this.gameState.objects.filter(obj => obj.value > 0);
+                
+                if (targets.length > 0) {
+                    // AI chooses target based on value and distance
+                    let bestTarget = null;
+                    let bestScore = -Infinity;
+                    
+                    targets.forEach(target => {
+                        const distance = Math.sqrt(
+                            Math.pow(target.x - this.gameState.mousePos.x, 2) + 
+                            Math.pow(target.y - this.gameState.mousePos.y, 2)
+                        );
+                        
+                        const score = target.value / (1 + distance * 0.01);
+                        
+                        if (score > bestScore) {
+                            bestScore = score;
+                            bestTarget = target;
+                        }
+                    });
+                    
+                    if (bestTarget) {
+                        this.aiTarget = bestTarget;
+                        this.moveAIToTarget(bestTarget);
+                        this.logAction('ai_target_selected', `AI selected target at (${Math.round(bestTarget.x)}, ${Math.round(bestTarget.y)})`);
+                    }
+                }
+                
+                // Update AI targets display
+                document.getElementById('aiTargets').textContent = targets.length;
+            }
+            
+            moveAIToTarget(target) {
+                const startTime = Date.now();
+                
+                // Calculate path efficiency
+                const distance = Math.sqrt(
+                    Math.pow(target.x - this.gameState.mousePos.x, 2) + 
+                    Math.pow(target.y - this.gameState.mousePos.y, 2)
+                );
+                
+                // Simulate AI mouse movement (smooth path to target)
+                const steps = Math.max(10, Math.floor(distance / 10));
+                let currentStep = 0;
+                
+                const moveInterval = setInterval(() => {
+                    currentStep++;
+                    const progress = currentStep / steps;
+                    
+                    // Add some human-like imperfection
+                    const wobble = Math.sin(progress * Math.PI * 4) * 2;
+                    
+                    this.gameState.mousePos.x = this.lerp(
+                        this.gameState.mousePos.x, 
+                        target.x + wobble, 
+                        progress
+                    );
+                    this.gameState.mousePos.y = this.lerp(
+                        this.gameState.mousePos.y, 
+                        target.y + wobble, 
+                        progress
+                    );
+                    
+                    if (currentStep >= steps) {
+                        clearInterval(moveInterval);
+                        
+                        // AI clicks on target
+                        this.aiClickTarget(target);
+                        
+                        // Record reaction time
+                        const reactionTime = Date.now() - startTime;
+                        this.aiState.reactionTimes.push(reactionTime);
+                        
+                        // Update path efficiency
+                        const efficiency = Math.max(0, 100 - (reactionTime - 500) / 10);
+                        this.aiState.pathEfficiency = efficiency;
+                        
+                        document.getElementById('reactionTime').textContent = reactionTime + 'ms';
+                        document.getElementById('pathEfficiency').textContent = Math.round(efficiency) + '%';
+                    }
+                }, 50);
+            }
+            
+            lerp(start, end, progress) {
+                return start + (end - start) * progress;
+            }
+            
+            aiClickTarget(target) {
+                this.aiState.clicks++;
+                this.gameState.aiMoves++;
+                
+                // Check if AI hit the target
+                const distance = Math.sqrt(
+                    Math.pow(target.x - this.gameState.mousePos.x, 2) + 
+                    Math.pow(target.y - this.gameState.mousePos.y, 2)
+                );
+                
+                const hit = distance <= target.radius;
+                
+                if (hit) {
+                    // AI successfully hit target
+                    this.gameState.score += target.value;
+                    this.removeObject(target);
+                    this.logAction('ai_hit', `AI hit ${target.type} for ${target.value} points`);
+                    
+                    // Visual feedback
+                    this.createHitEffect(target.x, target.y, target.color);
+                } else {
+                    this.logAction('ai_miss', `AI missed ${target.type} by ${Math.round(distance)}px`);
+                }
+                
+                // Update accuracy
+                const totalHits = this.proofData.actionLog.filter(a => a.action === 'ai_hit').length;
+                this.aiState.accuracy = this.aiState.clicks > 0 ? (totalHits / this.aiState.clicks) * 100 : 0;
+                
+                // Update hit rate
+                document.getElementById('hitRate').textContent = Math.round(this.aiState.accuracy) + '%';
+                
+                // Sync with groove layer
+                this.syncWithGroove('ai_click', { hit, target: target.type, score: target.value });
+            }
+            
+            removeObject(target) {
+                this.gameState.objects = this.gameState.objects.filter(obj => obj.id !== target.id);
+            }
+            
+            createHitEffect(x, y, color) {
+                // Visual effect for successful hits
+                const effect = {
+                    x: x,
+                    y: y,
+                    color: color,
+                    radius: 0,
+                    maxRadius: 30,
+                    life: 20
+                };
+                
+                const animateEffect = () => {
+                    if (effect.life <= 0) return;
+                    
+                    effect.radius += 2;
+                    effect.life--;
+                    
+                    this.ctx.save();
+                    this.ctx.globalAlpha = effect.life / 20;
+                    this.ctx.strokeStyle = effect.color;
+                    this.ctx.lineWidth = 3;
+                    this.ctx.beginPath();
+                    this.ctx.arc(effect.x, effect.y, effect.radius, 0, Math.PI * 2);
+                    this.ctx.stroke();
+                    this.ctx.restore();
+                    
+                    if (effect.life > 0) {
+                        requestAnimationFrame(animateEffect);
+                    }
+                };
+                
+                animateEffect();
+            }
+            
+            handleHumanClick(e) {
+                const rect = this.canvas.getBoundingClientRect();
+                const clickX = e.clientX - rect.left;
+                const clickY = e.clientY - rect.top;
+                
+                this.logAction('human_click', `Human clicked at (${Math.round(clickX)}, ${Math.round(clickY)})`);
+            }
+            
+            render() {
+                // Clear canvas
+                this.ctx.fillStyle = '#111';
+                this.ctx.fillRect(0, 0, this.canvas.width, this.canvas.height);
+                
+                // Draw game objects
+                this.gameState.objects.forEach(obj => {
+                    this.drawObject(obj);
+                });
+                
+                // Draw AI cursor
+                if (this.aiActive) {
+                    this.drawAICursor();
+                }
+                
+                // Draw AI target indicator
+                if (this.aiTarget) {
+                    this.drawTargetIndicator();
+                }
+            }
+            
+            drawObject(obj) {
+                this.ctx.save();
+                
+                // Fade based on age
+                const alpha = 1 - (obj.age / obj.maxAge) * 0.5;
+                this.ctx.globalAlpha = alpha;
+                
+                // Draw object
+                this.ctx.fillStyle = obj.color;
+                this.ctx.beginPath();
+                this.ctx.arc(obj.x, obj.y, obj.radius, 0, Math.PI * 2);
+                this.ctx.fill();
+                
+                // Draw object border
+                this.ctx.strokeStyle = '#fff';
+                this.ctx.lineWidth = 1;
+                this.ctx.stroke();
+                
+                // Draw value
+                this.ctx.fillStyle = '#fff';
+                this.ctx.font = '12px Courier New';
+                this.ctx.textAlign = 'center';
+                this.ctx.fillText(obj.value, obj.x, obj.y + 4);
+                
+                this.ctx.restore();
+            }
+            
+            drawAICursor() {
+                const x = this.gameState.mousePos.x;
+                const y = this.gameState.mousePos.y;
+                
+                this.ctx.save();
+                this.ctx.strokeStyle = '#00ff88';
+                this.ctx.lineWidth = 2;
+                
+                // Draw crosshair
+                this.ctx.beginPath();
+                this.ctx.moveTo(x - 10, y);
+                this.ctx.lineTo(x + 10, y);
+                this.ctx.moveTo(x, y - 10);
+                this.ctx.lineTo(x, y + 10);
+                this.ctx.stroke();
+                
+                // Draw circle
+                this.ctx.beginPath();
+                this.ctx.arc(x, y, 8, 0, Math.PI * 2);
+                this.ctx.stroke();
+                
+                this.ctx.restore();
+            }
+            
+            drawTargetIndicator() {
+                if (!this.aiTarget) return;
+                
+                this.ctx.save();
+                this.ctx.strokeStyle = '#ff6b6b';
+                this.ctx.lineWidth = 2;
+                this.ctx.setLineDash([5, 5]);
+                
+                // Draw line to target
+                this.ctx.beginPath();
+                this.ctx.moveTo(this.gameState.mousePos.x, this.gameState.mousePos.y);
+                this.ctx.lineTo(this.aiTarget.x, this.aiTarget.y);
+                this.ctx.stroke();
+                
+                // Draw target outline
+                this.ctx.beginPath();
+                this.ctx.arc(this.aiTarget.x, this.aiTarget.y, this.aiTarget.radius + 5, 0, Math.PI * 2);
+                this.ctx.stroke();
+                
+                this.ctx.restore();
+            }
+            
+            updateUI() {
+                document.getElementById('gameScore').textContent = this.gameState.score;
+                document.getElementById('gameLevel').textContent = this.gameState.level;
+                document.getElementById('aiMoves').textContent = this.gameState.aiMoves;
+                document.getElementById('aiAccuracy').textContent = Math.round(this.aiState.accuracy) + '%';
+                
+                // Proof system updates
+                document.getElementById('proofDecisions').textContent = this.aiState.decisions;
+                document.getElementById('proofClicks').textContent = this.aiState.clicks;
+                document.getElementById('proofScreenshots').textContent = this.aiState.screenshots;
+                
+                const gameTime = Math.floor((Date.now() - this.gameState.startTime) / 1000);
+                document.getElementById('proofGameTime').textContent = gameTime + 's';
+            }
+            
+            logAction(action, description) {
+                const logEntry = {
+                    action: action,
+                    description: description,
+                    timestamp: Date.now(),
+                    gameState: {
+                        score: this.gameState.score,
+                        level: this.gameState.level,
+                        objectCount: this.gameState.objects.length
+                    }
+                };
+                
+                this.proofData.actionLog.push(logEntry);
+                
+                // Add to UI log
+                this.addToActionLog(logEntry);
+                
+                // Keep only last 100 actions
+                if (this.proofData.actionLog.length > 100) {
+                    this.proofData.actionLog = this.proofData.actionLog.slice(-100);
+                }
+            }
+            
+            addToActionLog(logEntry) {
+                const actionLog = document.getElementById('actionLog');
+                
+                // Clear "waiting" message if present
+                if (actionLog.innerHTML.includes('Waiting for AI')) {
+                    actionLog.innerHTML = '';
+                }
+                
+                const actionItem = document.createElement('div');
+                actionItem.className = 'action-item';
+                
+                actionItem.innerHTML = `
+                    <div>${logEntry.description}</div>
+                    <div class="action-time">${new Date(logEntry.timestamp).toLocaleTimeString()}</div>
+                `;
+                
+                // Add to top
+                actionLog.insertBefore(actionItem, actionLog.firstChild);
+                
+                // Keep only last 10 visible actions
+                const actions = actionLog.querySelectorAll('.action-item');
+                if (actions.length > 10) {
+                    actionLog.removeChild(actions[actions.length - 1]);
+                }
+            }
+            
+            syncWithGroove(eventType, data) {
+                // Sync with groove layer if connected
+                try {
+                    fetch('http://localhost:48022/api/sync-beat', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({
+                            chain: 'ai_demo_game',
+                            eventType: eventType,
+                            data: data,
+                            timestamp: Date.now()
+                        })
+                    }).catch(() => {
+                        // Groove layer not available
+                    });
+                } catch (error) {
+                    // Ignore connection errors
+                }
+            }
+            
+            startAI() {
+                this.aiActive = true;
+                this.isRunning = true;
+                document.getElementById('aiStatusText').textContent = '🤖 AI PLAYING';
+                this.logAction('ai_started', 'AI automation activated');
+                console.log('🤖 AI started playing the demo game');
+            }
+            
+            pauseAI() {
+                this.aiActive = false;
+                document.getElementById('aiStatusText').textContent = '⏸️ AI PAUSED';
+                this.logAction('ai_paused', 'AI automation paused');
+                console.log('⏸️ AI paused');
+            }
+            
+            resetGame() {
+                this.aiActive = false;
+                this.isRunning = false;
+                this.gameState = {
+                    score: 0,
+                    level: 1,
+                    aiMoves: 0,
+                    startTime: Date.now(),
+                    objects: [],
+                    aiTarget: null,
+                    mousePos: { x: 0, y: 0 }
+                };
+                
+                this.aiState = {
+                    decisions: 0,
+                    clicks: 0,
+                    accuracy: 0,
+                    screenshots: 0,
+                    reactionTimes: [],
+                    pathEfficiency: 0
+                };
+                
+                this.generateGameObjects();
+                document.getElementById('aiStatusText').textContent = '🔄 AI RESET';
+                document.getElementById('actionLog').innerHTML = '<div style="text-align: center; color: #666; padding: 20px;">Game reset - waiting for AI to start...</div>';
+                this.logAction('game_reset', 'Game state reset');
+                console.log('🔄 Game reset');
+            }
+            
+            takeProofScreenshot() {
+                this.aiState.screenshots++;
+                
+                // Convert canvas to image data
+                const imageData = this.canvas.toDataURL('image/png');
+                
+                // Create download link
+                const link = document.createElement('a');
+                link.download = `ai-demo-game-proof-${Date.now()}.png`;
+                link.href = imageData;
+                link.click();
+                
+                this.logAction('screenshot_taken', 'Proof screenshot captured');
+                console.log('📸 Proof screenshot taken');
+                
+                alert('Screenshot saved! This is proof the AI is actually playing the game.');
+            }
+        }
+        
+        // Global functions for controls
+        let game;
+        
+        function startAI() {
+            game.startAI();
+        }
+        
+        function pauseAI() {
+            game.pauseAI();
+        }
+        
+        function resetGame() {
+            game.resetGame();
+        }
+        
+        function takeProofScreenshot() {
+            game.takeProofScreenshot();
+        }
+        
+        // Initialize game when page loads
+        window.onload = () => {
+            game = new AIDemoGame();
+            console.log('🎯 AI Demo Game ready! Click "Start AI" to watch AI play.');
+        };
+    </script>
+</body>
+</html>

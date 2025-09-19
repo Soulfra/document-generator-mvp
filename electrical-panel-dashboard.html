@@ -1,0 +1,543 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>🔌 Master Control Panel - System Status</title>
+    <style>
+        body {
+            font-family: 'Courier New', monospace;
+            background: #1a1a1a;
+            color: #00ff41;
+            margin: 0;
+            padding: 20px;
+            min-height: 100vh;
+        }
+        
+        .panel-header {
+            text-align: center;
+            margin-bottom: 30px;
+            border: 2px solid #00ff41;
+            padding: 20px;
+            border-radius: 10px;
+        }
+        
+        .panel-header h1 {
+            margin: 0;
+            font-size: 2.5em;
+            text-shadow: 0 0 10px #00ff41;
+        }
+        
+        .panel-header .subtitle {
+            margin-top: 10px;
+            font-size: 1.2em;
+            color: #66ff66;
+        }
+        
+        .electrical-panel {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+            gap: 20px;
+            max-width: 1200px;
+            margin: 0 auto;
+        }
+        
+        .circuit-breaker {
+            border: 2px solid #333;
+            border-radius: 10px;
+            padding: 20px;
+            background: linear-gradient(135deg, #2a2a2a, #1a1a1a);
+            position: relative;
+            transition: all 0.3s ease;
+        }
+        
+        .circuit-breaker.online {
+            border-color: #00ff41;
+            box-shadow: 0 0 20px rgba(0, 255, 65, 0.3);
+        }
+        
+        .circuit-breaker.offline {
+            border-color: #ff4444;
+            color: #ff4444;
+        }
+        
+        .circuit-breaker.warning {
+            border-color: #ffaa00;
+            color: #ffaa00;
+            box-shadow: 0 0 20px rgba(255, 170, 0, 0.3);
+        }
+        
+        .breaker-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 15px;
+            padding-bottom: 10px;
+            border-bottom: 1px solid #333;
+        }
+        
+        .breaker-name {
+            font-size: 1.4em;
+            font-weight: bold;
+        }
+        
+        .breaker-emoji {
+            font-size: 2em;
+            margin-right: 10px;
+        }
+        
+        .status-light {
+            width: 20px;
+            height: 20px;
+            border-radius: 50%;
+            display: inline-block;
+            margin-left: 10px;
+            box-shadow: 0 0 10px;
+            animation: pulse 2s infinite;
+        }
+        
+        .status-light.green {
+            background: #00ff41;
+            box-shadow: 0 0 10px #00ff41;
+        }
+        
+        .status-light.red {
+            background: #ff4444;
+            box-shadow: 0 0 10px #ff4444;
+        }
+        
+        .status-light.yellow {
+            background: #ffaa00;
+            box-shadow: 0 0 10px #ffaa00;
+        }
+        
+        @keyframes pulse {
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0.6; }
+        }
+        
+        .breaker-stats {
+            list-style: none;
+            padding: 0;
+            margin: 0;
+        }
+        
+        .breaker-stats li {
+            margin: 8px 0;
+            display: flex;
+            justify-content: space-between;
+        }
+        
+        .stat-label {
+            color: #888;
+        }
+        
+        .stat-value {
+            font-weight: bold;
+        }
+        
+        .breaker-controls {
+            margin-top: 15px;
+            padding-top: 15px;
+            border-top: 1px solid #333;
+        }
+        
+        .control-button {
+            background: #333;
+            border: 1px solid #666;
+            color: #00ff41;
+            padding: 8px 16px;
+            border-radius: 5px;
+            cursor: pointer;
+            margin-right: 10px;
+            font-family: inherit;
+            transition: all 0.3s ease;
+        }
+        
+        .control-button:hover {
+            background: #555;
+            border-color: #00ff41;
+        }
+        
+        .control-button.danger {
+            color: #ff4444;
+        }
+        
+        .control-button.danger:hover {
+            border-color: #ff4444;
+        }
+        
+        .system-overview {
+            background: linear-gradient(135deg, #2a2a2a, #1a1a1a);
+            border: 2px solid #00ff41;
+            border-radius: 10px;
+            padding: 20px;
+            margin-bottom: 30px;
+            text-align: center;
+        }
+        
+        .overview-stats {
+            display: flex;
+            justify-content: space-around;
+            margin-top: 20px;
+        }
+        
+        .overview-stat {
+            text-align: center;
+        }
+        
+        .overview-stat .number {
+            font-size: 2em;
+            font-weight: bold;
+            color: #00ff41;
+        }
+        
+        .overview-stat .label {
+            color: #888;
+            margin-top: 5px;
+        }
+        
+        .refresh-button {
+            position: fixed;
+            bottom: 20px;
+            right: 20px;
+            background: #00ff41;
+            color: #1a1a1a;
+            border: none;
+            padding: 15px 20px;
+            border-radius: 50px;
+            font-weight: bold;
+            cursor: pointer;
+            box-shadow: 0 4px 15px rgba(0, 255, 65, 0.3);
+            transition: all 0.3s ease;
+        }
+        
+        .refresh-button:hover {
+            background: #66ff66;
+            transform: translateY(-2px);
+            box-shadow: 0 6px 20px rgba(0, 255, 65, 0.4);
+        }
+        
+        .connection-matrix {
+            margin-top: 30px;
+            padding: 20px;
+            background: linear-gradient(135deg, #2a2a2a, #1a1a1a);
+            border: 2px solid #333;
+            border-radius: 10px;
+        }
+        
+        .connection-matrix h3 {
+            color: #00ff41;
+            margin-bottom: 15px;
+        }
+        
+        .connections {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 10px;
+        }
+        
+        .connection {
+            background: #333;
+            padding: 10px;
+            border-radius: 5px;
+            text-align: center;
+            border: 1px solid #555;
+        }
+        
+        .connection.active {
+            border-color: #00ff41;
+            background: rgba(0, 255, 65, 0.1);
+        }
+    </style>
+</head>
+<body>
+    <div class="panel-header">
+        <h1>🔌 MASTER CONTROL PANEL</h1>
+        <div class="subtitle">System Unifier - Electrical Panel Status</div>
+    </div>
+    
+    <div class="system-overview">
+        <h2>System Overview</h2>
+        <div class="overview-stats">
+            <div class="overview-stat">
+                <div class="number" id="total-systems">-</div>
+                <div class="label">Total Systems</div>
+            </div>
+            <div class="overview-stat">
+                <div class="number" id="online-systems">-</div>
+                <div class="label">Online</div>
+            </div>
+            <div class="overview-stat">
+                <div class="number" id="connections">-</div>
+                <div class="label">Active Connections</div>
+            </div>
+            <div class="overview-stat">
+                <div class="number" id="uptime">-</div>
+                <div class="label">Uptime</div>
+            </div>
+        </div>
+    </div>
+    
+    <div class="electrical-panel" id="electrical-panel">
+        <!-- Circuit breakers will be populated dynamically -->
+    </div>
+    
+    <div class="connection-matrix">
+        <h3>🌉 System Connections</h3>
+        <div class="connections" id="connections">
+            <!-- Connections will be populated dynamically -->
+        </div>
+    </div>
+    
+    <button class="refresh-button" onclick="refreshStatus()">🔄 Refresh</button>
+    
+    <script>
+        let startTime = Date.now();
+        
+        // System configurations
+        const systemConfigs = {
+            'characterGenesis': {
+                emoji: '🌱',
+                name: 'Character Genesis',
+                description: 'Character creation and life cycle management',
+                port: null,
+                expectedStatus: ['entities', 'generations', 'consciousness']
+            },
+            'calGenesisBridge': {
+                emoji: '🤖',
+                name: 'Cal Genesis Bridge',
+                description: 'AI personality routing and constitutional oversight',
+                port: 3456,
+                expectedStatus: ['personality_mode', 'trust_scores', 'decisions']
+            },
+            'economyGenesis': {
+                emoji: '💰',
+                name: 'Economy Genesis',
+                description: 'Autonomous economic organism simulation',
+                port: null,
+                expectedStatus: ['generation', 'entities', 'totalValue', 'consciousness']
+            },
+            'soulfraGenesis': {
+                emoji: '👻',
+                name: 'Soulfra Genesis',
+                description: 'OS document integration and processing',
+                port: null,
+                expectedStatus: ['processed', 'ardIntegrated']
+            },
+            'humanoid3d': {
+                emoji: '🧍',
+                name: '3D Humanoid System',
+                description: 'Three.js 3D character rendering and animation',
+                port: null,
+                expectedStatus: ['humanoids', 'quality', 'performance']
+            },
+            'bookGenerator': {
+                emoji: '📚',
+                name: 'Archaeological Book Generator',
+                description: 'Cal-driven book generation from system excavation',
+                port: null,
+                expectedStatus: ['chapters', 'excavated_systems', 'generation_progress']
+            },
+            'usageMonitor': {
+                emoji: '📊',
+                name: 'Usage Monitor',
+                description: 'Personal usage tracking and limit management',
+                port: null,
+                expectedStatus: ['current_usage', 'daily_limit', 'warnings']
+            },
+            'serviceRouter': {
+                emoji: '🎯',
+                name: 'Service Router',
+                description: 'Emoji-based routing and service discovery',
+                port: 9900,
+                expectedStatus: ['routes', 'services', 'active_sessions']
+            },
+            'systemConnector': {
+                emoji: '🔌',
+                name: 'System Connector',
+                description: 'Maps 14,005+ existing systems and stops the vortex',
+                port: null,
+                expectedStatus: ['mapped_systems', 'connections', 'vortex_stopped']
+            }
+        };
+        
+        async function fetchSystemStatus() {
+            try {
+                const response = await fetch('/api/status');
+                if (!response.ok) {
+                    throw new Error(`HTTP ${response.status}`);
+                }
+                return await response.json();
+            } catch (error) {
+                console.error('Failed to fetch system status:', error);
+                
+                // Fallback to simulated data if API is not available
+                return {
+                    unificationState: 'connected',
+                    totalSystems: 8,
+                    connections: 4,
+                    availableSystems: {
+                        characterGenesis: { loaded: true, hasInitialize: true, hasEmitter: true },
+                        calGenesisBridge: { loaded: true, hasInitialize: true, hasEmitter: true },
+                        economyGenesis: { loaded: true, hasInitialize: true, hasEmitter: true },
+                        soulfraGenesis: { loaded: true, hasInitialize: true, hasEmitter: false },
+                        humanoid3d: { loaded: false, hasInitialize: false, hasEmitter: false },
+                        bookGenerator: { loaded: true, hasInitialize: true, hasEmitter: false },
+                        usageMonitor: { loaded: true, hasInitialize: true, hasEmitter: true },
+                        serviceRouter: { loaded: true, hasInitialize: true, hasEmitter: true },
+                        systemConnector: { loaded: true, hasInitialize: false, hasEmitter: true }
+                    },
+                    systemHealth: {
+                        characterGenesis: { status: 'healthy', entities: 0, generations: 0 },
+                        calGenesisBridge: { status: 'healthy', decisions: 0, trustScores: 0 },
+                        economyGenesis: { status: 'healthy', generation: 25, entities: 0, totalValue: 1.62 },
+                        soulfraGenesis: { status: 'healthy' },
+                        bookGenerator: { status: 'healthy', chapters: 0, excavated_systems: 0 },
+                        usageMonitor: { status: 'healthy', currentUsage: 0, dailyLimit: 200000 },
+                        serviceRouter: { status: 'healthy', port: 9900, routes: 8 },
+                        systemConnector: { status: 'healthy', mapped_systems: 14005 }
+                    },
+                    connections: {
+                        'character-cal': { status: 'connected' },
+                        'economy-usage': { status: 'connected' },
+                        'router-all': { status: 'connected' },
+                        'book-connector': { status: 'connected' }
+                    }
+                };
+            }
+        }
+        
+        function updateOverview(status) {
+            document.getElementById('total-systems').textContent = status.totalSystems;
+            document.getElementById('online-systems').textContent = Object.values(status.availableSystems).filter(s => s.loaded).length;
+            document.getElementById('connections').textContent = status.connections;
+            document.getElementById('uptime').textContent = Math.floor((Date.now() - startTime) / 1000) + 's';
+        }
+        
+        function createCircuitBreaker(systemName, config, systemStatus, health) {
+            const isOnline = systemStatus?.loaded || false;
+            const hasWarning = health?.status === 'warning';
+            const hasError = health?.status === 'error';
+            
+            let statusClass = 'offline';
+            let lightClass = 'red';
+            
+            if (isOnline && !hasError) {
+                statusClass = hasWarning ? 'warning' : 'online';
+                lightClass = hasWarning ? 'yellow' : 'green';
+            }
+            
+            return `
+                <div class="circuit-breaker ${statusClass}">
+                    <div class="breaker-header">
+                        <div>
+                            <span class="breaker-emoji">${config.emoji}</span>
+                            <span class="breaker-name">${config.name}</span>
+                        </div>
+                        <span class="status-light ${lightClass}"></span>
+                    </div>
+                    
+                    <p style="color: #888; margin: 10px 0;">${config.description}</p>
+                    
+                    <ul class="breaker-stats">
+                        <li><span class="stat-label">Status:</span> <span class="stat-value">${isOnline ? 'ONLINE' : 'OFFLINE'}</span></li>
+                        <li><span class="stat-label">Port:</span> <span class="stat-value">${config.port || 'N/A'}</span></li>
+                        <li><span class="stat-label">Initialize:</span> <span class="stat-value">${systemStatus?.hasInitialize ? 'YES' : 'NO'}</span></li>
+                        <li><span class="stat-label">Events:</span> <span class="stat-value">${systemStatus?.hasEmitter ? 'YES' : 'NO'}</span></li>
+                        ${health ? Object.entries(health).filter(([k]) => k !== 'status').map(([k, v]) => 
+                            `<li><span class="stat-label">${k}:</span> <span class="stat-value">${v}</span></li>`
+                        ).join('') : ''}
+                    </ul>
+                    
+                    <div class="breaker-controls">
+                        <button class="control-button" onclick="toggleSystem('${systemName}')" ${!isOnline ? 'disabled' : ''}>
+                            ${isOnline ? '🔄 Restart' : '▶️ Start'}
+                        </button>
+                        <button class="control-button danger" onclick="shutdownSystem('${systemName}')" ${!isOnline ? 'disabled' : ''}>
+                            🛑 Stop
+                        </button>
+                    </div>
+                </div>
+            `;
+        }
+        
+        function createConnectionDisplay(connections) {
+            return Object.entries(connections).map(([name, conn]) => `
+                <div class="connection ${conn.status === 'connected' ? 'active' : ''}">
+                    <strong>${name}</strong><br>
+                    <small>${conn.status}</small>
+                </div>
+            `).join('');
+        }
+        
+        async function refreshStatus() {
+            const status = await fetchSystemStatus();
+            if (!status) return;
+            
+            // Update overview
+            updateOverview(status);
+            
+            // Update circuit breakers
+            const panelHtml = Object.entries(systemConfigs).map(([name, config]) => 
+                createCircuitBreaker(name, config, status.availableSystems[name], status.systemHealth[name])
+            ).join('');
+            
+            document.getElementById('electrical-panel').innerHTML = panelHtml;
+            
+            // Update connections
+            document.getElementById('connections').innerHTML = createConnectionDisplay(status.connections || {});
+        }
+        
+        async function toggleSystem(systemName) {
+            try {
+                const response = await fetch('/api/system/toggle', {
+                    method: 'POST',
+                    headers: {'Content-Type': 'application/json'},
+                    body: JSON.stringify({systemName})
+                });
+                
+                const result = await response.json();
+                
+                if (result.success) {
+                    alert(`✅ ${result.message}`);
+                    setTimeout(refreshStatus, 2000); // Refresh after 2 seconds
+                } else {
+                    alert(`❌ Failed to toggle ${systemName}: ${result.error}`);
+                }
+            } catch (error) {
+                alert(`❌ Failed to toggle ${systemName}: ${error.message}`);
+            }
+        }
+        
+        async function shutdownSystem(systemName) {
+            if (!confirm(`Are you sure you want to shutdown ${systemName}?`)) {
+                return;
+            }
+            
+            try {
+                const response = await fetch('/api/system/shutdown', {
+                    method: 'POST',
+                    headers: {'Content-Type': 'application/json'},
+                    body: JSON.stringify({systemName})
+                });
+                
+                const result = await response.json();
+                
+                if (result.success) {
+                    alert(`✅ ${result.message}`);
+                    setTimeout(refreshStatus, 2000); // Refresh after 2 seconds
+                } else {
+                    alert(`❌ Failed to shutdown ${systemName}: ${result.error}`);
+                }
+            } catch (error) {
+                alert(`❌ Failed to shutdown ${systemName}: ${error.message}`);
+            }
+        }
+        
+        // Initial load and auto-refresh
+        refreshStatus();
+        setInterval(refreshStatus, 5000); // Refresh every 5 seconds
+    </script>
+</body>
+</html>

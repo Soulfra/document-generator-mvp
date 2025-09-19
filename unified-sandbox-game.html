@@ -1,0 +1,559 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>🎮 Unified Sandbox - You ARE the Eye/Body</title>
+    <style>
+        body { margin: 0; overflow: hidden; background: #000; }
+        #game-container { width: 100vw; height: 100vh; position: relative; }
+        
+        /* You ARE the perception system */
+        #perception-hud {
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            height: 100px;
+            background: rgba(0, 255, 0, 0.1);
+            border-bottom: 1px solid #0f0;
+            color: #0f0;
+            font-family: monospace;
+            padding: 10px;
+            pointer-events: none;
+        }
+        
+        #eye-status {
+            position: absolute;
+            top: 10px;
+            right: 10px;
+            width: 200px;
+            height: 200px;
+            border: 2px solid #0f0;
+            border-radius: 50%;
+            background: radial-gradient(circle, rgba(0,255,0,0.3) 0%, transparent 70%);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+        
+        #body-status {
+            position: absolute;
+            bottom: 10px;
+            left: 10px;
+            background: rgba(0, 0, 0, 0.8);
+            border: 1px solid #0f0;
+            padding: 10px;
+            color: #0f0;
+            font-family: monospace;
+        }
+        
+        #llm-entities {
+            position: absolute;
+            bottom: 10px;
+            right: 10px;
+            background: rgba(0, 0, 0, 0.8);
+            border: 1px solid #00f;
+            padding: 10px;
+            color: #00f;
+            font-family: monospace;
+            max-width: 300px;
+        }
+        
+        .thought-bubble {
+            position: absolute;
+            background: rgba(255, 255, 255, 0.9);
+            color: #000;
+            padding: 10px;
+            border-radius: 20px;
+            font-size: 12px;
+            max-width: 200px;
+            pointer-events: none;
+        }
+    </style>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+</head>
+<body>
+    <div id="game-container">
+        <div id="perception-hud">
+            <div>👁️ PERCEPTION ACTIVE | You ARE the unified consciousness</div>
+            <div id="current-focus">Focus: <span id="focus-target">nothing</span></div>
+            <div id="sequential-tags">Tags: <span id="tag-stream"></span></div>
+        </div>
+        
+        <div id="eye-status">
+            <div id="pupil" style="width: 50px; height: 50px; background: #000; border-radius: 50%;"></div>
+        </div>
+        
+        <div id="body-status">
+            <div>🤖 BODY STATUS</div>
+            <div>Hands: <span id="hand-state">idle</span></div>
+            <div>Movement: <span id="move-state">stationary</span></div>
+            <div>Energy: <span id="energy">100%</span></div>
+        </div>
+        
+        <div id="llm-entities">
+            <div>🧠 LOCAL LLM ENTITIES</div>
+            <div id="llm-list">
+                <div>❌ Ollama not connected</div>
+                <div>Waiting for models...</div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        /**
+         * UNIFIED SANDBOX GAME
+         * 
+         * You don't control a character - you ARE the eye/body structure
+         * Local LLMs are entities in your world you can interact with
+         * Everything is connected through sequential tagging
+         */
+        
+        class UnifiedSandbox {
+            constructor() {
+                // You ARE this
+                this.consciousness = {
+                    eye: {
+                        position: { x: 0, y: 0 },
+                        focus: null,
+                        scanning: true,
+                        fov: 90
+                    },
+                    body: {
+                        hands: { left: 'idle', right: 'idle' },
+                        movement: 'stationary',
+                        energy: 100,
+                        connected: true
+                    },
+                    mind: {
+                        sequentialTags: [],
+                        currentThought: '',
+                        llmConnections: []
+                    }
+                };
+                
+                // Three.js scene
+                this.scene = new THREE.Scene();
+                this.camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 1000);
+                this.renderer = new THREE.WebGLRenderer();
+                this.renderer.setSize(window.innerWidth, window.innerHeight);
+                document.getElementById('game-container').appendChild(this.renderer.domElement);
+                
+                // The world exists in your perception
+                this.world = new Map();
+                this.entities = new Map();
+                
+                this.init();
+            }
+            
+            init() {
+                console.log('🧠 Initializing unified consciousness...');
+                
+                // Setup your perception (camera is your eye)
+                this.camera.position.set(0, 5, 10);
+                this.camera.lookAt(0, 0, 0);
+                
+                // Create the sandbox world
+                this.createWorld();
+                
+                // Connect to local LLMs
+                this.connectToLLMs();
+                
+                // Start perception loop
+                this.startPerceptionLoop();
+                
+                // Handle input as body movement
+                this.setupBodyControls();
+                
+                // Sequential tagging system
+                this.startSequentialTagging();
+                
+                console.log('✅ You ARE the game');
+            }
+            
+            createWorld() {
+                // Ground plane - your perception space
+                const groundGeometry = new THREE.PlaneGeometry(100, 100);
+                const groundMaterial = new THREE.MeshBasicMaterial({ 
+                    color: 0x001100, 
+                    wireframe: true 
+                });
+                const ground = new THREE.Mesh(groundGeometry, groundMaterial);
+                ground.rotation.x = -Math.PI / 2;
+                this.scene.add(ground);
+                
+                // Add ambient light
+                const ambientLight = new THREE.AmbientLight(0x404040);
+                this.scene.add(ambientLight);
+                
+                // Add directional light (your perception illuminates)
+                const directionalLight = new THREE.DirectionalLight(0x00ff00, 1);
+                directionalLight.position.set(5, 10, 5);
+                this.scene.add(directionalLight);
+                
+                // Create some entities to perceive
+                this.createEntities();
+            }
+            
+            createEntities() {
+                // These are things in your world, including LLM entities
+                const entityTypes = [
+                    { type: 'thought', color: 0x00ffff, shape: 'sphere' },
+                    { type: 'memory', color: 0xff00ff, shape: 'cube' },
+                    { type: 'llm', color: 0xffff00, shape: 'cone' }
+                ];
+                
+                for (let i = 0; i < 10; i++) {
+                    const entityType = entityTypes[i % entityTypes.length];
+                    const entity = this.createEntity(entityType);
+                    
+                    entity.position.set(
+                        (Math.random() - 0.5) * 20,
+                        Math.random() * 5,
+                        (Math.random() - 0.5) * 20
+                    );
+                    
+                    this.scene.add(entity);
+                    this.entities.set(`entity_${i}`, {
+                        mesh: entity,
+                        type: entityType.type,
+                        data: {}
+                    });
+                }
+            }
+            
+            createEntity(entityType) {
+                let geometry;
+                switch (entityType.shape) {
+                    case 'sphere':
+                        geometry = new THREE.SphereGeometry(0.5, 16, 16);
+                        break;
+                    case 'cube':
+                        geometry = new THREE.BoxGeometry(1, 1, 1);
+                        break;
+                    case 'cone':
+                        geometry = new THREE.ConeGeometry(0.5, 2, 8);
+                        break;
+                }
+                
+                const material = new THREE.MeshPhongMaterial({ 
+                    color: entityType.color,
+                    emissive: entityType.color,
+                    emissiveIntensity: 0.3
+                });
+                
+                return new THREE.Mesh(geometry, material);
+            }
+            
+            async connectToLLMs() {
+                console.log('🔌 Attempting to connect to local LLMs...');
+                
+                try {
+                    // Try to connect to Ollama
+                    const response = await fetch('http://localhost:11434/api/tags');
+                    if (response.ok) {
+                        const data = await response.json();
+                        console.log('✅ Ollama connected!', data);
+                        this.updateLLMStatus(data.models || []);
+                        
+                        // Test connection with a simple query
+                        const testResponse = await fetch('http://localhost:11434/api/generate', {
+                            method: 'POST',
+                            headers: { 'Content-Type': 'application/json' },
+                            body: JSON.stringify({
+                                model: 'mistral',
+                                prompt: 'System initialized. Respond with a short greeting.',
+                                stream: false
+                            })
+                        });
+                        
+                        if (testResponse.ok) {
+                            const testData = await testResponse.json();
+                            console.log('🧠 LLM test response:', testData.response);
+                        }
+                    }
+                } catch (error) {
+                    console.log('❌ Ollama not available:', error.message);
+                    console.log('💡 To enable LLM entities:');
+                    console.log('1. Install Ollama: https://ollama.ai');
+                    console.log('2. Run: ollama serve');
+                    console.log('3. Pull models: ollama pull mistral');
+                }
+            }
+            
+            updateLLMStatus(models) {
+                const llmList = document.getElementById('llm-list');
+                if (models.length > 0) {
+                    llmList.innerHTML = models.map(model => 
+                        `<div>✅ ${model.name} (${(model.size / 1e9).toFixed(1)}GB)</div>`
+                    ).join('');
+                    
+                    // Create LLM entities in the world
+                    models.forEach((model, i) => {
+                        this.createLLMEntity(model, i);
+                    });
+                } else {
+                    llmList.innerHTML = '<div>⚠️ No models installed</div>';
+                }
+            }
+            
+            createLLMEntity(model, index) {
+                // LLMs appear as glowing entities you can interact with
+                const geometry = new THREE.SphereGeometry(1, 32, 32);
+                const material = new THREE.MeshPhongMaterial({
+                    color: 0x00ffff,
+                    emissive: 0x00ffff,
+                    emissiveIntensity: 0.5,
+                    transparent: true,
+                    opacity: 0.8
+                });
+                
+                const llmEntity = new THREE.Mesh(geometry, material);
+                llmEntity.position.set(
+                    Math.cos(index * Math.PI / 4) * 10,
+                    2,
+                    Math.sin(index * Math.PI / 4) * 10
+                );
+                
+                this.scene.add(llmEntity);
+                this.entities.set(`llm_${model.name}`, {
+                    mesh: llmEntity,
+                    type: 'llm',
+                    data: { model: model.name, ready: true }
+                });
+            }
+            
+            setupBodyControls() {
+                // Your body responds to input
+                document.addEventListener('keydown', (e) => {
+                    switch(e.key) {
+                        case 'w': this.moveForward(); break;
+                        case 's': this.moveBackward(); break;
+                        case 'a': this.moveLeft(); break;
+                        case 'd': this.moveRight(); break;
+                        case ' ': this.interact(); break;
+                    }
+                    
+                    this.updateBodyStatus();
+                });
+                
+                // Eye follows mouse
+                document.addEventListener('mousemove', (e) => {
+                    this.consciousness.eye.position.x = e.clientX / window.innerWidth;
+                    this.consciousness.eye.position.y = e.clientY / window.innerHeight;
+                    this.updateEyeDisplay();
+                });
+                
+                // Click to focus
+                document.addEventListener('click', (e) => {
+                    this.focusOn(e);
+                });
+            }
+            
+            moveForward() {
+                this.camera.position.z -= 1;
+                this.consciousness.body.movement = 'forward';
+                this.addSequentialTag('movement:forward');
+            }
+            
+            moveBackward() {
+                this.camera.position.z += 1;
+                this.consciousness.body.movement = 'backward';
+                this.addSequentialTag('movement:backward');
+            }
+            
+            moveLeft() {
+                this.camera.position.x -= 1;
+                this.consciousness.body.movement = 'left';
+                this.addSequentialTag('movement:left');
+            }
+            
+            moveRight() {
+                this.camera.position.x += 1;
+                this.consciousness.body.movement = 'right';
+                this.addSequentialTag('movement:right');
+            }
+            
+            interact() {
+                // Interact with whatever you're looking at
+                const raycaster = new THREE.Raycaster();
+                raycaster.setFromCamera({ x: 0, y: 0 }, this.camera);
+                
+                const intersects = raycaster.intersectObjects(this.scene.children);
+                if (intersects.length > 0) {
+                    const target = intersects[0].object;
+                    
+                    // Find which entity this is
+                    for (const [id, entity] of this.entities) {
+                        if (entity.mesh === target) {
+                            this.interactWithEntity(id, entity);
+                            break;
+                        }
+                    }
+                }
+            }
+            
+            async interactWithEntity(id, entity) {
+                console.log(`🤝 Interacting with ${id}:`, entity.type);
+                this.addSequentialTag(`interact:${entity.type}`);
+                
+                if (entity.type === 'llm' && entity.data.ready) {
+                    // Talk to the LLM
+                    const thought = prompt('What would you like to ask this LLM?');
+                    if (thought) {
+                        try {
+                            const response = await this.askLLM(entity.data.model, thought);
+                            this.showThought(entity.mesh.position, response);
+                        } catch (error) {
+                            console.error('LLM interaction failed:', error);
+                        }
+                    }
+                }
+            }
+            
+            async askLLM(model, prompt) {
+                // Actually call Ollama
+                console.log(`🧠 Asking ${model}: ${prompt}`);
+                
+                try {
+                    const response = await fetch('http://localhost:11434/api/generate', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({
+                            model: model,
+                            prompt: `You are an AI entity living in a unified sandbox game world. The player has approached you and asks: "${prompt}". Respond as a sentient being in this digital realm.`,
+                            stream: false,
+                            options: {
+                                temperature: 0.8,
+                                num_predict: 100
+                            }
+                        })
+                    });
+                    
+                    if (response.ok) {
+                        const data = await response.json();
+                        return data.response || '[No response]';
+                    } else {
+                        return `[LLM ${model} error: ${response.statusText}]`;
+                    }
+                } catch (error) {
+                    console.error('LLM error:', error);
+                    return `[LLM ${model} is offline: ${error.message}]`;
+                }
+            }
+            
+            showThought(position, thought) {
+                const bubble = document.createElement('div');
+                bubble.className = 'thought-bubble';
+                bubble.textContent = thought;
+                
+                // Convert 3D position to screen position
+                const vector = position.clone();
+                vector.project(this.camera);
+                
+                const x = (vector.x + 1) / 2 * window.innerWidth;
+                const y = -(vector.y - 1) / 2 * window.innerHeight;
+                
+                bubble.style.left = x + 'px';
+                bubble.style.top = y + 'px';
+                
+                document.body.appendChild(bubble);
+                
+                setTimeout(() => bubble.remove(), 5000);
+            }
+            
+            startSequentialTagging() {
+                // Everything you do creates sequential tags
+                setInterval(() => {
+                    this.processSequentialTags();
+                }, 100);
+            }
+            
+            addSequentialTag(tag) {
+                this.consciousness.mind.sequentialTags.push({
+                    tag: tag,
+                    timestamp: Date.now()
+                });
+                
+                // Keep only last 10 tags
+                if (this.consciousness.mind.sequentialTags.length > 10) {
+                    this.consciousness.mind.sequentialTags.shift();
+                }
+                
+                this.updateTagDisplay();
+            }
+            
+            processSequentialTags() {
+                // Process tags to create emergent behavior
+                const recentTags = this.consciousness.mind.sequentialTags
+                    .slice(-5)
+                    .map(t => t.tag);
+                
+                // Pattern recognition
+                if (recentTags.includes('movement:forward') && recentTags.includes('interact:llm')) {
+                    this.consciousness.mind.currentThought = 'Approaching intelligence...';
+                }
+            }
+            
+            updateEyeDisplay() {
+                const pupil = document.getElementById('pupil');
+                const x = (this.consciousness.eye.position.x - 0.5) * 40;
+                const y = (this.consciousness.eye.position.y - 0.5) * 40;
+                pupil.style.transform = `translate(${x}px, ${y}px)`;
+            }
+            
+            updateBodyStatus() {
+                document.getElementById('hand-state').textContent = 
+                    this.consciousness.body.hands.left;
+                document.getElementById('move-state').textContent = 
+                    this.consciousness.body.movement;
+                document.getElementById('energy').textContent = 
+                    this.consciousness.body.energy + '%';
+            }
+            
+            updateTagDisplay() {
+                const tags = this.consciousness.mind.sequentialTags
+                    .map(t => t.tag)
+                    .join(' → ');
+                document.getElementById('tag-stream').textContent = tags;
+            }
+            
+            focusOn(event) {
+                this.consciousness.eye.focus = { x: event.clientX, y: event.clientY };
+                document.getElementById('focus-target').textContent = 
+                    `(${event.clientX}, ${event.clientY})`;
+                this.addSequentialTag('focus:point');
+            }
+            
+            startPerceptionLoop() {
+                const animate = () => {
+                    requestAnimationFrame(animate);
+                    
+                    // Rotate entities
+                    this.entities.forEach(entity => {
+                        if (entity.type === 'thought') {
+                            entity.mesh.rotation.y += 0.01;
+                        } else if (entity.type === 'memory') {
+                            entity.mesh.rotation.x += 0.005;
+                            entity.mesh.rotation.y += 0.005;
+                        }
+                    });
+                    
+                    // Render your perception
+                    this.renderer.render(this.scene, this.camera);
+                };
+                
+                animate();
+            }
+        }
+        
+        // Initialize the unified sandbox
+        window.addEventListener('load', () => {
+            window.sandbox = new UnifiedSandbox();
+            console.log('🌍 Welcome to the unified sandbox');
+            console.log('🎮 You ARE the eye/body structure');
+            console.log('🧠 Local LLMs are entities in your world');
+            console.log('🏷️ Everything connects through sequential tags');
+        });
+    </script>
+</body>
+</html>

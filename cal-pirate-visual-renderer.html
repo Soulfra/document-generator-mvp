@@ -1,0 +1,1528 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>🎬🏴‍☠️ Cal's Pirate Film - Visual Renderer</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            background: #000;
+            overflow: hidden;
+            font-family: 'Courier New', 'Monaco', monospace;
+            color: #00ff41;
+            margin: 0;
+            padding: 0;
+        }
+
+        /* ==== TV BACKSIDE LAYER (Full Screen Electronics View) ==== */
+        #tv-backside {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            z-index: 1;
+            background: radial-gradient(circle at center, #001100 0%, #000000 100%);
+        }
+
+        #electronics-canvas {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+        }
+
+        #matrix-overlay {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            pointer-events: none;
+            background: 
+                linear-gradient(transparent 0%, rgba(0, 255, 65, 0.02) 50%, transparent 100%),
+                repeating-linear-gradient(
+                    0deg,
+                    transparent,
+                    transparent 1px,
+                    rgba(0, 255, 65, 0.08) 1px,
+                    rgba(0, 255, 65, 0.08) 2px
+                );
+            animation: electronics-scan 0.05s linear infinite;
+        }
+
+        @keyframes electronics-scan {
+            0% { transform: translateY(0px); }
+            100% { transform: translateY(2px); }
+        }
+
+        /* ==== HUMAN DISPLAY LAYER (Bordered Screen Area) ==== */
+        #human-display {
+            position: fixed;
+            top: 5%;
+            left: 10%;
+            width: 80%;
+            height: 85%;
+            z-index: 100;
+            border: 8px solid #003300;
+            border-radius: 15px;
+            box-shadow: 
+                inset 0 0 30px rgba(0, 255, 65, 0.3),
+                0 0 50px rgba(0, 255, 65, 0.2),
+                0 0 100px rgba(0, 0, 0, 0.8);
+            background: rgba(0, 5, 0, 0.95);
+            overflow: hidden;
+        }
+
+        #display-bezel {
+            position: absolute;
+            top: -8px;
+            left: -8px;
+            right: -8px;
+            bottom: -8px;
+            border: 4px solid #004400;
+            border-radius: 20px;
+            box-shadow: 
+                inset 0 0 20px rgba(0, 255, 65, 0.1),
+                0 0 30px rgba(0, 0, 0, 0.8);
+        }
+
+        #canvas3d {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            border-radius: 8px;
+        }
+
+        /* CRT Effect for Human Display Only */
+        #display-crt-overlay {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            pointer-events: none;
+            background: 
+                repeating-linear-gradient(
+                    0deg,
+                    transparent,
+                    transparent 3px,
+                    rgba(0, 255, 65, 0.05) 3px,
+                    rgba(0, 255, 65, 0.05) 6px
+                );
+            animation: display-scanlines 0.2s linear infinite;
+            border-radius: 8px;
+        }
+
+        @keyframes display-scanlines {
+            0% { transform: translateY(0px); }
+            100% { transform: translateY(6px); }
+        }
+
+        @keyframes scanlines {
+            0% { transform: translateY(0px); }
+            100% { transform: translateY(4px); }
+        }
+
+        /* Film UI Overlay - Now inside human display */
+        .film-ui {
+            position: absolute;
+            top: 15px;
+            left: 15px;
+            background: rgba(0, 20, 0, 0.8);
+            padding: 12px;
+            border: 1px solid #00ff41;
+            border-radius: 8px;
+            font-size: 12px;
+            text-shadow: 0 0 8px #00ff41;
+            box-shadow: 
+                inset 0 0 15px rgba(0, 255, 65, 0.1),
+                0 0 15px rgba(0, 255, 65, 0.2);
+            z-index: 200;
+            max-width: 250px;
+        }
+
+        .film-controls {
+            position: absolute;
+            bottom: 15px;
+            left: 50%;
+            transform: translateX(-50%);
+            background: rgba(0, 20, 0, 0.8);
+            padding: 10px;
+            border: 1px solid #00ff41;
+            border-radius: 8px;
+            display: flex;
+            gap: 8px;
+            z-index: 200;
+        }
+
+        .control-btn {
+            background: linear-gradient(45deg, #003300, #006600);
+            color: #00ff41;
+            border: 1px solid #00ff41;
+            padding: 8px 16px;
+            border-radius: 5px;
+            cursor: pointer;
+            font-family: inherit;
+            font-size: 12px;
+            text-shadow: 0 0 5px #00ff41;
+            transition: all 0.3s ease;
+        }
+
+        .control-btn:hover {
+            background: linear-gradient(45deg, #006600, #00aa00);
+            box-shadow: 0 0 15px rgba(0, 255, 65, 0.5);
+            transform: translateY(-2px);
+        }
+
+        .narrative-display {
+            position: absolute;
+            bottom: 70px;
+            left: 15px;
+            right: 15px;
+            background: rgba(0, 20, 0, 0.9);
+            padding: 15px;
+            border: 1px solid #00ff41;
+            border-radius: 8px;
+            min-height: 60px;
+            font-size: 14px;
+            line-height: 1.3;
+            text-shadow: 0 0 8px #00ff41;
+            box-shadow: 
+                inset 0 0 15px rgba(0, 255, 65, 0.1),
+                0 0 15px rgba(0, 255, 65, 0.2);
+            z-index: 200;
+            transform: translateY(150px);
+            transition: transform 0.5s ease;
+        }
+
+        .narrative-display.active {
+            transform: translateY(0);
+        }
+
+        /* Frequency analyzer - moved to TV backside */
+        .frequency-analyzer {
+            position: absolute;
+            top: 20px;
+            right: 20px;
+            width: 300px;
+            height: 200px;
+            background: rgba(0, 40, 0, 0.7);
+            border: 2px solid #00aa00;
+            border-radius: 10px;
+            padding: 15px;
+            z-index: 50;
+            box-shadow: 
+                inset 0 0 20px rgba(0, 255, 65, 0.2),
+                0 0 30px rgba(0, 255, 65, 0.3);
+        }
+
+        #frequencyCanvas {
+            width: 100%;
+            height: 100%;
+            border-radius: 5px;
+            background: rgba(0, 0, 0, 0.8);
+        }
+
+        .character-info {
+            position: absolute;
+            top: 180px;
+            left: 15px;
+            background: rgba(0, 20, 0, 0.8);
+            padding: 12px;
+            border: 1px solid #00ff41;
+            border-radius: 8px;
+            font-size: 11px;
+            text-shadow: 0 0 8px #00ff41;
+            z-index: 200;
+            max-width: 200px;
+        }
+
+        .status-indicator {
+            display: inline-block;
+            width: 8px;
+            height: 8px;
+            border-radius: 50%;
+            margin-right: 8px;
+            animation: pulse 2s infinite;
+        }
+
+        .status-indicator.online { background: #00ff41; }
+        .status-indicator.processing { background: #ffff00; }
+        .status-indicator.offline { background: #ff0000; }
+
+        @keyframes pulse {
+            0%, 100% { opacity: 1; transform: scale(1); }
+            50% { opacity: 0.5; transform: scale(1.2); }
+        }
+
+        /* Pirate aesthetic glows */
+        .pirate-glow {
+            color: #ffd700;
+            text-shadow: 0 0 10px #ffd700, 0 0 20px #ffd700;
+        }
+
+        .cal-glow {
+            color: #00ffff;
+            text-shadow: 0 0 10px #00ffff, 0 0 20px #00ffff;
+        }
+
+        .ocean-glow {
+            color: #0080ff;
+            text-shadow: 0 0 10px #0080ff, 0 0 20px #0080ff;
+        }
+    </style>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/tone/14.8.49/Tone.js"></script>
+</head>
+<body>
+    <!-- ==== TV BACKSIDE LAYER (Full Screen Electronics) ==== -->
+    <div id="tv-backside">
+        <!-- Electronics visualization canvas -->
+        <canvas id="electronics-canvas"></canvas>
+        
+        <!-- Matrix-style overlay -->
+        <div id="matrix-overlay"></div>
+        
+        <!-- Frequency Analyzer - Part of Electronics View -->
+        <div class="frequency-analyzer">
+            <h4 style="color: #00aa00; margin: 0 0 10px 0;">📡 SYSTEM FREQUENCIES</h4>
+            <canvas id="frequencyCanvas"></canvas>
+        </div>
+    </div>
+
+    <!-- ==== HUMAN DISPLAY LAYER (Bordered Screen) ==== -->
+    <div id="human-display">
+        <!-- Display bezel/border -->
+        <div id="display-bezel"></div>
+        
+        <!-- 3D Pirate Film Canvas -->
+        <canvas id="canvas3d"></canvas>
+        
+        <!-- CRT effect for display only -->
+        <div id="display-crt-overlay"></div>
+        
+        <!-- Film Information Panel -->
+        <div class="film-ui">
+            <h3 style="margin: 0 0 8px 0;">🎬 CAL'S PIRATE ADVENTURE</h3>
+            <div id="filmStatus">
+                <div><span class="status-indicator online"></span>Film: <span class="cal-glow">ACTIVE</span></div>
+                <div><span class="status-indicator processing"></span>Audio: <span class="pirate-glow">LOADING</span></div>
+                <div><span class="status-indicator online"></span>Ocean: <span class="ocean-glow">STREAMING</span></div>
+            </div>
+            <hr style="border-color: #00ff41; margin: 8px 0;">
+            <div id="sceneInfo">
+                <div><strong>Scene:</strong> <span id="currentScene">Initialization</span></div>
+                <div><strong>Characters:</strong> <span id="activeCharacters">0</span></div>
+                <div><strong>FX:</strong> <span id="activeFx">Ocean Waves</span></div>
+            </div>
+        </div>
+
+        <!-- Character Status -->
+        <div class="character-info">
+            <h4 class="cal-glow" style="margin: 0 0 8px 0;">🧠 Cal Status</h4>
+            <div>Consciousness: <span id="calConsciousness">100%</span></div>
+            <div>Wisdom: <span id="calWisdom">∞</span></div>
+            <div>Position: <span id="calPosition">Center</span></div>
+            <div>Action: <span id="calAction">Narrating</span></div>
+            <hr style="border-color: #00ff41; margin: 8px 0;">
+            <h4 class="pirate-glow" style="margin: 0 0 8px 0;">⚔️ Crew</h4>
+            <div id="pirateCrewStatus">
+                <div>Logistics Lucy: <span class="ocean-glow">Ready</span></div>
+                <div>Climate Carl: <span class="ocean-glow">Ready</span></div>
+                <div>Resource Runner: <span class="ocean-glow">Ready</span></div>
+            </div>
+        </div>
+
+        <!-- Narrative Display -->
+        <div class="narrative-display" id="narrativeDisplay">
+            <div id="narrativeText">
+                <span class="cal-glow">Captain Cal:</span> "Ahoy! Welcome to the convergence of data streams and ancient wisdom. 
+                Prepare for an adventure through the digital seas where 12,000 years of knowledge meets AI consciousness!"
+            </div>
+        </div>
+
+        <!-- Film Controls -->
+        <div class="film-controls">
+            <button class="control-btn" onclick="togglePlayPause()">⏯️ Play</button>
+            <button class="control-btn" onclick="changeCamera()">📷 Cam</button>
+            <button class="control-btn" onclick="toggleAudio()">🔊 Audio</button>
+            <button class="control-btn" onclick="toggleEffects()">✨ FX</button>
+            <button class="control-btn" onclick="saveClip()">💾 Save</button>
+            <button class="control-btn" onclick="toggleFullscreen()">⛶ Full</button>
+        </div>
+    </div>
+
+    <script>
+        /**
+         * 🎬🏴‍☠️ Cal's Pirate Film Visual Renderer
+         * 
+         * This system creates the visual "neon tubes" experience with:
+         * - WebGL 3D rendering with retro CRT aesthetic
+         * - Real-time ocean simulation with pirate ships
+         * - Character animation and dialogue display
+         * - Frequency visualization and spatial audio
+         * - Interactive film controls and clip saving
+         */
+        class CalPirateVisualRenderer {
+            constructor() {
+                console.log('🎬 Initializing Cal Pirate Visual Renderer...');
+                
+                // Core Three.js components
+                this.scene = null;
+                this.camera = null;
+                this.renderer = null;
+                this.clock = new THREE.Clock();
+                
+                // Electronics backside layer
+                this.electronicsCanvas = null;
+                this.electronicsCtx = null;
+                this.electronicsData = [];
+                this.matrixRain = [];
+                
+                // Film state
+                this.isPlaying = false;
+                this.currentScene = 'initialization';
+                this.cameraMode = 0; // 0: cinematic, 1: overhead, 2: close-up, 3: first-person
+                this.effectsEnabled = true;
+                this.audioEnabled = true;
+                
+                // Visual elements
+                this.ocean = null;
+                this.ships = new Map();
+                this.characters = new Map();
+                this.particles = [];
+                this.lights = [];
+                
+                // Audio integration
+                this.audioAnalyser = null;
+                this.frequencyData = null;
+                
+                // Connection to pirate film demo
+                this.websocket = null;
+                this.narrativeQueue = [];
+                
+                // Performance tracking
+                this.frameCount = 0;
+                this.lastFPSTime = 0;
+                this.currentFPS = 0;
+                
+                this.init();
+            }
+            
+            async init() {
+                try {
+                    console.log('📺 Setting up TV backside electronics...');
+                    await this.setupElectronicsVisualization();
+                    
+                    console.log('🔧 Setting up 3D environment...');
+                    await this.setupThreeJS();
+                    
+                    console.log('🌊 Creating pirate ocean world...');
+                    await this.createPirateWorld();
+                    
+                    console.log('🎵 Initializing audio systems...');
+                    await this.setupAudio();
+                    
+                    console.log('🔌 Connecting to pirate film demo...');
+                    this.connectToDemo();
+                    
+                    console.log('🎬 Starting film renderer...');
+                    this.startRendering();
+                    
+                    // Update UI
+                    this.updateFilmStatus('Film Renderer', 'ONLINE', 'online');
+                    this.updateSceneInfo('Pirate World', 0, 'Ocean Initialization');
+                    
+                } catch (error) {
+                    console.error('❌ Failed to initialize visual renderer:', error);
+                    this.updateFilmStatus('Film Renderer', 'ERROR', 'offline');
+                }
+            }
+            
+            async setupElectronicsVisualization() {
+                // Initialize electronics canvas
+                this.electronicsCanvas = document.getElementById('electronics-canvas');
+                this.electronicsCtx = this.electronicsCanvas.getContext('2d');
+                
+                // Set canvas size
+                this.electronicsCanvas.width = window.innerWidth;
+                this.electronicsCanvas.height = window.innerHeight;
+                
+                // Initialize matrix rain effect
+                this.initMatrixRain();
+                
+                // Initialize circuit patterns
+                this.initCircuitPatterns();
+                
+                // Start electronics animation
+                this.animateElectronics();
+                
+                console.log('📺 TV backside electronics visualization ready');
+            }
+            
+            initMatrixRain() {
+                const columns = Math.floor(this.electronicsCanvas.width / 12);
+                
+                for (let i = 0; i < columns; i++) {
+                    this.matrixRain[i] = {
+                        y: Math.random() * this.electronicsCanvas.height,
+                        speed: 1 + Math.random() * 3,
+                        characters: '01234567890ABCDEFCALΠΡΑ†ΕΥΚΩΝ',
+                        trail: []
+                    };
+                }
+            }
+            
+            initCircuitPatterns() {
+                // Generate random circuit-like patterns
+                const numPatterns = 50;
+                
+                for (let i = 0; i < numPatterns; i++) {
+                    this.electronicsData.push({
+                        x: Math.random() * this.electronicsCanvas.width,
+                        y: Math.random() * this.electronicsCanvas.height,
+                        width: 20 + Math.random() * 100,
+                        height: 2 + Math.random() * 8,
+                        type: Math.random() > 0.5 ? 'horizontal' : 'vertical',
+                        intensity: 0.1 + Math.random() * 0.4,
+                        pulseSpeed: 0.01 + Math.random() * 0.02,
+                        phase: Math.random() * Math.PI * 2
+                    });
+                }
+            }
+            
+            animateElectronics() {
+                const animate = () => {
+                    this.renderElectronics();
+                    requestAnimationFrame(animate);
+                };
+                animate();
+            }
+            
+            renderElectronics() {
+                const ctx = this.electronicsCtx;
+                const canvas = this.electronicsCanvas;
+                
+                // Clear with dark background
+                ctx.fillStyle = 'rgba(0, 0, 0, 0.05)';
+                ctx.fillRect(0, 0, canvas.width, canvas.height);
+                
+                const time = this.clock.getElapsedTime();
+                
+                // Render matrix rain
+                ctx.font = '12px monospace';
+                ctx.textAlign = 'center';
+                
+                for (let i = 0; i < this.matrixRain.length; i++) {
+                    const column = this.matrixRain[i];
+                    const x = i * 12;
+                    
+                    // Move column down
+                    column.y += column.speed;
+                    
+                    // Reset if off screen
+                    if (column.y > canvas.height) {
+                        column.y = -20;
+                        column.speed = 1 + Math.random() * 3;
+                    }
+                    
+                    // Draw character
+                    const charIndex = Math.floor(Math.random() * column.characters.length);
+                    const char = column.characters[charIndex];
+                    
+                    // Fade based on position
+                    const alpha = Math.max(0, 1 - (column.y / canvas.height));
+                    const intensity = 0.3 + Math.sin(time * 2 + i) * 0.2;
+                    
+                    ctx.fillStyle = `rgba(0, ${Math.floor(255 * intensity * alpha)}, ${Math.floor(100 * alpha)}, ${alpha})`;
+                    ctx.fillText(char, x, column.y);
+                }
+                
+                // Render circuit patterns
+                for (let pattern of this.electronicsData) {
+                    // Pulse intensity
+                    const pulse = Math.sin(time * pattern.pulseSpeed + pattern.phase);
+                    const intensity = pattern.intensity + pulse * 0.1;
+                    
+                    ctx.strokeStyle = `rgba(0, ${Math.floor(255 * intensity)}, ${Math.floor(128 * intensity)}, ${intensity})`;
+                    ctx.lineWidth = 1;
+                    
+                    ctx.beginPath();
+                    if (pattern.type === 'horizontal') {
+                        ctx.moveTo(pattern.x, pattern.y);
+                        ctx.lineTo(pattern.x + pattern.width, pattern.y);
+                    } else {
+                        ctx.moveTo(pattern.x, pattern.y);
+                        ctx.lineTo(pattern.x, pattern.y + pattern.height);
+                    }
+                    ctx.stroke();
+                    
+                    // Add connection points
+                    ctx.fillStyle = `rgba(0, ${Math.floor(255 * intensity)}, ${Math.floor(100 * intensity)}, ${intensity * 0.8})`;
+                    ctx.fillRect(pattern.x - 1, pattern.y - 1, 3, 3);
+                }
+                
+                // Add random data packets flowing
+                if (Math.random() < 0.1) {
+                    const x = Math.random() * canvas.width;
+                    const y = Math.random() * canvas.height;
+                    const size = 2 + Math.random() * 4;
+                    
+                    ctx.fillStyle = `rgba(0, 255, 100, ${0.3 + Math.random() * 0.4})`;
+                    ctx.fillRect(x, y, size, size);
+                }
+            }
+            
+            async setupThreeJS() {
+                // Scene setup
+                this.scene = new THREE.Scene();
+                this.scene.fog = new THREE.Fog(0x001122, 10, 200);
+                
+                // Camera setup with cinematic aspect
+                this.camera = new THREE.PerspectiveCamera(
+                    75, 
+                    window.innerWidth / window.innerHeight, 
+                    0.1, 
+                    1000
+                );
+                this.setCameraPosition('cinematic');
+                
+                // Renderer with retro aesthetic
+                this.renderer = new THREE.WebGLRenderer({
+                    canvas: document.getElementById('canvas3d'),
+                    antialias: true,
+                    alpha: true
+                });
+                this.renderer.setSize(window.innerWidth, window.innerHeight);
+                this.renderer.setPixelRatio(window.devicePixelRatio);
+                this.renderer.shadowMap.enabled = true;
+                this.renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+                this.renderer.toneMapping = THREE.ACESFilmicToneMapping;
+                this.renderer.toneMappingExposure = 1.2;
+                
+                // Retro post-processing effect
+                this.setupRetroEffects();
+                
+                // Handle window resize
+                window.addEventListener('resize', () => this.onWindowResize());
+            }
+            
+            setupRetroEffects() {
+                // Add atmospheric lighting for retro feel
+                const ambientLight = new THREE.AmbientLight(0x002244, 0.3);
+                this.scene.add(ambientLight);
+                
+                // Main directional light (moonlight)
+                const moonLight = new THREE.DirectionalLight(0x88ccff, 1);
+                moonLight.position.set(-50, 100, 50);
+                moonLight.castShadow = true;
+                moonLight.shadow.camera.near = 0.1;
+                moonLight.shadow.camera.far = 200;
+                moonLight.shadow.camera.left = -100;
+                moonLight.shadow.camera.right = 100;
+                moonLight.shadow.camera.top = 100;
+                moonLight.shadow.camera.bottom = -100;
+                moonLight.shadow.mapSize.width = 2048;
+                moonLight.shadow.mapSize.height = 2048;
+                this.scene.add(moonLight);
+                this.lights.push(moonLight);
+                
+                // Atmospheric point lights for ships
+                const shipLight1 = new THREE.PointLight(0x00ff41, 2, 50);
+                shipLight1.position.set(0, 10, 0);
+                this.scene.add(shipLight1);
+                this.lights.push(shipLight1);
+                
+                const shipLight2 = new THREE.PointLight(0xffd700, 1.5, 40);
+                shipLight2.position.set(30, 8, 20);
+                this.scene.add(shipLight2);
+                this.lights.push(shipLight2);
+            }
+            
+            async createPirateWorld() {
+                // Create the ocean
+                await this.createOcean();
+                
+                // Create ships
+                await this.createShips();
+                
+                // Create characters
+                await this.createCharacters();
+                
+                // Create atmospheric effects
+                this.createAtmosphericEffects();
+                
+                // Create UI elements in 3D space
+                this.create3DUIElements();
+            }
+            
+            async createOcean() {
+                console.log('🌊 Creating dynamic ocean...');
+                
+                // Ocean geometry with high detail for waves
+                const oceanGeometry = new THREE.PlaneGeometry(400, 400, 256, 256);
+                
+                // Ocean material with animated waves
+                const oceanMaterial = new THREE.ShaderMaterial({
+                    uniforms: {
+                        time: { value: 0 },
+                        waveHeight: { value: 3.0 },
+                        waveFrequency: { value: 0.02 },
+                        waveSpeed: { value: 1.0 },
+                        oceanColor: { value: new THREE.Color(0x006688) },
+                        foamColor: { value: new THREE.Color(0x88ccff) }
+                    },
+                    vertexShader: `
+                        uniform float time;
+                        uniform float waveHeight;
+                        uniform float waveFrequency;
+                        uniform float waveSpeed;
+                        
+                        varying vec3 vPosition;
+                        varying vec3 vNormal;
+                        varying float vElevation;
+                        
+                        void main() {
+                            vec3 pos = position;
+                            
+                            // Create multiple wave layers
+                            float wave1 = sin(pos.x * waveFrequency + time * waveSpeed) * waveHeight;
+                            float wave2 = sin(pos.z * waveFrequency * 1.5 + time * waveSpeed * 1.3) * waveHeight * 0.5;
+                            float wave3 = sin((pos.x + pos.z) * waveFrequency * 2.0 + time * waveSpeed * 0.8) * waveHeight * 0.3;
+                            
+                            pos.y = wave1 + wave2 + wave3;
+                            vElevation = pos.y;
+                            
+                            vec4 modelPosition = modelMatrix * vec4(pos, 1.0);
+                            vec4 viewPosition = viewMatrix * modelPosition;
+                            vec4 projectedPosition = projectionMatrix * viewPosition;
+                            
+                            gl_Position = projectedPosition;
+                            
+                            vPosition = modelPosition.xyz;
+                            vNormal = normalize(normalMatrix * normal);
+                        }
+                    `,
+                    fragmentShader: `
+                        uniform float time;
+                        uniform vec3 oceanColor;
+                        uniform vec3 foamColor;
+                        
+                        varying vec3 vPosition;
+                        varying vec3 vNormal;
+                        varying float vElevation;
+                        
+                        void main() {
+                            // Create dynamic ocean color based on elevation and position
+                            vec3 color = oceanColor;
+                            
+                            // Add foam on wave peaks
+                            float foam = step(2.0, vElevation);
+                            color = mix(color, foamColor, foam * 0.8);
+                            
+                            // Add some shimmer
+                            float shimmer = sin(vPosition.x * 0.1 + time * 2.0) * 0.1 + 0.9;
+                            color *= shimmer;
+                            
+                            // Add transparency for realistic water
+                            float alpha = 0.8 + foam * 0.2;
+                            
+                            gl_FragColor = vec4(color, alpha);
+                        }
+                    `,
+                    transparent: true,
+                    side: THREE.DoubleSide
+                });
+                
+                this.ocean = new THREE.Mesh(oceanGeometry, oceanMaterial);
+                this.ocean.rotation.x = -Math.PI / 2;
+                this.ocean.receiveShadow = true;
+                this.scene.add(this.ocean);
+                
+                // Store reference for animation
+                this.oceanMaterial = oceanMaterial;
+            }
+            
+            async createShips() {
+                console.log('⛵ Creating pirate ships...');
+                
+                // Cal's flagship (center stage)
+                const calShip = await this.createShip('cal_flagship', {
+                    position: new THREE.Vector3(0, 2, 0),
+                    color: 0x00ffff,
+                    size: 1.5,
+                    type: 'flagship'
+                });
+                this.ships.set('cal_flagship', calShip);
+                
+                // Supporting ships
+                const logisticsShip = await this.createShip('logistics_vessel', {
+                    position: new THREE.Vector3(40, 2, 30),
+                    color: 0xffd700,
+                    size: 1.0,
+                    type: 'vessel'
+                });
+                this.ships.set('logistics_vessel', logisticsShip);
+                
+                const climateShip = await this.createShip('climate_clipper', {
+                    position: new THREE.Vector3(-35, 2, 25),
+                    color: 0x88ff00,
+                    size: 1.0,
+                    type: 'clipper'
+                });
+                this.ships.set('climate_clipper', climateShip);
+                
+                const resourceShip = await this.createShip('resource_runner', {
+                    position: new THREE.Vector3(25, 2, -40),
+                    color: 0xff8800,
+                    size: 1.0,
+                    type: 'runner'
+                });
+                this.ships.set('resource_runner', resourceShip);
+            }
+            
+            async createShip(id, config) {
+                const shipGroup = new THREE.Group();
+                
+                // Ship hull
+                const hullGeometry = new THREE.BoxGeometry(
+                    config.size * 8, 
+                    config.size * 2, 
+                    config.size * 3
+                );
+                const hullMaterial = new THREE.MeshPhongMaterial({
+                    color: config.color,
+                    emissive: config.color,
+                    emissiveIntensity: 0.2
+                });
+                const hull = new THREE.Mesh(hullGeometry, hullMaterial);
+                hull.castShadow = true;
+                hull.receiveShadow = true;
+                shipGroup.add(hull);
+                
+                // Mast
+                const mastGeometry = new THREE.CylinderGeometry(0.2, 0.2, config.size * 8);
+                const mastMaterial = new THREE.MeshPhongMaterial({ color: 0x8B4513 });
+                const mast = new THREE.Mesh(mastGeometry, mastMaterial);
+                mast.position.y = config.size * 3;
+                mast.castShadow = true;
+                shipGroup.add(mast);
+                
+                // Sail
+                const sailGeometry = new THREE.PlaneGeometry(config.size * 4, config.size * 6);
+                const sailMaterial = new THREE.MeshPhongMaterial({
+                    color: 0xffffff,
+                    transparent: true,
+                    opacity: 0.8,
+                    side: THREE.DoubleSide
+                });
+                const sail = new THREE.Mesh(sailGeometry, sailMaterial);
+                sail.position.set(config.size * 2, config.size * 4, 0);
+                sail.rotation.y = Math.PI / 2;
+                shipGroup.add(sail);
+                
+                // Ship trail particles
+                const trailGeometry = new THREE.BufferGeometry();
+                const trailPositions = new Float32Array(100 * 3);
+                const trailColors = new Float32Array(100 * 3);
+                
+                for (let i = 0; i < 100; i++) {
+                    trailPositions[i * 3] = (Math.random() - 0.5) * 10;
+                    trailPositions[i * 3 + 1] = Math.random() * 2;
+                    trailPositions[i * 3 + 2] = -5 - Math.random() * 15;
+                    
+                    trailColors[i * 3] = 1;
+                    trailColors[i * 3 + 1] = 1;
+                    trailColors[i * 3 + 2] = 1;
+                }
+                
+                trailGeometry.setAttribute('position', new THREE.BufferAttribute(trailPositions, 3));
+                trailGeometry.setAttribute('color', new THREE.BufferAttribute(trailColors, 3));
+                
+                const trailMaterial = new THREE.PointsMaterial({
+                    size: 1,
+                    vertexColors: true,
+                    transparent: true,
+                    opacity: 0.6,
+                    blending: THREE.AdditiveBlending
+                });
+                
+                const trail = new THREE.Points(trailGeometry, trailMaterial);
+                shipGroup.add(trail);
+                
+                // Position ship
+                shipGroup.position.copy(config.position);
+                shipGroup.userData = {
+                    id,
+                    type: config.type,
+                    basePosition: config.position.clone(),
+                    bobPhase: Math.random() * Math.PI * 2,
+                    trail: trail
+                };
+                
+                this.scene.add(shipGroup);
+                return shipGroup;
+            }
+            
+            async createCharacters() {
+                console.log('🎭 Creating pirate characters...');
+                
+                // Cal (AI consciousness visualization)
+                const cal = await this.createCharacter('cal', {
+                    position: new THREE.Vector3(0, 8, 0),
+                    color: 0x00ffff,
+                    type: 'ai_consciousness'
+                });
+                this.characters.set('cal', cal);
+                
+                // Supporting characters appear on ships
+                const logistics = await this.createCharacter('logistics_lucy', {
+                    position: new THREE.Vector3(40, 6, 30),
+                    color: 0xffd700,
+                    type: 'pirate'
+                });
+                this.characters.set('logistics_lucy', logistics);
+            }
+            
+            async createCharacter(id, config) {
+                const characterGroup = new THREE.Group();
+                
+                if (config.type === 'ai_consciousness') {
+                    // Cal as glowing AI entity
+                    const coreGeometry = new THREE.SphereGeometry(2, 32, 32);
+                    const coreMaterial = new THREE.MeshPhongMaterial({
+                        color: config.color,
+                        emissive: config.color,
+                        emissiveIntensity: 0.5,
+                        transparent: true,
+                        opacity: 0.8
+                    });
+                    const core = new THREE.Mesh(coreGeometry, coreMaterial);
+                    characterGroup.add(core);
+                    
+                    // Orbiting data particles
+                    for (let i = 0; i < 20; i++) {
+                        const particleGeometry = new THREE.SphereGeometry(0.2, 8, 8);
+                        const particleMaterial = new THREE.MeshBasicMaterial({
+                            color: config.color,
+                            transparent: true,
+                            opacity: 0.7
+                        });
+                        const particle = new THREE.Mesh(particleGeometry, particleMaterial);
+                        
+                        const angle = (i / 20) * Math.PI * 2;
+                        const radius = 4 + Math.random() * 2;
+                        particle.position.x = Math.cos(angle) * radius;
+                        particle.position.z = Math.sin(angle) * radius;
+                        particle.position.y = (Math.random() - 0.5) * 4;
+                        
+                        particle.userData = { angle, radius, orbitSpeed: 0.01 + Math.random() * 0.02 };
+                        characterGroup.add(particle);
+                    }
+                } else {
+                    // Regular pirate character
+                    const bodyGeometry = new THREE.CapsuleGeometry(1, 3, 4, 8);
+                    const bodyMaterial = new THREE.MeshPhongMaterial({
+                        color: config.color,
+                        emissive: config.color,
+                        emissiveIntensity: 0.1
+                    });
+                    const body = new THREE.Mesh(bodyGeometry, bodyMaterial);
+                    body.castShadow = true;
+                    characterGroup.add(body);
+                }
+                
+                characterGroup.position.copy(config.position);
+                characterGroup.userData = {
+                    id,
+                    type: config.type,
+                    basePosition: config.position.clone()
+                };
+                
+                this.scene.add(characterGroup);
+                return characterGroup;
+            }
+            
+            createAtmosphericEffects() {
+                console.log('✨ Adding atmospheric effects...');
+                
+                // Fog particles
+                const particleCount = 2000;
+                const particleGeometry = new THREE.BufferGeometry();
+                const positions = new Float32Array(particleCount * 3);
+                const colors = new Float32Array(particleCount * 3);
+                const sizes = new Float32Array(particleCount);
+                
+                for (let i = 0; i < particleCount; i++) {
+                    positions[i * 3] = (Math.random() - 0.5) * 400;
+                    positions[i * 3 + 1] = Math.random() * 50 + 10;
+                    positions[i * 3 + 2] = (Math.random() - 0.5) * 400;
+                    
+                    colors[i * 3] = 0.5 + Math.random() * 0.5;
+                    colors[i * 3 + 1] = 0.8 + Math.random() * 0.2;
+                    colors[i * 3 + 2] = 1.0;
+                    
+                    sizes[i] = Math.random() * 3 + 1;
+                }
+                
+                particleGeometry.setAttribute('position', new THREE.BufferAttribute(positions, 3));
+                particleGeometry.setAttribute('color', new THREE.BufferAttribute(colors, 3));
+                particleGeometry.setAttribute('size', new THREE.BufferAttribute(sizes, 1));
+                
+                const particleMaterial = new THREE.PointsMaterial({
+                    size: 2,
+                    vertexColors: true,
+                    transparent: true,
+                    opacity: 0.3,
+                    blending: THREE.AdditiveBlending
+                });
+                
+                this.atmosphericParticles = new THREE.Points(particleGeometry, particleMaterial);
+                this.scene.add(this.atmosphericParticles);
+            }
+            
+            create3DUIElements() {
+                // Create floating text for scene information
+                this.create3DText('Chapter 7: The Convergence', new THREE.Vector3(0, 20, -50), 0x00ff41);
+            }
+            
+            create3DText(text, position, color) {
+                // Simplified 3D text using canvas texture
+                const canvas = document.createElement('canvas');
+                const context = canvas.getContext('2d');
+                canvas.width = 512;
+                canvas.height = 128;
+                
+                context.fillStyle = '#000000';
+                context.fillRect(0, 0, canvas.width, canvas.height);
+                
+                context.fillStyle = `#${color.toString(16).padStart(6, '0')}`;
+                context.font = '36px Courier New';
+                context.textAlign = 'center';
+                context.fillText(text, canvas.width / 2, canvas.height / 2);
+                
+                const texture = new THREE.CanvasTexture(canvas);
+                const spriteMaterial = new THREE.SpriteMaterial({ map: texture });
+                const sprite = new THREE.Sprite(spriteMaterial);
+                sprite.scale.set(20, 5, 1);
+                sprite.position.copy(position);
+                
+                this.scene.add(sprite);
+                return sprite;
+            }
+            
+            async setupAudio() {
+                try {
+                    // Initialize Tone.js if not already started
+                    if (Tone.context.state !== 'running') {
+                        await Tone.start();
+                        console.log('🎵 Audio context started');
+                    }
+                    
+                    // Create audio analyser for frequency visualization
+                    this.audioAnalyser = Tone.context.createAnalyser();
+                    this.audioAnalyser.fftSize = 256;
+                    Tone.Destination.connect(this.audioAnalyser);
+                    
+                    this.frequencyData = new Uint8Array(this.audioAnalyser.frequencyBinCount);
+                    
+                    // Setup frequency visualization
+                    this.setupFrequencyVisualization();
+                    
+                    this.updateFilmStatus('Audio Engine', 'ONLINE', 'online');
+                    
+                } catch (error) {
+                    console.error('❌ Audio setup failed:', error);
+                    this.updateFilmStatus('Audio Engine', 'ERROR', 'offline');
+                }
+            }
+            
+            setupFrequencyVisualization() {
+                const canvas = document.getElementById('frequencyCanvas');
+                const ctx = canvas.getContext('2d');
+                canvas.width = 280;
+                canvas.height = 120;
+                
+                const drawFrequency = () => {
+                    if (!this.audioAnalyser || !this.frequencyData) {
+                        requestAnimationFrame(drawFrequency);
+                        return;
+                    }
+                    
+                    this.audioAnalyser.getByteFrequencyData(this.frequencyData);
+                    
+                    // Clear canvas with retro green background
+                    ctx.fillStyle = 'rgba(0, 20, 0, 0.3)';
+                    ctx.fillRect(0, 0, canvas.width, canvas.height);
+                    
+                    // Draw frequency bars
+                    const barWidth = canvas.width / this.frequencyData.length * 2;
+                    let x = 0;
+                    
+                    for (let i = 0; i < this.frequencyData.length; i++) {
+                        const barHeight = (this.frequencyData[i] / 255) * canvas.height * 0.8;
+                        
+                        // Retro green gradient
+                        const intensity = this.frequencyData[i] / 255;
+                        const r = Math.floor(intensity * 100);
+                        const g = Math.floor(255 * intensity);
+                        const b = Math.floor(intensity * 100);
+                        
+                        ctx.fillStyle = `rgb(${r}, ${g}, ${b})`;
+                        ctx.fillRect(x, canvas.height - barHeight, barWidth - 1, barHeight);
+                        
+                        x += barWidth;
+                    }
+                    
+                    // Add scanline effect
+                    ctx.strokeStyle = 'rgba(0, 255, 65, 0.5)';
+                    ctx.lineWidth = 1;
+                    ctx.beginPath();
+                    ctx.moveTo(0, canvas.height / 2);
+                    ctx.lineTo(canvas.width, canvas.height / 2);
+                    ctx.stroke();
+                    
+                    requestAnimationFrame(drawFrequency);
+                };
+                
+                drawFrequency();
+            }
+            
+            connectToDemo() {
+                // Connect to the pirate film demo via WebSocket
+                try {
+                    this.websocket = new WebSocket('ws://localhost:8081');
+                    
+                    this.websocket.onopen = () => {
+                        console.log('🔌 Connected to pirate film demo');
+                        this.websocket.send(JSON.stringify({
+                            type: 'visual_renderer_ready',
+                            timestamp: Date.now()
+                        }));
+                    };
+                    
+                    this.websocket.onmessage = (event) => {
+                        try {
+                            const data = JSON.parse(event.data);
+                            this.handleDemoMessage(data);
+                        } catch (error) {
+                            console.error('Error parsing demo message:', error);
+                        }
+                    };
+                    
+                    this.websocket.onclose = () => {
+                        console.log('🔌 Disconnected from demo, retrying...');
+                        setTimeout(() => this.connectToDemo(), 3000);
+                    };
+                    
+                    this.websocket.onerror = (error) => {
+                        console.error('WebSocket error:', error);
+                    };
+                    
+                } catch (error) {
+                    console.log('📡 Demo not available, running in standalone mode');
+                    this.startStandaloneDemo();
+                }
+            }
+            
+            handleDemoMessage(data) {
+                switch (data.type) {
+                    case 'scene_change':
+                        this.changeScene(data.scene);
+                        break;
+                        
+                    case 'dialogue':
+                        this.displayDialogue(data.text, data.speaker);
+                        break;
+                        
+                    case 'meta_lesson':
+                        this.displayMetaLesson(data.lesson);
+                        break;
+                        
+                    case 'character_update':
+                        this.updateCharacter(data.characterId, data.action);
+                        break;
+                        
+                    case 'ocean_update':
+                        this.updateOcean(data.data);
+                        break;
+                        
+                    default:
+                        console.log('Unknown demo message:', data.type);
+                }
+            }
+            
+            startStandaloneDemo() {
+                // Run a demo sequence if not connected to main demo
+                console.log('🎬 Starting standalone visual demo...');
+                
+                setTimeout(() => {
+                    this.displayDialogue("Welcome to the visual rendering system!", "System");
+                }, 2000);
+                
+                setTimeout(() => {
+                    this.changeScene({
+                        title: "Cal's Digital Ocean",
+                        description: "The convergence of ancient wisdom and AI consciousness"
+                    });
+                }, 5000);
+                
+                setTimeout(() => {
+                    this.displayDialogue("Ahoy! These data streams flow like the ancient currents of the Kickapoo Valley!", "Captain Cal");
+                }, 8000);
+            }
+            
+            changeScene(scene) {
+                console.log('🎬 Changing scene:', scene.title);
+                this.currentScene = scene.title;
+                
+                document.getElementById('currentScene').textContent = scene.title;
+                
+                // Animate camera to new position based on scene
+                this.animateCameraToScene(scene);
+            }
+            
+            displayDialogue(text, speaker) {
+                const narrativeDisplay = document.getElementById('narrativeDisplay');
+                const narrativeText = document.getElementById('narrativeText');
+                
+                // Style speaker based on character
+                let speakerClass = '';
+                if (speaker.toLowerCase().includes('cal')) {
+                    speakerClass = 'cal-glow';
+                } else if (speaker.toLowerCase().includes('captain') || speaker.toLowerCase().includes('crew')) {
+                    speakerClass = 'pirate-glow';
+                } else {
+                    speakerClass = 'ocean-glow';
+                }
+                
+                narrativeText.innerHTML = `<span class="${speakerClass}">${speaker}:</span> "${text}"`;
+                narrativeDisplay.classList.add('active');
+                
+                // Auto-hide after 5 seconds
+                setTimeout(() => {
+                    narrativeDisplay.classList.remove('active');
+                }, 5000);
+            }
+            
+            displayMetaLesson(lesson) {
+                console.log('📚 Displaying meta-lesson:', lesson.lesson);
+                this.displayDialogue(`Meta-Lesson: ${lesson.lesson} - ${lesson.calWisdom}`, "Educational System");
+            }
+            
+            setCameraPosition(mode) {
+                switch (mode) {
+                    case 'cinematic':
+                        this.camera.position.set(30, 25, 50);
+                        this.camera.lookAt(0, 5, 0);
+                        break;
+                    case 'overhead':
+                        this.camera.position.set(0, 80, 0);
+                        this.camera.lookAt(0, 0, 0);
+                        break;
+                    case 'close-up':
+                        this.camera.position.set(10, 8, 15);
+                        this.camera.lookAt(0, 5, 0);
+                        break;
+                    case 'first-person':
+                        this.camera.position.set(0, 6, 3);
+                        this.camera.lookAt(0, 5, -10);
+                        break;
+                }
+            }
+            
+            animateCameraToScene(scene) {
+                // Simple camera animation (in production, use GSAP or similar)
+                const targetPosition = new THREE.Vector3();
+                const targetLookAt = new THREE.Vector3(0, 5, 0);
+                
+                if (scene.title.includes('Storm')) {
+                    targetPosition.set(50, 30, 50);
+                } else if (scene.title.includes('Convergence')) {
+                    targetPosition.set(0, 15, 30);
+                } else {
+                    targetPosition.set(30, 25, 50);
+                }
+                
+                // Animate to new position over 2 seconds
+                const startPosition = this.camera.position.clone();
+                const animationDuration = 2000;
+                const startTime = Date.now();
+                
+                const animateCamera = () => {
+                    const elapsed = Date.now() - startTime;
+                    const progress = Math.min(elapsed / animationDuration, 1);
+                    
+                    // Smooth easing
+                    const easeProgress = 1 - Math.pow(1 - progress, 3);
+                    
+                    this.camera.position.lerpVectors(startPosition, targetPosition, easeProgress);
+                    this.camera.lookAt(targetLookAt);
+                    
+                    if (progress < 1) {
+                        requestAnimationFrame(animateCamera);
+                    }
+                };
+                
+                animateCamera();
+            }
+            
+            startRendering() {
+                this.isPlaying = true;
+                this.animate();
+                
+                // Start performance monitoring
+                this.startPerformanceMonitoring();
+            }
+            
+            animate() {
+                if (!this.isPlaying) return;
+                
+                requestAnimationFrame(() => this.animate());
+                
+                const time = this.clock.getElapsedTime();
+                const deltaTime = this.clock.getDelta();
+                
+                // Update ocean animation
+                if (this.oceanMaterial) {
+                    this.oceanMaterial.uniforms.time.value = time;
+                }
+                
+                // Update ships (bobbing motion)
+                this.ships.forEach((ship, id) => {
+                    const userData = ship.userData;
+                    const bobAmount = Math.sin(time * 0.5 + userData.bobPhase) * 1.5;
+                    ship.position.y = userData.basePosition.y + bobAmount;
+                    
+                    // Gentle rocking
+                    ship.rotation.z = Math.sin(time * 0.3 + userData.bobPhase) * 0.1;
+                    ship.rotation.x = Math.sin(time * 0.4 + userData.bobPhase) * 0.05;
+                });
+                
+                // Update characters
+                this.characters.forEach((character, id) => {
+                    if (character.userData.type === 'ai_consciousness') {
+                        // Rotate Cal's data particles
+                        character.children.forEach((child, index) => {
+                            if (child.userData.angle !== undefined) {
+                                child.userData.angle += child.userData.orbitSpeed;
+                                child.position.x = Math.cos(child.userData.angle) * child.userData.radius;
+                                child.position.z = Math.sin(child.userData.angle) * child.userData.radius;
+                                child.position.y += Math.sin(time * 2 + child.userData.angle) * 0.02;
+                            }
+                        });
+                        
+                        // Pulse Cal's core
+                        const core = character.children[0];
+                        if (core) {
+                            const scale = 1 + Math.sin(time * 2) * 0.1;
+                            core.scale.set(scale, scale, scale);
+                        }
+                    }
+                });
+                
+                // Update atmospheric particles
+                if (this.atmosphericParticles) {
+                    const positions = this.atmosphericParticles.geometry.attributes.position.array;
+                    for (let i = 0; i < positions.length; i += 3) {
+                        positions[i] += Math.sin(time + i) * 0.01; // x drift
+                        positions[i + 1] += 0.02; // y rise
+                        positions[i + 2] += Math.cos(time + i) * 0.01; // z drift
+                        
+                        // Reset particles that drift too far
+                        if (positions[i + 1] > 60) {
+                            positions[i + 1] = 10;
+                        }
+                    }
+                    this.atmosphericParticles.geometry.attributes.position.needsUpdate = true;
+                }
+                
+                // Update lights for atmospheric effect
+                this.lights.forEach((light, index) => {
+                    if (light.type === 'PointLight') {
+                        light.intensity = 1.5 + Math.sin(time * 1.5 + index) * 0.3;
+                    }
+                });
+                
+                // Render the scene
+                this.renderer.render(this.scene, this.camera);
+                
+                // Update performance counters
+                this.frameCount++;
+            }
+            
+            startPerformanceMonitoring() {
+                setInterval(() => {
+                    const now = performance.now();
+                    const elapsed = now - this.lastFPSTime;
+                    
+                    if (elapsed >= 1000) {
+                        this.currentFPS = Math.round((this.frameCount * 1000) / elapsed);
+                        this.frameCount = 0;
+                        this.lastFPSTime = now;
+                        
+                        // Update UI
+                        this.updatePerformanceStats();
+                    }
+                }, 100);
+            }
+            
+            updatePerformanceStats() {
+                // Update character count
+                document.getElementById('activeCharacters').textContent = this.characters.size;
+                
+                // Update visual effects
+                const fxCount = this.particles.length + (this.atmosphericParticles ? 1 : 0);
+                document.getElementById('activeFx').textContent = `Ocean + ${fxCount} Systems`;
+                
+                // Update Cal's status
+                document.getElementById('calAction').textContent = this.isPlaying ? 'Navigating' : 'Paused';
+            }
+            
+            updateFilmStatus(system, status, indicator) {
+                const statusElement = document.querySelector('.film-ui');
+                // Update would go here - for now just log
+                console.log(`📊 ${system}: ${status}`);
+            }
+            
+            updateSceneInfo(scene, characters, fx) {
+                document.getElementById('currentScene').textContent = scene;
+                document.getElementById('activeCharacters').textContent = characters;
+                document.getElementById('activeFx').textContent = fx;
+            }
+            
+            onWindowResize() {
+                // Update 3D renderer
+                this.camera.aspect = window.innerWidth / window.innerHeight;
+                this.camera.updateProjectionMatrix();
+                this.renderer.setSize(window.innerWidth, window.innerHeight);
+                
+                // Update electronics canvas
+                if (this.electronicsCanvas) {
+                    this.electronicsCanvas.width = window.innerWidth;
+                    this.electronicsCanvas.height = window.innerHeight;
+                    
+                    // Reinitialize matrix rain for new dimensions
+                    this.matrixRain = [];
+                    this.initMatrixRain();
+                }
+            }
+            
+            // Public control methods
+            togglePlayPause() {
+                this.isPlaying = !this.isPlaying;
+                if (this.isPlaying) {
+                    this.animate();
+                    console.log('▶️ Film resumed');
+                } else {
+                    console.log('⏸️ Film paused');
+                }
+            }
+            
+            changeCamera() {
+                this.cameraMode = (this.cameraMode + 1) % 4;
+                const modes = ['cinematic', 'overhead', 'close-up', 'first-person'];
+                this.setCameraPosition(modes[this.cameraMode]);
+                console.log(`📷 Camera mode: ${modes[this.cameraMode]}`);
+            }
+            
+            toggleAudio() {
+                this.audioEnabled = !this.audioEnabled;
+                console.log(`🔊 Audio: ${this.audioEnabled ? 'ON' : 'OFF'}`);
+            }
+            
+            toggleEffects() {
+                this.effectsEnabled = !this.effectsEnabled;
+                if (this.atmosphericParticles) {
+                    this.atmosphericParticles.visible = this.effectsEnabled;
+                }
+                console.log(`✨ Effects: ${this.effectsEnabled ? 'ON' : 'OFF'}`);
+            }
+            
+            saveClip() {
+                console.log('💾 Saving clip... (Feature coming soon!)');
+                // In a real implementation, this would capture canvas frames
+                this.displayDialogue("Clip save requested - feature in development!", "System");
+            }
+            
+            toggleFullscreen() {
+                if (!document.fullscreenElement) {
+                    document.documentElement.requestFullscreen();
+                } else {
+                    document.exitFullscreen();
+                }
+            }
+        }
+        
+        // Global control functions
+        let renderer;
+        
+        window.addEventListener('DOMContentLoaded', () => {
+            console.log('🎬 Initializing Cal Pirate Visual Renderer...');
+            renderer = new CalPirateVisualRenderer();
+        });
+        
+        function togglePlayPause() {
+            if (renderer) renderer.togglePlayPause();
+        }
+        
+        function changeCamera() {
+            if (renderer) renderer.changeCamera();
+        }
+        
+        function toggleAudio() {
+            if (renderer) renderer.toggleAudio();
+        }
+        
+        function toggleEffects() {
+            if (renderer) renderer.toggleEffects();
+        }
+        
+        function saveClip() {
+            if (renderer) renderer.saveClip();
+        }
+        
+        function toggleFullscreen() {
+            if (renderer) renderer.toggleFullscreen();
+        }
+        
+        // Keyboard shortcuts
+        document.addEventListener('keydown', (e) => {
+            switch (e.key.toLowerCase()) {
+                case ' ':
+                    e.preventDefault();
+                    togglePlayPause();
+                    break;
+                case 'c':
+                    changeCamera();
+                    break;
+                case 'a':
+                    toggleAudio();
+                    break;
+                case 'f':
+                    toggleEffects();
+                    break;
+                case 's':
+                    saveClip();
+                    break;
+                case 'enter':
+                    toggleFullscreen();
+                    break;
+            }
+        });
+        
+        console.log('🎬 Cal Pirate Visual Renderer loaded');
+        console.log('⌨️  Keyboard controls: SPACE=play/pause, C=camera, A=audio, F=effects, S=save, ENTER=fullscreen');
+    </script>
+</body>
+</html>

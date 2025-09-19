@@ -1,0 +1,1017 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Custom Mascot Builder - Create Your Character</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            background: #0a0a0a;
+            color: #ffffff;
+            display: flex;
+            height: 100vh;
+            overflow: hidden;
+        }
+
+        /* Builder Panel */
+        #builderPanel {
+            width: 350px;
+            background: rgba(20, 20, 20, 0.95);
+            padding: 20px;
+            overflow-y: auto;
+            border-right: 1px solid #333;
+        }
+
+        .section {
+            margin-bottom: 30px;
+            padding: 20px;
+            background: rgba(40, 40, 40, 0.5);
+            border-radius: 10px;
+        }
+
+        .section-title {
+            font-size: 18px;
+            font-weight: 600;
+            margin-bottom: 15px;
+            color: #0099ff;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        /* Controls */
+        .control-group {
+            margin: 15px 0;
+        }
+
+        .control-label {
+            display: block;
+            margin-bottom: 5px;
+            font-size: 14px;
+            color: #aaa;
+        }
+
+        .slider-container {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        input[type="range"] {
+            flex: 1;
+            height: 6px;
+            background: #333;
+            outline: none;
+            -webkit-appearance: none;
+            border-radius: 3px;
+        }
+
+        input[type="range"]::-webkit-slider-thumb {
+            -webkit-appearance: none;
+            width: 16px;
+            height: 16px;
+            background: #0099ff;
+            border-radius: 50%;
+            cursor: pointer;
+        }
+
+        .slider-value {
+            min-width: 40px;
+            text-align: right;
+            font-size: 12px;
+            color: #0099ff;
+        }
+
+        /* Color picker */
+        .color-picker {
+            display: flex;
+            gap: 10px;
+            align-items: center;
+        }
+
+        input[type="color"] {
+            width: 50px;
+            height: 35px;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+        }
+
+        .color-preview {
+            width: 30px;
+            height: 30px;
+            border-radius: 5px;
+            border: 2px solid #333;
+        }
+
+        /* Buttons */
+        .button-group {
+            display: flex;
+            gap: 10px;
+            flex-wrap: wrap;
+        }
+
+        button {
+            background: rgba(0, 153, 255, 0.2);
+            border: 2px solid #0099ff;
+            color: #0099ff;
+            padding: 8px 16px;
+            border-radius: 6px;
+            cursor: pointer;
+            font-size: 14px;
+            transition: all 0.3s;
+        }
+
+        button:hover {
+            background: rgba(0, 153, 255, 0.3);
+            transform: translateY(-1px);
+        }
+
+        button.active {
+            background: #0099ff;
+            color: #000;
+        }
+
+        /* Preview Canvas */
+        #previewContainer {
+            flex: 1;
+            position: relative;
+            background: radial-gradient(circle at center, #1a1a2e 0%, #0a0a0a 100%);
+        }
+
+        #mascotCanvas {
+            width: 100%;
+            height: 100%;
+        }
+
+        /* Export/Import */
+        .export-section {
+            position: fixed;
+            bottom: 20px;
+            right: 20px;
+            display: flex;
+            gap: 10px;
+        }
+
+        .export-btn {
+            background: linear-gradient(135deg, #00ff88, #00cc66);
+            border: none;
+            color: #000;
+            padding: 12px 24px;
+            font-weight: 600;
+        }
+
+        /* Preset gallery */
+        .preset-gallery {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 10px;
+            margin-top: 15px;
+        }
+
+        .preset-item {
+            aspect-ratio: 1;
+            background: rgba(60, 60, 60, 0.5);
+            border: 2px solid transparent;
+            border-radius: 8px;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 24px;
+            transition: all 0.3s;
+        }
+
+        .preset-item:hover {
+            border-color: #0099ff;
+            transform: scale(1.05);
+        }
+
+        /* Animation controls */
+        .animation-controls {
+            position: absolute;
+            bottom: 20px;
+            left: 50%;
+            transform: translateX(-50%);
+            background: rgba(0, 0, 0, 0.8);
+            padding: 15px;
+            border-radius: 10px;
+            display: flex;
+            gap: 10px;
+        }
+
+        /* Info display */
+        #infoDisplay {
+            position: absolute;
+            top: 20px;
+            right: 20px;
+            background: rgba(0, 0, 0, 0.8);
+            padding: 15px;
+            border-radius: 10px;
+            font-size: 12px;
+            min-width: 200px;
+        }
+
+        .info-row {
+            display: flex;
+            justify-content: space-between;
+            margin: 5px 0;
+        }
+
+        .info-label {
+            color: #888;
+        }
+
+        .info-value {
+            color: #0099ff;
+            font-weight: 600;
+        }
+    </style>
+</head>
+<body>
+    <div id="builderPanel">
+        <h1 style="margin-bottom: 20px; color: #0099ff;">Custom Mascot Builder</h1>
+        
+        <!-- Body Shape -->
+        <div class="section">
+            <div class="section-title">🎨 Body Shape</div>
+            
+            <div class="control-group">
+                <label class="control-label">Body Type</label>
+                <div class="button-group">
+                    <button onclick="setBodyType('round')" class="active">Round</button>
+                    <button onclick="setBodyType('athletic')">Athletic</button>
+                    <button onclick="setBodyType('slim')">Slim</button>
+                    <button onclick="setBodyType('cube')">Cube</button>
+                </div>
+            </div>
+            
+            <div class="control-group">
+                <label class="control-label">Height</label>
+                <div class="slider-container">
+                    <input type="range" id="heightSlider" min="0.5" max="2" value="1" step="0.1" 
+                           oninput="updateSlider('height', this.value)">
+                    <span class="slider-value" id="heightValue">1.0</span>
+                </div>
+            </div>
+            
+            <div class="control-group">
+                <label class="control-label">Width</label>
+                <div class="slider-container">
+                    <input type="range" id="widthSlider" min="0.5" max="2" value="1" step="0.1" 
+                           oninput="updateSlider('width', this.value)">
+                    <span class="slider-value" id="widthValue">1.0</span>
+                </div>
+            </div>
+        </div>
+
+        <!-- Colors -->
+        <div class="section">
+            <div class="section-title">🎨 Colors</div>
+            
+            <div class="control-group">
+                <label class="control-label">Primary Color</label>
+                <div class="color-picker">
+                    <input type="color" id="primaryColor" value="#6b5be0" 
+                           oninput="updateColor('primary', this.value)">
+                    <div class="color-preview" id="primaryPreview" style="background: #6b5be0;"></div>
+                    <span>Primary Body</span>
+                </div>
+            </div>
+            
+            <div class="control-group">
+                <label class="control-label">Secondary Color</label>
+                <div class="color-picker">
+                    <input type="color" id="secondaryColor" value="#8b7bf0" 
+                           oninput="updateColor('secondary', this.value)">
+                    <div class="color-preview" id="secondaryPreview" style="background: #8b7bf0;"></div>
+                    <span>Accents</span>
+                </div>
+            </div>
+            
+            <div class="control-group">
+                <label class="control-label">Eye Color</label>
+                <div class="color-picker">
+                    <input type="color" id="eyeColor" value="#222222" 
+                           oninput="updateColor('eyes', this.value)">
+                    <div class="color-preview" id="eyePreview" style="background: #222222;"></div>
+                    <span>Eyes</span>
+                </div>
+            </div>
+        </div>
+
+        <!-- Features -->
+        <div class="section">
+            <div class="section-title">✨ Features</div>
+            
+            <div class="control-group">
+                <label class="control-label">Appendages</label>
+                <div class="button-group">
+                    <button onclick="toggleFeature('tail')">Tail</button>
+                    <button onclick="toggleFeature('wings')">Wings</button>
+                    <button onclick="toggleFeature('antennae')">Antennae</button>
+                    <button onclick="toggleFeature('ears')">Ears</button>
+                </div>
+            </div>
+            
+            <div class="control-group">
+                <label class="control-label">Eye Style</label>
+                <div class="button-group">
+                    <button onclick="setEyeStyle('round')" class="active">Round</button>
+                    <button onclick="setEyeStyle('oval')">Oval</button>
+                    <button onclick="setEyeStyle('anime')">Anime</button>
+                    <button onclick="setEyeStyle('dot')">Dot</button>
+                </div>
+            </div>
+        </div>
+
+        <!-- Physics -->
+        <div class="section">
+            <div class="section-title">🦅 Natural Movement</div>
+            
+            <div class="control-group">
+                <label class="control-label">Movement Style</label>
+                <div class="button-group">
+                    <button onclick="setMovementStyle('bird')" class="active">Bird-like</button>
+                    <button onclick="setMovementStyle('mammal')">Mammal-like</button>
+                    <button onclick="setMovementStyle('fluid')">Fluid</button>
+                    <button onclick="setMovementStyle('robotic')">Robotic</button>
+                </div>
+            </div>
+            
+            <div class="control-group">
+                <label class="control-label">Bounciness</label>
+                <div class="slider-container">
+                    <input type="range" id="bouncinessSlider" min="0" max="1" value="0.5" step="0.1" 
+                           oninput="updateSlider('bounciness', this.value)">
+                    <span class="slider-value" id="bouncinessValue">0.5</span>
+                </div>
+            </div>
+            
+            <div class="control-group">
+                <label class="control-label">Flexibility</label>
+                <div class="slider-container">
+                    <input type="range" id="flexibilitySlider" min="0" max="1" value="0.7" step="0.1" 
+                           oninput="updateSlider('flexibility', this.value)">
+                    <span class="slider-value" id="flexibilityValue">0.7</span>
+                </div>
+            </div>
+        </div>
+
+        <!-- Presets -->
+        <div class="section">
+            <div class="section-title">📦 Presets</div>
+            <div class="preset-gallery">
+                <div class="preset-item" onclick="loadPreset('bird')">🦜</div>
+                <div class="preset-item" onclick="loadPreset('cat')">🐱</div>
+                <div class="preset-item" onclick="loadPreset('robot')">🤖</div>
+                <div class="preset-item" onclick="loadPreset('dragon')">🐉</div>
+                <div class="preset-item" onclick="loadPreset('blob')">👻</div>
+                <div class="preset-item" onclick="loadPreset('custom')">✨</div>
+            </div>
+        </div>
+    </div>
+
+    <div id="previewContainer">
+        <canvas id="mascotCanvas"></canvas>
+        
+        <div id="infoDisplay">
+            <div class="info-row">
+                <span class="info-label">Physics:</span>
+                <span class="info-value" id="physicsInfo">Natural</span>
+            </div>
+            <div class="info-row">
+                <span class="info-label">Polygons:</span>
+                <span class="info-value" id="polyCount">2,048</span>
+            </div>
+            <div class="info-row">
+                <span class="info-label">FPS:</span>
+                <span class="info-value" id="fpsInfo">60</span>
+            </div>
+        </div>
+        
+        <div class="animation-controls">
+            <button onclick="mascot.idle()">Idle</button>
+            <button onclick="mascot.walk()">Walk</button>
+            <button onclick="mascot.jump()">Jump</button>
+            <button onclick="mascot.dance()">Dance</button>
+            <button onclick="mascot.wave()">Wave</button>
+        </div>
+        
+        <div class="export-section">
+            <button class="export-btn" onclick="exportMascot()">Export Mascot</button>
+            <button onclick="saveMascot()">Save Design</button>
+            <button onclick="loadMascot()">Load Design</button>
+        </div>
+    </div>
+
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+    <script>
+        class CustomMascotBuilder {
+            constructor() {
+                this.scene = new THREE.Scene();
+                this.camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 1000);
+                this.renderer = new THREE.WebGLRenderer({ 
+                    canvas: document.getElementById('mascotCanvas'),
+                    antialias: true,
+                    alpha: true 
+                });
+                
+                this.mascotConfig = {
+                    bodyType: 'round',
+                    height: 1.0,
+                    width: 1.0,
+                    colors: {
+                        primary: 0x6b5be0,
+                        secondary: 0x8b7bf0,
+                        eyes: 0x222222
+                    },
+                    features: {
+                        tail: false,
+                        wings: false,
+                        antennae: false,
+                        ears: false
+                    },
+                    eyeStyle: 'round',
+                    movementStyle: 'bird',
+                    physics: {
+                        bounciness: 0.5,
+                        flexibility: 0.7
+                    }
+                };
+                
+                this.mascot = null;
+                this.clock = new THREE.Clock();
+                
+                this.init();
+                this.buildMascot();
+                this.animate();
+            }
+            
+            init() {
+                // Setup renderer
+                this.renderer.setSize(window.innerWidth - 350, window.innerHeight);
+                this.renderer.shadowMap.enabled = true;
+                this.renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+                
+                // Camera setup
+                this.camera.position.set(0, 3, 8);
+                this.camera.lookAt(0, 1, 0);
+                
+                // Lighting
+                const ambientLight = new THREE.AmbientLight(0xffffff, 0.6);
+                this.scene.add(ambientLight);
+                
+                const directionalLight = new THREE.DirectionalLight(0xffffff, 0.8);
+                directionalLight.position.set(5, 10, 5);
+                directionalLight.castShadow = true;
+                this.scene.add(directionalLight);
+                
+                // Ground
+                const groundGeometry = new THREE.CircleGeometry(10, 32);
+                const groundMaterial = new THREE.MeshStandardMaterial({ 
+                    color: 0x222222,
+                    roughness: 0.8
+                });
+                const ground = new THREE.Mesh(groundGeometry, groundMaterial);
+                ground.rotation.x = -Math.PI / 2;
+                ground.receiveShadow = true;
+                this.scene.add(ground);
+                
+                // Mouse controls
+                this.setupMouseControls();
+            }
+            
+            buildMascot() {
+                // Remove existing mascot
+                if (this.mascot) {
+                    this.scene.remove(this.mascot);
+                }
+                
+                this.mascot = new THREE.Group();
+                
+                // Build based on config
+                this.buildBody();
+                this.buildHead();
+                this.buildLimbs();
+                this.buildFeatures();
+                
+                this.scene.add(this.mascot);
+                this.mascot.position.y = 1;
+                
+                // Update polygon count
+                this.updatePolyCount();
+            }
+            
+            buildBody() {
+                let bodyGeometry;
+                
+                switch (this.mascotConfig.bodyType) {
+                    case 'round':
+                        bodyGeometry = new THREE.SphereGeometry(
+                            0.8 * this.mascotConfig.width,
+                            32, 32
+                        );
+                        break;
+                    case 'athletic':
+                        bodyGeometry = new THREE.CapsuleGeometry(
+                            0.6 * this.mascotConfig.width,
+                            1.2 * this.mascotConfig.height,
+                            16, 32
+                        );
+                        break;
+                    case 'slim':
+                        bodyGeometry = new THREE.CylinderGeometry(
+                            0.4 * this.mascotConfig.width,
+                            0.6 * this.mascotConfig.width,
+                            1.5 * this.mascotConfig.height,
+                            16
+                        );
+                        break;
+                    case 'cube':
+                        bodyGeometry = new THREE.BoxGeometry(
+                            this.mascotConfig.width,
+                            this.mascotConfig.height,
+                            this.mascotConfig.width
+                        );
+                        break;
+                }
+                
+                const bodyMaterial = new THREE.MeshStandardMaterial({
+                    color: this.mascotConfig.colors.primary,
+                    metalness: 0.3,
+                    roughness: 0.4
+                });
+                
+                const body = new THREE.Mesh(bodyGeometry, bodyMaterial);
+                body.castShadow = true;
+                body.receiveShadow = true;
+                this.mascot.add(body);
+                this.body = body;
+            }
+            
+            buildHead() {
+                const headGeometry = new THREE.SphereGeometry(0.5, 32, 32);
+                const headMaterial = new THREE.MeshStandardMaterial({
+                    color: this.mascotConfig.colors.secondary,
+                    metalness: 0.2,
+                    roughness: 0.3
+                });
+                
+                const head = new THREE.Mesh(headGeometry, headMaterial);
+                head.position.y = 1.2 * this.mascotConfig.height;
+                head.castShadow = true;
+                this.mascot.add(head);
+                this.head = head;
+                
+                // Build eyes based on style
+                this.buildEyes();
+            }
+            
+            buildEyes() {
+                let eyeGeometry;
+                
+                switch (this.mascotConfig.eyeStyle) {
+                    case 'round':
+                        eyeGeometry = new THREE.SphereGeometry(0.08, 16, 16);
+                        break;
+                    case 'oval':
+                        eyeGeometry = new THREE.SphereGeometry(0.08, 8, 16);
+                        eyeGeometry.scale(1, 1.5, 1);
+                        break;
+                    case 'anime':
+                        eyeGeometry = new THREE.SphereGeometry(0.12, 16, 16);
+                        eyeGeometry.scale(0.8, 1.2, 0.5);
+                        break;
+                    case 'dot':
+                        eyeGeometry = new THREE.SphereGeometry(0.05, 8, 8);
+                        break;
+                }
+                
+                const eyeMaterial = new THREE.MeshStandardMaterial({
+                    color: this.mascotConfig.colors.eyes,
+                    metalness: 0.8,
+                    roughness: 0.2
+                });
+                
+                const leftEye = new THREE.Mesh(eyeGeometry, eyeMaterial);
+                leftEye.position.set(-0.15, 1.3 * this.mascotConfig.height, 0.4);
+                this.mascot.add(leftEye);
+                
+                const rightEye = new THREE.Mesh(eyeGeometry.clone(), eyeMaterial);
+                rightEye.position.set(0.15, 1.3 * this.mascotConfig.height, 0.4);
+                this.mascot.add(rightEye);
+            }
+            
+            buildLimbs() {
+                const limbMaterial = new THREE.MeshStandardMaterial({
+                    color: this.mascotConfig.colors.primary,
+                    metalness: 0.3,
+                    roughness: 0.4
+                });
+                
+                // Arms
+                const armGeometry = new THREE.CapsuleGeometry(0.1, 0.6, 8, 16);
+                
+                const leftArm = new THREE.Mesh(armGeometry, limbMaterial);
+                leftArm.position.set(-0.6, 0.8, 0);
+                leftArm.rotation.z = Math.PI / 6;
+                leftArm.castShadow = true;
+                this.mascot.add(leftArm);
+                
+                const rightArm = new THREE.Mesh(armGeometry, limbMaterial);
+                rightArm.position.set(0.6, 0.8, 0);
+                rightArm.rotation.z = -Math.PI / 6;
+                rightArm.castShadow = true;
+                this.mascot.add(rightArm);
+                
+                // Legs
+                const legGeometry = new THREE.CapsuleGeometry(0.12, 0.5, 8, 16);
+                
+                const leftLeg = new THREE.Mesh(legGeometry, limbMaterial);
+                leftLeg.position.set(-0.3, -0.5, 0);
+                leftLeg.castShadow = true;
+                this.mascot.add(leftLeg);
+                
+                const rightLeg = new THREE.Mesh(legGeometry, limbMaterial);
+                rightLeg.position.set(0.3, -0.5, 0);
+                rightLeg.castShadow = true;
+                this.mascot.add(rightLeg);
+            }
+            
+            buildFeatures() {
+                const featureMaterial = new THREE.MeshStandardMaterial({
+                    color: this.mascotConfig.colors.secondary,
+                    metalness: 0.2,
+                    roughness: 0.3
+                });
+                
+                // Tail
+                if (this.mascotConfig.features.tail) {
+                    const tailGroup = new THREE.Group();
+                    for (let i = 0; i < 5; i++) {
+                        const size = 0.15 - (i * 0.02);
+                        const segment = new THREE.Mesh(
+                            new THREE.SphereGeometry(size, 16, 16),
+                            featureMaterial
+                        );
+                        segment.position.set(0, -i * 0.15, -0.5 - (i * 0.1));
+                        segment.castShadow = true;
+                        tailGroup.add(segment);
+                    }
+                    this.mascot.add(tailGroup);
+                }
+                
+                // Wings
+                if (this.mascotConfig.features.wings) {
+                    const wingGeometry = new THREE.ConeGeometry(0.3, 0.8, 8);
+                    wingGeometry.scale(0.2, 1, 1);
+                    
+                    const leftWing = new THREE.Mesh(wingGeometry, featureMaterial);
+                    leftWing.position.set(-0.8, 0.5, -0.2);
+                    leftWing.rotation.z = -Math.PI / 4;
+                    leftWing.castShadow = true;
+                    this.mascot.add(leftWing);
+                    
+                    const rightWing = new THREE.Mesh(wingGeometry, featureMaterial);
+                    rightWing.position.set(0.8, 0.5, -0.2);
+                    rightWing.rotation.z = Math.PI / 4;
+                    rightWing.castShadow = true;
+                    this.mascot.add(rightWing);
+                }
+                
+                // Antennae
+                if (this.mascotConfig.features.antennae) {
+                    const antennaGeometry = new THREE.CylinderGeometry(0.02, 0.03, 0.4, 8);
+                    
+                    const leftAntenna = new THREE.Mesh(antennaGeometry, featureMaterial);
+                    leftAntenna.position.set(-0.1, 1.7 * this.mascotConfig.height, 0);
+                    leftAntenna.rotation.z = -Math.PI / 12;
+                    this.mascot.add(leftAntenna);
+                    
+                    const rightAntenna = new THREE.Mesh(antennaGeometry, featureMaterial);
+                    rightAntenna.position.set(0.1, 1.7 * this.mascotConfig.height, 0);
+                    rightAntenna.rotation.z = Math.PI / 12;
+                    this.mascot.add(rightAntenna);
+                }
+                
+                // Ears
+                if (this.mascotConfig.features.ears) {
+                    const earGeometry = new THREE.ConeGeometry(0.15, 0.3, 8);
+                    
+                    const leftEar = new THREE.Mesh(earGeometry, featureMaterial);
+                    leftEar.position.set(-0.3, 1.6 * this.mascotConfig.height, 0);
+                    leftEar.rotation.z = -Math.PI / 6;
+                    this.mascot.add(leftEar);
+                    
+                    const rightEar = new THREE.Mesh(earGeometry, featureMaterial);
+                    rightEar.position.set(0.3, 1.6 * this.mascotConfig.height, 0);
+                    rightEar.rotation.z = Math.PI / 6;
+                    this.mascot.add(rightEar);
+                }
+            }
+            
+            setupMouseControls() {
+                let mouseDown = false;
+                let mouseX = 0;
+                let mouseY = 0;
+                
+                const canvas = this.renderer.domElement;
+                
+                canvas.addEventListener('mousedown', () => mouseDown = true);
+                canvas.addEventListener('mouseup', () => mouseDown = false);
+                canvas.addEventListener('mouseleave', () => mouseDown = false);
+                
+                canvas.addEventListener('mousemove', (e) => {
+                    if (mouseDown) {
+                        const deltaX = e.clientX - mouseX;
+                        const deltaY = e.clientY - mouseY;
+                        
+                        this.mascot.rotation.y += deltaX * 0.01;
+                        this.camera.position.y = Math.max(1, Math.min(10, this.camera.position.y - deltaY * 0.01));
+                        this.camera.lookAt(0, 1, 0);
+                    }
+                    
+                    mouseX = e.clientX;
+                    mouseY = e.clientY;
+                });
+                
+                // Zoom
+                canvas.addEventListener('wheel', (e) => {
+                    e.preventDefault();
+                    const zoom = e.deltaY > 0 ? 1.1 : 0.9;
+                    this.camera.position.multiplyScalar(zoom);
+                    this.camera.position.y = Math.max(1, Math.min(20, this.camera.position.y));
+                });
+            }
+            
+            animate() {
+                requestAnimationFrame(() => this.animate());
+                
+                const delta = this.clock.getDelta();
+                
+                // Natural idle animation
+                if (this.mascot) {
+                    const time = Date.now() * 0.001;
+                    
+                    // Breathing
+                    if (this.body) {
+                        this.body.scale.x = 1 + Math.sin(time * 2) * 0.02;
+                        this.body.scale.z = 1 + Math.sin(time * 2) * 0.02;
+                    }
+                    
+                    // Head bob
+                    if (this.head) {
+                        this.head.position.x = Math.sin(time) * 0.05;
+                        this.head.position.y = 1.2 * this.mascotConfig.height + Math.sin(time * 1.5) * 0.03;
+                    }
+                    
+                    // Apply movement style
+                    this.applyMovementStyle(time);
+                }
+                
+                // Update FPS
+                this.updateFPS();
+                
+                this.renderer.render(this.scene, this.camera);
+            }
+            
+            applyMovementStyle(time) {
+                switch (this.mascotConfig.movementStyle) {
+                    case 'bird':
+                        // Quick head movements
+                        if (this.head) {
+                            this.head.rotation.y = Math.sin(time * 3) * 0.1;
+                            this.head.rotation.z = Math.cos(time * 2) * 0.05;
+                        }
+                        break;
+                        
+                    case 'mammal':
+                        // Smooth body sway
+                        this.mascot.rotation.z = Math.sin(time * 0.5) * 0.02;
+                        break;
+                        
+                    case 'fluid':
+                        // Wave-like motion
+                        this.mascot.children.forEach((child, index) => {
+                            child.position.y += Math.sin(time * 2 + index * 0.5) * 0.001;
+                        });
+                        break;
+                        
+                    case 'robotic':
+                        // Discrete movements
+                        if (Math.floor(time) % 2 === 0) {
+                            this.mascot.rotation.y = Math.floor(time) * 0.1;
+                        }
+                        break;
+                }
+            }
+            
+            updatePolyCount() {
+                let totalPolys = 0;
+                this.mascot.traverse((child) => {
+                    if (child.geometry) {
+                        totalPolys += child.geometry.attributes.position.count / 3;
+                    }
+                });
+                document.getElementById('polyCount').textContent = Math.floor(totalPolys).toLocaleString();
+            }
+            
+            updateFPS() {
+                const fps = Math.round(1 / this.clock.getDelta());
+                document.getElementById('fpsInfo').textContent = fps;
+            }
+            
+            // Animation methods
+            idle() {
+                // Return to idle state
+                console.log('Idle animation');
+            }
+            
+            walk() {
+                console.log('Walk animation');
+                let walkTime = 0;
+                const walkInterval = setInterval(() => {
+                    walkTime += 0.1;
+                    this.mascot.position.x = Math.sin(walkTime) * 2;
+                    this.mascot.position.z = Math.cos(walkTime) * 2;
+                    this.mascot.lookAt(
+                        Math.sin(walkTime + 0.1) * 2,
+                        0,
+                        Math.cos(walkTime + 0.1) * 2
+                    );
+                    
+                    if (walkTime > Math.PI * 2) {
+                        clearInterval(walkInterval);
+                        this.mascot.position.set(0, 1, 0);
+                        this.mascot.rotation.y = 0;
+                    }
+                }, 50);
+            }
+            
+            jump() {
+                console.log('Jump animation');
+                let jumpVelocity = 0.3;
+                const gravity = -0.02;
+                
+                const jumpInterval = setInterval(() => {
+                    this.mascot.position.y += jumpVelocity;
+                    jumpVelocity += gravity;
+                    
+                    if (this.mascot.position.y <= 1) {
+                        this.mascot.position.y = 1;
+                        clearInterval(jumpInterval);
+                    }
+                }, 16);
+            }
+            
+            dance() {
+                console.log('Dance animation');
+                let danceTime = 0;
+                const danceInterval = setInterval(() => {
+                    danceTime += 0.1;
+                    this.mascot.rotation.y = Math.sin(danceTime) * 0.5;
+                    this.mascot.position.y = 1 + Math.abs(Math.sin(danceTime * 2)) * 0.3;
+                    
+                    if (danceTime > Math.PI * 4) {
+                        clearInterval(danceInterval);
+                        this.mascot.rotation.y = 0;
+                        this.mascot.position.y = 1;
+                    }
+                }, 50);
+            }
+            
+            wave() {
+                console.log('Wave animation');
+                // Implement wave animation
+            }
+        }
+        
+        // Initialize builder
+        const mascotBuilder = new CustomMascotBuilder();
+        window.mascot = mascotBuilder;
+        
+        // Control functions
+        function setBodyType(type) {
+            document.querySelectorAll('.button-group button').forEach(btn => {
+                btn.classList.remove('active');
+            });
+            event.target.classList.add('active');
+            
+            mascotBuilder.mascotConfig.bodyType = type;
+            mascotBuilder.buildMascot();
+        }
+        
+        function updateSlider(property, value) {
+            document.getElementById(`${property}Value`).textContent = value;
+            
+            if (property === 'height' || property === 'width') {
+                mascotBuilder.mascotConfig[property] = parseFloat(value);
+            } else {
+                mascotBuilder.mascotConfig.physics[property] = parseFloat(value);
+            }
+            
+            mascotBuilder.buildMascot();
+        }
+        
+        function updateColor(type, value) {
+            document.getElementById(`${type}Preview`).style.background = value;
+            mascotBuilder.mascotConfig.colors[type] = parseInt(value.replace('#', '0x'), 16);
+            mascotBuilder.buildMascot();
+        }
+        
+        function toggleFeature(feature) {
+            mascotBuilder.mascotConfig.features[feature] = !mascotBuilder.mascotConfig.features[feature];
+            event.target.classList.toggle('active');
+            mascotBuilder.buildMascot();
+        }
+        
+        function setEyeStyle(style) {
+            document.querySelectorAll('.button-group button').forEach(btn => {
+                btn.classList.remove('active');
+            });
+            event.target.classList.add('active');
+            
+            mascotBuilder.mascotConfig.eyeStyle = style;
+            mascotBuilder.buildMascot();
+        }
+        
+        function setMovementStyle(style) {
+            document.querySelectorAll('.button-group button').forEach(btn => {
+                btn.classList.remove('active');
+            });
+            event.target.classList.add('active');
+            
+            mascotBuilder.mascotConfig.movementStyle = style;
+            document.getElementById('physicsInfo').textContent = 
+                style.charAt(0).toUpperCase() + style.slice(1);
+        }
+        
+        function loadPreset(preset) {
+            const presets = {
+                bird: {
+                    bodyType: 'round',
+                    colors: { primary: 0xFFD700, secondary: 0xFFA500, eyes: 0x000000 },
+                    features: { wings: true, tail: true },
+                    movementStyle: 'bird'
+                },
+                cat: {
+                    bodyType: 'athletic',
+                    colors: { primary: 0x8B4513, secondary: 0xD2691E, eyes: 0x00FF00 },
+                    features: { ears: true, tail: true },
+                    movementStyle: 'mammal'
+                },
+                robot: {
+                    bodyType: 'cube',
+                    colors: { primary: 0x808080, secondary: 0xC0C0C0, eyes: 0xFF0000 },
+                    features: { antennae: true },
+                    movementStyle: 'robotic'
+                }
+            };
+            
+            if (presets[preset]) {
+                Object.assign(mascotBuilder.mascotConfig, presets[preset]);
+                mascotBuilder.buildMascot();
+                updateUI();
+            }
+        }
+        
+        function updateUI() {
+            // Update all UI elements to match config
+            // This would sync sliders, colors, etc.
+        }
+        
+        function exportMascot() {
+            const config = JSON.stringify(mascotBuilder.mascotConfig, null, 2);
+            const blob = new Blob([config], { type: 'application/json' });
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = 'mascot-config.json';
+            a.click();
+        }
+        
+        function saveMascot() {
+            localStorage.setItem('customMascot', JSON.stringify(mascotBuilder.mascotConfig));
+            alert('Mascot design saved!');
+        }
+        
+        function loadMascot() {
+            const saved = localStorage.getItem('customMascot');
+            if (saved) {
+                mascotBuilder.mascotConfig = JSON.parse(saved);
+                mascotBuilder.buildMascot();
+                updateUI();
+                alert('Mascot design loaded!');
+            }
+        }
+    </script>
+</body>
+</html>

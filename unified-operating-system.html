@@ -1,0 +1,1225 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>🖥️ Document Generator OS</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            font-family: 'Segoe UI', -apple-system, BlinkMacSystemFont, sans-serif;
+            background: linear-gradient(135deg, #0f0f23 0%, #1a1a2e 50%, #16213e 100%);
+            color: #e1e5ee;
+            height: 100vh;
+            overflow: hidden;
+            user-select: none;
+        }
+        
+        /* Desktop Environment */
+        .desktop {
+            position: relative;
+            width: 100vw;
+            height: 100vh;
+            background-image: 
+                radial-gradient(circle at 20% 50%, rgba(0, 255, 136, 0.1) 0%, transparent 50%),
+                radial-gradient(circle at 80% 20%, rgba(255, 107, 107, 0.1) 0%, transparent 50%),
+                radial-gradient(circle at 40% 80%, rgba(107, 107, 255, 0.1) 0%, transparent 50%);
+        }
+        
+        /* Taskbar */
+        .taskbar {
+            position: fixed;
+            bottom: 0;
+            left: 0;
+            right: 0;
+            height: 60px;
+            background: rgba(0, 0, 0, 0.9);
+            border-top: 1px solid #333;
+            backdrop-filter: blur(10px);
+            display: flex;
+            align-items: center;
+            padding: 0 15px;
+            z-index: 1000;
+        }
+        
+        .start-button {
+            background: linear-gradient(45deg, #00ff88, #0088ff);
+            border: none;
+            border-radius: 8px;
+            padding: 10px 20px;
+            color: black;
+            font-weight: bold;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            margin-right: 15px;
+        }
+        
+        .start-button:hover {
+            transform: scale(1.05);
+            box-shadow: 0 5px 15px rgba(0, 255, 136, 0.3);
+        }
+        
+        .taskbar-apps {
+            display: flex;
+            gap: 5px;
+            flex: 1;
+        }
+        
+        .taskbar-app {
+            background: rgba(255, 255, 255, 0.1);
+            border: 1px solid #444;
+            border-radius: 5px;
+            padding: 8px 12px;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            position: relative;
+            min-width: 120px;
+            text-align: center;
+            font-size: 0.9em;
+        }
+        
+        .taskbar-app:hover {
+            background: rgba(255, 255, 255, 0.2);
+        }
+        
+        .taskbar-app.active {
+            background: rgba(0, 255, 136, 0.3);
+            border-color: #00ff88;
+        }
+        
+        .taskbar-app.has-notification::after {
+            content: '';
+            position: absolute;
+            top: 2px;
+            right: 2px;
+            width: 8px;
+            height: 8px;
+            background: #ff4444;
+            border-radius: 50%;
+        }
+        
+        .system-tray {
+            display: flex;
+            gap: 10px;
+            align-items: center;
+            margin-left: 15px;
+        }
+        
+        .tray-icon {
+            width: 24px;
+            height: 24px;
+            background: rgba(255, 255, 255, 0.1);
+            border-radius: 3px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            font-size: 0.8em;
+        }
+        
+        .tray-icon:hover {
+            background: rgba(255, 255, 255, 0.2);
+        }
+        
+        .tray-icon.online {
+            background: rgba(0, 255, 136, 0.3);
+        }
+        
+        .tray-icon.offline {
+            background: rgba(255, 68, 68, 0.3);
+        }
+        
+        .system-time {
+            color: #ccc;
+            font-size: 0.9em;
+            margin-left: 10px;
+        }
+        
+        /* Start Menu */
+        .start-menu {
+            position: fixed;
+            bottom: 70px;
+            left: 15px;
+            width: 400px;
+            height: 500px;
+            background: rgba(0, 0, 0, 0.95);
+            border: 1px solid #333;
+            border-radius: 10px;
+            backdrop-filter: blur(20px);
+            display: none;
+            z-index: 1001;
+            padding: 20px;
+        }
+        
+        .start-menu.open {
+            display: block;
+            animation: slideUp 0.3s ease-out;
+        }
+        
+        @keyframes slideUp {
+            from {
+                opacity: 0;
+                transform: translateY(20px);
+            }
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+        
+        .start-menu-header {
+            color: #00ff88;
+            font-size: 1.5em;
+            font-weight: bold;
+            margin-bottom: 20px;
+            text-align: center;
+        }
+        
+        .start-menu-apps {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 15px;
+            margin-bottom: 20px;
+        }
+        
+        .start-app {
+            background: rgba(255, 255, 255, 0.1);
+            border: 1px solid #444;
+            border-radius: 8px;
+            padding: 15px 10px;
+            text-align: center;
+            cursor: pointer;
+            transition: all 0.3s ease;
+        }
+        
+        .start-app:hover {
+            background: rgba(255, 255, 255, 0.2);
+            transform: translateY(-2px);
+        }
+        
+        .start-app-icon {
+            font-size: 2em;
+            margin-bottom: 5px;
+        }
+        
+        .start-app-name {
+            font-size: 0.8em;
+            color: #ccc;
+        }
+        
+        .start-menu-footer {
+            border-top: 1px solid #333;
+            padding-top: 15px;
+            display: flex;
+            justify-content: space-between;
+        }
+        
+        .footer-btn {
+            background: rgba(255, 255, 255, 0.1);
+            border: 1px solid #444;
+            border-radius: 5px;
+            padding: 8px 12px;
+            color: #ccc;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            font-size: 0.8em;
+        }
+        
+        .footer-btn:hover {
+            background: rgba(255, 255, 255, 0.2);
+        }
+        
+        /* Windows */
+        .window {
+            position: absolute;
+            background: rgba(0, 0, 0, 0.9);
+            border: 1px solid #333;
+            border-radius: 10px;
+            backdrop-filter: blur(10px);
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.5);
+            display: none;
+            resize: both;
+            overflow: hidden;
+            min-width: 400px;
+            min-height: 300px;
+        }
+        
+        .window.active {
+            display: flex;
+            flex-direction: column;
+            z-index: 100;
+        }
+        
+        .window.maximized {
+            top: 0 !important;
+            left: 0 !important;
+            width: 100vw !important;
+            height: calc(100vh - 60px) !important;
+            resize: none;
+        }
+        
+        .window-header {
+            background: rgba(0, 0, 0, 0.8);
+            padding: 10px 15px;
+            border-bottom: 1px solid #333;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            cursor: move;
+        }
+        
+        .window-title {
+            color: #00ff88;
+            font-weight: bold;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+        
+        .window-controls {
+            display: flex;
+            gap: 5px;
+        }
+        
+        .window-control {
+            width: 12px;
+            height: 12px;
+            border-radius: 50%;
+            cursor: pointer;
+            transition: opacity 0.3s ease;
+        }
+        
+        .window-control:hover {
+            opacity: 0.8;
+        }
+        
+        .control-close {
+            background: #ff5555;
+        }
+        
+        .control-minimize {
+            background: #ffaa00;
+        }
+        
+        .control-maximize {
+            background: #00ff88;
+        }
+        
+        .window-content {
+            flex: 1;
+            overflow: hidden;
+        }
+        
+        .window-content iframe {
+            width: 100%;
+            height: 100%;
+            border: none;
+            background: white;
+        }
+        
+        /* Desktop Icons */
+        .desktop-icon {
+            position: absolute;
+            width: 80px;
+            text-align: center;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            user-select: none;
+        }
+        
+        .desktop-icon:hover {
+            transform: scale(1.05);
+        }
+        
+        .desktop-icon-image {
+            width: 48px;
+            height: 48px;
+            background: rgba(0, 255, 136, 0.2);
+            border: 1px solid #00ff88;
+            border-radius: 8px;
+            margin: 0 auto 5px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 1.5em;
+        }
+        
+        .desktop-icon-label {
+            font-size: 0.8em;
+            color: #ccc;
+            text-shadow: 1px 1px 2px rgba(0, 0, 0, 0.8);
+        }
+        
+        /* Status Display */
+        .status-display {
+            position: fixed;
+            top: 15px;
+            right: 15px;
+            background: rgba(0, 0, 0, 0.8);
+            border: 1px solid #333;
+            border-radius: 8px;
+            padding: 10px 15px;
+            font-size: 0.8em;
+            z-index: 999;
+        }
+        
+        .status-item {
+            display: flex;
+            justify-content: space-between;
+            margin-bottom: 5px;
+        }
+        
+        .status-item:last-child {
+            margin-bottom: 0;
+        }
+        
+        .status-value {
+            color: #00ff88;
+            margin-left: 10px;
+        }
+        
+        .status-value.offline {
+            color: #ff4444;
+        }
+        
+        /* Notification System */
+        .notifications {
+            position: fixed;
+            top: 15px;
+            left: 15px;
+            z-index: 999;
+            pointer-events: none;
+        }
+        
+        .notification {
+            background: rgba(0, 0, 0, 0.9);
+            border: 1px solid #333;
+            border-left: 4px solid #00ff88;
+            border-radius: 5px;
+            padding: 10px 15px;
+            margin-bottom: 10px;
+            max-width: 300px;
+            animation: slideInLeft 0.3s ease-out;
+            pointer-events: all;
+            cursor: pointer;
+        }
+        
+        .notification.error {
+            border-left-color: #ff4444;
+        }
+        
+        .notification.warning {
+            border-left-color: #ffaa00;
+        }
+        
+        .notification.info {
+            border-left-color: #0088ff;
+        }
+        
+        @keyframes slideInLeft {
+            from {
+                opacity: 0;
+                transform: translateX(-100%);
+            }
+            to {
+                opacity: 1;
+                transform: translateX(0);
+            }
+        }
+        
+        .notification-title {
+            font-weight: bold;
+            margin-bottom: 5px;
+        }
+        
+        .notification-content {
+            font-size: 0.9em;
+            color: #ccc;
+        }
+        
+        /* Loading Overlay */
+        .loading-overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: rgba(0, 0, 0, 0.8);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            z-index: 9999;
+            backdrop-filter: blur(5px);
+        }
+        
+        .loading-content {
+            text-align: center;
+            color: #00ff88;
+        }
+        
+        .loading-spinner {
+            width: 50px;
+            height: 50px;
+            border: 3px solid #333;
+            border-top: 3px solid #00ff88;
+            border-radius: 50%;
+            animation: spin 1s linear infinite;
+            margin: 0 auto 20px;
+        }
+        
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+        
+        .loading-text {
+            font-size: 1.2em;
+            margin-bottom: 10px;
+        }
+        
+        .loading-progress {
+            font-size: 0.9em;
+            color: #888;
+        }
+        
+        /* Responsive */
+        @media (max-width: 768px) {
+            .taskbar {
+                height: 50px;
+                padding: 0 10px;
+            }
+            
+            .start-menu {
+                width: calc(100vw - 30px);
+                left: 15px;
+                right: 15px;
+            }
+            
+            .start-menu-apps {
+                grid-template-columns: repeat(2, 1fr);
+            }
+            
+            .window {
+                width: calc(100vw - 20px) !important;
+                height: calc(100vh - 80px) !important;
+                top: 10px !important;
+                left: 10px !important;
+            }
+        }
+    </style>
+</head>
+<body>
+    <!-- Loading Overlay -->
+    <div class="loading-overlay" id="loadingOverlay">
+        <div class="loading-content">
+            <div class="loading-spinner"></div>
+            <div class="loading-text">Initializing Document Generator OS</div>
+            <div class="loading-progress" id="loadingProgress">Starting systems...</div>
+        </div>
+    </div>
+    
+    <!-- Desktop -->
+    <div class="desktop" id="desktop">
+        <!-- Desktop Icons -->
+        <div class="desktop-icon" style="top: 50px; left: 50px;" onclick="openApp('ideas-npc')">
+            <div class="desktop-icon-image">🧠</div>
+            <div class="desktop-icon-label">Ideas NPC</div>
+        </div>
+        
+        <div class="desktop-icon" style="top: 50px; left: 150px;" onclick="openApp('qr-reasoning')">
+            <div class="desktop-icon-image">🎯</div>
+            <div class="desktop-icon-label">QR Reasoning</div>
+        </div>
+        
+        <div class="desktop-icon" style="top: 50px; left: 250px;" onclick="openApp('project-bartering')">
+            <div class="desktop-icon-image">🏛️</div>
+            <div class="desktop-icon-label">Project Barter</div>
+        </div>
+        
+        <div class="desktop-icon" style="top: 150px; left: 50px;" onclick="openApp('document-generator')">
+            <div class="desktop-icon-image">📄</div>
+            <div class="desktop-icon-label">Doc Generator</div>
+        </div>
+        
+        <div class="desktop-icon" style="top: 150px; left: 150px;" onclick="openApp('gaming-universe')">
+            <div class="desktop-icon-image">🎮</div>
+            <div class="desktop-icon-label">Gaming Universe</div>
+        </div>
+        
+        <div class="desktop-icon" style="top: 150px; left: 250px;" onclick="openApp('blamechain')">
+            <div class="desktop-icon-image">⛓️</div>
+            <div class="desktop-icon-label">Blamechain</div>
+        </div>
+        
+        <div class="desktop-icon" style="top: 250px; left: 50px;" onclick="openApp('business-management')">
+            <div class="desktop-icon-image">💼</div>
+            <div class="desktop-icon-label">Business Mgmt</div>
+        </div>
+        
+        <div class="desktop-icon" style="top: 250px; left: 150px;" onclick="openApp('system-control')">
+            <div class="desktop-icon-image">🔧</div>
+            <div class="desktop-icon-label">System Control</div>
+        </div>
+    </div>
+    
+    <!-- Status Display -->
+    <div class="status-display">
+        <div class="status-item">
+            <span>Ideas NPC:</span>
+            <span class="status-value offline" id="statusIdeasNPC">Offline</span>
+        </div>
+        <div class="status-item">
+            <span>QR-UPC:</span>
+            <span class="status-value offline" id="statusQRUPC">Offline</span>
+        </div>
+        <div class="status-item">
+            <span>Bartering:</span>
+            <span class="status-value offline" id="statusBartering">Offline</span>
+        </div>
+        <div class="status-item">
+            <span>Projects:</span>
+            <span class="status-value" id="statusProjects">0</span>
+        </div>
+        <div class="status-item">
+            <span>Business:</span>
+            <span class="status-value offline" id="statusBusiness">Offline</span>
+        </div>
+    </div>
+    
+    <!-- Notifications -->
+    <div class="notifications" id="notifications"></div>
+    
+    <!-- Windows -->
+    <!-- Ideas NPC Window -->
+    <div class="window" id="window-ideas-npc">
+        <div class="window-header">
+            <div class="window-title">
+                <span>🧠</span>
+                <span>Ideas NPC - Personal Thought Processor</span>
+            </div>
+            <div class="window-controls">
+                <div class="window-control control-minimize" onclick="minimizeWindow('ideas-npc')"></div>
+                <div class="window-control control-maximize" onclick="toggleMaximize('ideas-npc')"></div>
+                <div class="window-control control-close" onclick="closeWindow('ideas-npc')"></div>
+            </div>
+        </div>
+        <div class="window-content">
+            <iframe src="ideas-npc-interface.html"></iframe>
+        </div>
+    </div>
+    
+    <!-- QR Reasoning Window -->
+    <div class="window" id="window-qr-reasoning">
+        <div class="window-header">
+            <div class="window-title">
+                <span>🎯</span>
+                <span>QR-UPC Reasoning Monitor</span>
+            </div>
+            <div class="window-controls">
+                <div class="window-control control-minimize" onclick="minimizeWindow('qr-reasoning')"></div>
+                <div class="window-control control-maximize" onclick="toggleMaximize('qr-reasoning')"></div>
+                <div class="window-control control-close" onclick="closeWindow('qr-reasoning')"></div>
+            </div>
+        </div>
+        <div class="window-content">
+            <iframe src="php-style-oss-reasoning-boards.html"></iframe>
+        </div>
+    </div>
+    
+    <!-- Project Bartering Window -->
+    <div class="window" id="window-project-bartering">
+        <div class="window-header">
+            <div class="window-title">
+                <span>🏛️</span>
+                <span>Live Project Bartering System</span>
+            </div>
+            <div class="window-controls">
+                <div class="window-control control-minimize" onclick="minimizeWindow('project-bartering')"></div>
+                <div class="window-control control-maximize" onclick="toggleMaximize('project-bartering')"></div>
+                <div class="window-control control-close" onclick="closeWindow('project-bartering')"></div>
+            </div>
+        </div>
+        <div class="window-content">
+            <iframe src="live-project-bartering-interface.html"></iframe>
+        </div>
+    </div>
+    
+    <!-- Document Generator Window -->
+    <div class="window" id="window-document-generator">
+        <div class="window-header">
+            <div class="window-title">
+                <span>📄</span>
+                <span>Document Generator Platform</span>
+            </div>
+            <div class="window-controls">
+                <div class="window-control control-minimize" onclick="minimizeWindow('document-generator')"></div>
+                <div class="window-control control-maximize" onclick="toggleMaximize('document-generator')"></div>
+                <div class="window-control control-close" onclick="closeWindow('document-generator')"></div>
+            </div>
+        </div>
+        <div class="window-content">
+            <iframe src="http://localhost:8080"></iframe>
+        </div>
+    </div>
+    
+    <!-- Business Management Window -->
+    <div class="window" id="window-business-management">
+        <div class="window-header">
+            <div class="window-title">
+                <span>💼</span>
+                <span>Business Management Center</span>
+            </div>
+            <div class="window-controls">
+                <div class="window-control control-minimize" onclick="minimizeWindow('business-management')"></div>
+                <div class="window-control control-maximize" onclick="toggleMaximize('business-management')"></div>
+                <div class="window-control control-close" onclick="closeWindow('business-management')"></div>
+            </div>
+        </div>
+        <div class="window-content">
+            <iframe src="business-management-interface.html"></iframe>
+        </div>
+    </div>
+    
+    <!-- System Control Window -->
+    <div class="window" id="window-system-control">
+        <div class="window-header">
+            <div class="window-title">
+                <span>🔧</span>
+                <span>System Control Center</span>
+            </div>
+            <div class="window-controls">
+                <div class="window-control control-minimize" onclick="minimizeWindow('system-control')"></div>
+                <div class="window-control control-maximize" onclick="toggleMaximize('system-control')"></div>
+                <div class="window-control control-close" onclick="closeWindow('system-control')"></div>
+            </div>
+        </div>
+        <div class="window-content">
+            <iframe src="system-control-interface.html"></iframe>
+        </div>
+    </div>
+    
+    <!-- Start Menu -->
+    <div class="start-menu" id="startMenu">
+        <div class="start-menu-header">Document Generator OS</div>
+        <div class="start-menu-apps">
+            <div class="start-app" onclick="openApp('ideas-npc')">
+                <div class="start-app-icon">🧠</div>
+                <div class="start-app-name">Ideas NPC</div>
+            </div>
+            <div class="start-app" onclick="openApp('qr-reasoning')">
+                <div class="start-app-icon">🎯</div>
+                <div class="start-app-name">QR Reasoning</div>
+            </div>
+            <div class="start-app" onclick="openApp('project-bartering')">
+                <div class="start-app-icon">🏛️</div>
+                <div class="start-app-name">Project Barter</div>
+            </div>
+            <div class="start-app" onclick="openApp('document-generator')">
+                <div class="start-app-icon">📄</div>
+                <div class="start-app-name">Doc Generator</div>
+            </div>
+            <div class="start-app" onclick="openApp('gaming-universe')">
+                <div class="start-app-icon">🎮</div>
+                <div class="start-app-name">Gaming Universe</div>
+            </div>
+            <div class="start-app" onclick="openApp('blamechain')">
+                <div class="start-app-icon">⛓️</div>
+                <div class="start-app-name">Blamechain</div>
+            </div>
+            <div class="start-app" onclick="openApp('business-management')">
+                <div class="start-app-icon">💼</div>
+                <div class="start-app-name">Business Mgmt</div>
+            </div>
+            <div class="start-app" onclick="openApp('system-control')">
+                <div class="start-app-icon">🔧</div>
+                <div class="start-app-name">System Control</div>
+            </div>
+        </div>
+        <div class="start-menu-footer">
+            <div class="footer-btn" onclick="launchAllSystems()">🚀 Launch All</div>
+            <div class="footer-btn" onclick="showSettings()">⚙️ Settings</div>
+            <div class="footer-btn" onclick="showAbout()">ℹ️ About</div>
+        </div>
+    </div>
+    
+    <!-- Taskbar -->
+    <div class="taskbar">
+        <button class="start-button" onclick="toggleStartMenu()">
+            🖥️ Document Generator OS
+        </button>
+        
+        <div class="taskbar-apps" id="taskbarApps">
+            <!-- Taskbar apps will be populated here -->
+        </div>
+        
+        <div class="system-tray">
+            <div class="tray-icon offline" id="trayIdeasNPC" title="Ideas NPC">🧠</div>
+            <div class="tray-icon offline" id="trayQRUPC" title="QR-UPC System">🎯</div>
+            <div class="tray-icon offline" id="trayBartering" title="Bartering System">🏛️</div>
+            <div class="tray-icon offline" id="trayDocGen" title="Document Generator">📄</div>
+            <div class="tray-icon offline" id="trayBusiness" title="Business Management">💼</div>
+            <div class="tray-icon offline" id="traySystemControl" title="System Control">🔧</div>
+        </div>
+        
+        <div class="system-time" id="systemTime">12:00 PM</div>
+    </div>
+    
+    <script>
+        class DocumentGeneratorOS {
+            constructor() {
+                this.openWindows = new Set();
+                this.activeWindow = null;
+                this.startMenuOpen = false;
+                this.windowIndex = 100;
+                this.connections = new Map();
+                
+                this.initializeOS();
+            }
+            
+            async initializeOS() {
+                console.log('🖥️ Initializing Document Generator OS...');
+                
+                // Show loading
+                this.updateLoadingProgress('Initializing desktop environment...');
+                await this.delay(1000);
+                
+                // Initialize system components
+                this.updateLoadingProgress('Setting up window manager...');
+                this.initializeWindowManager();
+                await this.delay(500);
+                
+                this.updateLoadingProgress('Starting system services...');
+                this.initializeSystemTray();
+                this.initializeTaskbar();
+                await this.delay(500);
+                
+                this.updateLoadingProgress('Connecting to backend services...');
+                await this.connectToServices();
+                await this.delay(1000);
+                
+                this.updateLoadingProgress('Finalizing startup...');
+                this.startSystemTimers();
+                await this.delay(500);
+                
+                // Hide loading overlay
+                document.getElementById('loadingOverlay').style.display = 'none';
+                
+                // Show welcome notification
+                this.showNotification('System Ready', 'Document Generator OS has loaded successfully!', 'success');
+                
+                console.log('✅ Document Generator OS ready!');
+            }
+            
+            delay(ms) {
+                return new Promise(resolve => setTimeout(resolve, ms));
+            }
+            
+            updateLoadingProgress(text) {
+                document.getElementById('loadingProgress').textContent = text;
+            }
+            
+            initializeWindowManager() {
+                // Make windows draggable
+                document.querySelectorAll('.window').forEach(window => {
+                    this.makeWindowDraggable(window);
+                    this.makeWindowResizable(window);
+                });
+                
+                // Desktop click handler
+                document.getElementById('desktop').addEventListener('click', (e) => {
+                    if (e.target === e.currentTarget) {
+                        this.closeStartMenu();
+                    }
+                });
+            }
+            
+            makeWindowDraggable(windowEl) {
+                const header = windowEl.querySelector('.window-header');
+                let isDragging = false;
+                let currentX = 0;
+                let currentY = 0;
+                let initialX = 0;
+                let initialY = 0;
+                
+                header.addEventListener('mousedown', (e) => {
+                    if (e.target.classList.contains('window-control')) return;
+                    
+                    isDragging = true;
+                    initialX = e.clientX - windowEl.offsetLeft;
+                    initialY = e.clientY - windowEl.offsetTop;
+                    
+                    this.bringWindowToFront(windowEl);
+                });
+                
+                document.addEventListener('mousemove', (e) => {
+                    if (!isDragging) return;
+                    
+                    currentX = e.clientX - initialX;
+                    currentY = e.clientY - initialY;
+                    
+                    windowEl.style.left = currentX + 'px';
+                    windowEl.style.top = Math.max(0, currentY) + 'px';
+                });
+                
+                document.addEventListener('mouseup', () => {
+                    isDragging = false;
+                });
+            }
+            
+            makeWindowResizable(windowEl) {
+                // Basic resize functionality
+                windowEl.addEventListener('mousedown', (e) => {
+                    if (e.target === windowEl && 
+                        e.offsetX > windowEl.offsetWidth - 20 && 
+                        e.offsetY > windowEl.offsetHeight - 20) {
+                        
+                        let isResizing = true;
+                        
+                        const resize = (e) => {
+                            if (!isResizing) return;
+                            
+                            const rect = windowEl.getBoundingClientRect();
+                            windowEl.style.width = (e.clientX - rect.left) + 'px';
+                            windowEl.style.height = (e.clientY - rect.top) + 'px';
+                        };
+                        
+                        document.addEventListener('mousemove', resize);
+                        document.addEventListener('mouseup', () => {
+                            isResizing = false;
+                            document.removeEventListener('mousemove', resize);
+                        });
+                    }
+                });
+            }
+            
+            bringWindowToFront(windowEl) {
+                this.windowIndex++;
+                windowEl.style.zIndex = this.windowIndex;
+                
+                // Update active window
+                document.querySelectorAll('.window').forEach(w => w.classList.remove('active'));
+                windowEl.classList.add('active');
+                
+                // Update taskbar
+                this.updateTaskbar();
+            }
+            
+            initializeSystemTray() {
+                // System tray click handlers
+                document.getElementById('trayIdeasNPC').addEventListener('click', () => {
+                    this.openApp('ideas-npc');
+                });
+                
+                document.getElementById('trayQRUPC').addEventListener('click', () => {
+                    this.openApp('qr-reasoning');
+                });
+                
+                document.getElementById('trayBartering').addEventListener('click', () => {
+                    this.openApp('project-bartering');
+                });
+                
+                document.getElementById('trayDocGen').addEventListener('click', () => {
+                    this.openApp('document-generator');
+                });
+                
+                document.getElementById('trayBusiness').addEventListener('click', () => {
+                    this.openApp('business-management');
+                });
+                
+                document.getElementById('traySystemControl').addEventListener('click', () => {
+                    this.openApp('system-control');
+                });
+            }
+            
+            initializeTaskbar() {
+                this.updateTaskbar();
+            }
+            
+            updateTaskbar() {
+                const taskbarApps = document.getElementById('taskbarApps');
+                taskbarApps.innerHTML = '';
+                
+                this.openWindows.forEach(appId => {
+                    const app = this.getAppInfo(appId);
+                    if (!app) return;
+                    
+                    const taskbarApp = document.createElement('div');
+                    taskbarApp.className = 'taskbar-app';
+                    taskbarApp.innerHTML = `${app.icon} ${app.name}`;
+                    
+                    // Check if window is active
+                    const window = document.getElementById(`window-${appId}`);
+                    if (window && window.classList.contains('active')) {
+                        taskbarApp.classList.add('active');
+                    }
+                    
+                    taskbarApp.addEventListener('click', () => {
+                        if (window.style.display === 'none') {
+                            this.openApp(appId);
+                        } else {
+                            this.bringWindowToFront(window);
+                        }
+                    });
+                    
+                    taskbarApps.appendChild(taskbarApp);
+                });
+            }
+            
+            getAppInfo(appId) {
+                const apps = {
+                    'ideas-npc': { name: 'Ideas NPC', icon: '🧠' },
+                    'qr-reasoning': { name: 'QR Reasoning', icon: '🎯' },
+                    'project-bartering': { name: 'Project Barter', icon: '🏛️' },
+                    'document-generator': { name: 'Doc Generator', icon: '📄' },
+                    'gaming-universe': { name: 'Gaming Universe', icon: '🎮' },
+                    'blamechain': { name: 'Blamechain', icon: '⛓️' },
+                    'business-management': { name: 'Business Mgmt', icon: '💼' },
+                    'system-control': { name: 'System Control', icon: '🔧' }
+                };
+                
+                return apps[appId];
+            }
+            
+            async connectToServices() {
+                // Try to connect to each service
+                await this.checkService('Ideas NPC', 'ws://localhost:8085', 'statusIdeasNPC', 'trayIdeasNPC');
+                await this.checkService('QR-UPC System', 'ws://localhost:8082', 'statusQRUPC', 'trayQRUPC');
+                await this.checkService('Bartering System', 'ws://localhost:8084', 'statusBartering', 'trayBartering');
+                await this.checkService('Document Generator', 'http://localhost:8080', 'statusDocGen', 'trayDocGen', true);
+                await this.checkService('Business Management', 'ws://localhost:8086', 'statusBusiness', 'trayBusiness');
+            }
+            
+            async checkService(name, url, statusId, trayId, isHttp = false) {
+                try {
+                    if (isHttp) {
+                        // HTTP check
+                        const response = await fetch(url, { method: 'HEAD', mode: 'no-cors' });
+                        this.updateServiceStatus(statusId, trayId, true);
+                    } else {
+                        // WebSocket check
+                        const ws = new WebSocket(url);
+                        
+                        ws.onopen = () => {
+                            this.updateServiceStatus(statusId, trayId, true);
+                            ws.close();
+                        };
+                        
+                        ws.onerror = () => {
+                            this.updateServiceStatus(statusId, trayId, false);
+                        };
+                    }
+                } catch (error) {
+                    this.updateServiceStatus(statusId, trayId, false);
+                }
+            }
+            
+            updateServiceStatus(statusId, trayId, online) {
+                const statusEl = document.getElementById(statusId);
+                const trayEl = document.getElementById(trayId);
+                
+                if (online) {
+                    statusEl.textContent = 'Online';
+                    statusEl.classList.remove('offline');
+                    trayEl.classList.remove('offline');
+                    trayEl.classList.add('online');
+                } else {
+                    statusEl.textContent = 'Offline';
+                    statusEl.classList.add('offline');
+                    trayEl.classList.add('offline');
+                    trayEl.classList.remove('online');
+                }
+            }
+            
+            startSystemTimers() {
+                // Update system time
+                setInterval(() => {
+                    const now = new Date();
+                    const timeString = now.toLocaleTimeString([], { 
+                        hour: '2-digit', 
+                        minute: '2-digit' 
+                    });
+                    document.getElementById('systemTime').textContent = timeString;
+                }, 1000);
+                
+                // Periodic service checks
+                setInterval(() => {
+                    this.connectToServices();
+                }, 30000); // Every 30 seconds
+            }
+            
+            openApp(appId) {
+                const window = document.getElementById(`window-${appId}`);
+                if (!window) {
+                    console.warn(`Window not found: ${appId}`);
+                    return;
+                }
+                
+                // Add to open windows
+                this.openWindows.add(appId);
+                
+                // Position window
+                if (!window.style.left) {
+                    const offset = this.openWindows.size * 30;
+                    window.style.left = (100 + offset) + 'px';
+                    window.style.top = (50 + offset) + 'px';
+                    window.style.width = '800px';
+                    window.style.height = '600px';
+                }
+                
+                // Show window
+                window.style.display = 'flex';
+                this.bringWindowToFront(window);
+                
+                // Close start menu
+                this.closeStartMenu();
+                
+                // Update taskbar
+                this.updateTaskbar();
+                
+                console.log(`Opened app: ${appId}`);
+            }
+            
+            closeWindow(appId) {
+                const window = document.getElementById(`window-${appId}`);
+                if (window) {
+                    window.style.display = 'none';
+                    this.openWindows.delete(appId);
+                    this.updateTaskbar();
+                }
+            }
+            
+            minimizeWindow(appId) {
+                const window = document.getElementById(`window-${appId}`);
+                if (window) {
+                    window.style.display = 'none';
+                    this.updateTaskbar();
+                }
+            }
+            
+            toggleMaximize(appId) {
+                const window = document.getElementById(`window-${appId}`);
+                if (window) {
+                    window.classList.toggle('maximized');
+                }
+            }
+            
+            toggleStartMenu() {
+                const startMenu = document.getElementById('startMenu');
+                this.startMenuOpen = !this.startMenuOpen;
+                
+                if (this.startMenuOpen) {
+                    startMenu.classList.add('open');
+                } else {
+                    startMenu.classList.remove('open');
+                }
+            }
+            
+            closeStartMenu() {
+                const startMenu = document.getElementById('startMenu');
+                startMenu.classList.remove('open');
+                this.startMenuOpen = false;
+            }
+            
+            showNotification(title, content, type = 'info') {
+                const notifications = document.getElementById('notifications');
+                const notification = document.createElement('div');
+                notification.className = `notification ${type}`;
+                
+                notification.innerHTML = `
+                    <div class="notification-title">${title}</div>
+                    <div class="notification-content">${content}</div>
+                `;
+                
+                notifications.appendChild(notification);
+                
+                // Auto-remove after 5 seconds
+                setTimeout(() => {
+                    if (notification.parentNode) {
+                        notification.parentNode.removeChild(notification);
+                    }
+                }, 5000);
+                
+                // Click to dismiss
+                notification.addEventListener('click', () => {
+                    if (notification.parentNode) {
+                        notification.parentNode.removeChild(notification);
+                    }
+                });
+            }
+            
+            async launchAllSystems() {
+                this.showNotification('Launching Systems', 'Starting all backend services...', 'info');
+                
+                // This would ideally trigger the launch script
+                console.log('🚀 Would launch all systems via backend');
+                
+                this.closeStartMenu();
+                
+                // Simulate launching
+                setTimeout(() => {
+                    this.showNotification('Systems Online', 'All services are now running!', 'success');
+                    this.connectToServices();
+                }, 3000);
+            }
+            
+            showSettings() {
+                this.showNotification('Settings', 'Settings panel coming soon...', 'info');
+                this.closeStartMenu();
+            }
+            
+            showAbout() {
+                this.showNotification(
+                    'About Document Generator OS', 
+                    'A unified operating system interface for your AI-powered project ecosystem. Version 1.0.0', 
+                    'info'
+                );
+                this.closeStartMenu();
+            }
+        }
+        
+        // Global functions for window controls
+        function openApp(appId) {
+            os.openApp(appId);
+        }
+        
+        function closeWindow(appId) {
+            os.closeWindow(appId);
+        }
+        
+        function minimizeWindow(appId) {
+            os.minimizeWindow(appId);
+        }
+        
+        function toggleMaximize(appId) {
+            os.toggleMaximize(appId);
+        }
+        
+        function toggleStartMenu() {
+            os.toggleStartMenu();
+        }
+        
+        function launchAllSystems() {
+            os.launchAllSystems();
+        }
+        
+        function showSettings() {
+            os.showSettings();
+        }
+        
+        function showAbout() {
+            os.showAbout();
+        }
+        
+        // Initialize OS
+        const os = new DocumentGeneratorOS();
+        
+        console.log('🖥️ Document Generator OS interface loaded');
+    </script>
+</body>
+</html>

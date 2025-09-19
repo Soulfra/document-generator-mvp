@@ -1,0 +1,685 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>First-Person System Discovery Viewer</title>
+    <style>
+        body {
+            margin: 0;
+            padding: 0;
+            background: #0a0a0a;
+            color: #00ff00;
+            font-family: 'Courier New', monospace;
+            overflow: hidden;
+            height: 100vh;
+            display: flex;
+            flex-direction: column;
+        }
+        
+        .header {
+            background: linear-gradient(90deg, #0a0a0a, #1a1a1a, #0a0a0a);
+            padding: 20px;
+            text-align: center;
+            border-bottom: 2px solid #00ff00;
+            position: relative;
+        }
+        
+        .header h1 {
+            margin: 0;
+            font-size: 24px;
+            text-shadow: 0 0 20px #00ff00;
+            animation: pulse 2s infinite;
+        }
+        
+        @keyframes pulse {
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0.7; }
+        }
+        
+        .phase-indicator {
+            position: absolute;
+            top: 20px;
+            right: 20px;
+            padding: 5px 15px;
+            background: rgba(0, 255, 0, 0.1);
+            border: 1px solid #00ff00;
+            border-radius: 20px;
+            font-size: 12px;
+        }
+        
+        .main-container {
+            flex: 1;
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 20px;
+            padding: 20px;
+            overflow: hidden;
+        }
+        
+        .panel {
+            background: rgba(10, 10, 10, 0.9);
+            border: 1px solid #00ff00;
+            border-radius: 10px;
+            padding: 20px;
+            overflow: hidden;
+            display: flex;
+            flex-direction: column;
+            box-shadow: 0 0 30px rgba(0, 255, 0, 0.2);
+        }
+        
+        .panel h2 {
+            margin: 0 0 15px 0;
+            font-size: 18px;
+            color: #00ff00;
+            border-bottom: 1px solid #00ff00;
+            padding-bottom: 10px;
+        }
+        
+        .narrative-container {
+            flex: 1;
+            overflow-y: auto;
+            padding-right: 10px;
+        }
+        
+        .narrative-entry {
+            margin: 10px 0;
+            padding: 10px;
+            background: rgba(0, 255, 0, 0.05);
+            border-left: 3px solid #00ff00;
+            opacity: 0;
+            animation: fadeIn 0.5s forwards;
+        }
+        
+        @keyframes fadeIn {
+            to { opacity: 1; }
+        }
+        
+        .narrative-time {
+            font-size: 10px;
+            color: #666;
+            margin-bottom: 5px;
+        }
+        
+        .narrative-text {
+            font-size: 14px;
+            line-height: 1.5;
+            color: #00ff00;
+        }
+        
+        .discovery-visualization {
+            flex: 1;
+            position: relative;
+            overflow: hidden;
+        }
+        
+        .service-node {
+            position: absolute;
+            width: 120px;
+            height: 120px;
+            border: 2px solid #00ff00;
+            border-radius: 50%;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            background: rgba(0, 255, 0, 0.1);
+            cursor: pointer;
+            transition: all 0.3s;
+            font-size: 12px;
+            text-align: center;
+            opacity: 0;
+            transform: scale(0);
+            animation: nodeAppear 0.5s forwards;
+        }
+        
+        @keyframes nodeAppear {
+            to {
+                opacity: 1;
+                transform: scale(1);
+            }
+        }
+        
+        .service-node:hover {
+            background: rgba(0, 255, 0, 0.2);
+            transform: scale(1.1);
+            box-shadow: 0 0 30px #00ff00;
+        }
+        
+        .service-node.active {
+            border-color: #00ff00;
+            box-shadow: 0 0 20px #00ff00;
+        }
+        
+        .service-node.unreachable {
+            border-color: #ff4444;
+            background: rgba(255, 68, 68, 0.1);
+        }
+        
+        .service-icon {
+            font-size: 24px;
+            margin-bottom: 5px;
+        }
+        
+        .service-name {
+            font-weight: bold;
+            margin-bottom: 3px;
+        }
+        
+        .service-status {
+            font-size: 10px;
+            color: #888;
+        }
+        
+        .connection-line {
+            position: absolute;
+            background: linear-gradient(90deg, transparent, #00ff00, transparent);
+            height: 2px;
+            transform-origin: left center;
+            opacity: 0;
+            animation: connectionAppear 1s forwards;
+        }
+        
+        @keyframes connectionAppear {
+            to { opacity: 0.6; }
+        }
+        
+        .data-packet {
+            position: absolute;
+            width: 10px;
+            height: 10px;
+            background: #00ff00;
+            border-radius: 50%;
+            box-shadow: 0 0 10px #00ff00;
+            animation: dataFlow 3s linear infinite;
+        }
+        
+        @keyframes dataFlow {
+            0% { transform: translateX(0); }
+            100% { transform: translateX(200px); }
+        }
+        
+        .journal-viewer {
+            background: #000;
+            border: 1px solid #00ff00;
+            border-radius: 5px;
+            padding: 20px;
+            overflow-y: auto;
+            font-size: 12px;
+            white-space: pre-wrap;
+            font-family: 'Consolas', 'Monaco', monospace;
+            line-height: 1.6;
+            color: #e0e0e0;
+        }
+        
+        .journal-viewer h1, .journal-viewer h2, .journal-viewer h3 {
+            color: #00ff00;
+            margin: 20px 0 10px 0;
+        }
+        
+        .journal-viewer code {
+            background: rgba(0, 255, 0, 0.1);
+            padding: 2px 5px;
+            border-radius: 3px;
+        }
+        
+        .journal-viewer pre {
+            background: rgba(0, 255, 0, 0.05);
+            border: 1px solid #00ff00;
+            border-radius: 5px;
+            padding: 10px;
+            overflow-x: auto;
+        }
+        
+        .stats-bar {
+            display: grid;
+            grid-template-columns: repeat(5, 1fr);
+            gap: 10px;
+            margin-top: 20px;
+            padding: 15px;
+            background: rgba(0, 255, 0, 0.05);
+            border-radius: 5px;
+        }
+        
+        .stat-item {
+            text-align: center;
+        }
+        
+        .stat-value {
+            font-size: 24px;
+            font-weight: bold;
+            color: #00ff00;
+        }
+        
+        .stat-label {
+            font-size: 10px;
+            color: #888;
+            margin-top: 5px;
+        }
+        
+        .control-panel {
+            position: fixed;
+            bottom: 20px;
+            right: 20px;
+            display: flex;
+            gap: 10px;
+        }
+        
+        .control-button {
+            background: rgba(0, 255, 0, 0.1);
+            border: 1px solid #00ff00;
+            color: #00ff00;
+            padding: 10px 20px;
+            cursor: pointer;
+            border-radius: 5px;
+            font-family: 'Courier New', monospace;
+            transition: all 0.3s;
+        }
+        
+        .control-button:hover {
+            background: rgba(0, 255, 0, 0.2);
+            box-shadow: 0 0 20px #00ff00;
+            transform: translateY(-2px);
+        }
+        
+        .typing-indicator {
+            display: inline-block;
+            width: 20px;
+            text-align: left;
+            animation: typing 1s infinite;
+        }
+        
+        @keyframes typing {
+            0%, 100% { content: ''; }
+            33% { content: '.'; }
+            66% { content: '..'; }
+            100% { content: '...'; }
+        }
+        
+        /* Scrollbar styling */
+        ::-webkit-scrollbar {
+            width: 10px;
+        }
+        
+        ::-webkit-scrollbar-track {
+            background: rgba(0, 255, 0, 0.1);
+            border-radius: 5px;
+        }
+        
+        ::-webkit-scrollbar-thumb {
+            background: #00ff00;
+            border-radius: 5px;
+        }
+        
+        ::-webkit-scrollbar-thumb:hover {
+            background: #00dd00;
+        }
+    </style>
+</head>
+<body>
+    <div class="header">
+        <h1>👁️ FIRST-PERSON SYSTEM DISCOVERY</h1>
+        <p>Watch the tier system discover and build itself</p>
+        <div id="phaseIndicator" class="phase-indicator">Phase: Initialization</div>
+    </div>
+    
+    <div class="main-container">
+        <div class="panel">
+            <h2>🗣️ System Narrative</h2>
+            <div id="narrativeContainer" class="narrative-container">
+                <div class="narrative-entry">
+                    <div class="narrative-time">System Starting...</div>
+                    <div class="narrative-text">Initializing consciousness<span class="typing-indicator">...</span></div>
+                </div>
+            </div>
+            
+            <div class="stats-bar">
+                <div class="stat-item">
+                    <div id="discoveryCount" class="stat-value">0</div>
+                    <div class="stat-label">Discoveries</div>
+                </div>
+                <div class="stat-item">
+                    <div id="handshakeCount" class="stat-value">0</div>
+                    <div class="stat-label">Handshakes</div>
+                </div>
+                <div class="stat-item">
+                    <div id="connectionCount" class="stat-value">0</div>
+                    <div class="stat-label">Connections</div>
+                </div>
+                <div class="stat-item">
+                    <div id="verificationCount" class="stat-value">0</div>
+                    <div class="stat-label">Verifications</div>
+                </div>
+                <div class="stat-item">
+                    <div id="healthScore" class="stat-value">0%</div>
+                    <div class="stat-label">Health</div>
+                </div>
+            </div>
+        </div>
+        
+        <div class="panel">
+            <h2>🌐 Service Discovery Map</h2>
+            <div id="discoveryVisualization" class="discovery-visualization">
+                <!-- Service nodes will be dynamically added here -->
+            </div>
+        </div>
+    </div>
+    
+    <div class="main-container" style="margin-top: -20px;">
+        <div class="panel" style="grid-column: 1 / -1;">
+            <h2>📝 Discovery Journal (Markdown)</h2>
+            <div id="journalViewer" class="journal-viewer">
+                Waiting for journal entries...
+            </div>
+        </div>
+    </div>
+    
+    <div class="control-panel">
+        <button class="control-button" onclick="refreshJournal()">🔄 Refresh</button>
+        <button class="control-button" onclick="downloadJournal()">💾 Download Journal</button>
+        <button class="control-button" onclick="triggerDiscovery()">🔍 Manual Discovery</button>
+    </div>
+    
+    <script>
+        let ws = null;
+        let services = new Map();
+        let connections = new Map();
+        let currentPhase = 'initialization';
+        
+        // Service positions for visualization
+        const servicePositions = {
+            'JSON Scout': { x: 150, y: 100 },
+            'Vault System': { x: 350, y: 100 },
+            'OSS SharePoint': { x: 150, y: 300 },
+            'Solidity Interface': { x: 350, y: 300 }
+        };
+        
+        // Service icons
+        const serviceIcons = {
+            'JSON Scout': '📡',
+            'Vault System': '🔐',
+            'OSS SharePoint': '📁',
+            'Solidity Interface': '⛓️'
+        };
+        
+        function connectWebSocket() {
+            ws = new WebSocket('ws://localhost:48010');
+            
+            ws.onopen = () => {
+                console.log('Connected to handshake layer');
+                ws.send(JSON.stringify({ type: 'get_state' }));
+                ws.send(JSON.stringify({ type: 'get_journal' }));
+            };
+            
+            ws.onmessage = (event) => {
+                const data = JSON.parse(event.data);
+                handleWebSocketMessage(data);
+            };
+            
+            ws.onerror = (error) => {
+                console.error('WebSocket error:', error);
+                addNarrative('Connection lost. Attempting to reconnect...', true);
+            };
+            
+            ws.onclose = () => {
+                console.log('WebSocket disconnected');
+                setTimeout(connectWebSocket, 5000);
+            };
+        }
+        
+        function handleWebSocketMessage(data) {
+            switch (data.type) {
+                case 'discovery_update':
+                    updateStats(data.state);
+                    updatePhase(data.state.phase);
+                    if (data.lastNarrative) {
+                        addNarrative(data.lastNarrative.text);
+                    }
+                    break;
+                    
+                case 'new_discovery':
+                    addServiceNode(data.discovery);
+                    updateStats(data.state);
+                    break;
+                    
+                case 'narrative_update':
+                    addNarrative(data.narrative.text);
+                    break;
+                    
+                case 'journal_update':
+                    updateJournal(data.markdown);
+                    break;
+            }
+        }
+        
+        function addNarrative(text, isError = false) {
+            const container = document.getElementById('narrativeContainer');
+            const entry = document.createElement('div');
+            entry.className = 'narrative-entry';
+            
+            const time = document.createElement('div');
+            time.className = 'narrative-time';
+            time.textContent = new Date().toLocaleTimeString();
+            
+            const content = document.createElement('div');
+            content.className = 'narrative-text';
+            content.textContent = text;
+            if (isError) content.style.color = '#ff4444';
+            
+            entry.appendChild(time);
+            entry.appendChild(content);
+            container.appendChild(entry);
+            
+            // Auto-scroll to bottom
+            container.scrollTop = container.scrollHeight;
+            
+            // Keep only last 50 entries
+            while (container.children.length > 50) {
+                container.removeChild(container.firstChild);
+            }
+        }
+        
+        function addServiceNode(discovery) {
+            const viz = document.getElementById('discoveryVisualization');
+            
+            // Check if node already exists
+            if (services.has(discovery.name)) return;
+            
+            const node = document.createElement('div');
+            node.className = 'service-node';
+            node.id = `service-${discovery.name.replace(/\s/g, '_')}`;
+            
+            const pos = servicePositions[discovery.name] || {
+                x: 50 + Math.random() * 400,
+                y: 50 + Math.random() * 300
+            };
+            
+            node.style.left = pos.x + 'px';
+            node.style.top = pos.y + 'px';
+            
+            if (discovery.status === 'active') {
+                node.classList.add('active');
+            } else if (discovery.status === 'unreachable') {
+                node.classList.add('unreachable');
+            }
+            
+            node.innerHTML = `
+                <div class="service-icon">${serviceIcons[discovery.name] || '🔧'}</div>
+                <div class="service-name">${discovery.name}</div>
+                <div class="service-status">Port: ${discovery.port}</div>
+                <div class="service-status">${discovery.status}</div>
+            `;
+            
+            node.onclick = () => showServiceDetails(discovery);
+            
+            viz.appendChild(node);
+            services.set(discovery.name, discovery);
+            
+            // Animate appearance
+            setTimeout(() => {
+                node.style.animationDelay = '0s';
+            }, 100);
+            
+            // Add connections if this completes a known path
+            checkAndAddConnections();
+        }
+        
+        function checkAndAddConnections() {
+            const connectionPaths = [
+                ['JSON Scout', 'Vault System'],
+                ['Vault System', 'OSS SharePoint'],
+                ['Vault System', 'Solidity Interface'],
+                ['JSON Scout', 'Solidity Interface']
+            ];
+            
+            connectionPaths.forEach(([from, to]) => {
+                if (services.has(from) && services.has(to) && !connections.has(`${from}-${to}`)) {
+                    addConnection(from, to);
+                }
+            });
+        }
+        
+        function addConnection(from, to) {
+            const viz = document.getElementById('discoveryVisualization');
+            const fromNode = document.getElementById(`service-${from.replace(/\s/g, '_')}`);
+            const toNode = document.getElementById(`service-${to.replace(/\s/g, '_')}`);
+            
+            if (!fromNode || !toNode) return;
+            
+            const fromRect = fromNode.getBoundingClientRect();
+            const toRect = toNode.getBoundingClientRect();
+            const vizRect = viz.getBoundingClientRect();
+            
+            const x1 = fromRect.left - vizRect.left + fromRect.width / 2;
+            const y1 = fromRect.top - vizRect.top + fromRect.height / 2;
+            const x2 = toRect.left - vizRect.left + toRect.width / 2;
+            const y2 = toRect.top - vizRect.top + toRect.height / 2;
+            
+            const length = Math.sqrt((x2 - x1) ** 2 + (y2 - y1) ** 2);
+            const angle = Math.atan2(y2 - y1, x2 - x1) * 180 / Math.PI;
+            
+            const line = document.createElement('div');
+            line.className = 'connection-line';
+            line.style.width = length + 'px';
+            line.style.left = x1 + 'px';
+            line.style.top = y1 + 'px';
+            line.style.transform = `rotate(${angle}deg)`;
+            
+            viz.appendChild(line);
+            connections.set(`${from}-${to}`, line);
+            
+            // Add data packet animation
+            const packet = document.createElement('div');
+            packet.className = 'data-packet';
+            packet.style.left = x1 + 'px';
+            packet.style.top = y1 + 'px';
+            viz.appendChild(packet);
+        }
+        
+        function updateStats(state) {
+            document.getElementById('discoveryCount').textContent = state.discoveries || 0;
+            document.getElementById('handshakeCount').textContent = state.agreements || 0;
+            document.getElementById('connectionCount').textContent = state.connections || 0;
+            document.getElementById('verificationCount').textContent = state.verifications || 0;
+            
+            // Calculate health score
+            const health = state.verifications > 0 ? 
+                Math.round((state.verifications / 4) * 100) : 0;
+            document.getElementById('healthScore').textContent = health + '%';
+        }
+        
+        function updatePhase(phase) {
+            currentPhase = phase;
+            document.getElementById('phaseIndicator').textContent = `Phase: ${phase}`;
+        }
+        
+        function updateJournal(markdown) {
+            const viewer = document.getElementById('journalViewer');
+            
+            // Convert markdown to HTML (basic conversion)
+            let html = markdown
+                .replace(/^### (.*$)/gim, '<h3>$1</h3>')
+                .replace(/^## (.*$)/gim, '<h2>$1</h2>')
+                .replace(/^# (.*$)/gim, '<h1>$1</h1>')
+                .replace(/\*\*(.+?)\*\*/g, '<strong>$1</strong>')
+                .replace(/\*(.+?)\*/g, '<em>$1</em>')
+                .replace(/```json\n([\s\S]*?)```/g, '<pre><code>$1</code></pre>')
+                .replace(/```mermaid\n([\s\S]*?)```/g, '<pre class="mermaid">$1</pre>')
+                .replace(/```([\s\S]*?)```/g, '<pre><code>$1</code></pre>')
+                .replace(/`(.+?)`/g, '<code>$1</code>')
+                .replace(/✅/g, '<span style="color: #00ff00;">✅</span>')
+                .replace(/❌/g, '<span style="color: #ff4444;">❌</span>')
+                .replace(/\n/g, '<br>');
+            
+            viewer.innerHTML = html;
+            
+            // Scroll to bottom
+            viewer.scrollTop = viewer.scrollHeight;
+        }
+        
+        function showServiceDetails(discovery) {
+            const details = `
+Service: ${discovery.name}
+Port: ${discovery.port}
+Type: ${discovery.type}
+Status: ${discovery.status}
+Capabilities: ${discovery.capabilities.join(', ')}
+Discovered: ${new Date(discovery.discovered).toLocaleString()}
+            `;
+            alert(details);
+        }
+        
+        async function refreshJournal() {
+            try {
+                const response = await fetch('http://localhost:48009/api/journal');
+                const data = await response.json();
+                updateJournal(data.markdown);
+                addNarrative('Journal refreshed successfully');
+            } catch (error) {
+                addNarrative('Failed to refresh journal', true);
+            }
+        }
+        
+        function downloadJournal() {
+            fetch('http://localhost:48009/api/journal')
+                .then(res => res.json())
+                .then(data => {
+                    const blob = new Blob([data.markdown], { type: 'text/markdown' });
+                    const url = URL.createObjectURL(blob);
+                    const a = document.createElement('a');
+                    a.href = url;
+                    a.download = `system-discovery-${Date.now()}.md`;
+                    a.click();
+                    addNarrative('Journal downloaded successfully');
+                })
+                .catch(() => addNarrative('Failed to download journal', true));
+        }
+        
+        async function triggerDiscovery() {
+            const service = prompt('Service name:');
+            const port = prompt('Port number:');
+            
+            if (service && port) {
+                try {
+                    await fetch('http://localhost:48009/api/discover', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({ service, port: parseInt(port) })
+                    });
+                    addNarrative(`Manual discovery triggered for ${service}`);
+                } catch (error) {
+                    addNarrative('Failed to trigger discovery', true);
+                }
+            }
+        }
+        
+        // Initialize on load
+        window.onload = () => {
+            connectWebSocket();
+            
+            // Initial narrative
+            setTimeout(() => {
+                addNarrative("I'm beginning to wake up. Let me see what's around me...");
+            }, 2000);
+        };
+    </script>
+</body>
+</html>

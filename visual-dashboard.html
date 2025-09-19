@@ -1,0 +1,1211 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Economic Engine - Live System Dashboard</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'SF Pro Display', -apple-system, BlinkMacSystemFont, sans-serif;
+            background: #0a0a0a;
+            color: #ffffff;
+            overflow-x: hidden;
+        }
+
+        /* Grid Layout */
+        .dashboard {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+            gap: 20px;
+            padding: 20px;
+            max-width: 1800px;
+            margin: 0 auto;
+        }
+
+        /* Header */
+        .header {
+            grid-column: 1 / -1;
+            text-align: center;
+            padding: 20px;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            border-radius: 20px;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .header::before {
+            content: '';
+            position: absolute;
+            top: -50%;
+            left: -50%;
+            width: 200%;
+            height: 200%;
+            background: radial-gradient(circle, rgba(255,255,255,0.1) 0%, transparent 70%);
+            animation: pulse 4s ease-in-out infinite;
+        }
+
+        @keyframes pulse {
+            0%, 100% { transform: scale(1); opacity: 0.5; }
+            50% { transform: scale(1.1); opacity: 0.8; }
+        }
+
+        .header h1 {
+            font-size: 2.5em;
+            margin-bottom: 10px;
+            position: relative;
+            z-index: 1;
+        }
+
+        .connection-status {
+            display: inline-block;
+            padding: 5px 15px;
+            border-radius: 20px;
+            font-size: 0.9em;
+            position: relative;
+            z-index: 1;
+        }
+
+        .status-connected {
+            background: #10b981;
+            box-shadow: 0 0 20px rgba(16, 185, 129, 0.5);
+        }
+
+        .status-disconnected {
+            background: #ef4444;
+            box-shadow: 0 0 20px rgba(239, 68, 68, 0.5);
+        }
+
+        /* Service Cards */
+        .service-card {
+            background: #1a1a1a;
+            border-radius: 15px;
+            padding: 20px;
+            border: 1px solid #333;
+            position: relative;
+            overflow: hidden;
+            transition: all 0.3s ease;
+        }
+
+        .service-card:hover {
+            transform: translateY(-5px);
+            box-shadow: 0 10px 30px rgba(0,0,0,0.5);
+        }
+
+        .service-card.healthy {
+            border-color: #10b981;
+            box-shadow: inset 0 0 30px rgba(16, 185, 129, 0.1);
+        }
+
+        .service-card.warning {
+            border-color: #f59e0b;
+            box-shadow: inset 0 0 30px rgba(245, 158, 11, 0.1);
+        }
+
+        .service-card.error {
+            border-color: #ef4444;
+            box-shadow: inset 0 0 30px rgba(239, 68, 68, 0.1);
+        }
+
+        .service-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 15px;
+        }
+
+        .service-name {
+            font-size: 1.2em;
+            font-weight: 600;
+        }
+
+        .service-status {
+            width: 12px;
+            height: 12px;
+            border-radius: 50%;
+            animation: breathe 2s ease-in-out infinite;
+        }
+
+        @keyframes breathe {
+            0%, 100% { opacity: 1; transform: scale(1); }
+            50% { opacity: 0.6; transform: scale(0.9); }
+        }
+
+        .status-green { background: #10b981; box-shadow: 0 0 10px #10b981; }
+        .status-yellow { background: #f59e0b; box-shadow: 0 0 10px #f59e0b; }
+        .status-red { background: #ef4444; box-shadow: 0 0 10px #ef4444; }
+
+        /* Progress Bars */
+        .progress-container {
+            margin: 10px 0;
+        }
+
+        .progress-label {
+            font-size: 0.9em;
+            margin-bottom: 5px;
+            display: flex;
+            justify-content: space-between;
+        }
+
+        .progress-bar {
+            background: #333;
+            height: 8px;
+            border-radius: 4px;
+            overflow: hidden;
+            position: relative;
+        }
+
+        .progress-fill {
+            height: 100%;
+            background: linear-gradient(90deg, #667eea 0%, #764ba2 100%);
+            border-radius: 4px;
+            transition: width 0.5s ease;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .progress-fill::after {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            bottom: 0;
+            right: 0;
+            background: linear-gradient(
+                90deg,
+                transparent,
+                rgba(255, 255, 255, 0.3),
+                transparent
+            );
+            animation: shimmer 2s infinite;
+        }
+
+        @keyframes shimmer {
+            0% { transform: translateX(-100%); }
+            100% { transform: translateX(100%); }
+        }
+
+        /* Metrics */
+        .metric {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin: 8px 0;
+            padding: 8px;
+            background: rgba(255, 255, 255, 0.05);
+            border-radius: 8px;
+        }
+
+        .metric-value {
+            font-weight: 600;
+            color: #667eea;
+        }
+
+        /* Live Map */
+        .system-map {
+            grid-column: 1 / -1;
+            background: #1a1a1a;
+            border-radius: 15px;
+            padding: 20px;
+            min-height: 400px;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .map-canvas {
+            width: 100%;
+            height: 400px;
+            position: relative;
+        }
+
+        .node {
+            position: absolute;
+            width: 80px;
+            height: 80px;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 0.8em;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            z-index: 10;
+        }
+
+        .node:hover {
+            transform: scale(1.1);
+            z-index: 20;
+        }
+
+        .node-core {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            box-shadow: 0 0 30px rgba(102, 126, 234, 0.5);
+        }
+
+        .node-service {
+            background: linear-gradient(135deg, #10b981 0%, #059669 100%);
+            box-shadow: 0 0 20px rgba(16, 185, 129, 0.5);
+        }
+
+        .node-database {
+            background: linear-gradient(135deg, #f59e0b 0%, #d97706 100%);
+            box-shadow: 0 0 20px rgba(245, 158, 11, 0.5);
+        }
+
+        .connection {
+            position: absolute;
+            height: 2px;
+            background: rgba(102, 126, 234, 0.3);
+            transform-origin: left center;
+            z-index: 1;
+        }
+
+        .connection.active {
+            background: rgba(16, 185, 129, 0.5);
+            box-shadow: 0 0 10px rgba(16, 185, 129, 0.5);
+        }
+
+        .connection.data-flow::after {
+            content: '';
+            position: absolute;
+            width: 10px;
+            height: 10px;
+            background: #10b981;
+            border-radius: 50%;
+            top: -4px;
+            animation: flow 2s linear infinite;
+        }
+
+        @keyframes flow {
+            0% { left: 0; opacity: 0; }
+            10% { opacity: 1; }
+            90% { opacity: 1; }
+            100% { left: calc(100% - 10px); opacity: 0; }
+        }
+
+        /* Activity Feed */
+        .activity-feed {
+            grid-column: span 2;
+            background: #1a1a1a;
+            border-radius: 15px;
+            padding: 20px;
+            max-height: 400px;
+            overflow-y: auto;
+        }
+
+        .activity-item {
+            padding: 10px;
+            margin: 5px 0;
+            background: rgba(255, 255, 255, 0.05);
+            border-radius: 8px;
+            border-left: 3px solid #667eea;
+            animation: slideIn 0.3s ease;
+        }
+
+        @keyframes slideIn {
+            from {
+                opacity: 0;
+                transform: translateX(-20px);
+            }
+            to {
+                opacity: 1;
+                transform: translateX(0);
+            }
+        }
+
+        .activity-time {
+            font-size: 0.8em;
+            color: #666;
+        }
+
+        /* AI Assistant */
+        .ai-assistant {
+            position: fixed;
+            bottom: 20px;
+            right: 20px;
+            width: 60px;
+            height: 60px;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            cursor: pointer;
+            box-shadow: 0 5px 20px rgba(0,0,0,0.3);
+            transition: all 0.3s ease;
+            z-index: 1000;
+        }
+
+        .ai-assistant:hover {
+            transform: scale(1.1);
+            box-shadow: 0 8px 30px rgba(0,0,0,0.4);
+        }
+
+        .ai-chat {
+            position: fixed;
+            bottom: 90px;
+            right: 20px;
+            width: 350px;
+            height: 500px;
+            background: #1a1a1a;
+            border-radius: 15px;
+            border: 1px solid #333;
+            display: none;
+            flex-direction: column;
+            box-shadow: 0 10px 40px rgba(0,0,0,0.5);
+            z-index: 999;
+        }
+
+        .ai-chat.open {
+            display: flex;
+        }
+
+        .chat-header {
+            padding: 15px;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            border-radius: 15px 15px 0 0;
+            font-weight: 600;
+        }
+
+        .chat-messages {
+            flex: 1;
+            padding: 15px;
+            overflow-y: auto;
+        }
+
+        .chat-input {
+            padding: 15px;
+            border-top: 1px solid #333;
+            display: flex;
+            gap: 10px;
+        }
+
+        .chat-input input {
+            flex: 1;
+            background: #333;
+            border: none;
+            padding: 10px;
+            border-radius: 8px;
+            color: white;
+        }
+
+        .chat-input button {
+            background: #667eea;
+            border: none;
+            padding: 10px 20px;
+            border-radius: 8px;
+            color: white;
+            cursor: pointer;
+        }
+
+        /* Responsive */
+        @media (max-width: 768px) {
+            .dashboard {
+                grid-template-columns: 1fr;
+            }
+            
+            .system-map {
+                min-height: 300px;
+            }
+            
+            .activity-feed {
+                grid-column: 1;
+            }
+        }
+
+        /* Loading Animation */
+        .loading {
+            display: inline-block;
+            width: 20px;
+            height: 20px;
+            border: 3px solid #333;
+            border-radius: 50%;
+            border-top-color: #667eea;
+            animation: spin 1s ease-in-out infinite;
+        }
+
+        @keyframes spin {
+            to { transform: rotate(360deg); }
+        }
+
+        /* Tooltips */
+        .tooltip {
+            position: absolute;
+            background: #333;
+            padding: 8px 12px;
+            border-radius: 8px;
+            font-size: 0.9em;
+            white-space: nowrap;
+            pointer-events: none;
+            opacity: 0;
+            transition: opacity 0.3s ease;
+            z-index: 1000;
+        }
+
+        .tooltip.show {
+            opacity: 1;
+        }
+    </style>
+</head>
+<body>
+    <div class="dashboard">
+        <!-- Header -->
+        <div class="header">
+            <h1>🚀 Economic Engine Live Dashboard</h1>
+            <div class="connection-status status-disconnected" id="connectionStatus">
+                Connecting...
+            </div>
+        </div>
+
+        <!-- Core Services -->
+        <div class="service-card" id="economic-engine">
+            <div class="service-header">
+                <span class="service-name">Economic Engine</span>
+                <div class="service-status status-red"></div>
+            </div>
+            <div class="progress-container">
+                <div class="progress-label">
+                    <span>Health</span>
+                    <span class="progress-value">0%</span>
+                </div>
+                <div class="progress-bar">
+                    <div class="progress-fill" style="width: 0%"></div>
+                </div>
+            </div>
+            <div class="metrics">
+                <div class="metric">
+                    <span>Port</span>
+                    <span class="metric-value">3000</span>
+                </div>
+                <div class="metric">
+                    <span>Uptime</span>
+                    <span class="metric-value">--:--:--</span>
+                </div>
+                <div class="metric">
+                    <span>Requests/min</span>
+                    <span class="metric-value">0</span>
+                </div>
+            </div>
+        </div>
+
+        <div class="service-card" id="slam-layer">
+            <div class="service-header">
+                <span class="service-name">Slam Layer</span>
+                <div class="service-status status-red"></div>
+            </div>
+            <div class="progress-container">
+                <div class="progress-label">
+                    <span>Health</span>
+                    <span class="progress-value">0%</span>
+                </div>
+                <div class="progress-bar">
+                    <div class="progress-fill" style="width: 0%"></div>
+                </div>
+            </div>
+            <div class="metrics">
+                <div class="metric">
+                    <span>Port</span>
+                    <span class="metric-value">9999</span>
+                </div>
+                <div class="metric">
+                    <span>Connected Services</span>
+                    <span class="metric-value">0</span>
+                </div>
+            </div>
+        </div>
+
+        <!-- Database Status -->
+        <div class="service-card" id="database">
+            <div class="service-header">
+                <span class="service-name">Database</span>
+                <div class="service-status status-red"></div>
+            </div>
+            <div class="progress-container">
+                <div class="progress-label">
+                    <span>Initialization</span>
+                    <span class="progress-value">0%</span>
+                </div>
+                <div class="progress-bar">
+                    <div class="progress-fill" style="width: 0%"></div>
+                </div>
+            </div>
+            <div class="metrics">
+                <div class="metric">
+                    <span>Tables</span>
+                    <span class="metric-value">0/24</span>
+                </div>
+                <div class="metric">
+                    <span>AI Agents</span>
+                    <span class="metric-value">0/7</span>
+                </div>
+                <div class="metric">
+                    <span>Encryption</span>
+                    <span class="metric-value">❌</span>
+                </div>
+            </div>
+        </div>
+
+        <!-- MCP Status -->
+        <div class="service-card" id="mcp">
+            <div class="service-header">
+                <span class="service-name">MCP Templates</span>
+                <div class="service-status status-red"></div>
+            </div>
+            <div class="progress-container">
+                <div class="progress-label">
+                    <span>Templates Loaded</span>
+                    <span class="progress-value">0%</span>
+                </div>
+                <div class="progress-bar">
+                    <div class="progress-fill" style="width: 0%"></div>
+                </div>
+            </div>
+            <div class="metrics">
+                <div class="metric">
+                    <span>Available</span>
+                    <span class="metric-value">0</span>
+                </div>
+                <div class="metric">
+                    <span>Processing</span>
+                    <span class="metric-value">0</span>
+                </div>
+            </div>
+        </div>
+
+        <!-- Reasoning Engine -->
+        <div class="service-card" id="reasoning">
+            <div class="service-header">
+                <span class="service-name">Reasoning Engine</span>
+                <div class="service-status status-red"></div>
+            </div>
+            <div class="progress-container">
+                <div class="progress-label">
+                    <span>AI Models</span>
+                    <span class="progress-value">0%</span>
+                </div>
+                <div class="progress-bar">
+                    <div class="progress-fill" style="width: 0%"></div>
+                </div>
+            </div>
+            <div class="metrics">
+                <div class="metric">
+                    <span>Ollama</span>
+                    <span class="metric-value">❌</span>
+                </div>
+                <div class="metric">
+                    <span>Cloud AI</span>
+                    <span class="metric-value">❌</span>
+                </div>
+                <div class="metric">
+                    <span>Queue</span>
+                    <span class="metric-value">0</span>
+                </div>
+            </div>
+        </div>
+
+        <!-- AI Economy -->
+        <div class="service-card" id="ai-economy">
+            <div class="service-header">
+                <span class="service-name">AI Economy</span>
+                <div class="service-status status-red"></div>
+            </div>
+            <div class="progress-container">
+                <div class="progress-label">
+                    <span>Agent Activity</span>
+                    <span class="progress-value">0%</span>
+                </div>
+                <div class="progress-bar">
+                    <div class="progress-fill" style="width: 0%"></div>
+                </div>
+            </div>
+            <div class="metrics">
+                <div class="metric">
+                    <span>Active Agents</span>
+                    <span class="metric-value">0/7</span>
+                </div>
+                <div class="metric">
+                    <span>Trades/min</span>
+                    <span class="metric-value">0</span>
+                </div>
+                <div class="metric">
+                    <span>Total Compute</span>
+                    <span class="metric-value">0</span>
+                </div>
+            </div>
+        </div>
+
+        <!-- System Map -->
+        <div class="system-map">
+            <h3 style="margin-bottom: 20px;">System Architecture Map</h3>
+            <div class="map-canvas" id="systemMap">
+                <!-- Nodes will be dynamically created -->
+            </div>
+        </div>
+
+        <!-- Activity Feed -->
+        <div class="activity-feed">
+            <h3 style="margin-bottom: 15px;">Live Activity Feed</h3>
+            <div id="activityList">
+                <div class="activity-item">
+                    <div class="activity-time">Starting up...</div>
+                    <div>Dashboard initialized</div>
+                </div>
+            </div>
+        </div>
+
+        <!-- System Stats -->
+        <div class="service-card">
+            <div class="service-header">
+                <span class="service-name">System Overview</span>
+                <div class="service-status status-green"></div>
+            </div>
+            <div class="metrics">
+                <div class="metric">
+                    <span>Total Services</span>
+                    <span class="metric-value">0/12</span>
+                </div>
+                <div class="metric">
+                    <span>System Health</span>
+                    <span class="metric-value">0%</span>
+                </div>
+                <div class="metric">
+                    <span>API Calls/min</span>
+                    <span class="metric-value">0</span>
+                </div>
+                <div class="metric">
+                    <span>Memory Usage</span>
+                    <span class="metric-value">0 MB</span>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- AI Assistant -->
+    <div class="ai-assistant" id="aiAssistant">
+        <span style="font-size: 24px;">🤖</span>
+    </div>
+
+    <div class="ai-chat" id="aiChat">
+        <div class="chat-header">
+            AI System Assistant
+        </div>
+        <div class="chat-messages" id="chatMessages">
+            <div style="padding: 10px; background: rgba(255,255,255,0.05); border-radius: 8px; margin: 5px 0;">
+                👋 Hi! I'm your system assistant. Ask me anything about the dashboard or system status!
+            </div>
+        </div>
+        <div class="chat-input">
+            <input type="text" placeholder="Ask about system status..." id="chatInput">
+            <button onclick="sendChat()">Send</button>
+        </div>
+    </div>
+
+    <!-- Tooltip -->
+    <div class="tooltip" id="tooltip"></div>
+
+    <script>
+        // Configuration
+        const CONFIG = {
+            economicEngine: 'http://localhost:3000',
+            slamLayer: 'http://localhost:9999',
+            updateInterval: 2000, // 2 seconds
+            maxActivityItems: 50
+        };
+
+        // State
+        let services = {
+            'economic-engine': { health: 0, status: 'disconnected', metrics: {} },
+            'slam-layer': { health: 0, status: 'disconnected', metrics: {} },
+            'database': { health: 0, status: 'disconnected', metrics: {} },
+            'mcp': { health: 0, status: 'disconnected', metrics: {} },
+            'reasoning': { health: 0, status: 'disconnected', metrics: {} },
+            'ai-economy': { health: 0, status: 'disconnected', metrics: {} }
+        };
+
+        let systemStartTime = Date.now();
+        let activityFeed = [];
+        let isConnected = false;
+
+        // Initialize
+        document.addEventListener('DOMContentLoaded', () => {
+            initializeSystemMap();
+            startMonitoring();
+            setupAIAssistant();
+            addActivity('Dashboard started', 'system');
+        });
+
+        // System Map
+        function initializeSystemMap() {
+            const map = document.getElementById('systemMap');
+            
+            // Define node positions
+            const nodes = [
+                { id: 'core', name: 'Core', x: 50, y: 50, type: 'core' },
+                { id: 'engine', name: 'Engine', x: 25, y: 20, type: 'service' },
+                { id: 'slam', name: 'Slam', x: 75, y: 20, type: 'service' },
+                { id: 'db', name: 'Database', x: 50, y: 80, type: 'database' },
+                { id: 'mcp', name: 'MCP', x: 20, y: 50, type: 'service' },
+                { id: 'ai', name: 'AI', x: 80, y: 50, type: 'service' }
+            ];
+
+            // Create nodes
+            nodes.forEach(node => {
+                const div = document.createElement('div');
+                div.className = `node node-${node.type}`;
+                div.id = `node-${node.id}`;
+                div.style.left = `${node.x}%`;
+                div.style.top = `${node.y}%`;
+                div.textContent = node.name;
+                div.addEventListener('mouseenter', (e) => showTooltip(e, node.name));
+                div.addEventListener('mouseleave', hideTooltip);
+                map.appendChild(div);
+            });
+
+            // Create connections
+            const connections = [
+                { from: 'core', to: 'engine' },
+                { from: 'core', to: 'slam' },
+                { from: 'core', to: 'db' },
+                { from: 'engine', to: 'mcp' },
+                { from: 'slam', to: 'ai' },
+                { from: 'db', to: 'engine' },
+                { from: 'db', to: 'slam' }
+            ];
+
+            connections.forEach(conn => {
+                createConnection(conn.from, conn.to);
+            });
+        }
+
+        function createConnection(fromId, toId) {
+            const from = document.getElementById(`node-${fromId}`);
+            const to = document.getElementById(`node-${toId}`);
+            
+            if (!from || !to) return;
+
+            const fromRect = from.getBoundingClientRect();
+            const toRect = to.getBoundingClientRect();
+            const mapRect = document.getElementById('systemMap').getBoundingClientRect();
+
+            const x1 = fromRect.left + fromRect.width / 2 - mapRect.left;
+            const y1 = fromRect.top + fromRect.height / 2 - mapRect.top;
+            const x2 = toRect.left + toRect.width / 2 - mapRect.left;
+            const y2 = toRect.top + toRect.height / 2 - mapRect.top;
+
+            const length = Math.sqrt((x2 - x1) ** 2 + (y2 - y1) ** 2);
+            const angle = Math.atan2(y2 - y1, x2 - x1) * 180 / Math.PI;
+
+            const connection = document.createElement('div');
+            connection.className = 'connection';
+            connection.id = `conn-${fromId}-${toId}`;
+            connection.style.width = `${length}px`;
+            connection.style.left = `${x1}px`;
+            connection.style.top = `${y1}px`;
+            connection.style.transform = `rotate(${angle}deg)`;
+            
+            document.getElementById('systemMap').appendChild(connection);
+        }
+
+        // Monitoring
+        async function startMonitoring() {
+            updateStatus();
+            setInterval(updateStatus, CONFIG.updateInterval);
+        }
+
+        async function updateStatus() {
+            // Check Economic Engine
+            checkService('economic-engine', `${CONFIG.economicEngine}/api/status`);
+            
+            // Check Slam Layer
+            checkService('slam-layer', `${CONFIG.slamLayer}/slam/status`);
+            
+            // Check other services through slam
+            checkService('database', `${CONFIG.slamLayer}/api/database/status`);
+            checkService('mcp', `${CONFIG.slamLayer}/api/mcp/status`);
+            checkService('reasoning', `${CONFIG.slamLayer}/api/reasoning/status`);
+            checkService('ai-economy', `${CONFIG.slamLayer}/api/economy/status`);
+            
+            // Update overall connection status
+            updateConnectionStatus();
+            
+            // Update system overview
+            updateSystemOverview();
+        }
+
+        async function checkService(serviceId, url) {
+            try {
+                const response = await fetch(url, { 
+                    method: 'GET',
+                    mode: 'cors',
+                    headers: {
+                        'Accept': 'application/json'
+                    }
+                });
+                
+                if (response.ok) {
+                    const data = await response.json();
+                    updateServiceCard(serviceId, 'healthy', data);
+                    
+                    // Update system map
+                    updateNodeStatus(serviceId, 'active');
+                } else {
+                    updateServiceCard(serviceId, 'error', null);
+                    updateNodeStatus(serviceId, 'error');
+                }
+            } catch (error) {
+                updateServiceCard(serviceId, 'disconnected', null);
+                updateNodeStatus(serviceId, 'inactive');
+            }
+        }
+
+        function updateServiceCard(serviceId, status, data) {
+            const card = document.getElementById(serviceId);
+            if (!card) return;
+
+            // Update card status
+            card.className = `service-card ${status === 'healthy' ? 'healthy' : status === 'error' ? 'error' : ''}`;
+            
+            // Update status indicator
+            const statusIndicator = card.querySelector('.service-status');
+            statusIndicator.className = `service-status status-${status === 'healthy' ? 'green' : status === 'error' ? 'red' : 'yellow'}`;
+            
+            // Update health percentage
+            let health = 0;
+            if (status === 'healthy') {
+                health = 100;
+            } else if (status === 'error') {
+                health = 50;
+            }
+            
+            const progressFill = card.querySelector('.progress-fill');
+            const progressValue = card.querySelector('.progress-value');
+            progressFill.style.width = `${health}%`;
+            progressValue.textContent = `${health}%`;
+            
+            // Update metrics based on service
+            if (data) {
+                updateServiceMetrics(serviceId, data);
+            }
+            
+            // Update service state
+            services[serviceId] = {
+                health,
+                status,
+                metrics: data || {},
+                lastUpdate: Date.now()
+            };
+            
+            // Add activity if status changed
+            if (services[serviceId].lastStatus !== status) {
+                addActivity(`${getServiceName(serviceId)} is now ${status}`, status === 'healthy' ? 'success' : 'error');
+                services[serviceId].lastStatus = status;
+            }
+        }
+
+        function updateServiceMetrics(serviceId, data) {
+            const card = document.getElementById(serviceId);
+            const metrics = card.querySelectorAll('.metric-value');
+            
+            switch (serviceId) {
+                case 'economic-engine':
+                    if (metrics[1]) metrics[1].textContent = formatUptime(Date.now() - systemStartTime);
+                    if (metrics[2] && data.requestsPerMinute) metrics[2].textContent = data.requestsPerMinute;
+                    break;
+                    
+                case 'slam-layer':
+                    if (metrics[1] && data.connectedServices) metrics[1].textContent = data.connectedServices;
+                    break;
+                    
+                case 'database':
+                    if (metrics[0] && data.tables) metrics[0].textContent = `${data.tables}/24`;
+                    if (metrics[1] && data.agents) metrics[1].textContent = `${data.agents}/7`;
+                    if (metrics[2]) metrics[2].textContent = data.encryption ? '✅' : '❌';
+                    break;
+                    
+                case 'ai-economy':
+                    if (metrics[0] && data.activeAgents) metrics[0].textContent = `${data.activeAgents}/7`;
+                    if (metrics[1] && data.tradesPerMinute) metrics[1].textContent = data.tradesPerMinute;
+                    if (metrics[2] && data.totalCompute) metrics[2].textContent = formatNumber(data.totalCompute);
+                    break;
+            }
+        }
+
+        function updateNodeStatus(serviceId, status) {
+            const nodeMap = {
+                'economic-engine': 'engine',
+                'slam-layer': 'slam',
+                'database': 'db',
+                'mcp': 'mcp',
+                'ai-economy': 'ai'
+            };
+            
+            const nodeId = nodeMap[serviceId];
+            if (!nodeId) return;
+            
+            const node = document.getElementById(`node-${nodeId}`);
+            if (!node) return;
+            
+            // Update node appearance based on status
+            node.style.opacity = status === 'active' ? '1' : '0.5';
+            node.style.transform = status === 'active' ? 'scale(1)' : 'scale(0.9)';
+            
+            // Update connections
+            updateConnections(nodeId, status === 'active');
+        }
+
+        function updateConnections(nodeId, isActive) {
+            const connections = document.querySelectorAll(`[id*="conn-"][id*="${nodeId}"]`);
+            connections.forEach(conn => {
+                if (isActive) {
+                    conn.classList.add('active', 'data-flow');
+                } else {
+                    conn.classList.remove('active', 'data-flow');
+                }
+            });
+        }
+
+        function updateConnectionStatus() {
+            const healthyServices = Object.values(services).filter(s => s.status === 'healthy').length;
+            const totalServices = Object.keys(services).length;
+            
+            isConnected = healthyServices > 0;
+            
+            const statusEl = document.getElementById('connectionStatus');
+            if (isConnected) {
+                statusEl.className = 'connection-status status-connected';
+                statusEl.textContent = `Connected (${healthyServices}/${totalServices} services)`;
+            } else {
+                statusEl.className = 'connection-status status-disconnected';
+                statusEl.textContent = 'Disconnected';
+            }
+        }
+
+        function updateSystemOverview() {
+            const card = document.querySelector('.service-card:last-child');
+            const metrics = card.querySelectorAll('.metric-value');
+            
+            const healthyServices = Object.values(services).filter(s => s.status === 'healthy').length;
+            const totalServices = Object.keys(services).length;
+            const systemHealth = Math.round((healthyServices / totalServices) * 100);
+            
+            if (metrics[0]) metrics[0].textContent = `${healthyServices}/${totalServices}`;
+            if (metrics[1]) metrics[1].textContent = `${systemHealth}%`;
+            
+            // Update card status based on health
+            if (systemHealth === 100) {
+                card.className = 'service-card healthy';
+            } else if (systemHealth >= 50) {
+                card.className = 'service-card warning';
+            } else {
+                card.className = 'service-card error';
+            }
+        }
+
+        // Activity Feed
+        function addActivity(message, type = 'info') {
+            const time = new Date().toLocaleTimeString();
+            const activity = {
+                time,
+                message,
+                type,
+                timestamp: Date.now()
+            };
+            
+            activityFeed.unshift(activity);
+            
+            // Limit feed size
+            if (activityFeed.length > CONFIG.maxActivityItems) {
+                activityFeed = activityFeed.slice(0, CONFIG.maxActivityItems);
+            }
+            
+            updateActivityFeed();
+        }
+
+        function updateActivityFeed() {
+            const list = document.getElementById('activityList');
+            
+            const html = activityFeed.map(item => `
+                <div class="activity-item" style="border-left-color: ${getActivityColor(item.type)}">
+                    <div class="activity-time">${item.time}</div>
+                    <div>${item.message}</div>
+                </div>
+            `).join('');
+            
+            list.innerHTML = html;
+        }
+
+        function getActivityColor(type) {
+            switch (type) {
+                case 'success': return '#10b981';
+                case 'error': return '#ef4444';
+                case 'warning': return '#f59e0b';
+                default: return '#667eea';
+            }
+        }
+
+        // AI Assistant
+        function setupAIAssistant() {
+            const assistant = document.getElementById('aiAssistant');
+            const chat = document.getElementById('aiChat');
+            
+            assistant.addEventListener('click', () => {
+                chat.classList.toggle('open');
+            });
+            
+            // Close chat when clicking outside
+            document.addEventListener('click', (e) => {
+                if (!assistant.contains(e.target) && !chat.contains(e.target)) {
+                    chat.classList.remove('open');
+                }
+            });
+            
+            // Handle enter key in chat
+            document.getElementById('chatInput').addEventListener('keypress', (e) => {
+                if (e.key === 'Enter') {
+                    sendChat();
+                }
+            });
+        }
+
+        function sendChat() {
+            const input = document.getElementById('chatInput');
+            const message = input.value.trim();
+            
+            if (!message) return;
+            
+            // Add user message
+            addChatMessage(message, 'user');
+            input.value = '';
+            
+            // Generate AI response
+            setTimeout(() => {
+                const response = generateAIResponse(message);
+                addChatMessage(response, 'ai');
+            }, 500);
+        }
+
+        function addChatMessage(message, sender) {
+            const messages = document.getElementById('chatMessages');
+            const div = document.createElement('div');
+            div.style.cssText = `
+                padding: 10px;
+                background: ${sender === 'user' ? 'rgba(102, 126, 234, 0.1)' : 'rgba(255,255,255,0.05)'};
+                border-radius: 8px;
+                margin: 5px 0;
+            `;
+            div.textContent = sender === 'user' ? `You: ${message}` : `AI: ${message}`;
+            messages.appendChild(div);
+            messages.scrollTop = messages.scrollHeight;
+        }
+
+        function generateAIResponse(message) {
+            const lowerMessage = message.toLowerCase();
+            
+            if (lowerMessage.includes('status')) {
+                const healthy = Object.values(services).filter(s => s.status === 'healthy').length;
+                return `Currently ${healthy} out of ${Object.keys(services).length} services are healthy. ${healthy === Object.keys(services).length ? 'Everything looks good!' : 'Some services need attention.'}`;
+            }
+            
+            if (lowerMessage.includes('help')) {
+                return 'I can help you monitor system status, explain services, and troubleshoot issues. Try asking about specific services or the overall system health!';
+            }
+            
+            if (lowerMessage.includes('database')) {
+                const db = services.database;
+                return `Database is ${db.status}. ${db.status === 'healthy' ? 'All tables and agents are initialized.' : 'Check database connection and initialization.'}`;
+            }
+            
+            return "I'm monitoring all systems. Ask me about specific services or the overall status!";
+        }
+
+        // Utility Functions
+        function showTooltip(event, text) {
+            const tooltip = document.getElementById('tooltip');
+            tooltip.textContent = text;
+            tooltip.style.left = event.pageX + 10 + 'px';
+            tooltip.style.top = event.pageY + 10 + 'px';
+            tooltip.classList.add('show');
+        }
+
+        function hideTooltip() {
+            document.getElementById('tooltip').classList.remove('show');
+        }
+
+        function formatUptime(ms) {
+            const seconds = Math.floor(ms / 1000);
+            const minutes = Math.floor(seconds / 60);
+            const hours = Math.floor(minutes / 60);
+            
+            return `${hours.toString().padStart(2, '0')}:${(minutes % 60).toString().padStart(2, '0')}:${(seconds % 60).toString().padStart(2, '0')}`;
+        }
+
+        function formatNumber(num) {
+            if (num >= 1000000) return (num / 1000000).toFixed(1) + 'M';
+            if (num >= 1000) return (num / 1000).toFixed(1) + 'K';
+            return num.toString();
+        }
+
+        function getServiceName(serviceId) {
+            const names = {
+                'economic-engine': 'Economic Engine',
+                'slam-layer': 'Slam Layer',
+                'database': 'Database',
+                'mcp': 'MCP Templates',
+                'reasoning': 'Reasoning Engine',
+                'ai-economy': 'AI Economy'
+            };
+            return names[serviceId] || serviceId;
+        }
+
+        // WebSocket for real-time updates (when available)
+        function connectWebSocket() {
+            try {
+                const ws = new WebSocket('ws://localhost:8081');
+                
+                ws.onopen = () => {
+                    console.log('WebSocket connected');
+                    addActivity('Real-time connection established', 'success');
+                };
+                
+                ws.onmessage = (event) => {
+                    try {
+                        const data = JSON.parse(event.data);
+                        handleRealtimeUpdate(data);
+                    } catch (e) {
+                        console.error('WebSocket message error:', e);
+                    }
+                };
+                
+                ws.onerror = (error) => {
+                    console.error('WebSocket error:', error);
+                };
+                
+                ws.onclose = () => {
+                    console.log('WebSocket disconnected');
+                    // Retry connection after 5 seconds
+                    setTimeout(connectWebSocket, 5000);
+                };
+            } catch (error) {
+                console.error('WebSocket connection failed:', error);
+            }
+        }
+
+        function handleRealtimeUpdate(data) {
+            if (data.type === 'service-update') {
+                updateServiceCard(data.service, data.status, data.metrics);
+            } else if (data.type === 'activity') {
+                addActivity(data.message, data.level);
+            }
+        }
+
+        // Start WebSocket connection
+        setTimeout(connectWebSocket, 2000);
+    </script>
+</body>
+</html>

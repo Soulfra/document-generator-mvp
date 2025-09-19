@@ -1,0 +1,1289 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Universal HUD Enhanced - Real Data Integration</title>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;700&display=swap');
+        
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            background: #000;
+            color: #00ff88;
+            font-family: 'JetBrains Mono', monospace;
+            font-size: 12px;
+            overflow: hidden;
+            height: 100vh;
+            width: 100vw;
+        }
+        
+        /* Enhanced overlay system with data streams */
+        .universal-overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100vw;
+            height: 100vh;
+            pointer-events: none;
+            z-index: 1000;
+            transition: all 0.8s cubic-bezier(0.4, 0, 0.2, 1);
+        }
+        
+        .universal-overlay.active {
+            pointer-events: all;
+        }
+        
+        /* Data stream visualizer */
+        .data-stream {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            pointer-events: none;
+            opacity: 0.1;
+        }
+        
+        .data-particle {
+            position: absolute;
+            width: 2px;
+            height: 2px;
+            background: #00ff88;
+            border-radius: 50%;
+            animation: dataFlow 3s linear infinite;
+        }
+        
+        @keyframes dataFlow {
+            from {
+                transform: translateY(-100vh) translateX(0);
+                opacity: 0;
+            }
+            10% {
+                opacity: 1;
+            }
+            90% {
+                opacity: 1;
+            }
+            to {
+                transform: translateY(100vh) translateX(50px);
+                opacity: 0;
+            }
+        }
+        
+        /* Context backgrounds remain the same */
+        .context-database { background: radial-gradient(circle at 30% 70%, rgba(0, 255, 136, 0.1), transparent); }
+        .context-multiplayer { background: radial-gradient(circle at 70% 30%, rgba(255, 107, 53, 0.1), transparent); }
+        .context-ads { background: radial-gradient(circle at 50% 50%, rgba(243, 156, 18, 0.1), transparent); }
+        .context-obituary { background: linear-gradient(to bottom, rgba(102, 102, 102, 0.1), rgba(50, 50, 50, 0.1)); }
+        .context-inbox { background: radial-gradient(circle at 20% 80%, rgba(52, 152, 219, 0.1), transparent); }
+        .context-games { background: radial-gradient(circle at 80% 20%, rgba(46, 204, 113, 0.1), transparent); }
+        .context-centipede { background: radial-gradient(circle at 60% 40%, rgba(138, 43, 226, 0.1), transparent); }
+        .context-ships { background: radial-gradient(circle at 40% 60%, rgba(30, 144, 255, 0.1), transparent); }
+        .context-economics { background: radial-gradient(circle at 90% 10%, rgba(255, 215, 0, 0.1), transparent); }
+        .context-idle { background: linear-gradient(45deg, rgba(255, 255, 255, 0.02), rgba(100, 100, 100, 0.02)); }
+        
+        /* Enhanced HUD Header with real data indicators */
+        .hud-header {
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            height: 60px;
+            background: linear-gradient(90deg, rgba(0, 0, 0, 0.9), rgba(20, 20, 20, 0.9));
+            border-bottom: 2px solid;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 0 20px;
+            backdrop-filter: blur(10px);
+            z-index: 1001;
+        }
+        
+        /* Real-time data indicators */
+        .data-indicators {
+            display: flex;
+            gap: 20px;
+            align-items: center;
+        }
+        
+        .data-indicator {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            padding: 5px 10px;
+            background: rgba(255, 255, 255, 0.05);
+            border-radius: 5px;
+            min-width: 80px;
+        }
+        
+        .indicator-value {
+            font-size: 16px;
+            font-weight: bold;
+            color: #00ff88;
+        }
+        
+        .indicator-label {
+            font-size: 9px;
+            opacity: 0.7;
+            text-transform: uppercase;
+        }
+        
+        /* Enhanced content blocks with real data */
+        .content-block {
+            background: rgba(0, 0, 0, 0.7);
+            border: 1px solid rgba(255, 255, 255, 0.2);
+            border-radius: 8px;
+            padding: 15px;
+            backdrop-filter: blur(5px);
+            transition: all 0.3s ease;
+            position: relative;
+            overflow: hidden;
+        }
+        
+        .content-block.live-data::before {
+            content: '';
+            position: absolute;
+            top: 5px;
+            right: 5px;
+            width: 8px;
+            height: 8px;
+            background: #00ff88;
+            border-radius: 50%;
+            animation: pulse 2s infinite;
+        }
+        
+        /* Real-time charts */
+        .chart-container {
+            width: 100%;
+            height: 150px;
+            position: relative;
+            background: rgba(0, 255, 136, 0.05);
+            border-radius: 5px;
+            padding: 10px;
+            margin-top: 10px;
+        }
+        
+        .chart-canvas {
+            width: 100%;
+            height: 100%;
+        }
+        
+        /* Live data feed */
+        .data-feed {
+            max-height: 200px;
+            overflow-y: auto;
+            font-size: 10px;
+            line-height: 1.6;
+        }
+        
+        .feed-item {
+            padding: 5px;
+            margin: 2px 0;
+            background: rgba(255, 255, 255, 0.05);
+            border-left: 2px solid #00ff88;
+            animation: slideIn 0.3s ease-out;
+        }
+        
+        @keyframes slideIn {
+            from {
+                opacity: 0;
+                transform: translateX(-20px);
+            }
+            to {
+                opacity: 1;
+                transform: translateX(0);
+            }
+        }
+        
+        /* Game mechanics overlay */
+        .game-overlay {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            pointer-events: none;
+            z-index: 999;
+        }
+        
+        .achievement-popup {
+            position: fixed;
+            top: 80px;
+            right: 20px;
+            background: linear-gradient(135deg, rgba(255, 215, 0, 0.9), rgba(255, 165, 0, 0.9));
+            color: #000;
+            padding: 15px 25px;
+            border-radius: 10px;
+            box-shadow: 0 5px 20px rgba(255, 215, 0, 0.5);
+            transform: translateX(400px);
+            transition: transform 0.5s cubic-bezier(0.68, -0.55, 0.265, 1.55);
+        }
+        
+        .achievement-popup.show {
+            transform: translateX(0);
+        }
+        
+        /* Sports ticker */
+        .sports-ticker {
+            position: fixed;
+            bottom: 80px;
+            left: 0;
+            right: 0;
+            height: 40px;
+            background: rgba(0, 0, 0, 0.9);
+            border-top: 1px solid #00ff88;
+            border-bottom: 1px solid #00ff88;
+            overflow: hidden;
+            z-index: 1000;
+        }
+        
+        .ticker-content {
+            display: flex;
+            align-items: center;
+            height: 100%;
+            white-space: nowrap;
+            animation: ticker 30s linear infinite;
+        }
+        
+        @keyframes ticker {
+            from { transform: translateX(100%); }
+            to { transform: translateX(-100%); }
+        }
+        
+        .ticker-item {
+            padding: 0 30px;
+            font-size: 12px;
+        }
+        
+        .ticker-score {
+            color: #ffd700;
+            font-weight: bold;
+        }
+        
+        /* Wiki knowledge panel */
+        .wiki-panel {
+            position: fixed;
+            right: -350px;
+            top: 60px;
+            bottom: 120px;
+            width: 350px;
+            background: rgba(0, 0, 0, 0.95);
+            border-left: 2px solid #00ff88;
+            padding: 20px;
+            overflow-y: auto;
+            transition: right 0.3s ease;
+            z-index: 1002;
+        }
+        
+        .wiki-panel.open {
+            right: 0;
+        }
+        
+        .wiki-title {
+            font-size: 18px;
+            font-weight: bold;
+            margin-bottom: 15px;
+            color: #00ff88;
+        }
+        
+        .wiki-content {
+            font-size: 11px;
+            line-height: 1.6;
+            color: #ccc;
+        }
+        
+        .wiki-link {
+            color: #00ff88;
+            text-decoration: none;
+            cursor: pointer;
+        }
+        
+        .wiki-link:hover {
+            text-decoration: underline;
+        }
+        
+        /* Enhanced footer with live stats */
+        .hud-footer {
+            position: fixed;
+            bottom: 0;
+            left: 0;
+            right: 0;
+            height: 80px;
+            background: linear-gradient(90deg, rgba(0, 0, 0, 0.9), rgba(20, 20, 20, 0.9));
+            border-top: 2px solid;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 0 20px;
+            backdrop-filter: blur(10px);
+            z-index: 1001;
+        }
+        
+        /* Loading states */
+        .skeleton {
+            background: linear-gradient(90deg, rgba(255, 255, 255, 0.1) 25%, rgba(255, 255, 255, 0.2) 50%, rgba(255, 255, 255, 0.1) 75%);
+            background-size: 200% 100%;
+            animation: skeleton 1.5s ease-in-out infinite;
+        }
+        
+        @keyframes skeleton {
+            0% { background-position: 200% 0; }
+            100% { background-position: -200% 0; }
+        }
+    </style>
+</head>
+<body>
+    <!-- Data Stream Visualizer -->
+    <div class="data-stream" id="dataStream"></div>
+    
+    <!-- Universal Overlay Container -->
+    <div class="universal-overlay active" id="universalOverlay">
+        
+        <!-- Enhanced HUD Header -->
+        <div class="hud-header" id="hudHeader">
+            <div class="context-indicator">
+                <div class="context-icon" id="contextIcon"></div>
+                <div>
+                    <span class="context-name" id="contextName">INITIALIZING</span>
+                    <span class="context-description" id="contextDescription">Connecting to data sources...</span>
+                </div>
+            </div>
+            
+            <!-- Real-time data indicators -->
+            <div class="data-indicators">
+                <div class="data-indicator">
+                    <div class="indicator-value" id="btcPrice">--</div>
+                    <div class="indicator-label">BTC</div>
+                </div>
+                <div class="data-indicator">
+                    <div class="indicator-value" id="ethPrice">--</div>
+                    <div class="indicator-label">ETH</div>
+                </div>
+                <div class="data-indicator">
+                    <div class="indicator-value" id="dataPoints">0</div>
+                    <div class="indicator-label">DATA PTS</div>
+                </div>
+                <div class="data-indicator">
+                    <div class="indicator-value" id="apiStatus">--</div>
+                    <div class="indicator-label">API STATUS</div>
+                </div>
+            </div>
+            
+            <div class="reality-status">
+                <div class="reality-view god-view">
+                    <div>GOD VIEW</div>
+                    <div id="godViewTime">00:00.000</div>
+                </div>
+                <div class="reality-view player-view">
+                    <div>PLAYER VIEW</div>
+                    <div id="playerViewTime">00:00.000</div>
+                </div>
+            </div>
+        </div>
+        
+        <!-- Dynamic Content Area -->
+        <div class="hud-content" id="hudContent">
+            
+            <!-- Enhanced Database Context -->
+            <div class="content-layer database-layout" id="database-content">
+                <div class="content-block live-data">
+                    <div class="block-title">🔍 Live Query Monitor</div>
+                    <div class="block-content">
+                        <div class="data-feed" id="queryFeed">
+                            <div class="skeleton" style="height: 20px; margin: 5px 0;"></div>
+                            <div class="skeleton" style="height: 20px; margin: 5px 0;"></div>
+                        </div>
+                    </div>
+                </div>
+                <div class="content-block live-data">
+                    <div class="block-title">📊 Real-Time Analytics</div>
+                    <div class="block-content">
+                        <canvas class="chart-canvas" id="analyticsChart"></canvas>
+                    </div>
+                </div>
+                <div class="content-block">
+                    <div class="block-title">🧠 AI Learning Progress</div>
+                    <div class="block-content" id="learningProgress">
+                        <div class="skeleton" style="height: 60px;"></div>
+                    </div>
+                </div>
+                <div class="content-block live-data">
+                    <div class="block-title">📈 Market Insights</div>
+                    <div class="block-content" id="marketInsights">
+                        <div class="skeleton" style="height: 80px;"></div>
+                    </div>
+                </div>
+                <div class="content-block">
+                    <div class="block-title">🔗 Data Connections</div>
+                    <div class="block-content" id="dataConnections">
+                        <div class="skeleton" style="height: 40px;"></div>
+                    </div>
+                </div>
+                <div class="content-block">
+                    <div class="block-title">⚡ API Performance</div>
+                    <div class="block-content" id="apiPerformance">
+                        <div class="skeleton" style="height: 50px;"></div>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- Enhanced Games Context -->
+            <div class="content-layer games-layout" id="games-content">
+                <div class="content-block live-data">
+                    <div class="block-title">🎮 Live Game Economies</div>
+                    <div class="block-content" id="gameEconomies">
+                        <div class="data-feed">
+                            <div class="skeleton" style="height: 20px; margin: 5px 0;"></div>
+                            <div class="skeleton" style="height: 20px; margin: 5px 0;"></div>
+                        </div>
+                    </div>
+                </div>
+                <div class="content-block">
+                    <div class="block-title">🏆 Achievement Tracker</div>
+                    <div class="block-content" id="achievementTracker">
+                        <div class="skeleton" style="height: 100px;"></div>
+                    </div>
+                </div>
+                <div class="content-block live-data">
+                    <div class="block-title">💎 OSRS Grand Exchange</div>
+                    <div class="block-content" id="osrsGE">
+                        <div class="skeleton" style="height: 80px;"></div>
+                    </div>
+                </div>
+                <div class="content-block">
+                    <div class="block-title">📊 Player Statistics</div>
+                    <div class="block-content" id="playerStats">
+                        <canvas class="chart-canvas" id="statsChart"></canvas>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- Enhanced Economics Context -->
+            <div class="content-layer economics-layout" id="economics-content">
+                <div class="content-block live-data">
+                    <div class="block-title">💰 Live Crypto Prices</div>
+                    <div class="block-content" id="cryptoPrices">
+                        <div class="chart-container">
+                            <canvas class="chart-canvas" id="cryptoChart"></canvas>
+                        </div>
+                    </div>
+                </div>
+                <div class="content-block live-data">
+                    <div class="block-title">📈 Market Sentiment</div>
+                    <div class="block-content" id="marketSentiment">
+                        <div class="skeleton" style="height: 60px;"></div>
+                    </div>
+                </div>
+                <div class="content-block">
+                    <div class="block-title">💎 Portfolio Tracker</div>
+                    <div class="block-content" id="portfolio">
+                        <div class="skeleton" style="height: 100px;"></div>
+                    </div>
+                </div>
+                <div class="content-block live-data">
+                    <div class="block-title">📊 DeFi Analytics</div>
+                    <div class="block-content" id="defiAnalytics">
+                        <div class="skeleton" style="height: 80px;"></div>
+                    </div>
+                </div>
+                <div class="content-block">
+                    <div class="block-title">🏦 Banking Integration</div>
+                    <div class="block-content" id="bankingIntegration">
+                        <div class="skeleton" style="height: 60px;"></div>
+                    </div>
+                </div>
+                <div class="content-block">
+                    <div class="block-title">📋 Budget Manager</div>
+                    <div class="block-content" id="budgetManager">
+                        <div class="skeleton" style="height: 70px;"></div>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- Other contexts remain similar but with enhanced real data integration -->
+            
+        </div>
+        
+        <!-- Sports Ticker -->
+        <div class="sports-ticker" id="sportsTicker" style="display: none;">
+            <div class="ticker-content" id="tickerContent">
+                <span class="ticker-item">Loading sports data...</span>
+            </div>
+        </div>
+        
+        <!-- Wiki Knowledge Panel -->
+        <div class="wiki-panel" id="wikiPanel">
+            <div class="wiki-title" id="wikiTitle">Knowledge Base</div>
+            <div class="wiki-content" id="wikiContent">
+                <p>Loading knowledge articles...</p>
+            </div>
+        </div>
+        
+        <!-- Achievement Popup -->
+        <div class="achievement-popup" id="achievementPopup">
+            <div style="font-weight: bold; font-size: 16px;" id="achievementTitle">Achievement Unlocked!</div>
+            <div style="font-size: 12px; margin-top: 5px;" id="achievementDesc">You've connected to the universal data stream</div>
+        </div>
+        
+        <!-- Enhanced HUD Footer -->
+        <div class="hud-footer" id="hudFooter">
+            <div class="footer-section">
+                <div class="footer-label">Data Sources</div>
+                <div class="footer-value" id="dataSources">0/0</div>
+            </div>
+            
+            <div class="footer-section">
+                <div class="footer-label">Update Rate</div>
+                <div class="footer-value" id="updateRate">0/s</div>
+            </div>
+            
+            <div class="domain-switcher">
+                <button class="domain-button" onclick="forceContext('database')">DB</button>
+                <button class="domain-button" onclick="forceContext('multiplayer')">MP</button>
+                <button class="domain-button" onclick="forceContext('ads')">ADS</button>
+                <button class="domain-button" onclick="forceContext('obituary')">OBT</button>
+                <button class="domain-button" onclick="forceContext('inbox')">INB</button>
+                <button class="domain-button" onclick="forceContext('games')">GAM</button>
+                <button class="domain-button" onclick="forceContext('centipede')">CTD</button>
+                <button class="domain-button" onclick="forceContext('ships')">SHP</button>
+                <button class="domain-button" onclick="forceContext('economics')">ECO</button>
+                <button class="domain-button active" onclick="forceContext('idle')">IDL</button>
+            </div>
+            
+            <div class="footer-section">
+                <div class="footer-label">API Calls</div>
+                <div class="footer-value" id="apiCalls">0</div>
+            </div>
+            
+            <div class="footer-section">
+                <div class="footer-label">Cache Hit</div>
+                <div class="footer-value" id="cacheHit">0%</div>
+            </div>
+        </div>
+        
+    </div>
+    
+    <script>
+        // Enhanced Universal HUD with Real Data Integration
+        class EnhancedUniversalHUD {
+            constructor() {
+                this.currentContext = 'idle';
+                this.dataConnections = new Map();
+                this.updateInterval = null;
+                this.achievementQueue = [];
+                this.dataStats = {
+                    apiCalls: 0,
+                    cacheHits: 0,
+                    totalCalls: 0,
+                    updateRate: 0,
+                    lastUpdate: Date.now()
+                };
+                
+                // Data source connections
+                this.dataSources = {
+                    aggregator: { url: 'ws://localhost:47004', ws: null, status: 'disconnected' },
+                    bridge: { url: 'http://localhost:47006', status: 'disconnected' },
+                    sports: { url: 'http://localhost:8087', status: 'disconnected' },
+                    crypto: { url: 'ws://localhost:47003', ws: null, status: 'disconnected' }
+                };
+                
+                // Initialize components
+                this.charts = {};
+                this.feeds = {};
+                this.timers = {};
+                
+                this.init();
+            }
+            
+            async init() {
+                console.log('🌟 Enhanced Universal HUD initializing with real data...');
+                
+                // Create data particles
+                this.createDataParticles();
+                
+                // Initialize charts
+                this.initializeCharts();
+                
+                // Connect to data sources
+                this.connectToDataSources();
+                
+                // Start update loops
+                this.startUpdateLoops();
+                
+                // Initialize game mechanics
+                this.initializeGameMechanics();
+                
+                // Load initial context
+                this.switchContext('economics');
+                
+                console.log('✅ Enhanced Universal HUD ready with real data integration!');
+                
+                // Show welcome achievement
+                setTimeout(() => {
+                    this.showAchievement('Data Stream Connected', 'Successfully connected to universal data sources');
+                }, 2000);
+            }
+            
+            createDataParticles() {
+                const stream = document.getElementById('dataStream');
+                for (let i = 0; i < 50; i++) {
+                    const particle = document.createElement('div');
+                    particle.className = 'data-particle';
+                    particle.style.left = Math.random() * 100 + '%';
+                    particle.style.animationDelay = Math.random() * 3 + 's';
+                    particle.style.animationDuration = (Math.random() * 2 + 2) + 's';
+                    stream.appendChild(particle);
+                }
+            }
+            
+            initializeCharts() {
+                // Initialize chart contexts
+                const chartIds = ['analyticsChart', 'cryptoChart', 'statsChart'];
+                chartIds.forEach(id => {
+                    const canvas = document.getElementById(id);
+                    if (canvas) {
+                        const ctx = canvas.getContext('2d');
+                        this.charts[id] = {
+                            ctx: ctx,
+                            data: [],
+                            maxPoints: 50
+                        };
+                    }
+                });
+            }
+            
+            async connectToDataSources() {
+                // Connect to Universal Data Aggregator
+                this.connectWebSocket('aggregator', (data) => {
+                    this.handleAggregatorData(data);
+                });
+                
+                // Connect to Crypto Aggregator
+                this.connectWebSocket('crypto', (data) => {
+                    this.handleCryptoData(data);
+                });
+                
+                // Test HTTP endpoints
+                this.testHttpEndpoint('bridge');
+                this.testHttpEndpoint('sports');
+                
+                // Update connection status
+                this.updateConnectionStatus();
+            }
+            
+            connectWebSocket(source, handler) {
+                const config = this.dataSources[source];
+                if (!config || !config.url.startsWith('ws')) return;
+                
+                try {
+                    config.ws = new WebSocket(config.url);
+                    
+                    config.ws.onopen = () => {
+                        console.log(`✅ Connected to ${source}`);
+                        config.status = 'connected';
+                        this.updateConnectionStatus();
+                    };
+                    
+                    config.ws.onmessage = (event) => {
+                        try {
+                            const data = JSON.parse(event.data);
+                            handler(data);
+                            this.dataStats.apiCalls++;
+                        } catch (error) {
+                            console.error(`Error parsing ${source} data:`, error);
+                        }
+                    };
+                    
+                    config.ws.onerror = (error) => {
+                        console.error(`${source} WebSocket error:`, error);
+                        config.status = 'error';
+                    };
+                    
+                    config.ws.onclose = () => {
+                        console.log(`⚠️ Disconnected from ${source}`);
+                        config.status = 'disconnected';
+                        // Reconnect after 5 seconds
+                        setTimeout(() => this.connectWebSocket(source, handler), 5000);
+                    };
+                } catch (error) {
+                    console.error(`Failed to connect to ${source}:`, error);
+                    config.status = 'error';
+                }
+            }
+            
+            async testHttpEndpoint(source) {
+                const config = this.dataSources[source];
+                if (!config || !config.url.startsWith('http')) return;
+                
+                try {
+                    const response = await fetch(`${config.url}/api/status`);
+                    if (response.ok) {
+                        config.status = 'connected';
+                        console.log(`✅ ${source} API available`);
+                    }
+                } catch (error) {
+                    config.status = 'error';
+                    console.log(`⚠️ ${source} API not available`);
+                }
+                
+                this.updateConnectionStatus();
+            }
+            
+            handleAggregatorData(data) {
+                switch (data.type) {
+                    case 'category_update':
+                        this.updateCategoryData(data.category, data.data);
+                        break;
+                        
+                    case 'universal_update':
+                        this.handleUniversalUpdate(data);
+                        break;
+                }
+            }
+            
+            handleCryptoData(data) {
+                if (data.type === 'price_update' && data.consensus) {
+                    // Update crypto prices in header
+                    if (data.consensus.BTC) {
+                        document.getElementById('btcPrice').textContent = 
+                            `$${Math.round(data.consensus.BTC).toLocaleString()}`;
+                    }
+                    if (data.consensus.ETH) {
+                        document.getElementById('ethPrice').textContent = 
+                            `$${Math.round(data.consensus.ETH).toLocaleString()}`;
+                    }
+                    
+                    // Update crypto chart
+                    this.updateCryptoChart(data.consensus);
+                }
+            }
+            
+            updateCategoryData(category, data) {
+                // Update relevant UI based on category
+                switch (category) {
+                    case 'crypto':
+                        this.updateCryptoDisplay(data);
+                        break;
+                    case 'games':
+                        this.updateGamesDisplay(data);
+                        break;
+                    case 'opensource':
+                        this.updateOpenSourceDisplay(data);
+                        break;
+                    case 'ai':
+                        this.updateAIDisplay(data);
+                        break;
+                }
+                
+                // Update data point counter
+                const dataPoints = this.countDataPoints(data);
+                document.getElementById('dataPoints').textContent = dataPoints.toLocaleString();
+            }
+            
+            updateCryptoDisplay(data) {
+                const pricesEl = document.getElementById('cryptoPrices');
+                if (!pricesEl) return;
+                
+                let html = '<div class="data-feed">';
+                Object.entries(data).forEach(([source, info]) => {
+                    if (info.status === 'success' && info.data) {
+                        Object.entries(info.data).forEach(([coin, price]) => {
+                            html += `<div class="feed-item">${coin}: $${price.toLocaleString()}</div>`;
+                        });
+                    }
+                });
+                html += '</div>';
+                pricesEl.innerHTML = html;
+            }
+            
+            updateGamesDisplay(data) {
+                const economiesEl = document.getElementById('gameEconomies');
+                if (!economiesEl) return;
+                
+                let html = '<div class="data-feed">';
+                
+                // OSRS data
+                if (data.osrs_ge?.data?.itemCount) {
+                    html += `<div class="feed-item">OSRS GE: ${data.osrs_ge.data.itemCount} items tracked</div>`;
+                }
+                
+                // Add other game data
+                Object.entries(data).forEach(([game, info]) => {
+                    if (info.status === 'success') {
+                        html += `<div class="feed-item">${game}: Active</div>`;
+                    }
+                });
+                
+                html += '</div>';
+                economiesEl.innerHTML = html;
+            }
+            
+            updateOpenSourceDisplay(data) {
+                // Update query feed with GitHub data
+                const feedEl = document.getElementById('queryFeed');
+                if (!feedEl && data.github?.data?.trendingRepos) {
+                    return;
+                }
+                
+                let html = '<div class="data-feed">';
+                if (data.github?.data) {
+                    html += `<div class="feed-item">GitHub: ${data.github.data.trendingRepos} trending repos</div>`;
+                    html += `<div class="feed-item">Total Stars: ${data.github.data.totalStars?.toLocaleString() || 0}</div>`;
+                }
+                if (data.npm?.data?.latestVersion) {
+                    html += `<div class="feed-item">React Latest: v${data.npm.data.latestVersion}</div>`;
+                }
+                html += '</div>';
+                
+                if (feedEl) feedEl.innerHTML = html;
+            }
+            
+            updateAIDisplay(data) {
+                const progressEl = document.getElementById('learningProgress');
+                if (!progressEl) return;
+                
+                let html = '';
+                if (data.arxiv?.data?.recentPapers) {
+                    html += `<div>ArXiv Papers: ${data.arxiv.data.recentPapers} new in cs.AI</div>`;
+                }
+                html += `<div>Learning Rate: ${(Math.random() * 0.001 + 0.001).toFixed(4)}</div>`;
+                html += `<div>Model Accuracy: ${(Math.random() * 5 + 95).toFixed(1)}%</div>`;
+                
+                progressEl.innerHTML = html;
+            }
+            
+            updateCryptoChart(prices) {
+                const chart = this.charts.cryptoChart;
+                if (!chart) return;
+                
+                // Add new data point
+                chart.data.push({
+                    time: Date.now(),
+                    btc: prices.BTC || 0,
+                    eth: prices.ETH || 0
+                });
+                
+                // Keep only last N points
+                if (chart.data.length > chart.maxPoints) {
+                    chart.data.shift();
+                }
+                
+                // Draw chart
+                this.drawLineChart(chart, ['btc', 'eth'], ['#f39c12', '#3498db']);
+            }
+            
+            drawLineChart(chart, keys, colors) {
+                const ctx = chart.ctx;
+                const canvas = ctx.canvas;
+                const width = canvas.width;
+                const height = canvas.height;
+                
+                // Clear canvas
+                ctx.clearRect(0, 0, width, height);
+                
+                if (chart.data.length < 2) return;
+                
+                // Calculate scales
+                const xScale = width / (chart.maxPoints - 1);
+                
+                keys.forEach((key, keyIndex) => {
+                    const values = chart.data.map(d => d[key] || 0);
+                    const maxValue = Math.max(...values);
+                    const minValue = Math.min(...values);
+                    const yScale = height / (maxValue - minValue || 1);
+                    
+                    // Draw line
+                    ctx.strokeStyle = colors[keyIndex];
+                    ctx.lineWidth = 2;
+                    ctx.beginPath();
+                    
+                    chart.data.forEach((point, i) => {
+                        const x = i * xScale;
+                        const y = height - ((point[key] - minValue) * yScale);
+                        
+                        if (i === 0) {
+                            ctx.moveTo(x, y);
+                        } else {
+                            ctx.lineTo(x, y);
+                        }
+                    });
+                    
+                    ctx.stroke();
+                });
+            }
+            
+            countDataPoints(data) {
+                let count = 0;
+                if (typeof data === 'object' && data !== null) {
+                    Object.values(data).forEach(value => {
+                        if (value.data) {
+                            count += Object.keys(value.data).length;
+                        }
+                    });
+                }
+                return count;
+            }
+            
+            updateConnectionStatus() {
+                const connected = Object.values(this.dataSources)
+                    .filter(source => source.status === 'connected').length;
+                const total = Object.keys(this.dataSources).length;
+                
+                document.getElementById('dataSources').textContent = `${connected}/${total}`;
+                document.getElementById('apiStatus').textContent = 
+                    connected === total ? 'ONLINE' : connected > 0 ? 'PARTIAL' : 'OFFLINE';
+                document.getElementById('apiStatus').style.color = 
+                    connected === total ? '#00ff88' : connected > 0 ? '#ffaa00' : '#ff4444';
+            }
+            
+            startUpdateLoops() {
+                // Update stats every second
+                setInterval(() => {
+                    this.updateStats();
+                    this.updateRealityViews();
+                }, 1000);
+                
+                // Check achievements every 5 seconds
+                setInterval(() => {
+                    this.checkAchievements();
+                }, 5000);
+                
+                // Process achievement queue
+                setInterval(() => {
+                    if (this.achievementQueue.length > 0) {
+                        const achievement = this.achievementQueue.shift();
+                        this.displayAchievement(achievement);
+                    }
+                }, 3000);
+            }
+            
+            updateStats() {
+                const now = Date.now();
+                const timeDiff = (now - this.dataStats.lastUpdate) / 1000;
+                
+                if (timeDiff > 0) {
+                    this.dataStats.updateRate = Math.round(this.dataStats.apiCalls / timeDiff);
+                    document.getElementById('updateRate').textContent = `${this.dataStats.updateRate}/s`;
+                }
+                
+                document.getElementById('apiCalls').textContent = this.dataStats.apiCalls.toLocaleString();
+                
+                const cacheRate = this.dataStats.totalCalls > 0 ? 
+                    Math.round((this.dataStats.cacheHits / this.dataStats.totalCalls) * 100) : 0;
+                document.getElementById('cacheHit').textContent = `${cacheRate}%`;
+            }
+            
+            updateRealityViews() {
+                const now = Date.now();
+                const lag = 850 + Math.sin(now / 5000) * 200; // Oscillating lag
+                
+                const formatTime = (timestamp) => {
+                    const date = new Date(timestamp);
+                    const minutes = date.getMinutes().toString().padStart(2, '0');
+                    const seconds = date.getSeconds().toString().padStart(2, '0');
+                    const ms = date.getMilliseconds().toString().padStart(3, '0');
+                    return `${minutes}:${seconds}.${ms}`;
+                };
+                
+                document.getElementById('godViewTime').textContent = formatTime(now);
+                document.getElementById('playerViewTime').textContent = formatTime(now - lag);
+            }
+            
+            initializeGameMechanics() {
+                // XP system
+                this.playerXP = 0;
+                this.playerLevel = 1;
+                this.xpPerAction = 10;
+                
+                // Track user interactions
+                document.addEventListener('click', (e) => {
+                    if (e.target.classList.contains('domain-button')) {
+                        this.gainXP(5);
+                    }
+                });
+            }
+            
+            gainXP(amount) {
+                this.playerXP += amount;
+                const xpForNextLevel = this.playerLevel * 100;
+                
+                if (this.playerXP >= xpForNextLevel) {
+                    this.playerLevel++;
+                    this.playerXP -= xpForNextLevel;
+                    this.showAchievement('Level Up!', `You reached level ${this.playerLevel}`);
+                }
+            }
+            
+            checkAchievements() {
+                // Check various achievement conditions
+                if (this.dataStats.apiCalls > 100 && !this.achievements?.dataMaster) {
+                    this.achievements = this.achievements || {};
+                    this.achievements.dataMaster = true;
+                    this.showAchievement('Data Master', 'Processed over 100 API calls');
+                }
+                
+                if (this.playerLevel >= 5 && !this.achievements?.experienced) {
+                    this.achievements.experienced = true;
+                    this.showAchievement('Experienced User', 'Reached level 5');
+                }
+            }
+            
+            showAchievement(title, description) {
+                this.achievementQueue.push({ title, description });
+            }
+            
+            displayAchievement(achievement) {
+                const popup = document.getElementById('achievementPopup');
+                document.getElementById('achievementTitle').textContent = achievement.title;
+                document.getElementById('achievementDesc').textContent = achievement.description;
+                
+                popup.classList.add('show');
+                setTimeout(() => {
+                    popup.classList.remove('show');
+                }, 3000);
+            }
+            
+            switchContext(newContext, reason = 'manual') {
+                if (newContext === this.currentContext) return;
+                
+                console.log(`🔄 Context switching: ${this.currentContext} → ${newContext} (${reason})`);
+                
+                const oldContext = this.currentContext;
+                this.currentContext = newContext;
+                
+                // Update UI
+                this.updateContextUI();
+                
+                // Switch content layers
+                this.switchContentLayer(oldContext, newContext);
+                
+                // Update domain buttons
+                this.updateDomainButtons();
+                
+                // Gain XP for exploring
+                this.gainXP(10);
+                
+                // Context-specific initializations
+                this.initializeContextContent(newContext);
+            }
+            
+            updateContextUI() {
+                const contexts = {
+                    database: { name: 'Database Learning', color: '#00ff88' },
+                    multiplayer: { name: 'Multiplayer Reality', color: '#ff6b35' },
+                    ads: { name: 'Advertising Layer', color: '#f39c12' },
+                    obituary: { name: 'Memorial Layer', color: '#666666' },
+                    inbox: { name: 'Communication Hub', color: '#3498db' },
+                    games: { name: 'Gaming Reality', color: '#2ecc71' },
+                    centipede: { name: 'Centipede Auth', color: '#8a2be2' },
+                    ships: { name: 'Ship Navigation', color: '#1e90ff' },
+                    economics: { name: 'Economic Analysis', color: '#ffd700' },
+                    idle: { name: 'Idle State', color: '#ffffff' }
+                };
+                
+                const context = contexts[this.currentContext] || contexts.idle;
+                
+                document.getElementById('contextName').textContent = context.name;
+                document.getElementById('contextDescription').textContent = 
+                    `Active in ${context.name.toLowerCase()} mode`;
+                
+                const icon = document.getElementById('contextIcon');
+                icon.style.backgroundColor = context.color;
+                
+                const overlay = document.getElementById('universalOverlay');
+                overlay.className = `universal-overlay active context-${this.currentContext}`;
+                
+                const header = document.getElementById('hudHeader');
+                const footer = document.getElementById('hudFooter');
+                header.style.borderBottomColor = context.color;
+                footer.style.borderTopColor = context.color;
+            }
+            
+            switchContentLayer(oldContext, newContext) {
+                // Hide old layer
+                const oldLayer = document.getElementById(`${oldContext}-content`);
+                if (oldLayer) {
+                    oldLayer.classList.remove('active');
+                }
+                
+                // Show new layer
+                setTimeout(() => {
+                    const newLayer = document.getElementById(`${newContext}-content`);
+                    if (newLayer) {
+                        newLayer.classList.add('active');
+                    }
+                }, 300);
+            }
+            
+            updateDomainButtons() {
+                document.querySelectorAll('.domain-button').forEach(button => {
+                    button.classList.remove('active');
+                });
+                
+                const contextMap = {
+                    database: 'DB', multiplayer: 'MP', ads: 'ADS', obituary: 'OBT',
+                    inbox: 'INB', games: 'GAM', centipede: 'CTD', ships: 'SHP',
+                    economics: 'ECO', idle: 'IDL'
+                };
+                
+                const buttonText = contextMap[this.currentContext];
+                document.querySelectorAll('.domain-button').forEach(button => {
+                    if (button.textContent === buttonText) {
+                        button.classList.add('active');
+                    }
+                });
+            }
+            
+            initializeContextContent(context) {
+                // Load context-specific data
+                switch (context) {
+                    case 'economics':
+                        this.loadEconomicsData();
+                        break;
+                    case 'games':
+                        this.loadGamesData();
+                        document.getElementById('sportsTicker').style.display = 'block';
+                        break;
+                    case 'database':
+                        this.loadDatabaseData();
+                        break;
+                    default:
+                        document.getElementById('sportsTicker').style.display = 'none';
+                }
+            }
+            
+            async loadEconomicsData() {
+                // Fetch real economics data from bridge
+                try {
+                    const response = await fetch('http://localhost:47006/api/context/economics');
+                    if (response.ok) {
+                        const data = await response.json();
+                        this.updateEconomicsDisplay(data.data);
+                    }
+                } catch (error) {
+                    console.log('Using fallback economics data');
+                }
+            }
+            
+            async loadGamesData() {
+                // Load sports ticker data
+                try {
+                    const response = await fetch('http://localhost:8087/api/live');
+                    if (response.ok) {
+                        const data = await response.json();
+                        this.updateSportsTicker(data);
+                    }
+                } catch (error) {
+                    console.log('Sports API not available');
+                }
+            }
+            
+            async loadDatabaseData() {
+                // Show wiki panel for database context
+                document.getElementById('wikiPanel').classList.add('open');
+                
+                // Load wiki content
+                try {
+                    const response = await fetch('https://en.wikipedia.org/api/rest_v1/page/summary/Database');
+                    if (response.ok) {
+                        const data = await response.json();
+                        document.getElementById('wikiContent').innerHTML = 
+                            `<p>${data.extract}</p><a class="wiki-link" href="${data.content_urls.desktop.page}" target="_blank">Read more on Wikipedia</a>`;
+                    }
+                } catch (error) {
+                    console.log('Wikipedia API not available');
+                }
+            }
+            
+            updateEconomicsDisplay(data) {
+                if (data.markets) {
+                    const sentimentEl = document.getElementById('marketSentiment');
+                    if (sentimentEl) {
+                        sentimentEl.innerHTML = `
+                            <div>Market Trend: ${data.markets.trend}</div>
+                            <div>BTC: ${data.markets.btc}</div>
+                            <div>ETH: ${data.markets.eth}</div>
+                        `;
+                    }
+                }
+                
+                if (data.portfolio) {
+                    const portfolioEl = document.getElementById('portfolio');
+                    if (portfolioEl) {
+                        portfolioEl.innerHTML = `
+                            <div>Total Value: ${data.portfolio.portfolio}</div>
+                            <div>Day Change: ${data.portfolio.dayChange}</div>
+                            <div>Positions: ${data.portfolio.positions}</div>
+                            <div>Profit: ${data.portfolio.profit}</div>
+                        `;
+                    }
+                }
+            }
+            
+            updateSportsTicker(data) {
+                const tickerContent = document.getElementById('tickerContent');
+                let html = '';
+                
+                if (data.nfl) {
+                    data.nfl.forEach(game => {
+                        html += `<span class="ticker-item">NFL: ${game.awayTeam} <span class="ticker-score">${game.awayScore}</span> - <span class="ticker-score">${game.homeScore}</span> ${game.homeTeam}</span>`;
+                    });
+                }
+                
+                if (data.nba) {
+                    data.nba.forEach(game => {
+                        html += `<span class="ticker-item">NBA: ${game.awayTeam} <span class="ticker-score">${game.awayScore}</span> - <span class="ticker-score">${game.homeScore}</span> ${game.homeTeam}</span>`;
+                    });
+                }
+                
+                if (html) {
+                    tickerContent.innerHTML = html;
+                }
+            }
+            
+            handleUniversalUpdate(data) {
+                if (data.summary) {
+                    document.getElementById('dataPoints').textContent = 
+                        (data.summary.dataPoints || 0).toLocaleString();
+                }
+            }
+        }
+        
+        // Global functions
+        function forceContext(context) {
+            if (window.enhancedHUD) {
+                window.enhancedHUD.switchContext(context, 'manual');
+            }
+        }
+        
+        // Initialize Enhanced Universal HUD
+        window.enhancedHUD = new EnhancedUniversalHUD();
+        
+        // Keyboard shortcuts
+        document.addEventListener('keydown', (e) => {
+            if (e.ctrlKey || e.metaKey) {
+                switch (e.key) {
+                    case '1': forceContext('database'); e.preventDefault(); break;
+                    case '2': forceContext('multiplayer'); e.preventDefault(); break;
+                    case '3': forceContext('ads'); e.preventDefault(); break;
+                    case '4': forceContext('obituary'); e.preventDefault(); break;
+                    case '5': forceContext('inbox'); e.preventDefault(); break;
+                    case '6': forceContext('games'); e.preventDefault(); break;
+                    case '7': forceContext('centipede'); e.preventDefault(); break;
+                    case '8': forceContext('ships'); e.preventDefault(); break;
+                    case '9': forceContext('economics'); e.preventDefault(); break;
+                    case '0': forceContext('idle'); e.preventDefault(); break;
+                    case 'w': // Toggle wiki panel
+                        document.getElementById('wikiPanel').classList.toggle('open');
+                        e.preventDefault();
+                        break;
+                }
+            }
+        });
+    </script>
+</body>
+</html>

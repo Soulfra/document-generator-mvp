@@ -1,0 +1,2047 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Domingo Visual Workflow - n8n Style Character System</title>
+    <style>
+        :root {
+            --bg-dark: #0a0a0a;
+            --bg-secondary: #1a1a1a;
+            --bg-tertiary: #2a2a2a;
+            --text-primary: #e0e0e0;
+            --text-secondary: #a0a0a0;
+            --purple-primary: #8B5CF6;
+            --purple-secondary: #7C3AED;
+            --purple-glow: rgba(139, 92, 246, 0.4);
+            --green-success: #10B981;
+            --red-error: #EF4444;
+            --yellow-warning: #F59E0B;
+            --blue-info: #3B82F6;
+        }
+
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, monospace;
+            background: var(--bg-dark);
+            color: var(--text-primary);
+            overflow: hidden;
+            height: 100vh;
+        }
+
+        /* Main Layout */
+        .workflow-container {
+            display: flex;
+            height: 100vh;
+            position: relative;
+        }
+
+        /* Sidebar */
+        .sidebar {
+            width: 280px;
+            background: var(--bg-secondary);
+            border-right: 1px solid var(--bg-tertiary);
+            display: flex;
+            flex-direction: column;
+            z-index: 10;
+        }
+
+        .sidebar-header {
+            padding: 20px;
+            border-bottom: 1px solid var(--bg-tertiary);
+        }
+
+        .sidebar-section {
+            padding: 15px;
+            border-bottom: 1px solid var(--bg-tertiary);
+        }
+
+        .sidebar-section h3 {
+            font-size: 14px;
+            text-transform: uppercase;
+            color: var(--text-secondary);
+            margin-bottom: 10px;
+        }
+
+        /* Character Node Templates */
+        .node-templates {
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+        }
+
+        .node-template {
+            background: var(--bg-tertiary);
+            border: 1px solid var(--purple-primary);
+            border-radius: 8px;
+            padding: 12px;
+            cursor: grab;
+            transition: all 0.3s ease;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .node-template:hover {
+            background: rgba(139, 92, 246, 0.1);
+            transform: translateX(5px);
+        }
+
+        .node-template.dragging {
+            opacity: 0.5;
+            cursor: grabbing;
+        }
+
+        .node-emoji {
+            font-size: 24px;
+        }
+
+        .node-info {
+            flex: 1;
+        }
+
+        .node-name {
+            font-weight: bold;
+            font-size: 14px;
+        }
+
+        .node-role {
+            font-size: 12px;
+            color: var(--text-secondary);
+        }
+
+        /* Canvas Area */
+        .canvas-wrapper {
+            flex: 1;
+            position: relative;
+            overflow: hidden;
+            background: var(--bg-dark);
+            background-image: 
+                linear-gradient(rgba(139, 92, 246, 0.1) 1px, transparent 1px),
+                linear-gradient(90deg, rgba(139, 92, 246, 0.1) 1px, transparent 1px);
+            background-size: 50px 50px;
+        }
+
+        .canvas {
+            width: 10000px;
+            height: 10000px;
+            position: relative;
+            transform-origin: 0 0;
+        }
+
+        /* SVG for connections */
+        .connections-svg {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            pointer-events: none;
+            z-index: 1;
+        }
+
+        .connection-line {
+            stroke: var(--purple-primary);
+            stroke-width: 2;
+            fill: none;
+            opacity: 0.8;
+        }
+
+        .connection-line.active {
+            stroke: var(--green-success);
+            stroke-width: 3;
+            filter: drop-shadow(0 0 5px var(--green-success));
+        }
+
+        .connection-line.error {
+            stroke: var(--red-error);
+            stroke-dasharray: 5, 5;
+        }
+
+        /* Workflow Nodes */
+        .workflow-node {
+            position: absolute;
+            background: var(--bg-secondary);
+            border: 2px solid var(--purple-primary);
+            border-radius: 12px;
+            padding: 15px;
+            min-width: 180px;
+            cursor: move;
+            transition: box-shadow 0.3s ease;
+            z-index: 5;
+        }
+
+        .workflow-node:hover {
+            box-shadow: 0 0 20px var(--purple-glow);
+        }
+
+        .workflow-node.selected {
+            border-color: var(--green-success);
+            box-shadow: 0 0 30px rgba(16, 185, 129, 0.4);
+        }
+
+        .workflow-node.busy {
+            border-color: var(--yellow-warning);
+        }
+
+        .workflow-node.error {
+            border-color: var(--red-error);
+        }
+
+        .node-header {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            margin-bottom: 10px;
+        }
+
+        .node-status {
+            width: 8px;
+            height: 8px;
+            border-radius: 50%;
+            background: var(--text-secondary);
+        }
+
+        .node-status.online {
+            background: var(--green-success);
+            box-shadow: 0 0 5px var(--green-success);
+        }
+
+        .node-status.busy {
+            background: var(--yellow-warning);
+            box-shadow: 0 0 5px var(--yellow-warning);
+        }
+
+        .node-status.error {
+            background: var(--red-error);
+            box-shadow: 0 0 5px var(--red-error);
+        }
+
+        /* Node Ports */
+        .node-ports {
+            position: absolute;
+            width: 100%;
+            height: 100%;
+            top: 0;
+            left: 0;
+        }
+
+        .port {
+            position: absolute;
+            width: 14px;
+            height: 14px;
+            background: var(--purple-primary);
+            border: 2px solid var(--bg-dark);
+            border-radius: 50%;
+            cursor: crosshair;
+            z-index: 10;
+        }
+
+        .port:hover {
+            transform: scale(1.3);
+            box-shadow: 0 0 10px var(--purple-glow);
+        }
+
+        .port.input {
+            left: -7px;
+            top: 50%;
+            transform: translateY(-50%);
+        }
+
+        .port.output {
+            right: -7px;
+            top: 50%;
+            transform: translateY(-50%);
+        }
+
+        /* Task Nodes */
+        .task-node {
+            background: var(--bg-tertiary);
+            border: 1px solid var(--text-secondary);
+            font-size: 12px;
+            padding: 8px 12px;
+            margin-top: 5px;
+            border-radius: 4px;
+        }
+
+        /* Controls */
+        .controls {
+            position: absolute;
+            top: 20px;
+            left: 300px;
+            display: flex;
+            gap: 10px;
+            z-index: 100;
+        }
+
+        .control-btn {
+            background: var(--bg-secondary);
+            border: 1px solid var(--purple-primary);
+            color: var(--text-primary);
+            padding: 8px 16px;
+            border-radius: 6px;
+            cursor: pointer;
+            font-size: 14px;
+            transition: all 0.3s ease;
+        }
+
+        .control-btn:hover {
+            background: var(--purple-primary);
+            transform: translateY(-2px);
+        }
+
+        /* Minimap */
+        .minimap {
+            position: absolute;
+            bottom: 20px;
+            right: 20px;
+            width: 200px;
+            height: 150px;
+            background: rgba(26, 26, 26, 0.9);
+            border: 1px solid var(--purple-primary);
+            border-radius: 8px;
+            overflow: hidden;
+            z-index: 100;
+        }
+
+        .minimap-content {
+            width: 100%;
+            height: 100%;
+            position: relative;
+        }
+
+        .minimap-viewport {
+            position: absolute;
+            border: 2px solid var(--purple-primary);
+            background: rgba(139, 92, 246, 0.2);
+            cursor: move;
+        }
+
+        /* Info Panel */
+        .info-panel {
+            position: absolute;
+            top: 20px;
+            right: 20px;
+            width: 300px;
+            background: rgba(26, 26, 26, 0.95);
+            border: 1px solid var(--purple-primary);
+            border-radius: 8px;
+            padding: 20px;
+            z-index: 100;
+            display: none;
+        }
+
+        .info-panel.visible {
+            display: block;
+        }
+
+        .info-panel h3 {
+            margin-bottom: 15px;
+            color: var(--purple-primary);
+        }
+
+        .info-item {
+            margin-bottom: 10px;
+            font-size: 14px;
+        }
+
+        .info-label {
+            color: var(--text-secondary);
+            display: inline-block;
+            width: 100px;
+        }
+
+        /* Connection Preview */
+        .connection-preview {
+            position: absolute;
+            stroke: var(--purple-primary);
+            stroke-width: 2;
+            stroke-dasharray: 5, 5;
+            fill: none;
+            pointer-events: none;
+            z-index: 1000;
+        }
+
+        /* Context Menu */
+        .context-menu {
+            position: absolute;
+            background: var(--bg-secondary);
+            border: 1px solid var(--purple-primary);
+            border-radius: 8px;
+            padding: 8px 0;
+            min-width: 200px;
+            z-index: 1000;
+            display: none;
+            box-shadow: 0 4px 20px rgba(0, 0, 0, 0.5);
+        }
+
+        .context-menu-item {
+            padding: 10px 20px;
+            cursor: pointer;
+            font-size: 14px;
+            transition: background 0.2s;
+        }
+
+        .context-menu-item:hover {
+            background: var(--purple-primary);
+        }
+
+        /* Query Terminal */
+        .query-terminal {
+            position: absolute;
+            bottom: 20px;
+            left: 300px;
+            right: 240px;
+            height: 200px;
+            background: rgba(26, 26, 26, 0.95);
+            border: 1px solid var(--purple-primary);
+            border-radius: 8px;
+            display: flex;
+            flex-direction: column;
+            z-index: 100;
+            transition: transform 0.3s ease;
+        }
+
+        .query-terminal.minimized {
+            transform: translateY(170px);
+        }
+
+        .terminal-header {
+            padding: 10px 15px;
+            background: var(--bg-tertiary);
+            border-bottom: 1px solid var(--purple-primary);
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            cursor: move;
+        }
+
+        .terminal-output {
+            flex: 1;
+            padding: 10px;
+            overflow-y: auto;
+            font-family: 'Courier New', monospace;
+            font-size: 12px;
+        }
+
+        .terminal-input {
+            display: flex;
+            padding: 10px;
+            border-top: 1px solid var(--bg-tertiary);
+        }
+
+        .terminal-input input {
+            flex: 1;
+            background: var(--bg-tertiary);
+            border: 1px solid var(--purple-primary);
+            color: var(--text-primary);
+            padding: 8px;
+            font-family: 'Courier New', monospace;
+            font-size: 12px;
+            border-radius: 4px;
+        }
+
+        /* Loading Overlay */
+        .loading-overlay {
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: rgba(0, 0, 0, 0.8);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            z-index: 10000;
+        }
+
+        .loading-spinner {
+            width: 60px;
+            height: 60px;
+            border: 4px solid var(--bg-tertiary);
+            border-top: 4px solid var(--purple-primary);
+            border-radius: 50%;
+            animation: spin 1s linear infinite;
+        }
+
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+
+        /* Connection States */
+        .connection-label {
+            position: absolute;
+            background: var(--bg-secondary);
+            padding: 4px 8px;
+            border-radius: 4px;
+            font-size: 11px;
+            pointer-events: none;
+            z-index: 10;
+        }
+
+        /* Zoom Controls */
+        .zoom-controls {
+            position: absolute;
+            bottom: 20px;
+            left: 300px;
+            display: flex;
+            gap: 5px;
+            background: var(--bg-secondary);
+            padding: 5px;
+            border-radius: 6px;
+            border: 1px solid var(--purple-primary);
+            z-index: 100;
+        }
+
+        .zoom-btn {
+            width: 30px;
+            height: 30px;
+            background: var(--bg-tertiary);
+            border: 1px solid var(--text-secondary);
+            color: var(--text-primary);
+            cursor: pointer;
+            border-radius: 4px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 16px;
+        }
+
+        .zoom-btn:hover {
+            background: var(--purple-primary);
+        }
+
+        .zoom-level {
+            padding: 0 10px;
+            display: flex;
+            align-items: center;
+            font-size: 12px;
+            color: var(--text-secondary);
+        }
+    </style>
+</head>
+<body>
+    <div class="workflow-container">
+        <!-- Sidebar -->
+        <div class="sidebar">
+            <div class="sidebar-header">
+                <h2>🎭 Visual Workflow</h2>
+                <p style="font-size: 12px; color: var(--text-secondary); margin-top: 5px;">
+                    Drag characters to canvas
+                </p>
+            </div>
+
+            <!-- Character Nodes -->
+            <div class="sidebar-section">
+                <h3>Character Nodes</h3>
+                <div class="node-templates" id="characterTemplates">
+                    <!-- Will be populated dynamically -->
+                </div>
+            </div>
+
+            <!-- System Nodes -->
+            <div class="sidebar-section">
+                <h3>System Nodes</h3>
+                <div class="node-templates">
+                    <div class="node-template" draggable="true" data-node-type="semantic-bridge">
+                        <span class="node-emoji">🔍</span>
+                        <div class="node-info">
+                            <div class="node-name">Semantic Bridge</div>
+                            <div class="node-role">Query Processor</div>
+                        </div>
+                    </div>
+                    <div class="node-template" draggable="true" data-node-type="forum-bridge">
+                        <span class="node-emoji">📝</span>
+                        <div class="node-info">
+                            <div class="node-name">Forum Bridge</div>
+                            <div class="node-role">Task Organizer</div>
+                        </div>
+                    </div>
+                    <div class="node-template" draggable="true" data-node-type="ai-service">
+                        <span class="node-emoji">🤖</span>
+                        <div class="node-info">
+                            <div class="node-name">AI Service</div>
+                            <div class="node-role">Intelligence</div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Workflow Templates -->
+            <div class="sidebar-section">
+                <h3>Workflow Templates</h3>
+                <button class="control-btn" onclick="workflowBuilder.loadTemplate('document-processing')" style="width: 100%; margin-bottom: 5px;">
+                    📄 Document → MVP
+                </button>
+                <button class="control-btn" onclick="workflowBuilder.loadTemplate('bug-fix')" style="width: 100%; margin-bottom: 5px;">
+                    🐛 Bug Fix Flow
+                </button>
+                <button class="control-btn" onclick="workflowBuilder.loadTemplate('deployment')" style="width: 100%;">
+                    🚀 Deployment Pipeline
+                </button>
+            </div>
+        </div>
+
+        <!-- Canvas Area -->
+        <div class="canvas-wrapper" id="canvasWrapper">
+            <svg class="connections-svg" id="connectionsSvg">
+                <defs>
+                    <marker id="arrowhead" markerWidth="10" markerHeight="7" 
+                            refX="10" refY="3.5" orient="auto">
+                        <polygon points="0 0, 10 3.5, 0 7" fill="#8B5CF6" />
+                    </marker>
+                    <marker id="arrowhead-active" markerWidth="10" markerHeight="7" 
+                            refX="10" refY="3.5" orient="auto">
+                        <polygon points="0 0, 10 3.5, 0 7" fill="#10B981" />
+                    </marker>
+                </defs>
+            </svg>
+            <div class="canvas" id="canvas"></div>
+        </div>
+
+        <!-- Controls -->
+        <div class="controls">
+            <button class="control-btn" onclick="workflowBuilder.autoLayout()">
+                📐 Auto Layout
+            </button>
+            <button class="control-btn" onclick="workflowBuilder.clearCanvas()">
+                🗑️ Clear
+            </button>
+            <button class="control-btn" onclick="workflowBuilder.saveWorkflow()">
+                💾 Save
+            </button>
+            <button class="control-btn" onclick="workflowBuilder.runWorkflow()">
+                ▶️ Run
+            </button>
+            <button class="control-btn" onclick="workflowBuilder.debugMode()">
+                🐛 Debug
+            </button>
+        </div>
+
+        <!-- Zoom Controls -->
+        <div class="zoom-controls">
+            <button class="zoom-btn" onclick="workflowBuilder.zoom(-0.1)">−</button>
+            <span class="zoom-level" id="zoomLevel">100%</span>
+            <button class="zoom-btn" onclick="workflowBuilder.zoom(0.1)">+</button>
+            <button class="zoom-btn" onclick="workflowBuilder.resetZoom()">⟲</button>
+        </div>
+
+        <!-- Minimap -->
+        <div class="minimap">
+            <div class="minimap-content" id="minimapContent">
+                <div class="minimap-viewport" id="minimapViewport"></div>
+            </div>
+        </div>
+
+        <!-- Info Panel -->
+        <div class="info-panel" id="infoPanel">
+            <h3>Node Information</h3>
+            <div id="infoPanelContent"></div>
+        </div>
+
+        <!-- Query Terminal -->
+        <div class="query-terminal" id="queryTerminal">
+            <div class="terminal-header">
+                <span>🔍 Semantic Query Terminal</span>
+                <button class="control-btn" onclick="workflowBuilder.toggleTerminal()" style="padding: 4px 8px;">
+                    _
+                </button>
+            </div>
+            <div class="terminal-output" id="terminalOutput">
+                <div style="color: var(--purple-primary);">Semantic Query Terminal v1.0</div>
+                <div style="color: var(--text-secondary);">Type 'help' for available commands</div>
+                <div style="margin-top: 10px;">></div>
+            </div>
+            <div class="terminal-input">
+                <input type="text" id="terminalInput" placeholder="Enter semantic query..." 
+                       onkeypress="if(event.key === 'Enter') workflowBuilder.executeQuery(this.value)">
+            </div>
+        </div>
+
+        <!-- Context Menu -->
+        <div class="context-menu" id="contextMenu">
+            <div class="context-menu-item" onclick="workflowBuilder.duplicateNode()">
+                📋 Duplicate
+            </div>
+            <div class="context-menu-item" onclick="workflowBuilder.deleteNode()">
+                🗑️ Delete
+            </div>
+            <div class="context-menu-item" onclick="workflowBuilder.editNode()">
+                ✏️ Edit Properties
+            </div>
+            <div class="context-menu-item" onclick="workflowBuilder.showDependencies()">
+                🔗 Show Dependencies
+            </div>
+            <div class="context-menu-item" onclick="workflowBuilder.runSingleNode()">
+                ▶️ Run This Node
+            </div>
+        </div>
+
+        <!-- Loading Overlay -->
+        <div class="loading-overlay" id="loadingOverlay" style="display: none;">
+            <div class="loading-spinner"></div>
+        </div>
+    </div>
+
+    <script>
+        class VisualWorkflowBuilder {
+            constructor() {
+                this.canvas = document.getElementById('canvas');
+                this.canvasWrapper = document.getElementById('canvasWrapper');
+                this.connectionsSvg = document.getElementById('connectionsSvg');
+                
+                this.nodes = new Map();
+                this.connections = new Map();
+                this.selectedNode = null;
+                this.connectingFrom = null;
+                this.isDragging = false;
+                this.isPanning = false;
+                this.dragOffset = { x: 0, y: 0 };
+                this.canvasOffset = { x: 0, y: 0 };
+                this.zoom = 1;
+                
+                // WebSocket connections
+                this.orchestratorWs = null;
+                this.semanticWs = null;
+                
+                // Character roster
+                this.characters = [];
+                
+                this.initialize();
+            }
+            
+            async initialize() {
+                console.log('🎨 Initializing Visual Workflow Builder');
+                
+                // Connect to services
+                await this.connectToServices();
+                
+                // Load character roster
+                await this.loadCharacters();
+                
+                // Set up event handlers
+                this.setupEventHandlers();
+                
+                // Load saved workflow if exists
+                this.loadSavedWorkflow();
+                
+                // Start update loop
+                this.startUpdateLoop();
+            }
+            
+            async connectToServices() {
+                // Connect to Domingo Orchestrator
+                try {
+                    this.orchestratorWs = new WebSocket('ws://localhost:7778/ws');
+                    
+                    this.orchestratorWs.onopen = () => {
+                        console.log('✅ Connected to Domingo Orchestrator');
+                        this.updateConnectionStatus('domingo', 'online');
+                    };
+                    
+                    this.orchestratorWs.onmessage = (event) => {
+                        const data = JSON.parse(event.data);
+                        this.handleOrchestratorMessage(data);
+                    };
+                    
+                    this.orchestratorWs.onerror = (error) => {
+                        console.error('❌ Orchestrator WebSocket error:', error);
+                        this.updateConnectionStatus('domingo', 'error');
+                    };
+                    
+                    this.orchestratorWs.onclose = () => {
+                        this.updateConnectionStatus('domingo', 'offline');
+                        // Reconnect after delay
+                        setTimeout(() => this.connectToServices(), 5000);
+                    };
+                } catch (error) {
+                    console.error('Failed to connect to orchestrator:', error);
+                }
+                
+                // Connect to Semantic Bridge
+                try {
+                    this.semanticWs = new WebSocket('ws://localhost:9998');
+                    
+                    this.semanticWs.onopen = () => {
+                        console.log('✅ Connected to Semantic Bridge');
+                        this.updateConnectionStatus('semantic-bridge', 'online');
+                    };
+                    
+                    this.semanticWs.onmessage = (event) => {
+                        const data = JSON.parse(event.data);
+                        this.handleSemanticMessage(data);
+                    };
+                    
+                    this.semanticWs.onerror = (error) => {
+                        console.error('❌ Semantic WebSocket error:', error);
+                        this.updateConnectionStatus('semantic-bridge', 'error');
+                    };
+                    
+                    this.semanticWs.onclose = () => {
+                        this.updateConnectionStatus('semantic-bridge', 'offline');
+                    };
+                } catch (error) {
+                    console.error('Failed to connect to semantic bridge:', error);
+                }
+            }
+            
+            async loadCharacters() {
+                try {
+                    const response = await fetch('http://localhost:7777/api/characters');
+                    const data = await response.json();
+                    
+                    if (data.success) {
+                        this.characters = data.characters;
+                        this.renderCharacterTemplates();
+                    }
+                } catch (error) {
+                    console.error('Failed to load characters:', error);
+                    // Use default characters
+                    this.characters = [
+                        { id: 'alice', name: 'Alice', role: 'Technical Lead', emoji: '👩‍💻', status: 'available' },
+                        { id: 'bob', name: 'Bob', role: 'Frontend Developer', emoji: '👨‍💻', status: 'available' },
+                        { id: 'charlie', name: 'Charlie', role: 'DevOps Engineer', emoji: '🔧', status: 'available' },
+                        { id: 'diana', name: 'Diana', role: 'Data Scientist', emoji: '📊', status: 'available' },
+                        { id: 'eve', name: 'Eve', role: 'Security Expert', emoji: '🛡️', status: 'available' },
+                        { id: 'frank', name: 'Frank', role: 'Integration Specialist', emoji: '🔌', status: 'available' }
+                    ];
+                    this.renderCharacterTemplates();
+                }
+            }
+            
+            renderCharacterTemplates() {
+                const container = document.getElementById('characterTemplates');
+                container.innerHTML = '';
+                
+                this.characters.forEach(char => {
+                    const template = document.createElement('div');
+                    template.className = 'node-template';
+                    template.draggable = true;
+                    template.dataset.nodeType = 'character';
+                    template.dataset.characterId = char.id;
+                    
+                    template.innerHTML = `
+                        <span class="node-emoji">${char.emoji}</span>
+                        <div class="node-info">
+                            <div class="node-name">${char.name}</div>
+                            <div class="node-role">${char.role}</div>
+                        </div>
+                    `;
+                    
+                    container.appendChild(template);
+                });
+                
+                // Add drag event handlers
+                container.querySelectorAll('.node-template').forEach(template => {
+                    template.addEventListener('dragstart', (e) => this.handleDragStart(e));
+                    template.addEventListener('dragend', (e) => this.handleDragEnd(e));
+                });
+            }
+            
+            setupEventHandlers() {
+                // Canvas drag and drop
+                this.canvas.addEventListener('dragover', (e) => this.handleDragOver(e));
+                this.canvas.addEventListener('drop', (e) => this.handleDrop(e));
+                
+                // Canvas panning
+                this.canvasWrapper.addEventListener('mousedown', (e) => this.handleCanvasMouseDown(e));
+                this.canvasWrapper.addEventListener('mousemove', (e) => this.handleCanvasMouseMove(e));
+                this.canvasWrapper.addEventListener('mouseup', (e) => this.handleCanvasMouseUp(e));
+                this.canvasWrapper.addEventListener('wheel', (e) => this.handleWheel(e));
+                
+                // Context menu
+                this.canvas.addEventListener('contextmenu', (e) => this.handleContextMenu(e));
+                document.addEventListener('click', () => this.hideContextMenu());
+                
+                // Window resize
+                window.addEventListener('resize', () => this.updateMinimap());
+            }
+            
+            handleDragStart(e) {
+                e.target.classList.add('dragging');
+                e.dataTransfer.effectAllowed = 'copy';
+                e.dataTransfer.setData('nodeType', e.target.dataset.nodeType);
+                if (e.target.dataset.characterId) {
+                    e.dataTransfer.setData('characterId', e.target.dataset.characterId);
+                }
+            }
+            
+            handleDragEnd(e) {
+                e.target.classList.remove('dragging');
+            }
+            
+            handleDragOver(e) {
+                e.preventDefault();
+                e.dataTransfer.dropEffect = 'copy';
+            }
+            
+            handleDrop(e) {
+                e.preventDefault();
+                
+                const nodeType = e.dataTransfer.getData('nodeType');
+                const characterId = e.dataTransfer.getData('characterId');
+                
+                // Calculate position relative to canvas
+                const rect = this.canvas.getBoundingClientRect();
+                const x = (e.clientX - rect.left - this.canvasOffset.x) / this.zoom;
+                const y = (e.clientY - rect.top - this.canvasOffset.y) / this.zoom;
+                
+                // Create new node
+                if (nodeType === 'character') {
+                    const character = this.characters.find(c => c.id === characterId);
+                    if (character) {
+                        this.createCharacterNode(character, x, y);
+                    }
+                } else {
+                    this.createSystemNode(nodeType, x, y);
+                }
+            }
+            
+            createCharacterNode(character, x, y) {
+                const nodeId = `node_${character.id}_${Date.now()}`;
+                
+                const node = document.createElement('div');
+                node.className = 'workflow-node';
+                node.id = nodeId;
+                node.style.left = x + 'px';
+                node.style.top = y + 'px';
+                
+                // Add status class
+                if (character.status === 'busy') {
+                    node.classList.add('busy');
+                }
+                
+                node.innerHTML = `
+                    <div class="node-ports">
+                        <div class="port input" data-port="input"></div>
+                        <div class="port output" data-port="output"></div>
+                    </div>
+                    <div class="node-header">
+                        <div class="node-status ${character.status === 'available' ? 'online' : 'busy'}"></div>
+                        <span style="font-size: 20px;">${character.emoji}</span>
+                        <strong>${character.name}</strong>
+                    </div>
+                    <div style="font-size: 12px; color: var(--text-secondary);">${character.role}</div>
+                    ${character.activeTask ? `<div class="task-node">📋 ${character.activeTask}</div>` : ''}
+                `;
+                
+                this.canvas.appendChild(node);
+                
+                // Store node data
+                this.nodes.set(nodeId, {
+                    id: nodeId,
+                    type: 'character',
+                    character: character,
+                    position: { x, y },
+                    connections: { inputs: [], outputs: [] }
+                });
+                
+                // Add node event handlers
+                this.addNodeEventHandlers(node);
+                
+                // Update minimap
+                this.updateMinimap();
+                
+                // Animate appearance
+                requestAnimationFrame(() => {
+                    node.style.transform = 'scale(0)';
+                    node.style.transition = 'transform 0.3s ease';
+                    requestAnimationFrame(() => {
+                        node.style.transform = 'scale(1)';
+                    });
+                });
+            }
+            
+            createSystemNode(type, x, y) {
+                const nodeId = `node_${type}_${Date.now()}`;
+                
+                const systemNodes = {
+                    'semantic-bridge': {
+                        emoji: '🔍',
+                        name: 'Semantic Bridge',
+                        role: 'Query Processor'
+                    },
+                    'forum-bridge': {
+                        emoji: '📝',
+                        name: 'Forum Bridge',
+                        role: 'Task Organizer'
+                    },
+                    'ai-service': {
+                        emoji: '🤖',
+                        name: 'AI Service',
+                        role: 'Intelligence'
+                    }
+                };
+                
+                const nodeInfo = systemNodes[type];
+                if (!nodeInfo) return;
+                
+                const node = document.createElement('div');
+                node.className = 'workflow-node';
+                node.id = nodeId;
+                node.style.left = x + 'px';
+                node.style.top = y + 'px';
+                
+                node.innerHTML = `
+                    <div class="node-ports">
+                        <div class="port input" data-port="input"></div>
+                        <div class="port output" data-port="output"></div>
+                    </div>
+                    <div class="node-header">
+                        <div class="node-status online"></div>
+                        <span style="font-size: 20px;">${nodeInfo.emoji}</span>
+                        <strong>${nodeInfo.name}</strong>
+                    </div>
+                    <div style="font-size: 12px; color: var(--text-secondary);">${nodeInfo.role}</div>
+                `;
+                
+                this.canvas.appendChild(node);
+                
+                // Store node data
+                this.nodes.set(nodeId, {
+                    id: nodeId,
+                    type: type,
+                    systemInfo: nodeInfo,
+                    position: { x, y },
+                    connections: { inputs: [], outputs: [] }
+                });
+                
+                // Add node event handlers
+                this.addNodeEventHandlers(node);
+                
+                // Update minimap
+                this.updateMinimap();
+            }
+            
+            addNodeEventHandlers(node) {
+                // Dragging
+                node.addEventListener('mousedown', (e) => {
+                    if (e.target.classList.contains('port')) return;
+                    this.startNodeDrag(e, node);
+                });
+                
+                // Selection
+                node.addEventListener('click', (e) => {
+                    if (e.target.classList.contains('port')) return;
+                    this.selectNode(node);
+                });
+                
+                // Port connections
+                const ports = node.querySelectorAll('.port');
+                ports.forEach(port => {
+                    port.addEventListener('mousedown', (e) => this.startConnection(e, node, port));
+                });
+            }
+            
+            startNodeDrag(e, node) {
+                if (e.button !== 0) return; // Only left click
+                
+                this.isDragging = true;
+                this.draggedNode = node;
+                
+                const rect = node.getBoundingClientRect();
+                const canvasRect = this.canvas.getBoundingClientRect();
+                
+                this.dragOffset = {
+                    x: e.clientX - rect.left,
+                    y: e.clientY - rect.top
+                };
+                
+                node.style.zIndex = 1000;
+                e.preventDefault();
+            }
+            
+            selectNode(node) {
+                // Deselect previous
+                if (this.selectedNode) {
+                    this.selectedNode.classList.remove('selected');
+                }
+                
+                // Select new
+                this.selectedNode = node;
+                node.classList.add('selected');
+                
+                // Show info panel
+                this.showNodeInfo(node);
+            }
+            
+            showNodeInfo(node) {
+                const nodeData = this.nodes.get(node.id);
+                const infoPanel = document.getElementById('infoPanel');
+                const content = document.getElementById('infoPanelContent');
+                
+                let html = '';
+                
+                if (nodeData.type === 'character') {
+                    const char = nodeData.character;
+                    html = `
+                        <div class="info-item">
+                            <span class="info-label">Name:</span>
+                            <span>${char.name}</span>
+                        </div>
+                        <div class="info-item">
+                            <span class="info-label">Role:</span>
+                            <span>${char.role}</span>
+                        </div>
+                        <div class="info-item">
+                            <span class="info-label">Status:</span>
+                            <span style="color: ${char.status === 'available' ? 'var(--green-success)' : 'var(--yellow-warning)'}">
+                                ${char.status}
+                            </span>
+                        </div>
+                        <div class="info-item">
+                            <span class="info-label">Specializations:</span>
+                            <span>${char.specializations?.join(', ') || 'None'}</span>
+                        </div>
+                        ${char.activeTask ? `
+                        <div class="info-item">
+                            <span class="info-label">Active Task:</span>
+                            <span>${char.activeTask}</span>
+                        </div>
+                        ` : ''}
+                        <div class="info-item">
+                            <span class="info-label">Connections:</span>
+                            <span>In: ${nodeData.connections.inputs.length}, Out: ${nodeData.connections.outputs.length}</span>
+                        </div>
+                    `;
+                } else {
+                    html = `
+                        <div class="info-item">
+                            <span class="info-label">Type:</span>
+                            <span>${nodeData.type}</span>
+                        </div>
+                        <div class="info-item">
+                            <span class="info-label">Status:</span>
+                            <span style="color: var(--green-success)">Online</span>
+                        </div>
+                        <div class="info-item">
+                            <span class="info-label">Connections:</span>
+                            <span>In: ${nodeData.connections.inputs.length}, Out: ${nodeData.connections.outputs.length}</span>
+                        </div>
+                    `;
+                }
+                
+                content.innerHTML = html;
+                infoPanel.classList.add('visible');
+            }
+            
+            startConnection(e, node, port) {
+                e.stopPropagation();
+                e.preventDefault();
+                
+                const isOutput = port.classList.contains('output');
+                if (!isOutput) return; // Only allow connections from outputs
+                
+                this.connectingFrom = {
+                    node: node,
+                    port: port,
+                    nodeData: this.nodes.get(node.id)
+                };
+                
+                // Create preview line
+                const preview = document.createElementNS('http://www.w3.org/2000/svg', 'path');
+                preview.classList.add('connection-preview');
+                preview.id = 'connectionPreview';
+                this.connectionsSvg.appendChild(preview);
+                
+                // Update preview on mouse move
+                const updatePreview = (e) => {
+                    const rect = this.canvas.getBoundingClientRect();
+                    const startPos = this.getPortPosition(port);
+                    const endX = (e.clientX - rect.left - this.canvasOffset.x) / this.zoom;
+                    const endY = (e.clientY - rect.top - this.canvasOffset.y) / this.zoom;
+                    
+                    const path = this.generateConnectionPath(startPos.x, startPos.y, endX, endY);
+                    preview.setAttribute('d', path);
+                };
+                
+                const finishConnection = (e) => {
+                    // Remove preview
+                    preview.remove();
+                    
+                    // Check if over a valid input port
+                    const target = document.elementFromPoint(e.clientX, e.clientY);
+                    if (target && target.classList.contains('port') && target.classList.contains('input')) {
+                        const targetNode = target.closest('.workflow-node');
+                        if (targetNode && targetNode !== node) {
+                            this.createConnection(node, targetNode);
+                        }
+                    }
+                    
+                    this.connectingFrom = null;
+                    document.removeEventListener('mousemove', updatePreview);
+                    document.removeEventListener('mouseup', finishConnection);
+                };
+                
+                document.addEventListener('mousemove', updatePreview);
+                document.addEventListener('mouseup', finishConnection);
+            }
+            
+            createConnection(fromNode, toNode) {
+                const connectionId = `conn_${fromNode.id}_${toNode.id}`;
+                
+                // Check if connection already exists
+                if (this.connections.has(connectionId)) return;
+                
+                // Create SVG path
+                const path = document.createElementNS('http://www.w3.org/2000/svg', 'path');
+                path.classList.add('connection-line');
+                path.id = connectionId;
+                path.setAttribute('marker-end', 'url(#arrowhead)');
+                this.connectionsSvg.appendChild(path);
+                
+                // Store connection data
+                const fromData = this.nodes.get(fromNode.id);
+                const toData = this.nodes.get(toNode.id);
+                
+                fromData.connections.outputs.push(toNode.id);
+                toData.connections.inputs.push(fromNode.id);
+                
+                this.connections.set(connectionId, {
+                    id: connectionId,
+                    from: fromNode.id,
+                    to: toNode.id,
+                    path: path,
+                    active: false
+                });
+                
+                // Update connection position
+                this.updateConnection(connectionId);
+                
+                // Notify semantic bridge
+                this.notifyConnectionCreated(fromData, toData);
+            }
+            
+            updateConnection(connectionId) {
+                const conn = this.connections.get(connectionId);
+                if (!conn) return;
+                
+                const fromNode = document.getElementById(conn.from);
+                const toNode = document.getElementById(conn.to);
+                
+                if (!fromNode || !toNode) return;
+                
+                const fromPort = fromNode.querySelector('.port.output');
+                const toPort = toNode.querySelector('.port.input');
+                
+                const startPos = this.getPortPosition(fromPort);
+                const endPos = this.getPortPosition(toPort);
+                
+                const path = this.generateConnectionPath(startPos.x, startPos.y, endPos.x, endPos.y);
+                conn.path.setAttribute('d', path);
+            }
+            
+            getPortPosition(port) {
+                const rect = port.getBoundingClientRect();
+                const canvasRect = this.canvas.getBoundingClientRect();
+                
+                return {
+                    x: (rect.left + rect.width / 2 - canvasRect.left - this.canvasOffset.x) / this.zoom,
+                    y: (rect.top + rect.height / 2 - canvasRect.top - this.canvasOffset.y) / this.zoom
+                };
+            }
+            
+            generateConnectionPath(x1, y1, x2, y2) {
+                const dx = x2 - x1;
+                const dy = y2 - y1;
+                const distance = Math.abs(dx);
+                const offset = Math.min(distance * 0.5, 100);
+                
+                return `M ${x1} ${y1} C ${x1 + offset} ${y1}, ${x2 - offset} ${y2}, ${x2} ${y2}`;
+            }
+            
+            handleCanvasMouseDown(e) {
+                if (e.target === this.canvasWrapper || e.target === this.canvas) {
+                    this.isPanning = true;
+                    this.panStart = { x: e.clientX, y: e.clientY };
+                    this.canvasWrapper.style.cursor = 'grabbing';
+                }
+            }
+            
+            handleCanvasMouseMove(e) {
+                if (this.isDragging && this.draggedNode) {
+                    const rect = this.canvas.getBoundingClientRect();
+                    const x = (e.clientX - rect.left - this.dragOffset.x - this.canvasOffset.x) / this.zoom;
+                    const y = (e.clientY - rect.top - this.dragOffset.y - this.canvasOffset.y) / this.zoom;
+                    
+                    this.draggedNode.style.left = x + 'px';
+                    this.draggedNode.style.top = y + 'px';
+                    
+                    // Update node data
+                    const nodeData = this.nodes.get(this.draggedNode.id);
+                    if (nodeData) {
+                        nodeData.position = { x, y };
+                    }
+                    
+                    // Update connections
+                    this.updateNodeConnections(this.draggedNode.id);
+                }
+                
+                if (this.isPanning) {
+                    const dx = e.clientX - this.panStart.x;
+                    const dy = e.clientY - this.panStart.y;
+                    
+                    this.canvasOffset.x += dx;
+                    this.canvasOffset.y += dy;
+                    
+                    this.updateCanvasTransform();
+                    
+                    this.panStart = { x: e.clientX, y: e.clientY };
+                }
+            }
+            
+            handleCanvasMouseUp(e) {
+                if (this.isDragging) {
+                    this.isDragging = false;
+                    if (this.draggedNode) {
+                        this.draggedNode.style.zIndex = '';
+                        this.draggedNode = null;
+                    }
+                }
+                
+                if (this.isPanning) {
+                    this.isPanning = false;
+                    this.canvasWrapper.style.cursor = '';
+                }
+                
+                this.updateMinimap();
+            }
+            
+            updateNodeConnections(nodeId) {
+                // Update all connections involving this node
+                this.connections.forEach((conn, id) => {
+                    if (conn.from === nodeId || conn.to === nodeId) {
+                        this.updateConnection(id);
+                    }
+                });
+            }
+            
+            updateCanvasTransform() {
+                this.canvas.style.transform = `translate(${this.canvasOffset.x}px, ${this.canvasOffset.y}px) scale(${this.zoom})`;
+                this.connectionsSvg.style.transform = `translate(${this.canvasOffset.x}px, ${this.canvasOffset.y}px) scale(${this.zoom})`;
+            }
+            
+            handleWheel(e) {
+                if (e.ctrlKey || e.metaKey) {
+                    e.preventDefault();
+                    const delta = e.deltaY > 0 ? -0.1 : 0.1;
+                    this.zoom(delta);
+                }
+            }
+            
+            zoom(delta) {
+                this.zoom = Math.max(0.1, Math.min(3, this.zoom + delta));
+                this.updateCanvasTransform();
+                document.getElementById('zoomLevel').textContent = Math.round(this.zoom * 100) + '%';
+                this.updateMinimap();
+            }
+            
+            resetZoom() {
+                this.zoom = 1;
+                this.canvasOffset = { x: 0, y: 0 };
+                this.updateCanvasTransform();
+                document.getElementById('zoomLevel').textContent = '100%';
+                this.updateMinimap();
+            }
+            
+            handleContextMenu(e) {
+                e.preventDefault();
+                
+                const target = e.target.closest('.workflow-node');
+                if (target) {
+                    this.selectedNode = target;
+                    target.classList.add('selected');
+                    
+                    const menu = document.getElementById('contextMenu');
+                    menu.style.left = e.clientX + 'px';
+                    menu.style.top = e.clientY + 'px';
+                    menu.style.display = 'block';
+                }
+            }
+            
+            hideContextMenu() {
+                document.getElementById('contextMenu').style.display = 'none';
+            }
+            
+            // Workflow operations
+            autoLayout() {
+                const nodes = Array.from(this.nodes.values());
+                const nodeWidth = 200;
+                const nodeHeight = 100;
+                const horizontalSpacing = 250;
+                const verticalSpacing = 150;
+                
+                // Group nodes by connection depth
+                const depths = new Map();
+                const visited = new Set();
+                
+                // Find root nodes (no inputs)
+                const roots = nodes.filter(n => n.connections.inputs.length === 0);
+                
+                // BFS to assign depths
+                const queue = roots.map(n => ({ node: n, depth: 0 }));
+                
+                while (queue.length > 0) {
+                    const { node, depth } = queue.shift();
+                    
+                    if (visited.has(node.id)) continue;
+                    visited.add(node.id);
+                    
+                    if (!depths.has(depth)) depths.set(depth, []);
+                    depths.get(depth).push(node);
+                    
+                    // Add connected nodes
+                    node.connections.outputs.forEach(outputId => {
+                        const outputNode = nodes.find(n => n.id === outputId);
+                        if (outputNode && !visited.has(outputId)) {
+                            queue.push({ node: outputNode, depth: depth + 1 });
+                        }
+                    });
+                }
+                
+                // Position nodes
+                let startX = 100;
+                depths.forEach((nodesAtDepth, depth) => {
+                    const x = startX + depth * horizontalSpacing;
+                    const totalHeight = nodesAtDepth.length * verticalSpacing;
+                    const startY = (this.canvasWrapper.clientHeight - totalHeight) / 2;
+                    
+                    nodesAtDepth.forEach((node, index) => {
+                        const y = startY + index * verticalSpacing;
+                        node.position = { x, y };
+                        
+                        const element = document.getElementById(node.id);
+                        if (element) {
+                            element.style.left = x + 'px';
+                            element.style.top = y + 'px';
+                        }
+                    });
+                });
+                
+                // Update all connections
+                this.connections.forEach((conn, id) => {
+                    this.updateConnection(id);
+                });
+                
+                this.updateMinimap();
+            }
+            
+            clearCanvas() {
+                if (confirm('Clear all nodes and connections?')) {
+                    // Remove all nodes
+                    this.nodes.forEach((node, id) => {
+                        const element = document.getElementById(id);
+                        if (element) element.remove();
+                    });
+                    this.nodes.clear();
+                    
+                    // Remove all connections
+                    this.connections.forEach((conn, id) => {
+                        if (conn.path) conn.path.remove();
+                    });
+                    this.connections.clear();
+                    
+                    // Clear info panel
+                    document.getElementById('infoPanel').classList.remove('visible');
+                    
+                    this.updateMinimap();
+                }
+            }
+            
+            saveWorkflow() {
+                const workflow = {
+                    nodes: Array.from(this.nodes.values()),
+                    connections: Array.from(this.connections.values()).map(conn => ({
+                        from: conn.from,
+                        to: conn.to
+                    }))
+                };
+                
+                localStorage.setItem('domingo-workflow', JSON.stringify(workflow));
+                
+                // Visual feedback
+                const btn = event.target;
+                const originalText = btn.textContent;
+                btn.textContent = '✅ Saved!';
+                setTimeout(() => {
+                    btn.textContent = originalText;
+                }, 2000);
+            }
+            
+            loadSavedWorkflow() {
+                const saved = localStorage.getItem('domingo-workflow');
+                if (!saved) return;
+                
+                try {
+                    const workflow = JSON.parse(saved);
+                    
+                    // Recreate nodes
+                    workflow.nodes.forEach(nodeData => {
+                        if (nodeData.type === 'character') {
+                            const character = this.characters.find(c => c.id === nodeData.character.id);
+                            if (character) {
+                                this.createCharacterNode(character, nodeData.position.x, nodeData.position.y);
+                            }
+                        } else {
+                            this.createSystemNode(nodeData.type, nodeData.position.x, nodeData.position.y);
+                        }
+                    });
+                    
+                    // Recreate connections
+                    setTimeout(() => {
+                        workflow.connections.forEach(conn => {
+                            const fromNode = document.getElementById(conn.from);
+                            const toNode = document.getElementById(conn.to);
+                            if (fromNode && toNode) {
+                                this.createConnection(fromNode, toNode);
+                            }
+                        });
+                    }, 100);
+                } catch (error) {
+                    console.error('Failed to load workflow:', error);
+                }
+            }
+            
+            async runWorkflow() {
+                console.log('🚀 Running workflow...');
+                
+                // Show loading
+                document.getElementById('loadingOverlay').style.display = 'flex';
+                
+                try {
+                    // Find start nodes (no inputs)
+                    const startNodes = Array.from(this.nodes.values())
+                        .filter(n => n.connections.inputs.length === 0);
+                    
+                    // Execute nodes in order
+                    for (const node of startNodes) {
+                        await this.executeNode(node);
+                    }
+                    
+                    this.addTerminalOutput('✅ Workflow completed successfully', 'success');
+                } catch (error) {
+                    this.addTerminalOutput(`❌ Workflow error: ${error.message}`, 'error');
+                } finally {
+                    document.getElementById('loadingOverlay').style.display = 'none';
+                }
+            }
+            
+            async executeNode(nodeData) {
+                const element = document.getElementById(nodeData.id);
+                if (element) {
+                    element.classList.add('executing');
+                }
+                
+                // Simulate execution based on node type
+                if (nodeData.type === 'character') {
+                    await this.executeCharacterNode(nodeData);
+                } else {
+                    await this.executeSystemNode(nodeData);
+                }
+                
+                if (element) {
+                    element.classList.remove('executing');
+                }
+                
+                // Execute connected nodes
+                for (const outputId of nodeData.connections.outputs) {
+                    const outputNode = this.nodes.get(outputId);
+                    if (outputNode) {
+                        await this.executeNode(outputNode);
+                    }
+                }
+            }
+            
+            async executeCharacterNode(nodeData) {
+                const character = nodeData.character;
+                this.addTerminalOutput(`🎭 ${character.name} executing task...`);
+                
+                // Send to orchestrator
+                if (this.orchestratorWs && this.orchestratorWs.readyState === WebSocket.OPEN) {
+                    this.orchestratorWs.send(JSON.stringify({
+                        type: 'execute_character_task',
+                        characterId: character.id,
+                        nodeId: nodeData.id
+                    }));
+                }
+                
+                // Simulate work
+                await new Promise(resolve => setTimeout(resolve, 1000));
+                
+                this.addTerminalOutput(`✅ ${character.name} completed task`);
+            }
+            
+            async executeSystemNode(nodeData) {
+                this.addTerminalOutput(`⚙️ ${nodeData.systemInfo.name} processing...`);
+                
+                // Simulate system work
+                await new Promise(resolve => setTimeout(resolve, 500));
+                
+                this.addTerminalOutput(`✅ ${nodeData.systemInfo.name} completed`);
+            }
+            
+            debugMode() {
+                console.log('🐛 Debug mode activated');
+                
+                // Show all connections in different colors
+                let colorIndex = 0;
+                const colors = ['#EF4444', '#F59E0B', '#10B981', '#3B82F6', '#8B5CF6'];
+                
+                this.connections.forEach((conn) => {
+                    conn.path.style.stroke = colors[colorIndex % colors.length];
+                    conn.path.style.strokeWidth = '3';
+                    colorIndex++;
+                });
+                
+                // Show node IDs
+                this.nodes.forEach((nodeData, nodeId) => {
+                    const element = document.getElementById(nodeId);
+                    if (element) {
+                        const debugInfo = document.createElement('div');
+                        debugInfo.style.position = 'absolute';
+                        debugInfo.style.top = '-20px';
+                        debugInfo.style.left = '0';
+                        debugInfo.style.fontSize = '10px';
+                        debugInfo.style.background = 'var(--bg-dark)';
+                        debugInfo.style.padding = '2px 4px';
+                        debugInfo.style.borderRadius = '4px';
+                        debugInfo.textContent = nodeId;
+                        element.appendChild(debugInfo);
+                    }
+                });
+                
+                this.addTerminalOutput('🐛 Debug mode: Connection paths colored, node IDs visible');
+            }
+            
+            // Terminal operations
+            toggleTerminal() {
+                const terminal = document.getElementById('queryTerminal');
+                terminal.classList.toggle('minimized');
+            }
+            
+            async executeQuery(query) {
+                if (!query.trim()) return;
+                
+                // Clear input
+                document.getElementById('terminalInput').value = '';
+                
+                // Add query to output
+                this.addTerminalOutput(`> ${query}`, 'query');
+                
+                // Process query
+                if (query.toLowerCase() === 'help') {
+                    this.showHelp();
+                } else if (query.toLowerCase().startsWith('status')) {
+                    await this.queryStatus();
+                } else if (query.toLowerCase().startsWith('connect')) {
+                    await this.queryConnections();
+                } else if (query.toLowerCase().startsWith('debug')) {
+                    this.debugMode();
+                } else {
+                    // Send to semantic bridge
+                    await this.sendSemanticQuery(query);
+                }
+            }
+            
+            addTerminalOutput(text, type = 'normal') {
+                const output = document.getElementById('terminalOutput');
+                const line = document.createElement('div');
+                
+                if (type === 'query') {
+                    line.style.color = 'var(--purple-primary)';
+                    line.style.fontWeight = 'bold';
+                } else if (type === 'error') {
+                    line.style.color = 'var(--red-error)';
+                } else if (type === 'success') {
+                    line.style.color = 'var(--green-success)';
+                }
+                
+                line.textContent = text;
+                output.appendChild(line);
+                
+                // Auto scroll
+                output.scrollTop = output.scrollHeight;
+            }
+            
+            showHelp() {
+                const helpText = `
+Available commands:
+  status - Show system status
+  connect - Show all connections
+  debug - Toggle debug mode
+  why [question] - Ask why something works/fails
+  how [question] - Ask how something works
+  fix [issue] - Attempt to fix an issue
+  clear - Clear terminal
+
+Semantic queries:
+  "Why is Alice busy?"
+  "How does the forum bridge work?"
+  "Show dependencies for semantic-bridge"
+  "Fix websocket connection"
+                `.trim();
+                
+                helpText.split('\n').forEach(line => {
+                    this.addTerminalOutput(line);
+                });
+            }
+            
+            async queryStatus() {
+                if (this.semanticWs && this.semanticWs.readyState === WebSocket.OPEN) {
+                    this.semanticWs.send(JSON.stringify({
+                        type: 'semantic_query',
+                        query: 'status all'
+                    }));
+                } else {
+                    this.addTerminalOutput('❌ Semantic bridge not connected', 'error');
+                }
+            }
+            
+            async sendSemanticQuery(query) {
+                if (this.semanticWs && this.semanticWs.readyState === WebSocket.OPEN) {
+                    this.semanticWs.send(JSON.stringify({
+                        type: 'semantic_query',
+                        query: query,
+                        context: {
+                            nodes: Array.from(this.nodes.values()).map(n => ({
+                                id: n.id,
+                                type: n.type,
+                                name: n.character?.name || n.systemInfo?.name
+                            })),
+                            connections: Array.from(this.connections.values()).map(c => ({
+                                from: c.from,
+                                to: c.to
+                            }))
+                        }
+                    }));
+                    
+                    this.addTerminalOutput('🔍 Querying semantic bridge...');
+                } else {
+                    this.addTerminalOutput('❌ Semantic bridge not connected', 'error');
+                }
+            }
+            
+            // WebSocket message handlers
+            handleOrchestratorMessage(data) {
+                switch (data.type) {
+                    case 'initial_state':
+                        this.updateCharacterStates(data.data.characters);
+                        break;
+                    case 'task_assigned':
+                        this.updateCharacterTask(data.data.character, data.data.task);
+                        break;
+                    case 'task_updated':
+                        this.updateTaskStatus(data.data);
+                        break;
+                    case 'chat_message':
+                        this.addTerminalOutput(`💬 ${data.data.sender}: ${data.data.message}`);
+                        break;
+                }
+            }
+            
+            handleSemanticMessage(data) {
+                switch (data.type) {
+                    case 'query_response':
+                        this.displayQueryResponse(data.result);
+                        break;
+                    case 'orchestrator_update':
+                        this.handleOrchestratorUpdate(data);
+                        break;
+                    case 'bridge_state':
+                        this.updateBridgeState(data);
+                        break;
+                }
+            }
+            
+            displayQueryResponse(result) {
+                if (result.summary) {
+                    this.addTerminalOutput(result.summary);
+                }
+                
+                if (result.results) {
+                    Object.entries(result.results).forEach(([key, value]) => {
+                        this.addTerminalOutput(`  ${key}: ${JSON.stringify(value)}`);
+                    });
+                }
+                
+                if (result.recommendations) {
+                    this.addTerminalOutput('Recommendations:');
+                    result.recommendations.forEach(rec => {
+                        this.addTerminalOutput(`  • ${rec.action}: ${rec.reason || ''}`);
+                    });
+                }
+                
+                if (result.explanations) {
+                    result.explanations.forEach(exp => {
+                        this.addTerminalOutput(exp);
+                    });
+                }
+            }
+            
+            updateCharacterStates(characters) {
+                characters.forEach(char => {
+                    // Update local character data
+                    const localChar = this.characters.find(c => c.id === char.id);
+                    if (localChar) {
+                        Object.assign(localChar, char);
+                    }
+                    
+                    // Update any existing nodes
+                    this.nodes.forEach((nodeData, nodeId) => {
+                        if (nodeData.type === 'character' && nodeData.character.id === char.id) {
+                            const element = document.getElementById(nodeId);
+                            if (element) {
+                                // Update status indicator
+                                const statusEl = element.querySelector('.node-status');
+                                if (statusEl) {
+                                    statusEl.className = `node-status ${char.status === 'available' ? 'online' : 'busy'}`;
+                                }
+                                
+                                // Update node appearance
+                                if (char.status === 'busy') {
+                                    element.classList.add('busy');
+                                } else {
+                                    element.classList.remove('busy');
+                                }
+                            }
+                        }
+                    });
+                });
+            }
+            
+            updateConnectionStatus(service, status) {
+                this.nodes.forEach((nodeData, nodeId) => {
+                    if (nodeData.type === service) {
+                        const element = document.getElementById(nodeId);
+                        if (element) {
+                            const statusEl = element.querySelector('.node-status');
+                            if (statusEl) {
+                                statusEl.className = `node-status ${status}`;
+                            }
+                            
+                            if (status === 'error' || status === 'offline') {
+                                element.classList.add('error');
+                            } else {
+                                element.classList.remove('error');
+                            }
+                        }
+                    }
+                });
+            }
+            
+            notifyConnectionCreated(fromData, toData) {
+                const message = `Connected ${fromData.character?.name || fromData.type} to ${toData.character?.name || toData.type}`;
+                this.addTerminalOutput(message);
+                
+                // Notify semantic bridge
+                if (this.semanticWs && this.semanticWs.readyState === WebSocket.OPEN) {
+                    this.semanticWs.send(JSON.stringify({
+                        type: 'knowledge_update',
+                        knowledge: {
+                            type: 'connection_created',
+                            from: fromData,
+                            to: toData,
+                            timestamp: new Date().toISOString()
+                        }
+                    }));
+                }
+            }
+            
+            // Context menu actions
+            duplicateNode() {
+                if (!this.selectedNode) return;
+                
+                const nodeData = this.nodes.get(this.selectedNode.id);
+                if (!nodeData) return;
+                
+                const newX = nodeData.position.x + 50;
+                const newY = nodeData.position.y + 50;
+                
+                if (nodeData.type === 'character') {
+                    this.createCharacterNode(nodeData.character, newX, newY);
+                } else {
+                    this.createSystemNode(nodeData.type, newX, newY);
+                }
+                
+                this.hideContextMenu();
+            }
+            
+            deleteNode() {
+                if (!this.selectedNode) return;
+                
+                const nodeId = this.selectedNode.id;
+                
+                // Remove connections
+                this.connections.forEach((conn, connId) => {
+                    if (conn.from === nodeId || conn.to === nodeId) {
+                        conn.path.remove();
+                        this.connections.delete(connId);
+                    }
+                });
+                
+                // Update connected nodes
+                this.nodes.forEach(node => {
+                    node.connections.inputs = node.connections.inputs.filter(id => id !== nodeId);
+                    node.connections.outputs = node.connections.outputs.filter(id => id !== nodeId);
+                });
+                
+                // Remove node
+                this.selectedNode.remove();
+                this.nodes.delete(nodeId);
+                
+                this.selectedNode = null;
+                this.hideContextMenu();
+                this.updateMinimap();
+            }
+            
+            showDependencies() {
+                if (!this.selectedNode) return;
+                
+                const nodeData = this.nodes.get(this.selectedNode.id);
+                if (!nodeData) return;
+                
+                // Highlight dependencies
+                nodeData.connections.inputs.forEach(inputId => {
+                    const inputNode = document.getElementById(inputId);
+                    if (inputNode) {
+                        inputNode.style.boxShadow = '0 0 20px var(--blue-info)';
+                    }
+                });
+                
+                nodeData.connections.outputs.forEach(outputId => {
+                    const outputNode = document.getElementById(outputId);
+                    if (outputNode) {
+                        outputNode.style.boxShadow = '0 0 20px var(--green-success)';
+                    }
+                });
+                
+                // Clear highlights after 3 seconds
+                setTimeout(() => {
+                    this.nodes.forEach((node, id) => {
+                        const element = document.getElementById(id);
+                        if (element) {
+                            element.style.boxShadow = '';
+                        }
+                    });
+                }, 3000);
+                
+                this.hideContextMenu();
+            }
+            
+            runSingleNode() {
+                if (!this.selectedNode) return;
+                
+                const nodeData = this.nodes.get(this.selectedNode.id);
+                if (nodeData) {
+                    this.executeNode(nodeData);
+                }
+                
+                this.hideContextMenu();
+            }
+            
+            // Minimap
+            updateMinimap() {
+                // Calculate bounds of all nodes
+                let minX = Infinity, minY = Infinity;
+                let maxX = -Infinity, maxY = -Infinity;
+                
+                this.nodes.forEach(node => {
+                    minX = Math.min(minX, node.position.x);
+                    minY = Math.min(minY, node.position.y);
+                    maxX = Math.max(maxX, node.position.x + 200);
+                    maxY = Math.max(maxY, node.position.y + 100);
+                });
+                
+                if (this.nodes.size === 0) {
+                    minX = minY = 0;
+                    maxX = maxY = 1000;
+                }
+                
+                const width = maxX - minX;
+                const height = maxY - minY;
+                
+                // Update minimap viewport
+                const minimap = document.getElementById('minimapContent');
+                const viewport = document.getElementById('minimapViewport');
+                
+                const scale = Math.min(200 / width, 150 / height);
+                const viewportWidth = (this.canvasWrapper.clientWidth / this.zoom) * scale;
+                const viewportHeight = (this.canvasWrapper.clientHeight / this.zoom) * scale;
+                
+                viewport.style.width = viewportWidth + 'px';
+                viewport.style.height = viewportHeight + 'px';
+                viewport.style.left = (-this.canvasOffset.x / this.zoom - minX) * scale + 'px';
+                viewport.style.top = (-this.canvasOffset.y / this.zoom - minY) * scale + 'px';
+            }
+            
+            // Workflow templates
+            loadTemplate(templateName) {
+                this.clearCanvas();
+                
+                switch (templateName) {
+                    case 'document-processing':
+                        this.loadDocumentProcessingTemplate();
+                        break;
+                    case 'bug-fix':
+                        this.loadBugFixTemplate();
+                        break;
+                    case 'deployment':
+                        this.loadDeploymentTemplate();
+                        break;
+                }
+                
+                setTimeout(() => this.autoLayout(), 100);
+            }
+            
+            loadDocumentProcessingTemplate() {
+                // Create nodes
+                const alice = this.characters.find(c => c.id === 'alice');
+                const bob = this.characters.find(c => c.id === 'bob');
+                const diana = this.characters.find(c => c.id === 'diana');
+                
+                if (alice) this.createCharacterNode(alice, 100, 200);
+                this.createSystemNode('ai-service', 350, 100);
+                if (diana) this.createCharacterNode(diana, 600, 200);
+                this.createSystemNode('forum-bridge', 350, 300);
+                if (bob) this.createCharacterNode(bob, 850, 200);
+                
+                // Connect after nodes are created
+                setTimeout(() => {
+                    const nodes = Array.from(this.canvas.querySelectorAll('.workflow-node'));
+                    if (nodes.length >= 5) {
+                        this.createConnection(nodes[0], nodes[1]); // Alice -> AI
+                        this.createConnection(nodes[1], nodes[2]); // AI -> Diana
+                        this.createConnection(nodes[0], nodes[3]); // Alice -> Forum
+                        this.createConnection(nodes[3], nodes[4]); // Forum -> Bob
+                    }
+                }, 200);
+            }
+            
+            startUpdateLoop() {
+                setInterval(() => {
+                    // Update minimap
+                    this.updateMinimap();
+                    
+                    // Check connection health
+                    if (this.orchestratorWs && this.orchestratorWs.readyState !== WebSocket.OPEN) {
+                        this.updateConnectionStatus('domingo', 'offline');
+                    }
+                    
+                    if (this.semanticWs && this.semanticWs.readyState !== WebSocket.OPEN) {
+                        this.updateConnectionStatus('semantic-bridge', 'offline');
+                    }
+                }, 1000);
+            }
+        }
+        
+        // Initialize
+        const workflowBuilder = new VisualWorkflowBuilder();
+    </script>
+</body>
+</html>

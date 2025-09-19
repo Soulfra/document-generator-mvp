@@ -443,6 +443,7 @@
     <script src="arweave-vercel-bridge.js"></script>
     <script src="stripe-arweave-bridge.js"></script>
     <script src="cal-alive-character.js"></script>
+    <script src="treasure-hunter-client.js"></script>
     
     <!-- Cal Character Container -->
     <div id="cal-character-container"></div>
@@ -474,6 +475,7 @@
                 this.checkServices();
                 this.startStatusUpdates();
                 this.setupCalIntegration();
+                this.setupTreasureHunting();
                 this.log('Document Generator initialized');
             }
             
@@ -492,6 +494,76 @@
                 if (window.calCharacter) {
                     this.updateSystemStatus('Cal Guardian is monitoring...');
                 }
+            }
+            
+            setupTreasureHunting() {
+                if (!window.treasureHunter) {
+                    this.log('⚠️ Treasure Hunter not available');
+                    return;
+                }
+                
+                // Initialize treasure hunter UI
+                window.treasureHunter.createTreasureHunterUI();
+                window.treasureHunter.integrateWithLogin();
+                
+                // Listen for document processing events to trigger treasure discovery
+                this.socket?.addEventListener?.('message', (event) => {
+                    try {
+                        const data = JSON.parse(event.data);
+                        if (data.type === 'document_processed') {
+                            // Award treasure for document processing
+                            window.treasureHunter.discoverTreasure('document', 'processor');
+                        }
+                    } catch (error) {
+                        // Ignore parsing errors
+                    }
+                });
+                
+                // Listen for feature interactions
+                const originalOpenFeature = window.openFeature;
+                window.openFeature = (feature) => {
+                    // Call original function
+                    originalOpenFeature(feature);
+                    
+                    // Award treasure for exploring features
+                    const treasurePatterns = {
+                        'tv-portfolio': 'anontv',
+                        'job-application': 'automation',
+                        'socket-platform': 'websocket',
+                        'ai-agents': 'artificial intelligence',
+                        'shiprekt-battles': 'gaming',
+                        'financial-roasting': 'financial analysis',
+                        'legal-contracts': 'blockchain contracts',
+                        'dialog-game': 'dialog mirror'
+                    };
+                    
+                    const pattern = treasurePatterns[feature];
+                    if (pattern) {
+                        window.treasureHunter.discoverTreasure(pattern, feature);
+                    }
+                };
+                
+                // Award Cal Cookies for SoulFra login events
+                window.addEventListener('soulfra-login-success', (event) => {
+                    const { provider } = event.detail;
+                    window.treasureHunter.awardCalCookie(provider);
+                    this.log(`🍪 Cal awarded cookie for ${provider} login`);
+                });
+                
+                // Award treasure for file uploads
+                const originalProcessFile = this.processFile.bind(this);
+                this.processFile = async (file) => {
+                    // Process file normally
+                    await originalProcessFile(file);
+                    
+                    // Award treasure based on file type
+                    const fileType = this.getFileType(file);
+                    window.treasureHunter.discoverTreasure('upload', fileType);
+                };
+                
+                this.log('🏴‍☠️ Treasure hunting system activated');
+                this.log('🗺️ Search for patterns to discover hidden treasures');
+                this.log('🍪 Login with SoulFra to earn Cal Cookies');
             }
 
             handleAuthStateChange(authDetail) {
